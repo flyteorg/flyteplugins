@@ -3,12 +3,12 @@ package k8splugins
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"testing"
 
 	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 
 	sj "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta1"
@@ -19,7 +19,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
+
+	pluginIOMocks "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io/mocks"
 )
 
 const sparkApplicationFile = "local:///spark_app.py"
@@ -80,68 +83,68 @@ func TestGetEventInfo(t *testing.T) {
 	assert.Equal(t, "spark-history.flyte/history/app-id", info.Logs[3].Uri)
 }
 
-func TestGetTaskStatus(t *testing.T) {
+func TestGetTaskPhase(t *testing.T) {
 	sparkResourceHandler := sparkResourceHandler{}
 
 	ctx := context.TODO()
-	taskStatus, i, err := sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.NewState))
+	taskPhase, err := sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.NewState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseQueued)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseQueued)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.SubmittedState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.SubmittedState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseQueued)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseQueued)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.RunningState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.RunningState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseRunning)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.CompletedState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.CompletedState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseSucceeded)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseSuccess)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.InvalidatingState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.InvalidatingState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseRunning)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.FailingState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailingState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseRunning)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.PendingRerunState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.PendingRerunState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseRunning)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.SucceedingState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.SucceedingState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseRunning)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.FailedSubmissionState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailedSubmissionState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseRetryableFailure)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRetryableFailure)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskStatus, i, err = sparkResourceHandler.GetTaskStatus(ctx, nil, dummySparkApplication(sj.FailedState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailedState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskStatus.Phase, types.TaskPhaseRetryableFailure)
-	assert.NotNil(t, i)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRetryableFailure)
+	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 }
 
@@ -204,17 +207,21 @@ func dummySparkTaskTemplate(id string) *core.TaskTemplate {
 	}
 }
 
-func dummySparkTaskContext() types.TaskContext {
-	taskCtx := &mocks.TaskContext{}
-	taskCtx.On("GetNamespace").Return("test-namespace")
-	taskCtx.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
-	taskCtx.On("GetLabels").Return(map[string]string{"label-1": "val1"})
-	taskCtx.On("GetOwnerReference").Return(v1.OwnerReference{
-		Kind: "node",
-		Name: "blah",
-	})
-	taskCtx.On("GetDataDir").Return(storage.DataReference("/data/"))
-	taskCtx.On("GetInputsFile").Return(storage.DataReference("/input"))
+func dummySparkTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecutionContext {
+	taskCtx := &mocks.TaskExecutionContext{}
+	inputReader := &pluginIOMocks.InputReader{}
+	inputReader.On("GetInputPath").Return(storage.DataReference("/input"))
+	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
+	taskCtx.On("InputReader").Return(inputReader)
+
+	outputReader := &pluginIOMocks.OutputWriter{}
+	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
+	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
+	taskCtx.On("OutputWriter").Return(outputReader)
+
+	taskReader := &mocks.TaskReader{}
+	taskReader.On("Read", mock.Anything).Return(taskTemplate, nil)
+	taskCtx.On("TaskReader").Return(taskReader)
 
 	tID := &mocks.TaskExecutionID{}
 	tID.On("GetID").Return(core.TaskExecutionIdentifier{
@@ -227,7 +234,18 @@ func dummySparkTaskContext() types.TaskContext {
 		},
 	})
 	tID.On("GetGeneratedName").Return("some-acceptable-name")
-	taskCtx.On("GetTaskExecutionID").Return(tID)
+
+	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
+	taskExecutionMetadata.On("GetTaskExecutionID").Return(tID)
+	taskExecutionMetadata.On("GetNamespace").Return("test-namespace")
+	taskExecutionMetadata.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
+	taskExecutionMetadata.On("GetLabels").Return(map[string]string{"label-1": "val1"})
+	taskExecutionMetadata.On("GetOwnerReference").Return(v1.OwnerReference{
+		Kind: "node",
+		Name: "blah",
+	})
+
+	taskCtx.On("TaskExecutionMetadata").Return(taskExecutionMetadata)
 	return taskCtx
 }
 
@@ -237,7 +255,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	// Case1: Valid Spark Task-Template
 	taskTemplate := dummySparkTaskTemplate("blah-1")
 
-	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(), taskTemplate, nil)
+	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate))
 	assert.Nil(t, err)
 
 	assert.NotNil(t, resource)
@@ -264,7 +282,7 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	// Case2: Invalid Spark Task-Template
 	taskTemplate.Custom = nil
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(), taskTemplate, nil)
+	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate))
 	assert.NotNil(t, err)
 	assert.Nil(t, resource)
 }

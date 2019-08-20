@@ -11,43 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	v12 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 )
-
-func getMockTaskContext() *mocks.TaskContext {
-	taskCtx := &mocks.TaskContext{}
-	taskCtx.On("GetNamespace").Return("ns")
-	taskCtx.On("GetAnnotations").Return(map[string]string{"aKey": "aVal"})
-	taskCtx.On("GetLabels").Return(map[string]string{"lKey": "lVal"})
-	taskCtx.On("GetOwnerReference").Return(v1.OwnerReference{Name: "x"})
-
-	id := &mocks.TaskExecutionID{}
-	id.On("GetGeneratedName").Return("test")
-	taskCtx.On("GetTaskExecutionID").Return(id)
-	return taskCtx
-}
-
-func assertObjectAndTaskCtx(t *testing.T, taskCtx types.TaskContext, resource K8sResource) {
-	assert.Equal(t, taskCtx.GetTaskExecutionID().GetGeneratedName(), resource.GetName())
-	assert.Equal(t, []v1.OwnerReference{taskCtx.GetOwnerReference()}, resource.GetOwnerReferences())
-	assert.Equal(t, taskCtx.GetNamespace(), resource.GetNamespace())
-	assert.Equal(t, map[string]string{
-		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
-		"aKey": "aVal",
-	}, resource.GetAnnotations())
-	assert.Equal(t, taskCtx.GetLabels(), resource.GetLabels())
-}
-
-func TestAddObjectMetadata(t *testing.T) {
-	taskCtx := getMockTaskContext()
-	o := &v12.Pod{}
-	AddObjectMetadata(taskCtx, o)
-	assertObjectAndTaskCtx(t, taskCtx, o)
-}
 
 func TestGetExecutionEnvVars(t *testing.T) {
 	mock := mockTaskExecutionIdentifier{}
@@ -261,7 +228,7 @@ func TestDecorateEnvVars(t *testing.T) {
 	aggregated := append(expected, v12.EnvVar{Name: "k", Value: "v"})
 	type args struct {
 		envVars []v12.EnvVar
-		id      types.TaskExecutionID
+		id      pluginsCore.TaskExecutionID
 	}
 	tests := []struct {
 		name           string

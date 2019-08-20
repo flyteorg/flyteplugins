@@ -2,20 +2,27 @@ package flytek8s
 
 import (
 	"context"
+	"fmt"
+	"time"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
 )
 
 const PodKind = "pod"
 
-func ToK8sPod(ctx context.Context, taskCtx types.TaskContext, taskContainer *core.Container, inputs *core.LiteralMap) (*v1.PodSpec, error) {
-	c, err := ToK8sContainer(ctx, taskCtx, taskContainer, inputs)
+func ToK8sPod(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader, inputs io.InputReader,
+	outputPrefixPath string) (*v1.PodSpec, error) {
+	task, err := taskReader.Read(ctx)
+	if err != nil {
+		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
+		return nil, err
+	}
+	c, err := ToK8sContainer(ctx, taskCtx, task.GetContainer(), inputs, outputPrefixPath)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +69,7 @@ func BuildIdentityPod() *v1.Pod {
 //          resources requested is beyond the capability of the system. for this we will rely on configuration
 //          and hence input gates. We should not allow bad requests that request for large number of resource through.
 //          In the case it makes through, we will fail after timeout
-func DemystifyPending(status v1.PodStatus) (types.TaskStatus, error) {
+func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 	// Search over the difference conditions in the status object.  Note that the 'Pending' this function is
 	// demystifying is the 'phase' of the pod status. This is different than the PodReady condition type also used below
 	for _, c := range status.Conditions {
@@ -70,7 +77,7 @@ func DemystifyPending(status v1.PodStatus) (types.TaskStatus, error) {
 		case v1.PodScheduled:
 			if c.Status == v1.ConditionFalse {
 				// Waiting to be scheduled. This usually refers to inability to acquire resources.
-				return types.TaskStatusQueued, nil
+				return pluginsCore.PhaseInfoQueued(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 			}
 
 		case v1.PodReasonUnschedulable:
@@ -83,7 +90,7 @@ func DemystifyPending(status v1.PodStatus) (types.TaskStatus, error) {
 			//  reason: Unschedulable
 			// 	status: "False"
 			// 	type: PodScheduled
-			return types.TaskStatusQueued, nil
+			return pluginsCore.PhaseInfoQueued(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 
 		case v1.PodReady:
 			if c.Status == v1.ConditionFalse {
@@ -126,25 +133,28 @@ func DemystifyPending(status v1.PodStatus) (types.TaskStatus, error) {
 								// ErrImagePull -> Transitionary phase to ImagePullBackOff
 								// ContainerCreating -> Image is being downloaded
 								// PodInitializing -> Init containers are running
-								return types.TaskStatusQueued, nil
-
-							case "ImagePullBackOff":
-								return types.TaskStatusRetryableFailure(errors.Errorf(reason,
-									containerStatus.State.Waiting.Message)), nil
+								return pluginsCore.PhaseInfoInitializing(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 
 							case "CreateContainerError":
 								// This happens if for instance the command to the container is incorrect, ie doesn't run
-								return types.TaskStatusPermanentFailure(errors.Errorf(
-									"CreateContainerError", containerStatus.State.Waiting.Reason)), nil
+								t := c.LastTransitionTime.Time
+								return pluginsCore.PhaseInfoFailure(c.Reason, c.Message, &pluginsCore.TaskInfo{
+									OccurredAt: &t,
+								}), nil
 
+							case "ImagePullBackOff":
+								// TODO once we implement timeouts, this should probably be PhaseInitializing with version 1, so that user can see the reason
+								fallthrough
 							default:
 								// Since we are not checking for all error states, we may end up perpetually
 								// in the queued state returned at the bottom of this function, until the Pod is reaped
 								// by K8s and we get elusive 'pod not found' errors
 								// So be default if the container is not waiting with the PodInitializing/ContainerCreating
 								// reasons, then we will assume a failure reason, and fail instantly
-								logger.Errorf(context.TODO(), "Pod pending with Waiting container with unhandled reason %s", reason)
-								return types.TaskStatusRetryableFailure(errors.Errorf(reason, containerStatus.State.Waiting.Message)), nil
+								t := c.LastTransitionTime.Time
+								return pluginsCore.PhaseInfoRetryableFailure(c.Reason, c.Message, &pluginsCore.TaskInfo{
+									OccurredAt: &t,
+								}), nil
 							}
 
 						}
@@ -154,6 +164,40 @@ func DemystifyPending(status v1.PodStatus) (types.TaskStatus, error) {
 		}
 	}
 
-	return types.TaskStatusQueued, nil
+	return pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "Scheduling"), nil
+}
+
+func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
+	code = "UnknownError"
+	message = "Container/Pod failed. No message received from kubernetes. Could be permissions?"
+	if status.Reason != "" {
+		code = status.Reason
+	}
+	if status.Message != "" {
+		message = status.Message
+	}
+	return
+}
+
+func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
+	var lastTransitionTime v12.Time
+	containerStatuses := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
+	for _, containerStatus := range containerStatuses {
+		if r := containerStatus.LastTerminationState.Running; r != nil {
+			if r.StartedAt.Unix() > lastTransitionTime.Unix() {
+				lastTransitionTime = r.StartedAt
+			}
+		} else if r := containerStatus.LastTerminationState.Terminated; r != nil {
+			if r.FinishedAt.Unix() > lastTransitionTime.Unix() {
+				lastTransitionTime = r.StartedAt
+			}
+		}
+	}
+
+	if lastTransitionTime.IsZero() {
+		lastTransitionTime = v12.NewTime(time.Now())
+	}
+
+	return lastTransitionTime
 }
 
