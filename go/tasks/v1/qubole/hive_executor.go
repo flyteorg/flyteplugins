@@ -435,11 +435,7 @@ func (h HiveExecutor) KillTask(ctx context.Context, taskCtx types.TaskContext, r
 	var callsWithErrors = make([]string, 0, len(customState))
 
 	for key, value := range customState {
-		work, err := InterfaceConverter(value)
-		if err != nil {
-			logger.Errorf(ctx, "Error converting old state into an object for key %s", work.UniqueWorkCacheKey)
-			return err
-		}
+		work := value.(QuboleWorkItem)
 		logger.Debugf(ctx, "KillTask processing custom item key [%s] id [%s] on cluster [%s]",
 			work.UniqueWorkCacheKey, work.CommandId, work.ClusterLabel)
 

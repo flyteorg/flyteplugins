@@ -1,4 +1,4 @@
-package qubole
+package qubole_single
 
 import (
 	"context"
