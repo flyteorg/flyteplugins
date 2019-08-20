@@ -2,34 +2,35 @@ package flytek8s
 
 import (
 	"context"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
+	"github.com/lyft/flytestdlib/storage"
+	"github.com/stretchr/testify/mock"
 	"testing"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
+
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
+	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io/mocks"
 )
 
-func dummyContainerTaskContext(resources *v1.ResourceRequirements) types.TaskContext {
-	taskCtx := &mocks.TaskContext{}
-	taskCtx.On("GetNamespace").Return("test-namespace")
-	taskCtx.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
-	taskCtx.On("GetLabels").Return(map[string]string{"label-1": "val1"})
-	taskCtx.On("GetOwnerReference").Return(metaV1.OwnerReference{
+func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
+	taskExecutionMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
+	taskExecutionMetadata.On("GetNamespace").Return("test-namespace")
+	taskExecutionMetadata.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
+	taskExecutionMetadata.On("GetLabels").Return(map[string]string{"label-1": "val1"})
+	taskExecutionMetadata.On("GetOwnerReference").Return(metaV1.OwnerReference{
 		Kind: "node",
 		Name: "blah",
 	})
-	taskCtx.On("GetDataDir").Return(storage.DataReference("/data/"))
-	taskCtx.On("GetInputsFile").Return(storage.DataReference("/input"))
-	taskCtx.On("GetK8sServiceAccount").Return("service-account")
-
-	tID := &mocks.TaskExecutionID{}
+	taskExecutionMetadata.On("GetK8sServiceAccount").Return("service-account")
+	tID := &pluginsCoreMock.TaskExecutionID{}
 	tID.On("GetID").Return(core.TaskExecutionIdentifier{
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
@@ -40,23 +41,39 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements) types.TaskCon
 		},
 	})
 	tID.On("GetGeneratedName").Return("some-acceptable-name")
-	taskCtx.On("GetTaskExecutionID").Return(tID)
+	taskExecutionMetadata.On("GetTaskExecutionID").Return(tID)
 
-	to := &mocks.TaskOverrides{}
+	to := &pluginsCoreMock.TaskOverrides{}
 	to.On("GetResources").Return(resources)
-	taskCtx.On("GetOverrides").Return(to)
+	taskExecutionMetadata.On("GetOverrides").Return(to)
 
-	return taskCtx
+	return taskExecutionMetadata
+}
+
+func dummyTaskReader() pluginsCore.TaskReader {
+	taskReader := &pluginsCoreMock.TaskReader{}
+	task := &core.TaskTemplate{
+		Type: "test",
+		Target: &core.TaskTemplate_Container{
+			Container: &core.Container{
+				Command: []string{"command"},
+				Args: []string{"{{.Input}}"},
+			},
+		},
+	}
+	taskReader.On("Read", mock.Anything).Return(task, nil)
+	return taskReader
+}
+
+func dummyInputReader() io.InputReader{
+	inputReader := &pluginsIOMock.InputReader{}
+	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
+	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
+	return inputReader
 }
 
 func TestToK8sPod(t *testing.T) {
 	ctx := context.TODO()
-	command := []string{"command"}
-	args := []string{"{{.Input}}"}
-	container := &core.Container{
-		Command: command,
-		Args:    args,
-	}
 
 	tolGPU := v1.Toleration{
 		Key:      "flyte/gpu",
@@ -80,7 +97,7 @@ func TestToK8sPod(t *testing.T) {
 	)
 
 	t.Run("WithGPU", func(t *testing.T) {
-		x := dummyContainerTaskContext(&v1.ResourceRequirements{
+		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
 			Limits: v1.ResourceList{
 				v1.ResourceCPU:     resource.MustParse("1024m"),
 				v1.ResourceStorage: resource.MustParse("100M"),
@@ -92,13 +109,13 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPod(ctx, x, container, nil)
+		p, err := ToK8sPod(ctx, x, dummyTaskReader(), dummyInputReader(), "")
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 1)
 	})
 
 	t.Run("NoGPU", func(t *testing.T) {
-		x := dummyContainerTaskContext(&v1.ResourceRequirements{
+		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
 			Limits: v1.ResourceList{
 				v1.ResourceCPU:     resource.MustParse("1024m"),
 				v1.ResourceStorage: resource.MustParse("100M"),
@@ -109,7 +126,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPod(ctx, x, container, nil)
+		p, err := ToK8sPod(ctx, x, dummyTaskReader(), dummyInputReader(), "")
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 0)
 		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
@@ -130,7 +147,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseQueued, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseQueued, taskStatus.Phase())
 	})
 
 	t.Run("PodUnschedulable", func(t *testing.T) {
@@ -145,7 +162,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseQueued, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseQueued, taskStatus.Phase())
 	})
 
 	t.Run("PodNotScheduled", func(t *testing.T) {
@@ -160,7 +177,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseQueued, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseQueued, taskStatus.Phase())
 	})
 
 	t.Run("PodUnschedulable", func(t *testing.T) {
@@ -175,7 +192,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseQueued, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseQueued, taskStatus.Phase())
 	})
 
 	s := v1.PodStatus{
@@ -210,7 +227,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseQueued, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseInitializing, taskStatus.Phase())
 	})
 
 	t.Run("ErrImagePull", func(t *testing.T) {
@@ -227,7 +244,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseQueued, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseInitializing, taskStatus.Phase())
 	})
 
 	t.Run("PodInitializing", func(t *testing.T) {
@@ -244,7 +261,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseQueued, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseInitializing, taskStatus.Phase())
 	})
 
 	t.Run("ImagePullBackOff", func(t *testing.T) {
@@ -261,7 +278,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseRetryableFailure, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
 	})
 
 	t.Run("InvalidImageName", func(t *testing.T) {
@@ -278,7 +295,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseRetryableFailure, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
 	})
 
 	t.Run("RegistryUnavailable", func(t *testing.T) {
@@ -295,7 +312,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseRetryableFailure, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
 	})
 
 	t.Run("RandomError", func(t *testing.T) {
@@ -312,6 +329,19 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, types.TaskPhaseRetryableFailure, taskStatus.Phase)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
 	})
 }
+
+func TestConvertPodFailureToError(t *testing.T) {
+	t.Run("unknown-error", func(t *testing.T) {
+		code, _ := ConvertPodFailureToError(v1.PodStatus{})
+		assert.Equal(t, code, "UnknownError")
+	})
+
+	t.Run("known-error", func(t *testing.T) {
+		code, _ := ConvertPodFailureToError(v1.PodStatus{Reason: "hello"})
+		assert.Equal(t, code, "hello")
+	})
+}
+
