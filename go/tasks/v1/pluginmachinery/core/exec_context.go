@@ -16,6 +16,8 @@ type TaskReader interface {
 type TaskExecutionContext interface {
 	EventsRecorder() EventsRecorder
 	ResourceManager() ResourceManager
+	SecretManager() SecretManager
+
 	MaxDatasetSizeBytes() int64
 	DataStore() *storage.DataStore
 	PluginStateReader() PluginStateReader

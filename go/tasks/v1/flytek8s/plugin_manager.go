@@ -38,6 +38,7 @@ type PluginPhase uint8
 
 const (
 	PluginPhaseNotStarted PluginPhase = iota
+	PluginPhaseAllocationTokenAcquired
 	PluginPhaseStarted
 )
 
