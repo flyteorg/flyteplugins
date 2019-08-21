@@ -261,8 +261,9 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	return cachedExecutionState, nil
 }
 
-func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient,
+func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient,
 	manager SecretsManager) error {
+
 	// Cancel Qubole query if non-terminal state
 	if !InTerminalState(currentState) && currentState.CommandId != "" {
 		key, err := manager.GetToken()
@@ -272,10 +273,14 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, currentState 
 		}
 		err = qubole.KillCommand(ctx, currentState.CommandId, key)
 		if err != nil {
-			// Should this return an error?  If we do, then we won't deallocate from FRM.
 			logger.Errorf(ctx, "Error terminating Qubole command in Finalize [%s]", err)
+			return err
 		}
 	}
+	return nil
+}
+
+func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState) error {
 	// Release allocation token
 	err := tCtx.ResourceManager().ReleaseResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), currentState.Id)
 	if err != nil {

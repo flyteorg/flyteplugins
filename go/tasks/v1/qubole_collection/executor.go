@@ -2,14 +2,11 @@ package qubole_collection
 
 import (
 	"context"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/config"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -77,8 +74,14 @@ func (q QuboleCollectionHiveExecutor) Handle(ctx context.Context, tCtx core.Task
 }
 
 func (q QuboleCollectionHiveExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	// Shouldn't have to do anything, everything we have to do will be taken care of in Finalize
-	return nil
+	incomingState := CollectionExecutionState{}
+	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
+		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state in Finalize [%s] Err [%s]",
+			q.id, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
+	}
+
+	return Abort(ctx, tCtx, incomingState, q.quboleClient, q.secretsManager)
 }
 
 func (q QuboleCollectionHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
@@ -89,7 +92,7 @@ func (q QuboleCollectionHiveExecutor) Finalize(ctx context.Context, tCtx core.Ta
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
 	}
 
-	return incomingState.Finalize(ctx, tCtx, q.quboleClient, q.secretsManager)
+	return Finalize(ctx, tCtx, incomingState)
 
 }
 
@@ -113,7 +116,6 @@ func (q *QuboleCollectionHiveExecutor) Setup(ctx context.Context, iCtx core.Setu
 	q.executionsCache.Start(ctx)
 
 	return nil
-
 }
 
 func NewQuboleCollectionHiveExecutor() QuboleCollectionHiveExecutor {

@@ -62,8 +62,14 @@ func (q QuboleHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionC
 }
 
 func (q QuboleHiveExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	// TODO: Move the killing from Finalize to here.
-	return nil
+	incomingState := ExecutionState{}
+	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
+		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state in Finalize [%s] Err [%s]",
+			q.id, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
+	}
+
+	return Abort(ctx, tCtx, incomingState, q.quboleClient, q.secretsManager)
 }
 
 func (q QuboleHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
@@ -75,7 +81,6 @@ func (q QuboleHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutio
 	}
 
 	return Finalize(ctx, tCtx, incomingState, q.quboleClient, q.secretsManager)
-
 }
 
 func (q *QuboleHiveExecutor) Setup(ctx context.Context, iCtx core.SetupContext) error {

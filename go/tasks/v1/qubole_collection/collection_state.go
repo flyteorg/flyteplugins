@@ -87,6 +87,27 @@ func DoEverything(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	}, nil
 }
 
+func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, current CollectionExecutionState) error {
+	for _, s := range current.states {
+		err := qubole_single.Finalize(ctx, tCtx, s)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func Abort(ctx context.Context, tCtx core.TaskExecutionContext, current CollectionExecutionState,
+	client client.QuboleClient, secretsManager SecretsManager) error {
+	for _, s := range current.states {
+		err := qubole_single.Abort(ctx, tCtx, s, client, secretsManager)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func DetermineCollectionPhaseFrom(states []qubole_single.ExecutionState) CollectionExecutionPhase {
 	for _, x := range states {
 		// If any are Queued or NotStarted, then we continue to do everything
