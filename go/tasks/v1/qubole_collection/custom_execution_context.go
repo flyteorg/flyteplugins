@@ -18,6 +18,9 @@ type CustomTaskExecutionContext struct {
 	// instead of an array of queries
 	customTaskReader core.TaskReader
 
+	// Override the TaskExecutionMetadata to override the TaskExecutionId to override the GetGeneratedName function
+	// that's used to identify the query in the ExecutionState struct, which is also used as the resource manager
+	// allocation token and also the key in the AutoRefreshCache.
 	customTaskExecutionMetadata CustomTaskExecutionMetadata
 }
 
@@ -108,11 +111,3 @@ func NewCustomTaskReaders(original *idlCore.TaskTemplate) ([]CustomTaskReader, e
 	}
 	return newReaders, nil
 }
-
-func FDds(original core.TaskExecutionMetadata) {
-	original.GetTaskExecutionID().GetID()
-}
-
-//			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), newState.Id,
-//				tCtx.TaskExecutionMetadata().GetOwnerReference())
-// tCtx.ResourceManager().ReleaseResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace()
