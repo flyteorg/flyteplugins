@@ -2,13 +2,14 @@ package qubole_collection
 
 import (
 	"context"
-	"fmt"
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/config"
+	"github.com/lyft/flyteplugins/go/tasks/v1/types"
+	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -33,14 +34,6 @@ func (q QuboleCollectionHiveExecutor) GetID() string {
 	return q.id
 }
 
-type CollectionExecutionPhase int
-
-const (
-	PhaseDoingEverything CollectionExecutionPhase = iota
-	PhaseEverythingLaunched
-	PhaseAllQueriesTerminated
-)
-
 func (q QuboleCollectionHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	currentState := CollectionExecutionState{}
 
@@ -57,6 +50,8 @@ func (q QuboleCollectionHiveExecutor) Handle(ctx context.Context, tCtx core.Task
 	var newState CollectionExecutionState
 
 	switch currentState.Phase {
+	case PhaseInitializing:
+		newState, transformError = InitializeStates(ctx, tCtx, currentState)
 	case PhaseDoingEverything:
 		newState, transformError = DoEverything(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
 
@@ -127,7 +122,6 @@ func NewQuboleCollectionHiveExecutor() QuboleCollectionHiveExecutor {
 		id: quboleHiveExecutorId,
 	}
 }
-
 
 func init() {
 	labeled.SetMetricKeys(contextutils.ProjectKey, contextutils.DomainKey, contextutils.WorkflowIDKey, contextutils.TaskIDKey)

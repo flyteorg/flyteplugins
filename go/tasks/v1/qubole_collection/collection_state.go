@@ -13,43 +13,64 @@ import (
 	utils2 "github.com/lyft/flytestdlib/utils"
 )
 
+type CollectionExecutionPhase int
+
+const (
+	PhaseInitializing CollectionExecutionPhase = iota
+	PhaseDoingEverything
+	PhaseEverythingLaunched
+	PhaseAllQueriesTerminated
+)
+
 type CollectionExecutionState struct {
-	Phase CollectionExecutionPhase
+	Phase  CollectionExecutionPhase
 	states []qubole_single.ExecutionState
 }
 
-func ConstructIndividualTaskExecutionContexts(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	// Read the initial list of queries
+func InitializeStates(ctx context.Context, tCtx core.TaskExecutionContext) (CollectionExecutionState, error) {
+
+	originalTaskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return CollectionExecutionState{}, err
+	}
 	hiveJob := plugins.QuboleHiveJob{}
-	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	err = utils.UnmarshalStruct(originalTaskTemplate.GetCustom(), &hiveJob)
 	if err != nil {
-		return err
-	} else if taskTemplate == nil {
-		return errors.Errorf(errors.BadTaskSpecification, "nil task template")
+		return CollectionExecutionState{}, err
+	}
+	queryCount := len(hiveJob.QueryCollection.Queries)
+	if queryCount == 0 {
+		return CollectionExecutionState{}, errors.Errorf(errors.BadTaskSpecification, "Collection is empty")
 	}
 
-	err := utils.UnmarshalStruct(taskTemplate.GetCustom(), &hiveJob)
-	if err != nil {
-		return err
+	newStates := make([]qubole_single.ExecutionState, 0, queryCount)
+	for range hiveJob.QueryCollection.Queries {
+		newStates = append(newStates, qubole_single.ExecutionState{})
 	}
 
-	queryCollection := hiveJob.QueryCollection.Queries
-
+	return CollectionExecutionState{
+		Phase:  PhaseDoingEverything,
+		states: newStates,
+	}, nil
 }
-
-
-
 
 // This function does everything - launches, gets allocation tokens, does everything.
 func DoEverything(ctx context.Context, tCtx core.TaskExecutionContext, currentState CollectionExecutionState,
 	quboleClient client.QuboleClient, secretsManager SecretsManager, cache utils2.AutoRefreshCache) (
 	CollectionExecutionState, error) {
 
-	newStates := make([]qubole_single.ExecutionState, len(currentState.states))
+	// This will read the custom field of the task template, and transform the collection of queries into list of new
+	// task templates with just one query each
+	childTaskExecutionContexts, err := NewCustomTaskExecutionContexts(ctx, tCtx)
+	if err != nil {
+		return currentState, err
+	}
 
-	for _, x := range currentState.states {
+	newStates := make([]qubole_single.ExecutionState, len(childTaskExecutionContexts))
+
+	for _, s := range currentState.states {
 		// Handle each inner execution state
-		newState, err := qubole_single.HandleExecutionState(ctx, tCtx, x, quboleClient, secretsManager, cache)
+		newState, err := qubole_single.HandleExecutionState(ctx, tCtx, s, quboleClient, secretsManager, cache)
 		if err != nil {
 			return Copy(currentState), err
 		}
