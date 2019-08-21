@@ -1,11 +1,11 @@
-package qubole
+package qubole_collection
 
 import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole/mocks"
+	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 	"github.com/lyft/flytestdlib/storage"

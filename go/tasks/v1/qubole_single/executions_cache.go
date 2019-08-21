@@ -22,7 +22,7 @@ type QuboleHiveExecutionsCache struct {
 func NewQuboleHiveExecutionsCache(ctx context.Context, quboleClient client.QuboleClient,
 	secretsManager SecretsManager, size int, scope promutils.Scope) (QuboleHiveExecutionsCache, error) {
 
-	rateLimiter := utils.NewRateLimiter("qubole-api-updater", 5, 15)
+	rateLimiter := utils.NewRateLimiter("qubole_collection-api-updater", 5, 15)
 	q := QuboleHiveExecutionsCache{
 		quboleClient:     quboleClient,
 		secretsManager:   secretsManager,

@@ -10,7 +10,7 @@ import (
 
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole/config"
+	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/config"
 )
 
 type secretsManager struct {

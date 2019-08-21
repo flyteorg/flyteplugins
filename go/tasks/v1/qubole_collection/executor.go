@@ -1,4 +1,4 @@
-package qubole
+package qubole_collection
 
 import (
 	"context"
@@ -16,9 +16,9 @@ import (
 )
 
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
-const quboleHiveExecutorId = "qubole-hive-collection-executor"
+const quboleHiveExecutorId = "qubole_collection-hive-collection-executor"
 
-// NB: This is the original string. It's different than the single-qubole task type string.
+// NB: This is the original string. It's different than the single-qubole_collection task type string.
 const hiveTaskType = "hive" // This needs to match the type defined in Flytekit constants.py
 
 type QuboleCollectionHiveExecutor struct {

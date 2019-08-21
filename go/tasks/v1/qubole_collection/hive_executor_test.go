@@ -1,4 +1,4 @@
-package qubole
+package qubole_collection
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	eventErrors "github.com/lyft/flyteidl/clients/go/events/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole/client"
-	clientMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole/client/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/client"
+	clientMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/client/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/v1/resourcemanager"
 	resourceManagerMocks "github.com/lyft/flyteplugins/go/tasks/v1/resourcemanager/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/v1/types"
@@ -185,7 +185,7 @@ func TestHiveExecutor_CheckTaskStatus(t *testing.T) {
 		mockContext.On("GetPhaseVersion").Return(uint32(0))
 
 		// Call CheckTaskStatus twice
-		// The first time the mock qubole client will create the query
+		// The first time the mock qubole_collection client will create the query
 		executor.quboleClient.(*clientMocks.QuboleClient).On("ExecuteHiveCommand", mock.Anything,
 			mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
 			&client.QuboleCommandDetails{
@@ -389,7 +389,7 @@ func TestHiveExecutor_CheckTaskStatusStateMismatch(t *testing.T) {
 	mockContext.On("GetPhaseVersion").Return(uint32(0))
 
 	// Unit test will call CheckTaskStatus twice
-	// - the first time the mock qubole client will create the query
+	// - the first time the mock qubole_collection client will create the query
 	mockQubole.On("ExecuteHiveCommand", mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything, mock.Anything).Return(
 		&client.QuboleCommandDetails{

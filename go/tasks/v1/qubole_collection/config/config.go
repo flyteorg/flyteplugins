@@ -10,7 +10,7 @@ import (
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/v1/config"
 )
 
-const quboleConfigSectionKey = "qubole"
+const quboleConfigSectionKey = "qubole_collection"
 
 var (
 	defaultConfig = Config{

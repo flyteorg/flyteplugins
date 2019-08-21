@@ -1,11 +1,11 @@
-package qubole
+package qubole_collection
 
 import (
 	"fmt"
 	"encoding/json"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/events"
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole/client"
+	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/client"
 	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 )
@@ -73,7 +73,7 @@ func NewQuboleWorkItem(uniqueWorkCacheKey string, quboleCommandId string, status
 
 // This status encapsulates all possible states for our custom object.  It is different from the QuboleStatus type
 // in that this is our Flyte type.  It represents the same thing as QuboleStatus, but will actually persist in etcd.
-// It is also different from the TaskStatuses in that this is on the qubole job level, not the task level.  A task,
+// It is also different from the TaskStatuses in that this is on the qubole_collection job level, not the task level.  A task,
 // can contain many queries/spark jobs, etc.
 type QuboleWorkItemStatus int
 

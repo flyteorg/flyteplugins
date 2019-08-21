@@ -12,7 +12,7 @@ import (
 	// This is a temporary solution to invoke init() methods on all plugins. Ideally this step should happen dynamically
 	// based on a config.
 	_ "github.com/lyft/flyteplugins/go/tasks/v1/k8splugins"
-	_ "github.com/lyft/flyteplugins/go/tasks/v1/qubole"
+	_ "github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection"
 )
 
 func Load(ctx context.Context) error {

@@ -1,4 +1,4 @@
-package qubole
+package qubole_collection
 
 import (
 	"encoding/json"
@@ -40,7 +40,7 @@ func TestConstructEventInfoFromQuboleWorkItems(t *testing.T) {
 	assert.Equal(t, "12345", out.CustomInfo.Fields["key_1"].GetStructValue().Fields["command_id"].GetStringValue())
 	status := out.CustomInfo.Fields["key_1"].GetStructValue().Fields["status"]
 	assert.Equal(t, float64(7), status.GetNumberValue())
-	assert.True(t, strings.Contains(out.Logs[0].Uri, "api.qubole"))
+	assert.True(t, strings.Contains(out.Logs[0].Uri, "api.qubole_collection"))
 }
 
 func TestPrinting(t *testing.T) {

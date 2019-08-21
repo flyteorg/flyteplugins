@@ -1,4 +1,4 @@
-package qubole
+package qubole_collection
 
 import (
 	"context"
@@ -19,8 +19,8 @@ import (
 
 	tasksV1 "github.com/lyft/flyteplugins/go/tasks/v1"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole/client"
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole/config"
+	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/client"
+	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/config"
 	"github.com/lyft/flyteplugins/go/tasks/v1/resourcemanager"
 	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
@@ -82,7 +82,7 @@ func (h *HiveExecutor) Initialize(ctx context.Context, param types.ExecutorIniti
 	}
 
 	h.executionsCache, err = utils2.NewAutoRefreshCache(h.SyncQuboleQuery,
-		utils2.NewRateLimiter("qubole-api-updater", 5, 15),
+		utils2.NewRateLimiter("qubole_collection-api-updater", 5, 15),
 		ResyncDuration, config.GetQuboleConfig().LruCacheSize, param.MetricsScope.NewSubScope(hiveTaskType))
 	if err != nil {
 		return err
