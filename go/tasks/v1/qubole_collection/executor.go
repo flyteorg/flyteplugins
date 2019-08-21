@@ -16,7 +16,7 @@ import (
 )
 
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
-const quboleHiveExecutorId = "qubole_collection-hive-collection-executor"
+const quboleHiveExecutorId = "qubole-collection-executor"
 
 // NB: This is the original string. It's different than the single-qubole_collection task type string.
 const hiveTaskType = "hive" // This needs to match the type defined in Flytekit constants.py
@@ -42,31 +42,31 @@ const (
 )
 
 func (q QuboleCollectionHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
-	incomingState := CollectionExecutionState{}
+	currentState := CollectionExecutionState{}
 
-	// We assume here that the chicken-and-egg problem has been solved for us. If this is the first time this function
-	// is called, the custom state we get back is the zero-value of our struct.
-	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
+	// We assume here that the first time this function is called, the custom state we get back is whatever we passed in,
+	// namely the zero-value of our struct.
+	if _, err := tCtx.PluginStateReader().Get(&currentState); err != nil {
 		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state when handling [%s] [%s]",
 			q.id, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
-		return core.UnknownTransition, errors.Wrapf(errors.CustomStateFailure, err,
+		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err,
 			"Failed to unmarshal custom state in Handle")
 	}
 
 	var transformError error
-	var outgoingState CollectionExecutionState
+	var newState CollectionExecutionState
 
-	switch incomingState.Phase {
+	switch currentState.Phase {
 	case PhaseDoingEverything:
-		outgoingState, transformError = incomingState.DoEverything(ctx, tCtx, q.quboleClient, q.secretsManager, q.executionsCache)
+		newState, transformError = DoEverything(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
 
 	// TODO: This is an optimization - in cases where we've already launched all the queries, we don't have to do read the input
 	//       file to get all the queries. In cases where we have lots of queries, this will save a bit of time.
 	case PhaseEverythingLaunched:
-		outgoingState, transformError = incomingState.DoEverything(ctx, tCtx, q.quboleClient, q.secretsManager, q.executionsCache)
+		newState, transformError = DoEverything(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
 
 	case PhaseAllQueriesTerminated:
-		outgoingState = incomingState.Copy()
+		newState = currentState.Copy()
 		transformError = nil
 	}
 
@@ -76,7 +76,7 @@ func (q QuboleCollectionHiveExecutor) Handle(ctx context.Context, tCtx core.Task
 	}
 
 	// If no error, then infer the new Phase from the various states
-	phaseInfo := MapCollectionExecutionToPhaseInfo(outgoingState)
+	phaseInfo := MapCollectionExecutionToPhaseInfo(newState)
 
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
@@ -87,11 +87,11 @@ func (q QuboleCollectionHiveExecutor) Abort(ctx context.Context, tCtx core.TaskE
 }
 
 func (q QuboleCollectionHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	incomingState := ExecutionState{}
+	incomingState := CollectionExecutionState{}
 	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
 		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state in Finalize [%s] Err [%s]",
 			q.id, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
-		return errors.Wrapf(errors.CustomStateFailure, err, "Failed to unmarshal custom state in Finalize")
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
 	}
 
 	return incomingState.Finalize(ctx, tCtx, q.quboleClient, q.secretsManager)
@@ -109,7 +109,7 @@ func (q *QuboleCollectionHiveExecutor) Setup(ctx context.Context, iCtx core.Setu
 	}
 	q.metrics = getQuboleHiveExecutorMetrics(iCtx.MetricsScope())
 
-	executionsAutoRefreshCache, err := NewQuboleHiveExecutionsCache(ctx, q.quboleClient, q.secretsManager,
+	executionsAutoRefreshCache, err := qubole_single.NewQuboleHiveExecutionsCache(ctx, q.quboleClient, q.secretsManager,
 		config.GetQuboleConfig().LruCacheSize, iCtx.MetricsScope().NewSubScope(hiveTaskType))
 	if err != nil {
 		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleHiveExecutor Setup")
@@ -128,113 +128,6 @@ func NewQuboleCollectionHiveExecutor() QuboleCollectionHiveExecutor {
 	}
 }
 
-type CollectionExecutionState struct {
-	Phase CollectionExecutionPhase
-
-	states []qubole_single.ExecutionState
-}
-
-// This function does everything - launches, gets allocation tokens, does everything.
-func (c CollectionExecutionState) DoEverything(ctx context.Context, tCtx core.TaskExecutionContext, quboleClient client.QuboleClient,
-	secretsManager SecretsManager, cache utils2.AutoRefreshCache) (CollectionExecutionState, error) {
-
-	newStates := make([]qubole_single.ExecutionState, len(c.states))
-
-	for _, x := range c.states {
-		// Handle each little thing
-		newState, err := x.Handle(ctx, tCtx, quboleClient, secretsManager, cache)
-		if err != nil {
-			return c.Copy(), err
-		}
-		newStates = append(newStates, newState)
-	}
-
-	// Each of the little ExecutionState phases have now been updated.  It's time to update the larger state
-	newExecutionPhase := DetermineCollectionPhaseFrom(newStates)
-	return CollectionExecutionState{
-		Phase:  newExecutionPhase,
-		states: newStates,
-	}, nil
-}
-
-func DetermineCollectionPhaseFrom(states []qubole_single.ExecutionState) CollectionExecutionPhase {
-	for _, x := range states {
-		// If any are Queued or NotStarted, then we continue to do everything
-		if x.Phase < qubole_single.PhaseSubmitted {
-			return PhaseDoingEverything
-		}
-	}
-
-	for _, x := range states {
-		// If any are Queued or NotStarted, then we continue to do everything
-		if !x.InTerminalState() {
-			return PhaseEverythingLaunched
-		}
-	}
-
-	return PhaseAllQueriesTerminated
-}
-
-func MapCollectionExecutionToPhaseInfo(state CollectionExecutionState) core.PhaseInfo {
-	var phaseInfo core.PhaseInfo
-
-	taskInfo := state.ConstructTaskInfo()
-
-	switch state.Phase {
-	case PhaseDoingEverything, PhaseEverythingLaunched:
-		if taskInfo != nil {
-			phaseInfo = core.PhaseInfoRunning(uint8(len(phaseInfo.Info().Logs)), taskInfo)
-		} else {
-			phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, phaseInfo)
-		}
-
-	case PhaseAllQueriesTerminated:
-		notSucceeded := state.countNotSucceeded()
-		if notSucceeded == 0 {
-			phaseInfo = core.PhaseInfoSuccess(taskInfo)
-		} else {
-			phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError,
-				fmt.Sprintf("Errors in Qubole queries [%d/%d] queries failed", notSucceeded, len(state.states)), taskInfo)
-		}
-
-	}
-
-	return phaseInfo
-}
-
-func (c CollectionExecutionState) countNotSucceeded() int {
-	var notSuccess = 0
-	for _, x := range c.states {
-		if x.Phase != qubole_single.PhaseQuerySucceeded {
-			notSuccess++
-		}
-	}
-	return notSuccess
-}
-
-func (c CollectionExecutionState) Copy() CollectionExecutionState {
-	newStates := make([]qubole_single.ExecutionState, len(c.states))
-	for _, x := range c.states {
-		newStates = append(newStates, x.Copy())
-	}
-	return CollectionExecutionState{Phase: c.Phase, states: newStates}
-}
-
-func (c CollectionExecutionState) ConstructTaskInfo() *core.TaskInfo {
-	logs := make([]*idlCore.TaskLog, 0, 1)
-	for _, x := range c.states {
-		if x.CommandId != "" {
-			logs = append(logs, x.ConstructTaskLog())
-		}
-	}
-
-	if len(logs) > 0 {
-		return &core.TaskInfo{
-			Logs: logs,
-		}
-	}
-	return nil
-}
 
 func init() {
 	labeled.SetMetricKeys(contextutils.ProjectKey, contextutils.DomainKey, contextutils.WorkflowIDKey, contextutils.TaskIDKey)

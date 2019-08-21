@@ -50,27 +50,27 @@ func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj uti
 	}
 
 	if executionState.CommandId == "" {
-		logger.Warnf(ctx, "Sync loop - CommandID is blank for [%s] skipping", executionState.UniqueAllocationTokenId)
+		logger.Warnf(ctx, "Sync loop - CommandID is blank for [%s] skipping", executionState.Id)
 		return executionState, utils.Unchanged, nil
 	}
 
 	logger.Debugf(ctx, "Sync loop - processing Hive job [%s] - cache key [%s]",
-		executionState.CommandId, executionState.UniqueAllocationTokenId)
+		executionState.CommandId, executionState.Id)
 
 	quboleApiKey, err := q.secretsManager.GetToken()
 	if err != nil {
 		return executionState, utils.Unchanged, err
 	}
 
-	if executionState.InTerminalState() {
+	if InTerminalState(executionState) {
 		logger.Debugf(ctx, "Sync loop - Qubole id [%s] in terminal state [%s]",
-			executionState.CommandId, executionState.UniqueAllocationTokenId)
+			executionState.CommandId, executionState.Id)
 
 		return executionState, utils.Unchanged, nil
 	}
 
 	// Get an updated status from Qubole
-	logger.Debugf(ctx, "Querying Qubole for %s - %s", executionState.CommandId, executionState.UniqueAllocationTokenId)
+	logger.Debugf(ctx, "Querying Qubole for %s - %s", executionState.CommandId, executionState.Id)
 	commandStatus, err := q.quboleClient.GetCommandStatus(ctx, executionState.CommandId, quboleApiKey)
 	if err != nil {
 		logger.Errorf(ctx, "Error from Qubole command %s", executionState.CommandId)
@@ -82,7 +82,7 @@ func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj uti
 
 	if newExecutionPhase > executionState.Phase {
 		logger.Infof(ctx, "Moving ExecutionPhase for %s %s from %s to %s", executionState.CommandId,
-			executionState.UniqueAllocationTokenId, executionState.Phase, newExecutionPhase)
+			executionState.Id, executionState.Phase, newExecutionPhase)
 
 		executionState.Phase = newExecutionPhase
 
