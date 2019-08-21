@@ -15,21 +15,21 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 )
 
-const url = "https://api.qubole_collection.com/api"
+const url = "https://api.qubole.com/api"
 const apiPath = "/v1.2/commands"
-const QuboleLogLinkFormat = "https://api.qubole_collection.com/v2/analyze?command_id=%s"
+const QuboleLogLinkFormat = "https://api.qubole.com/v2/analyze?command_id=%s"
 
 const tokenKeyForAth = "X-AUTH-TOKEN"
 const acceptHeaderKey = "Accept"
 const hiveCommandType = "HiveCommand"
 const killStatus = "kill"
 const httpRequestTimeoutSecs = 30
-const host = "api.qubole_collection.com"
+const host = "api.qubole.com"
 const hostHeaderKey = "Host"
 const HeaderContentType = "Content-Type"
 const ContentTypeJSON = "application/json"
 
-// QuboleClient CommandStatus Response Format, only used to unmarshall the response
+// QuboleClient CommandStatus Response Format, only used to unmarshal the response
 type quboleCmdDetailsInternal struct {
 	ID     int64
 	Status string
@@ -145,7 +145,7 @@ func (q *quboleClient) executeRequest(ctx context.Context, method string, path s
 		}
 	}
 
-	logger.Debugf(ctx, "qubole_collection endpoint: %v", path)
+	logger.Debugf(ctx, "Qubole endpoint: %v", path)
 	req.Header = q.getHeaders(accountKey)
 	return q.client.Do(req)
 }

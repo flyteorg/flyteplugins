@@ -13,6 +13,7 @@ import (
 	// based on a config.
 	_ "github.com/lyft/flyteplugins/go/tasks/v1/k8splugins"
 	_ "github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection"
+	_ "github.com/lyft/flyteplugins/go/tasks/v1/qubole_single"
 )
 
 func Load(ctx context.Context) error {
