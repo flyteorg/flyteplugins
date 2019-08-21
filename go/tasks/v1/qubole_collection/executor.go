@@ -14,7 +14,7 @@ import (
 )
 
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
-const quboleHiveExecutorId = "qubole-collection-executor"
+const quboleHiveExecutorId = "qubole-hive-collection-executor"
 
 // NB: This is the original string. It's different than the single-qubole_collection task type string.
 const hiveTaskType = "hive" // This needs to match the type defined in Flytekit constants.py
@@ -58,7 +58,7 @@ func (q QuboleCollectionHiveExecutor) Handle(ctx context.Context, tCtx core.Task
 		newState, transformError = DoEverything(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
 
 	case PhaseAllQueriesTerminated:
-		newState = Copy(currentState)
+		newState = currentState
 		transformError = nil
 	}
 
@@ -97,7 +97,6 @@ func (q QuboleCollectionHiveExecutor) Finalize(ctx context.Context, tCtx core.Ta
 }
 
 func (q *QuboleCollectionHiveExecutor) Setup(ctx context.Context, iCtx core.SetupContext) error {
-
 	q.quboleClient = client.NewQuboleClient()
 	q.secretsManager = NewSecretsManager()
 	_, err := q.secretsManager.GetToken()
@@ -109,7 +108,7 @@ func (q *QuboleCollectionHiveExecutor) Setup(ctx context.Context, iCtx core.Setu
 	executionsAutoRefreshCache, err := qubole_single.NewQuboleHiveExecutionsCache(ctx, q.quboleClient, q.secretsManager,
 		config.GetQuboleConfig().LruCacheSize, iCtx.MetricsScope().NewSubScope(hiveTaskType))
 	if err != nil {
-		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleHiveExecutor Setup")
+		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleCollectionHiveExecutor Setup")
 		return err
 	}
 	q.executionsCache = executionsAutoRefreshCache

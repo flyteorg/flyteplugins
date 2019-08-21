@@ -13,7 +13,7 @@ import (
 )
 
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
-const quboleHiveExecutorId = "qubole_collection-hive-executor"
+const quboleHiveExecutorId = "qubole-hive-executor"
 
 // NB: This is a different string than the old one. The old one will now only be used for multiple query Hive tasks.
 const hiveTaskType = "hive-task" // This needs to match the type defined in Flytekit constants.py
@@ -104,7 +104,6 @@ func (q *QuboleHiveExecutor) Setup(ctx context.Context, iCtx core.SetupContext) 
 	q.executionsCache.Start(ctx)
 
 	return nil
-
 }
 
 func NewQuboleHiveExecutor() QuboleHiveExecutor {
