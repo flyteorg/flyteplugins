@@ -68,6 +68,18 @@ func newPluginMetrics(s promutils.Scope) PluginMetrics {
 	}
 }
 
+func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o k8s.Resource, cfg *config.K8sPluginConfig) {
+	o.SetNamespace(taskCtx.GetNamespace())
+	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
+	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
+	o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
+	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
+	if cfg.InjectFinalizer {
+		f := append(o.GetFinalizers(), finalizer)
+		o.SetFinalizers(f)
+	}
+}
+
 // A generic task executor for k8s-resource reliant tasks.
 type PluginManager struct {
 	id              string
@@ -86,17 +98,7 @@ func (e *PluginManager) GetProperties() pluginsCore.PluginProperties {
 	return pluginsCore.PluginProperties{}
 }
 
-func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o k8s.Resource, cfg *config.K8sPluginConfig) {
-	o.SetNamespace(taskCtx.GetNamespace())
-	o.SetAnnotations(utils.UnionMaps(cfg.DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
-	o.SetLabels(utils.UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), cfg.DefaultLabels))
-	o.SetOwnerReferences([]metav1.OwnerReference{taskCtx.GetOwnerReference()})
-	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
-	if cfg.InjectFinalizer {
-		f := append(o.GetFinalizers(), finalizer)
-		o.SetFinalizers(f)
-	}
-}
+
 
 func (e *PluginManager) Setup(ctx context.Context, iCtx pluginsCore.SetupContext) error {
 	if iCtx.EnqueueOwner() == nil {
