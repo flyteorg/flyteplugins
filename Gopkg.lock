@@ -347,7 +347,7 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:2b5f0e6bc8fb862fed5bccf9fbb1ab819c8b3f8a21e813fe442c06aec3bb3e86"
+  digest = "1:d7eac6fbf0b97241017ad4c60bce63e4ddcf08761be7ac8305a4a230305ae0ad"
   name = "github.com/lyft/flyteidl"
   packages = [
     "clients/go/admin",
@@ -362,9 +362,8 @@
     "gen/pb-go/flyteidl/service",
   ]
   pruneopts = ""
-  revision = "793b09d190148236f41ad8160b5cec9a3325c16f"
+  revision = "603420a216676e0d0f5e0f6bc0b203ee8eea79ca"
   source = "git@github.com:lyft/flyteidl"
-  version = "v0.1.0"
 
 [[projects]]
   digest = "1:c368fe9a00a38c8702e24475dd3a8348d2a191892ef9030aceb821f8c035b737"
