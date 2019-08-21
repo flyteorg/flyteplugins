@@ -6,7 +6,7 @@ import (
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/v1/config"
 )
 
-const quboleConfigSectionKey = "single-qubole_collection"
+const quboleConfigSectionKey = "qubole"
 
 var (
 	defaultConfig = Config{
