@@ -17,8 +17,8 @@ type CollectionExecutionPhase int
 
 const (
 	PhaseInitializing CollectionExecutionPhase = iota
-	PhaseDoingEverything
-	PhaseEverythingLaunched
+	PhaseAttemptAllQueries
+	PhaseAllQueriesLaunched
 	PhaseAllQueriesTerminated
 )
 
@@ -27,8 +27,9 @@ type CollectionExecutionState struct {
 	states []qubole_single.ExecutionState
 }
 
+// This phase just creates the zero values of the inner ExecutionStates. This simplifies the next step when we
+// have to match up our new overridden task execution contexts with these inner ExecutionStates
 func InitializeStates(ctx context.Context, tCtx core.TaskExecutionContext) (CollectionExecutionState, error) {
-
 	originalTaskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return CollectionExecutionState{}, err
@@ -49,7 +50,7 @@ func InitializeStates(ctx context.Context, tCtx core.TaskExecutionContext) (Coll
 	}
 
 	return CollectionExecutionState{
-		Phase:  PhaseDoingEverything,
+		Phase:  PhaseAttemptAllQueries,
 		states: newStates,
 	}, nil
 }
@@ -66,11 +67,11 @@ func DoEverything(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		return currentState, err
 	}
 
-	newStates := make([]qubole_single.ExecutionState, len(childTaskExecutionContexts))
+	newStates := make([]qubole_single.ExecutionState, len(currentState.states))
 
-	for _, s := range currentState.states {
+	for i, s := range currentState.states {
 		// Handle each inner execution state
-		newState, err := qubole_single.HandleExecutionState(ctx, tCtx, s, quboleClient, secretsManager, cache)
+		newState, err := qubole_single.HandleExecutionState(ctx, childTaskExecutionContexts[i], s, quboleClient, secretsManager, cache)
 		if err != nil {
 			return Copy(currentState), err
 		}
@@ -79,6 +80,7 @@ func DoEverything(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 
 	// Each of the little ExecutionState phases have now been updated.  It's time to update the larger state
 	newExecutionPhase := DetermineCollectionPhaseFrom(newStates)
+
 	return CollectionExecutionState{
 		Phase:  newExecutionPhase,
 		states: newStates,
@@ -89,14 +91,14 @@ func DetermineCollectionPhaseFrom(states []qubole_single.ExecutionState) Collect
 	for _, x := range states {
 		// If any are Queued or NotStarted, then we continue to do everything
 		if x.Phase < qubole_single.PhaseSubmitted {
-			return PhaseDoingEverything
+			return PhaseAttemptAllQueries
 		}
 	}
 
 	for _, x := range states {
 		// If any are Queued or NotStarted, then we continue to do everything
 		if !qubole_single.InTerminalState(x) {
-			return PhaseEverythingLaunched
+			return PhaseAllQueriesLaunched
 		}
 	}
 
@@ -109,11 +111,11 @@ func MapCollectionExecutionToPhaseInfo(state CollectionExecutionState) core.Phas
 	taskInfo := ConstructTaskInfo(state)
 
 	switch state.Phase {
-	case PhaseDoingEverything, PhaseEverythingLaunched:
+	case PhaseAttemptAllQueries, PhaseAllQueriesLaunched:
 		if taskInfo != nil {
-			phaseInfo = core.PhaseInfoRunning(uint8(len(phaseInfo.Info().Logs)), taskInfo)
+			phaseInfo = core.PhaseInfoRunning(uint8(len(taskInfo.Logs)), taskInfo)
 		} else {
-			phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, phaseInfo)
+			phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, nil)
 		}
 
 	case PhaseAllQueriesTerminated:
@@ -124,7 +126,6 @@ func MapCollectionExecutionToPhaseInfo(state CollectionExecutionState) core.Phas
 			phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError,
 				fmt.Sprintf("Errors in Qubole queries [%d/%d] queries failed", notSucceeded, len(state.states)), taskInfo)
 		}
-
 	}
 
 	return phaseInfo
@@ -149,7 +150,7 @@ func Copy(c CollectionExecutionState) CollectionExecutionState {
 }
 
 func ConstructTaskInfo(c CollectionExecutionState) *core.TaskInfo {
-	logs := make([]*idlCore.TaskLog, 0, 1)
+	logs := make([]*idlCore.TaskLog, 0)
 	for _, x := range c.states {
 		if x.CommandId != "" {
 			logs = append(logs, qubole_single.ConstructTaskLog(x))
