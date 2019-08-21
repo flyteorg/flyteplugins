@@ -364,7 +364,7 @@
   ]
   pruneopts = ""
   revision = "793b09d190148236f41ad8160b5cec9a3325c16f"
-  source = "git@github.com:lyft/flyteidl"
+  source = "https://github.com/lyft/flyteidl"
   version = "v0.1.0"
 
 [[projects]]
