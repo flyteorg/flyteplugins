@@ -78,6 +78,10 @@ func (c CustomTaskExecutionContext) TaskReader() core.TaskReader {
 	return c.customTaskReader
 }
 
+func (c CustomTaskExecutionContext) TaskExecutionMetadata() core.TaskExecutionMetadata {
+	return c.customTaskExecutionMetadata
+}
+
 type CustomTaskReader struct {
 	taskTemplate *idlCore.TaskTemplate
 }
