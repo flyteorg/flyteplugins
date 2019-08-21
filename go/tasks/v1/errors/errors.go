@@ -19,6 +19,7 @@ const (
 	PluginInitializationFailed ErrorCode = "PluginInitializationFailed"
 	CacheFailed                ErrorCode = "AutoRefreshCacheFailed"
 	RuntimeFailure             ErrorCode = "RuntimeFailure"
+	CorruptedPluginState       ErrorCode = "CorruptedPluginState"
 )
 
 type TaskError struct {
@@ -62,13 +63,6 @@ func GetErrorCode(err error) (code ErrorCode, isTaskError bool) {
 	e, ok := err.(*TaskError)
 	if ok {
 		code = e.Code
-		isTaskError = true
-		return
-	}
-
-	e2, ok := err.(*TaskError)
-	if ok {
-		code = e2.Code
 		isTaskError = true
 		return
 	}

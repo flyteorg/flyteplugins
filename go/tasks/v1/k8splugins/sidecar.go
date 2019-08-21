@@ -3,21 +3,21 @@ package k8splugins
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery"
+
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
-	v1 "github.com/lyft/flyteplugins/go/tasks/v1"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/events"
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
 	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 
 	k8sv1 "k8s.io/api/core/v1"
-
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 )
 
 const (
@@ -30,7 +30,7 @@ type sidecarResourceHandler struct{}
 // This method handles templatizing primary container input args, env variables and adds a GPU toleration to the pod
 // spec if necessary.
 func validateAndFinalizeContainers(
-	ctx context.Context, taskCtx types.TaskContext, primaryContainerName string, pod k8sv1.Pod,
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, pod k8sv1.Pod,
 	inputs *core.LiteralMap) (*k8sv1.Pod, error) {
 	var hasPrimaryContainer bool
 
@@ -43,8 +43,8 @@ func validateAndFinalizeContainers(
 		modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx,
 			container.Command,
 			utils.CommandLineTemplateArgs{
-				Input:        taskCtx.GetInputsFile().String(),
-				OutputPrefix: taskCtx.GetDataDir().String(),
+				Input:        taskCtx.InputReader().GetInputPath().String(),
+				OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
 				Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
 			})
 
@@ -56,8 +56,8 @@ func validateAndFinalizeContainers(
 		modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx,
 			container.Args,
 			utils.CommandLineTemplateArgs{
-				Input:        taskCtx.GetInputsFile().String(),
-				OutputPrefix: taskCtx.GetDataDir().String(),
+				Input:        taskCtx.InputReader().GetInputPath().String(),
+				OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
 				Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
 			})
 
@@ -65,8 +65,7 @@ func validateAndFinalizeContainers(
 			return nil, err
 		}
 		container.Args = modifiedArgs
-
-		container.Env = flytek8s.DecorateEnvVars(ctx, container.Env, taskCtx.GetTaskExecutionID())
+		container.Env = flytek8s.DecorateEnvVars(ctx, container.Env, taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
 		resources := flytek8s.ApplyResourceOverrides(ctx, container.Resources)
 		resReqs = append(resReqs, *resources)
 		finalizedContainers[index] = container
@@ -81,11 +80,14 @@ func validateAndFinalizeContainers(
 	return &pod, nil
 }
 
-func (sidecarResourceHandler) BuildResource(
-	ctx context.Context, taskCtx types.TaskContext, task *core.TaskTemplate, inputs *core.LiteralMap) (
-	flytek8s.K8sResource, error) {
+func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 	sidecarJob := plugins.SidecarJob{}
-	err := utils.UnmarshalStruct(task.GetCustom(), &sidecarJob)
+	task, err := taskCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification,
+			"TaskSpecification cannot be read, Err: [%v]", err.Error())
+	}
+	err = utils.UnmarshalStruct(task.GetCustom(), &sidecarJob)
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
 			"invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
@@ -97,7 +99,12 @@ func (sidecarResourceHandler) BuildResource(
 	pod.Spec.RestartPolicy = k8sv1.RestartPolicyNever
 
 	// We want to Also update the serviceAccount to the serviceaccount of the workflow
-	pod.Spec.ServiceAccountName = taskCtx.GetK8sServiceAccount()
+	pod.Spec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
+
+	inputs, err := taskCtx.InputReader().Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	pod, err = validateAndFinalizeContainers(ctx, taskCtx, sidecarJob.PrimaryContainerName, *pod, inputs)
 	if err != nil {
@@ -113,84 +120,83 @@ func (sidecarResourceHandler) BuildResource(
 	return pod, nil
 }
 
-func (sidecarResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx types.TaskContext) (
-	flytek8s.K8sResource, error) {
+func (sidecarResourceHandler) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (
+	k8s.Resource, error) {
 	return flytek8s.BuildIdentityPod(), nil
 }
 
-func determinePrimaryContainerStatus(primaryContainerName string, statuses []k8sv1.ContainerStatus) (
-	types.TaskStatus, error) {
+func determinePrimaryContainerPhase(primaryContainerName string, statuses []k8sv1.ContainerStatus, info *pluginsCore.TaskInfo) pluginsCore.PhaseInfo {
 	for _, s := range statuses {
 		if s.Name == primaryContainerName {
 			if s.State.Waiting != nil || s.State.Running != nil {
-				return types.TaskStatusRunning, nil
+				return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info)
 			}
 
 			if s.State.Terminated != nil {
 				if s.State.Terminated.ExitCode != 0 {
-					return types.TaskStatusRetryableFailure(errors.Errorf(
-						s.State.Terminated.Reason, s.State.Terminated.Message)), nil
+					return pluginsCore.PhaseInfoRetryableFailure(
+						s.State.Terminated.Reason, s.State.Terminated.Message, info)
 				}
-				return types.TaskStatusSucceeded, nil
+				return pluginsCore.PhaseInfoSuccess(info)
 			}
 		}
 	}
 
 	// If for some reason we can't find the primary container, always just return a permanent failure
-	return types.TaskStatusPermanentFailure(errors.Errorf("PrimaryContainerMissing",
-		"Primary container [%s] not found in pod's container statuses", primaryContainerName)), nil
+
+	return pluginsCore.PhaseInfoFailure("PrimaryContainerMissing",
+		fmt.Sprintf("Primary container [%s] not found in pod's container statuses", primaryContainerName), info)
 }
 
-func (sidecarResourceHandler) GetTaskStatus(
-	ctx context.Context, taskCtx types.TaskContext, resource flytek8s.K8sResource) (
-	types.TaskStatus, *events.TaskEventInfo, error) {
-	pod := resource.(*k8sv1.Pod)
+func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r k8s.Resource) (pluginsCore.PhaseInfo, error) {
+	pod := r.(*k8sv1.Pod)
 
-	var info *events.TaskEventInfo
+	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
+	info := pluginsCore.TaskInfo{
+		OccurredAt: &transitionOccurredAt,
+	}
 	if pod.Status.Phase != k8sv1.PodPending && pod.Status.Phase != k8sv1.PodUnknown {
-		taskLogs := make([]*core.TaskLog, 0)
-		for idx, container := range pod.Spec.Containers {
-			containerLogs, err := logs.GetLogsForContainerInPod(ctx, pod, uint32(idx), fmt.Sprintf(" (%s)", container.Name))
-			if err != nil {
-				return types.TaskStatusUndefined, nil, err
-			}
-			taskLogs = append(taskLogs, containerLogs...)
+		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")
+		if err != nil {
+			return pluginsCore.PhaseInfoUndefined, err
 		}
-
-		t := GetLastTransitionOccurredAt(pod).Time
-		info = &events.TaskEventInfo{
-			Logs:       taskLogs,
-			OccurredAt: &t,
-		}
+		info.Logs = taskLogs
 	}
 	switch pod.Status.Phase {
 	case k8sv1.PodSucceeded:
-		return types.TaskStatusSucceeded, info, nil
+		return pluginsCore.PhaseInfoSuccess(&info), nil
 	case k8sv1.PodFailed:
-		return types.TaskStatusRetryableFailure(ConvertPodFailureToError(pod.Status)), info, nil
+		code, message := flytek8s.ConvertPodFailureToError(pod.Status)
+		return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil
 	case k8sv1.PodPending:
-		status, err := flytek8s.DemystifyPending(pod.Status)
-		return status, info, err
+		return flytek8s.DemystifyPending(pod.Status)
 	case k8sv1.PodReasonUnschedulable:
-		return types.TaskStatusQueued, info, nil
+		return pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable"), nil
 	case k8sv1.PodUnknown:
-		return types.TaskStatusUnknown, info, nil
+		return pluginsCore.PhaseInfoUndefined, nil
 	}
 
 	// Otherwise, assume the pod is running.
-	primaryContainerName, ok := resource.GetAnnotations()[primaryContainerKey]
+	primaryContainerName, ok := r.GetAnnotations()[primaryContainerKey]
 	if !ok {
-		return types.TaskStatusUndefined, nil, errors.Errorf(errors.BadTaskSpecification,
+		return pluginsCore.PhaseInfoUndefined, errors.Errorf(errors.BadTaskSpecification,
 			"missing primary container annotation for pod")
 	}
+	primaryContainerPhase := determinePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
 
-	status, err := determinePrimaryContainerStatus(primaryContainerName, pod.Status.ContainerStatuses)
-	return status, info, err
+	if primaryContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
+		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, primaryContainerPhase.Info()), nil
+	}
+	return primaryContainerPhase, nil
 }
 
 func init() {
-	v1.RegisterLoader(func(ctx context.Context) error {
-		return v1.K8sRegisterForTaskTypes(sidecarTaskType, &k8sv1.Pod{}, flytek8s.DefaultInformerResyncDuration,
-			sidecarResourceHandler{}, sidecarTaskType)
-	})
+	pluginmachinery.PluginRegistry.RegisterK8sPlugin(
+		k8s.PluginEntry{
+			ID:	sidecarTaskType,
+			RegisteredTaskTypes: []pluginsCore.TaskType{sidecarTaskType},
+			ResourceToWatch: &k8sv1.Pod{},
+			Plugin: sidecarResourceHandler{},
+			IsDefault: false,
+		})
 }

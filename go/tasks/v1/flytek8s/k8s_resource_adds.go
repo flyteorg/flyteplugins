@@ -10,8 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 )
 
 func GetContextEnvVars(ownerCtx context.Context) []v1.EnvVar {
@@ -33,7 +32,7 @@ func GetContextEnvVars(ownerCtx context.Context) []v1.EnvVar {
 	return envVars
 }
 
-func GetExecutionEnvVars(id types.TaskExecutionID) []v1.EnvVar {
+func GetExecutionEnvVars(id pluginsCore.TaskExecutionID) []v1.EnvVar {
 
 	if id == nil || id.GetID().NodeExecutionId == nil || id.GetID().NodeExecutionId.ExecutionId == nil {
 		return []v1.EnvVar{}
@@ -109,10 +108,8 @@ func GetExecutionEnvVars(id types.TaskExecutionID) []v1.EnvVar {
 	return envVars
 }
 
-func DecorateEnvVars(ctx context.Context, envVars []v1.EnvVar, id types.TaskExecutionID) []v1.EnvVar {
-	// Injecting workflow name into the container's env vars
+func DecorateEnvVars(ctx context.Context, envVars []v1.EnvVar, id pluginsCore.TaskExecutionID) []v1.EnvVar {
 	envVars = append(envVars, GetContextEnvVars(ctx)...)
-
 	envVars = append(envVars, GetExecutionEnvVars(id)...)
 
 	for k, v := range config.GetK8sPluginConfig().DefaultEnvVars {
@@ -139,16 +136,4 @@ func GetTolerationsForResources(resourceRequirements ...v1.ResourceRequirements)
 		}
 	}
 	return tolerations
-}
-
-func AddObjectMetadata(taskCtx types.TaskContext, o K8sResource) {
-	o.SetNamespace(taskCtx.GetNamespace())
-	o.SetAnnotations(UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, o.GetAnnotations(), utils.CopyMap(taskCtx.GetAnnotations())))
-	o.SetLabels(UnionMaps(o.GetLabels(), utils.CopyMap(taskCtx.GetLabels()), config.GetK8sPluginConfig().DefaultLabels))
-	o.SetOwnerReferences([]v12.OwnerReference{taskCtx.GetOwnerReference()})
-	o.SetName(taskCtx.GetTaskExecutionID().GetGeneratedName())
-	if config.GetK8sPluginConfig().InjectFinalizer {
-		f := append(o.GetFinalizers(), finalizer)
-		o.SetFinalizers(f)
-	}
 }

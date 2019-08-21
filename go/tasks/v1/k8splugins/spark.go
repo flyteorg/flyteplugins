@@ -2,13 +2,15 @@ package k8splugins
 
 import (
 	"context"
+
 	"fmt"
+	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
-
-	v1 "github.com/lyft/flyteplugins/go/tasks/v1"
-	"github.com/lyft/flyteplugins/go/tasks/v1/events"
 	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 
 	"k8s.io/client-go/kubernetes/scheme"
@@ -21,9 +23,9 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/v1/config"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 )
 
 const KindSparkApplication = "SparkApplication"
@@ -55,19 +57,24 @@ type sparkResourceHandler struct {
 }
 
 // Creates a new Job that will execute the main container as well as any generated types the result from the execution.
-func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx types.TaskContext, task *core.TaskTemplate, inputs *core.LiteralMap) (flytek8s.K8sResource, error) {
-
-	sparkJob := plugins.SparkJob{}
-	err := utils.UnmarshalStruct(task.GetCustom(), &sparkJob)
+func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
+		return nil, errors.Errorf(errors.BadTaskSpecification, "unable to fetch task specification [%v]", err.Error())
+	} else if taskTemplate == nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "nil task specification")
+	}
+	sparkJob := plugins.SparkJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sparkJob)
+	if err != nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 	}
 
-	annotations := flytek8s.UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, utils.CopyMap(taskCtx.GetAnnotations()))
-	labels := flytek8s.UnionMaps(config.GetK8sPluginConfig().DefaultLabels, utils.CopyMap(taskCtx.GetLabels()))
-	container := task.GetContainer()
+	annotations := utils.UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetAnnotations()))
+	labels := utils.UnionMaps(config.GetK8sPluginConfig().DefaultLabels, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetLabels()))
+	container := taskTemplate.GetContainer()
 
-	envVars := flytek8s.DecorateEnvVars(ctx, flytek8s.ToK8sEnvVar(task.GetContainer().GetEnv()), taskCtx.GetTaskExecutionID())
+	envVars := flytek8s.DecorateEnvVars(ctx, flytek8s.ToK8sEnvVar(container.GetEnv()), taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
 
 	sparkEnvVars := make(map[string]string)
 	for _, envVar := range envVars {
@@ -93,11 +100,16 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx types.Tas
 		},
 	}
 
+	inputs, err := taskCtx.InputReader().Get(ctx)
+	if err != nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification inputs [%v], Err: [%v]",
+			taskCtx.InputReader().GetInputPath(), err.Error())
+	}
 	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(context.TODO(),
-		task.GetContainer().GetArgs(),
+		container.GetArgs(),
 		utils.CommandLineTemplateArgs{
-			Input:        taskCtx.GetInputsFile().String(),
-			OutputPrefix: taskCtx.GetDataDir().String(),
+			Input:        taskCtx.InputReader().GetInputPath().String(),
+			OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
 			Inputs:       utils.LiteralMapToTemplateArgs(context.TODO(), inputs),
 		})
 
@@ -147,7 +159,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx types.Tas
 			HadoopConf:     sparkJob.GetHadoopConf(),
 			// SubmissionFailures handled here. Task Failures handled at Propeller/Job level.
 			RestartPolicy: sparkOp.RestartPolicy{
-				Type: sparkOp.OnFailure,
+				Type:                       sparkOp.OnFailure,
 				OnSubmissionFailureRetries: &submissionFailureRetries,
 			},
 		},
@@ -177,7 +189,7 @@ func getApplicationType(applicationType plugins.SparkApplication_Type) sparkOp.S
 	return sparkOp.PythonApplicationType
 }
 
-func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx types.TaskContext) (flytek8s.K8sResource, error) {
+func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
 	return &sparkOp.SparkApplication{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       KindSparkApplication,
@@ -186,7 +198,7 @@ func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx t
 	}, nil
 }
 
-func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*events.TaskEventInfo, error) {
+func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
 	var taskLogs []*core.TaskLog
 	customInfoMap := make(map[string]string)
 
@@ -256,40 +268,36 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*events.TaskEventInfo, 
 		return nil, err
 	}
 
-	return &events.TaskEventInfo{
+	return &pluginsCore.TaskInfo{
 		Logs:       taskLogs,
 		CustomInfo: customInfo,
 	}, nil
 }
 
-func (sparkResourceHandler) GetTaskStatus(_ context.Context, _ types.TaskContext, r flytek8s.K8sResource) (
-	types.TaskStatus, *events.TaskEventInfo, error) {
+func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
 
-	app := r.(*sparkOp.SparkApplication)
-	var status types.TaskStatus
-	switch app.Status.AppState.State {
-	case sparkOp.NewState, sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
-		status = types.TaskStatusQueued
-	case sparkOp.FailedSubmissionState:
-		status = types.TaskStatusRetryableFailure(errors.Errorf(errors.DownstreamSystemError, "Spark Job  Submission Failed with Error: %s", app.Status.AppState.ErrorMessage))
-	case sparkOp.FailedState:
-		status = types.TaskStatusRetryableFailure(errors.Errorf(errors.DownstreamSystemError, "Spark Job Failed with Error: %s", app.Status.AppState.ErrorMessage))
-	case sparkOp.CompletedState:
-		status = types.TaskStatusSucceeded
-	default:
-		status = types.TaskStatusRunning
-	}
-
+	app := resource.(*sparkOp.SparkApplication)
 	info, err := getEventInfoForSpark(app)
 	if err != nil {
-		return types.TaskStatusUndefined, nil, err
+		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	return status, info, nil
-}
-
-func (sparkResourceHandler) PopulateTaskEventInfo(taskCtx types.TaskContext, resource flytek8s.K8sResource) error {
-	return nil
+	occuredAt := time.Now()
+	switch app.Status.AppState.State {
+	case sparkOp.NewState, sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
+		return pluginsCore.PhaseInfoQueued(occuredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
+	case sparkOp.FailedSubmissionState:
+		reason := fmt.Sprintf("Spark Job  Submission Failed with Error: %s", app.Status.AppState.ErrorMessage)
+		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
+	case sparkOp.FailedState:
+		reason := fmt.Sprintf("Spark Job Failed with Error: %s", app.Status.AppState.ErrorMessage)
+		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
+	case sparkOp.CompletedState:
+		return pluginsCore.PhaseInfoSuccess(info), nil
+	default:
+		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
+	}
+	return pluginsCore.PhaseInfo{}, nil
 }
 
 func init() {
@@ -297,8 +305,12 @@ func init() {
 		panic(err)
 	}
 
-	v1.RegisterLoader(func(ctx context.Context) error {
-		return v1.K8sRegisterForTaskTypes(sparkTaskType, &sparkOp.SparkApplication{},
-			flytek8s.DefaultInformerResyncDuration, sparkResourceHandler{}, sparkTaskType)
-	})
+	pluginmachinery.PluginRegistry.RegisterK8sPlugin(
+		k8s.PluginEntry{
+			ID:                  sparkTaskType,
+			RegisteredTaskTypes: []pluginsCore.TaskType{sparkTaskType},
+			ResourceToWatch:     &sparkOp.SparkApplication{},
+			Plugin:              sparkResourceHandler{},
+			IsDefault:           false,
+		})
 }

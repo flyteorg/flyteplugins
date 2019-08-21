@@ -12,8 +12,9 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
+  "github.com/lyft/flyteplugins/go/tasks/v1/utils"
 )
 
 var isAcceptableK8sName, _ = regexp.Compile("[a-z0-9]([-a-z0-9]*[a-z0-9])?")
@@ -60,12 +61,12 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 	delete(resources.Limits, v1.ResourceEphemeralStorage)
 
 	// Override GPU
-	if resource, found := resources.Requests[resourceGPU]; found {
-		resources.Requests[ResourceNvidiaGPU] = resource
+	if res, found := resources.Requests[resourceGPU]; found {
+		resources.Requests[ResourceNvidiaGPU] = res
 		delete(resources.Requests, resourceGPU)
 	}
-	if resource, found := resources.Limits[resourceGPU]; found {
-		resources.Limits[ResourceNvidiaGPU] = resource
+	if res, found := resources.Limits[resourceGPU]; found {
+		resources.Limits[ResourceNvidiaGPU] = res
 		delete(resources.Requests, resourceGPU)
 	}
 
@@ -73,11 +74,17 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 }
 
 // Returns a K8s Container for the execution
-func ToK8sContainer(ctx context.Context, taskCtx types.TaskContext, taskContainer *core.Container, inputs *core.LiteralMap) (*v1.Container, error) {
-	inputFile := taskCtx.GetInputsFile()
+func ToK8sContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskContainer *core.Container,
+	inputReader io.InputReader, outputPrefixPath string) (*v1.Container, error) {
+	inputFile := inputReader.GetInputPath()
+	// TODO: Performance improvement potential. Resolve inputs only when needed
+	inputs, err := inputReader.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	cmdLineArgs := utils.CommandLineTemplateArgs{
 		Input:        inputFile.String(),
-		OutputPrefix: taskCtx.GetDataDir().String(),
+		OutputPrefix: outputPrefixPath,
 		Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
 	}
 
@@ -111,13 +118,17 @@ func ToK8sContainer(ctx context.Context, taskCtx types.TaskContext, taskContaine
 	if !isAcceptableK8sName.MatchString(containerName) || len(containerName) > 63 {
 		containerName = rand.String(4)
 	}
+	c := &v1.Container{
+		Name:    containerName,
+		Image:   taskContainer.GetImage(),
+		Args:    modifiedArgs,
+		Command: modifiedCommand,
+		Env:     envVars,
+	}
 
-	return &v1.Container{
-		Name:      containerName,
-		Image:     taskContainer.GetImage(),
-		Args:      modifiedArgs,
-		Command:   modifiedCommand,
-		Env:       envVars,
-		Resources: *res,
-	}, nil
+	if res != nil {
+		c.Resources = *res
+	}
+
+	return c, nil
 }

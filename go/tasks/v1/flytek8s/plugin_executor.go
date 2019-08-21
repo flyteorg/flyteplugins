@@ -2,6 +2,7 @@ package flytek8s
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/lyft/flytestdlib/contextutils"
@@ -13,17 +14,16 @@ import (
 
 	k8stypes "k8s.io/apimachinery/pkg/types"
 
-	"strings"
-
 	eventErrors "github.com/lyft/flyteidl/clients/go/events/errors"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
+	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 )
 
 // A generic task executor for k8s-resource reliant tasks.

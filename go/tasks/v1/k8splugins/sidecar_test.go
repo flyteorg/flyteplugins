@@ -2,22 +2,28 @@ package k8splugins
 
 import (
 	"context"
+	"github.com/lyft/flytestdlib/storage"
+	"github.com/stretchr/testify/mock"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/ptypes/struct"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
+
 	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
+	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
 )
 
 const ResourceNvidiaGPU = "nvidia.com/gpu"
@@ -35,6 +41,27 @@ func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemp
 	return &core.TaskTemplate{
 		Custom: &structObj,
 	}
+}
+
+func getDummySidecarTaskContext(taskTemplate *core.TaskTemplate, resources *v1.ResourceRequirements) pluginsCore.TaskExecutionContext {
+	taskCtx := &pluginsCoreMock.TaskExecutionContext{}
+	dummyTaskMetadata := dummyContainerTaskMetadata(resources)
+	inputReader := &pluginsIOMock.InputReader{}
+	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
+	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
+	taskCtx.On("InputReader").Return(inputReader)
+
+	outputReader := &pluginsIOMock.OutputWriter{}
+	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
+	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
+	taskCtx.On("OutputWriter").Return(outputReader)
+
+	taskReader := &pluginsCoreMock.TaskReader{}
+	taskReader.On("Read", mock.Anything).Return(taskTemplate, nil)
+	taskCtx.On("TaskReader").Return(taskReader)
+
+	taskCtx.On("TaskExecutionMetadata").Return(dummyTaskMetadata)
+	return taskCtx
 }
 
 func TestBuildSidecarResource(t *testing.T) {
@@ -74,8 +101,8 @@ func TestBuildSidecarResource(t *testing.T) {
 		},
 	}))
 	handler := &sidecarResourceHandler{}
-	taskCtx := dummyContainerTaskContext(resourceRequirements)
-	resource, err := handler.BuildResource(context.TODO(), taskCtx, &task, nil)
+	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
+	resource, err := handler.BuildResource(context.TODO(), taskCtx)
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{
 		primaryContainerKey: "a container",
@@ -98,37 +125,54 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 	task := getSidecarTaskTemplateForTest(sideCarJob)
 
 	handler := &sidecarResourceHandler{}
-	taskCtx := dummyContainerTaskContext(resourceRequirements)
-	_, err := handler.BuildResource(context.TODO(), taskCtx, task, nil)
+	taskCtx := getDummySidecarTaskContext(task, resourceRequirements)
+	_, err := handler.BuildResource(context.TODO(), taskCtx)
 	assert.EqualError(t, err,
 		"task failed, BadTaskSpecification: invalid Sidecar task, primary container [PrimaryContainer] not defined")
 }
 
 func TestGetTaskSidecarStatus(t *testing.T) {
-	var testCases = map[v1.PodPhase]types.TaskPhase{
-		v1.PodSucceeded:           types.TaskPhaseSucceeded,
-		v1.PodFailed:              types.TaskPhaseRetryableFailure,
-		v1.PodReasonUnschedulable: types.TaskPhaseQueued,
-		v1.PodUnknown:             types.TaskPhaseUnknown,
+	sideCarJob := plugins.SidecarJob{
+		PrimaryContainerName: "PrimaryContainer",
+		PodSpec: &v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name: "PrimaryContainer",
+				},
+			},
+		},
+	}
+
+	task := getSidecarTaskTemplateForTest(sideCarJob)
+
+	var testCases = map[v1.PodPhase]pluginsCore.Phase{
+		v1.PodSucceeded:           pluginsCore.PhaseSuccess,
+		v1.PodFailed:              pluginsCore.PhasePermanentFailure,
+		v1.PodReasonUnschedulable: pluginsCore.PhaseQueued,
+		v1.PodUnknown:             pluginsCore.PhaseUndefined,
 	}
 
 	for podPhase, expectedTaskPhase := range testCases {
-		var resource flytek8s.K8sResource
+		var resource k8s.Resource
 		resource = &v1.Pod{
 			Status: v1.PodStatus{
 				Phase: podPhase,
 			},
 		}
+		resource.SetAnnotations(map[string]string{
+			primaryContainerKey: "PrimaryContainer",
+		})
 		handler := &sidecarResourceHandler{}
-		taskCtx := dummyContainerTaskContext(resourceRequirements)
-		status, _, err := handler.GetTaskStatus(context.TODO(), taskCtx, resource)
+		taskCtx := getDummySidecarTaskContext(task, resourceRequirements)
+		phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 		assert.Nil(t, err)
-		assert.Equal(t, expectedTaskPhase, status.Phase)
+		assert.Equal(t, expectedTaskPhase, phaseInfo.Phase(),
+			"Expected [%v] got [%v] instead", expectedTaskPhase, phaseInfo.Phase())
 	}
 }
 
 func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
-	var resource flytek8s.K8sResource
+	var resource k8s.Resource
 	resource = &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
@@ -148,14 +192,14 @@ func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 		primaryContainerKey: "Primary",
 	})
 	handler := &sidecarResourceHandler{}
-	taskCtx := dummyContainerTaskContext(resourceRequirements)
-	status, _, err := handler.GetTaskStatus(context.TODO(), taskCtx, resource)
+	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
-	assert.Equal(t, types.TaskPhaseRetryableFailure, status.Phase)
+	assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
 }
 
 func TestDemystifiedSidecarStatus_PrimarySucceeded(t *testing.T) {
-	var resource flytek8s.K8sResource
+	var resource k8s.Resource
 	resource = &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
@@ -175,14 +219,14 @@ func TestDemystifiedSidecarStatus_PrimarySucceeded(t *testing.T) {
 		primaryContainerKey: "Primary",
 	})
 	handler := &sidecarResourceHandler{}
-	taskCtx := dummyContainerTaskContext(resourceRequirements)
-	status, _, err := handler.GetTaskStatus(context.TODO(), taskCtx, resource)
+	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
-	assert.Equal(t, types.TaskPhaseSucceeded, status.Phase)
+	assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
 }
 
 func TestDemystifiedSidecarStatus_PrimaryRunning(t *testing.T) {
-	var resource flytek8s.K8sResource
+	var resource k8s.Resource
 	resource = &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
@@ -202,14 +246,14 @@ func TestDemystifiedSidecarStatus_PrimaryRunning(t *testing.T) {
 		primaryContainerKey: "Primary",
 	})
 	handler := &sidecarResourceHandler{}
-	taskCtx := dummyContainerTaskContext(resourceRequirements)
-	status, _, err := handler.GetTaskStatus(context.TODO(), taskCtx, resource)
+	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
-	assert.Equal(t, types.TaskPhaseRunning, status.Phase)
+	assert.Equal(t, pluginsCore.PhaseRunning, phaseInfo.Phase())
 }
 
 func TestDemystifiedSidecarStatus_PrimaryMissing(t *testing.T) {
-	var resource flytek8s.K8sResource
+	var resource k8s.Resource
 	resource = &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
@@ -224,8 +268,8 @@ func TestDemystifiedSidecarStatus_PrimaryMissing(t *testing.T) {
 		primaryContainerKey: "Primary",
 	})
 	handler := &sidecarResourceHandler{}
-	taskCtx := dummyContainerTaskContext(resourceRequirements)
-	status, _, err := handler.GetTaskStatus(context.TODO(), taskCtx, resource)
+	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
-	assert.Equal(t, types.TaskPhasePermanentFailure, status.Phase)
+	assert.Equal(t, pluginsCore.PhasePermanentFailure, phaseInfo.Phase())
 }
