@@ -14,7 +14,7 @@ ignored = ["k8s.io/spark-on-k8s-operator",
 
 [[constraint]]
   name = "github.com/lyft/flytestdlib"
-  source = "git@github.com:lyft/flytestdlib"
+  source = "https://github.com/lyft/flytestdlib"
   version = "^0.2.x"
 
 [[constraint]]
