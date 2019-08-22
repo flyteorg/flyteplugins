@@ -154,6 +154,22 @@ func (_m *TaskExecutionContext) ResourceManager() core.ResourceManager {
 	return r0
 }
 
+// SecretManager provides a mock function with given fields:
+func (_m *TaskExecutionContext) SecretManager() core.SecretManager {
+	ret := _m.Called()
+
+	var r0 core.SecretManager
+	if rf, ok := ret.Get(0).(func() core.SecretManager); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.SecretManager)
+		}
+	}
+
+	return r0
+}
+
 // TaskExecutionMetadata provides a mock function with given fields:
 func (_m *TaskExecutionContext) TaskExecutionMetadata() core.TaskExecutionMetadata {
 	ret := _m.Called()
