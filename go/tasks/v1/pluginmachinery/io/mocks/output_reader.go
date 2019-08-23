@@ -54,6 +54,20 @@ func (_m *OutputReader) IsError(ctx context.Context) (bool, error) {
 	return r0, r1
 }
 
+// IsFile provides a mock function with given fields: ctx
+func (_m *OutputReader) IsFile(ctx context.Context) bool {
+	ret := _m.Called(ctx)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(context.Context) bool); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // Read provides a mock function with given fields: ctx
 func (_m *OutputReader) Read(ctx context.Context) (*core.LiteralMap, *io.ExecutionError, error) {
 	ret := _m.Called(ctx)
