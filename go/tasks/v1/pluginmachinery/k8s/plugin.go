@@ -13,25 +13,34 @@ import (
 
 //go:generate mockery -all -case=underscore
 
+// PluginEntry is a structure that is used to indicate to the system a K8s plugin
 type PluginEntry struct {
+	// ID/Name of the plugin. This will be used to identify this plugin and has to be unique in the entire system
+	// All functions like enabling and disabling a plugin use this ID
 	ID                  pluginsCore.TaskType
+	// A list of all the task types for which this plugin is applicable.
 	RegisteredTaskTypes []pluginsCore.TaskType
+	// An instance of the kubernetes resource this plugin is responsible for, for example v1.Pod{}
 	ResourceToWatch     runtime.Object
+	// An instance of the plugin
 	Plugin              Plugin
+	// Boolean that indicates if this plugin can be used as the default for unknown task types. There can only be
+	// one default in the system
 	IsDefault           bool
 }
 
+// A proxy object for k8s resource
 type Resource interface {
 	runtime.Object
 	metav1.Object
 	schema.ObjectKind
 }
 
+// Special context passed in to plugins when checking task phase
 type PluginContext interface {
 }
 
-// Defines an interface that deals with k8s resources. Combined with K8sTaskExecutor, this provides an easier and more
-// consistent way to write TaskExecutors that create k8s resources.
+// Defines a simplified interface to author plugins for k8s resources.
 type Plugin interface {
 
 	// Defines a func to create a query object (typically just object and type meta portions) that's used to query k8s
