@@ -14,6 +14,4 @@ func ToK8sEnvVar(env []*core.KeyValuePair) []v1.EnvVar {
 	return envVars
 }
 
-func IsK8sObjectNotExists(err error) bool {
-	return k8serrors.IsNotFound(err) || k8serrors.IsGone(err) || k8serrors.IsResourceExpired(err)
-}
+
