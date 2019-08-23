@@ -17,10 +17,14 @@ const (
 	PhaseNotReady
 	PhaseQueued
 	PhaseInitializing
+	// Indicates that the task has started executing
 	PhaseRunning
+	// Indicates that the task has completed successfull
 	PhaseSuccess
-	PhasePermanentFailure
+	// Indicates that the Failure is recoverable, by re-executing the task if retries permit
 	PhaseRetryableFailure
+	// Indicate that the failure is non recoverable even if retries exist
+	PhasePermanentFailure
 )
 
 func (p Phase) String() string {

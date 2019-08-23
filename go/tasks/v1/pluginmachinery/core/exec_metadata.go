@@ -22,7 +22,9 @@ type TaskExecutionID interface {
 // TaskContext represents any execution information for a Task. It is used to communicate meta information about the
 // execution or any previously stored information
 type TaskExecutionMetadata interface {
+	// The owning Kubernetes object
 	GetOwnerID() types.NamespacedName
+	// A specially generated task execution id, that is guaranteed to be unique and consistent for subsequent calls
 	GetTaskExecutionID() TaskExecutionID
 	GetNamespace() string
 	GetOwnerReference() v12.OwnerReference
