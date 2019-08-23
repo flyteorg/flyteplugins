@@ -1,4 +1,4 @@
-package flytek8s
+package io
 
 import (
 	"context"
@@ -8,12 +8,10 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
-
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
 )
 
 type remoteFileOutputReader struct {
-	outPath        io.OutputFilePaths
+	outPath        OutputFilePaths
 	store          storage.ComposedProtobufStore
 	maxPayloadSize int64
 }
@@ -32,12 +30,12 @@ func (r remoteFileOutputReader) IsError(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-func (r remoteFileOutputReader) ReadError(ctx context.Context) (io.ExecutionError, error) {
+func (r remoteFileOutputReader) ReadError(ctx context.Context) (ExecutionError, error) {
 	errorDoc := &core.ErrorDocument{}
 	err := r.store.ReadProtobuf(ctx, r.outPath.GetErrorPath(), errorDoc)
 	if err != nil {
 		if storage.IsNotFound(err) {
-			return io.ExecutionError{
+			return ExecutionError{
 				IsRecoverable: true,
 				ExecutionError: &core.ExecutionError{
 					Code:    "ErrorFileNotFound",
@@ -45,11 +43,11 @@ func (r remoteFileOutputReader) ReadError(ctx context.Context) (io.ExecutionErro
 				},
 			}, nil
 		}
-		return io.ExecutionError{}, errors.Wrapf(err, "failed to read error data from task @[%s]", r.outPath.GetErrorPath())
+		return ExecutionError{}, errors.Wrapf(err, "failed to read error data from task @[%s]", r.outPath.GetErrorPath())
 	}
 
 	if errorDoc.Error == nil {
-		return io.ExecutionError{
+		return ExecutionError{
 			IsRecoverable: true,
 			ExecutionError: &core.ExecutionError{
 				Code:    "ErrorFileBadFormat",
@@ -58,7 +56,7 @@ func (r remoteFileOutputReader) ReadError(ctx context.Context) (io.ExecutionErro
 		}, nil
 	}
 
-	ee := io.ExecutionError{
+	ee := ExecutionError{
 		ExecutionError: &core.ExecutionError{
 			Code:    errorDoc.Error.Code,
 			Message: errorDoc.Error.Message,
@@ -84,7 +82,7 @@ func (r remoteFileOutputReader) Exists(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-func (r remoteFileOutputReader) Read(ctx context.Context) (*core.LiteralMap, *io.ExecutionError, error) {
+func (r remoteFileOutputReader) Read(ctx context.Context) (*core.LiteralMap, *ExecutionError, error) {
 
 	d := &core.LiteralMap{}
 	if err := r.store.ReadProtobuf(ctx, r.outPath.GetOutputPath(), d); err != nil {
@@ -93,7 +91,7 @@ func (r remoteFileOutputReader) Read(ctx context.Context) (*core.LiteralMap, *io
 	}
 
 	if d.Literals == nil {
-		return nil, &io.ExecutionError{
+		return nil, &ExecutionError{
 			IsRecoverable: true,
 			ExecutionError: &core.ExecutionError{
 				Code:    "No outputs produced",
@@ -109,7 +107,7 @@ func (r remoteFileOutputReader) IsFile(ctx context.Context) bool {
 	return true
 }
 
-func NewRemoteFileOutputReader(_ context.Context, store storage.ComposedProtobufStore, outPaths io.OutputFilePaths, maxDatasetSize int64) remoteFileOutputReader {
+func NewRemoteFileOutputReader(_ context.Context, store storage.ComposedProtobufStore, outPaths OutputFilePaths, maxDatasetSize int64) remoteFileOutputReader {
 	return remoteFileOutputReader{
 		outPath:        outPaths,
 		store:          store,

@@ -24,6 +24,20 @@ func (_m *OutputFilePaths) GetErrorPath() storage.DataReference {
 	return r0
 }
 
+// GetFuturesPath provides a mock function with given fields:
+func (_m *OutputFilePaths) GetFuturesPath() storage.DataReference {
+	ret := _m.Called()
+
+	var r0 storage.DataReference
+	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(storage.DataReference)
+	}
+
+	return r0
+}
+
 // GetOutputPath provides a mock function with given fields:
 func (_m *OutputFilePaths) GetOutputPath() storage.DataReference {
 	ret := _m.Called()
