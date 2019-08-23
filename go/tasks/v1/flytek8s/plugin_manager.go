@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
+const finalizer = "flyte/flytek8s"
+
 const pluginStateVersion = 1
 
 type PluginPhase uint8
@@ -80,7 +82,12 @@ func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o k8s.Resource
 	}
 }
 
-// A generic task executor for k8s-resource reliant tasks.
+func IsK8sObjectNotExists(err error) bool {
+	return k8serrors.IsNotFound(err) || k8serrors.IsGone(err) || k8serrors.IsResourceExpired(err)
+}
+
+// A generic Plugin for managing k8s-resources. Plugin writers wishing to use K8s resource can use the simplified api specified in
+// pluginmachinery.core
 type PluginManager struct {
 	id              string
 	plugin          k8s.Plugin

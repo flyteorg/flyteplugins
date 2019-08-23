@@ -15,7 +15,11 @@ const (
 	// Does not mean an error, but simply states that we dont know the state in this round, try again later. But can be used to signal a system error too
 	PhaseUndefined Phase = iota
 	PhaseNotReady
+	// Indicates plugin is not ready to submit the request as it is waiting for resources
+	PhaseWaitingForResources
+	// Indicates plugin has submitted the execution, but it has not started executing yet
 	PhaseQueued
+	// The system has started the pre-execution process, like container download, cluster startup etc
 	PhaseInitializing
 	// Indicates that the task has started executing
 	PhaseRunning
@@ -50,9 +54,11 @@ func (p Phase) String() string {
 	}
 }
 
+// Returns true if the given phase is failure, retryable failure or success
 func (p Phase) IsTerminal() bool {
 	return p == PhasePermanentFailure || p == PhaseRetryableFailure || p == PhaseSuccess
 }
+
 
 type TaskInfo struct {
 	// log information for the task execution
@@ -101,6 +107,7 @@ func (p *PhaseInfo) Err() *core.ExecutionError {
 	return p.err
 }
 
+// Undefined entity, associated with an error
 var PhaseInfoUndefined = PhaseInfo{phase: PhaseUndefined}
 
 func phaseInfo(p Phase, v uint8, err *core.ExecutionError, info *TaskInfo) PhaseInfo {
@@ -118,8 +125,16 @@ func phaseInfo(p Phase, v uint8, err *core.ExecutionError, info *TaskInfo) Phase
 	}
 }
 
+// Return in the case the plugin is not ready to start
 func PhaseInfoNotReady(t time.Time, version uint8, reason string) PhaseInfo {
 	pi := phaseInfo(PhaseNotReady, version, nil, &TaskInfo{OccurredAt: &t})
+	pi.reason = reason
+	return pi
+}
+
+// Return in the case the plugin is not ready to start
+func PhaseInfoWaitingForResources(t time.Time, version uint8, reason string) PhaseInfo {
+	pi := phaseInfo(PhaseWaitingForResources, version, nil, &TaskInfo{OccurredAt: &t})
 	pi.reason = reason
 	return pi
 }
