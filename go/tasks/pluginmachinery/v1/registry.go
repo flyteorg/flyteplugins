@@ -6,8 +6,8 @@ import (
 
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
 )
 
 type taskPluginRegistry struct {
