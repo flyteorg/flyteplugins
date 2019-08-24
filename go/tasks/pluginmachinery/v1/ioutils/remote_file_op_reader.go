@@ -1,4 +1,4 @@
-package io
+package ioutils
 
 import (
 	"context"
@@ -8,15 +8,17 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 )
 
-type remoteFileOutputReader struct {
-	outPath        OutputFilePaths
+type RemoteFileOutputReader struct {
+	outPath        io.OutputFilePaths
 	store          storage.ComposedProtobufStore
 	maxPayloadSize int64
 }
 
-func (r remoteFileOutputReader) IsError(ctx context.Context) (bool, error) {
+func (r RemoteFileOutputReader) IsError(ctx context.Context) (bool, error) {
 	metadata, err := r.store.Head(ctx, r.outPath.GetErrorPath())
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to read error file @[%s]", r.outPath.GetErrorPath())
@@ -30,12 +32,12 @@ func (r remoteFileOutputReader) IsError(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-func (r remoteFileOutputReader) ReadError(ctx context.Context) (ExecutionError, error) {
+func (r RemoteFileOutputReader) ReadError(ctx context.Context) (io.ExecutionError, error) {
 	errorDoc := &core.ErrorDocument{}
 	err := r.store.ReadProtobuf(ctx, r.outPath.GetErrorPath(), errorDoc)
 	if err != nil {
 		if storage.IsNotFound(err) {
-			return ExecutionError{
+			return io.ExecutionError{
 				IsRecoverable: true,
 				ExecutionError: &core.ExecutionError{
 					Code:    "ErrorFileNotFound",
@@ -43,11 +45,11 @@ func (r remoteFileOutputReader) ReadError(ctx context.Context) (ExecutionError, 
 				},
 			}, nil
 		}
-		return ExecutionError{}, errors.Wrapf(err, "failed to read error data from task @[%s]", r.outPath.GetErrorPath())
+		return io.ExecutionError{}, errors.Wrapf(err, "failed to read error data from task @[%s]", r.outPath.GetErrorPath())
 	}
 
 	if errorDoc.Error == nil {
-		return ExecutionError{
+		return io.ExecutionError{
 			IsRecoverable: true,
 			ExecutionError: &core.ExecutionError{
 				Code:    "ErrorFileBadFormat",
@@ -56,7 +58,7 @@ func (r remoteFileOutputReader) ReadError(ctx context.Context) (ExecutionError, 
 		}, nil
 	}
 
-	ee := ExecutionError{
+	ee := io.ExecutionError{
 		ExecutionError: &core.ExecutionError{
 			Code:    errorDoc.Error.Code,
 			Message: errorDoc.Error.Message,
@@ -68,7 +70,7 @@ func (r remoteFileOutputReader) ReadError(ctx context.Context) (ExecutionError, 
 	return ee, nil
 }
 
-func (r remoteFileOutputReader) Exists(ctx context.Context) (bool, error) {
+func (r RemoteFileOutputReader) Exists(ctx context.Context) (bool, error) {
 	md, err := r.store.Head(ctx, r.outPath.GetOutputPath())
 	if err != nil {
 		return false, err
@@ -82,7 +84,7 @@ func (r remoteFileOutputReader) Exists(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-func (r remoteFileOutputReader) Read(ctx context.Context) (*core.LiteralMap, *ExecutionError, error) {
+func (r RemoteFileOutputReader) Read(ctx context.Context) (*core.LiteralMap, *io.ExecutionError, error) {
 
 	d := &core.LiteralMap{}
 	if err := r.store.ReadProtobuf(ctx, r.outPath.GetOutputPath(), d); err != nil {
@@ -91,7 +93,7 @@ func (r remoteFileOutputReader) Read(ctx context.Context) (*core.LiteralMap, *Ex
 	}
 
 	if d.Literals == nil {
-		return nil, &ExecutionError{
+		return nil, &io.ExecutionError{
 			IsRecoverable: true,
 			ExecutionError: &core.ExecutionError{
 				Code:    "No outputs produced",
@@ -103,12 +105,12 @@ func (r remoteFileOutputReader) Read(ctx context.Context) (*core.LiteralMap, *Ex
 	return d, nil, nil
 }
 
-func (r remoteFileOutputReader) IsFile(ctx context.Context) bool {
+func (r RemoteFileOutputReader) IsFile(ctx context.Context) bool {
 	return true
 }
 
-func NewRemoteFileOutputReader(_ context.Context, store storage.ComposedProtobufStore, outPaths OutputFilePaths, maxDatasetSize int64) remoteFileOutputReader {
-	return remoteFileOutputReader{
+func NewRemoteFileOutputReader(_ context.Context, store storage.ComposedProtobufStore, outPaths io.OutputFilePaths, maxDatasetSize int64) RemoteFileOutputReader {
+	return RemoteFileOutputReader{
 		outPath:        outPaths,
 		store:          store,
 		maxPayloadSize: maxDatasetSize,

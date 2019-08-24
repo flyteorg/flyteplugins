@@ -2,8 +2,8 @@
 
 package mocks
 
-import core "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-import io "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
+import core "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+import io "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 import mock "github.com/stretchr/testify/mock"
 import storage "github.com/lyft/flytestdlib/storage"
 

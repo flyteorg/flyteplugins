@@ -3,7 +3,6 @@ package flytek8s
 import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	v1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func ToK8sEnvVar(env []*core.KeyValuePair) []v1.EnvVar {
