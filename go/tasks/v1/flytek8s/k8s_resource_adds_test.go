@@ -12,8 +12,8 @@ import (
 	v12 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 )
 
 func TestGetExecutionEnvVars(t *testing.T) {

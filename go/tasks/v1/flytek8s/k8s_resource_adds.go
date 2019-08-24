@@ -6,11 +6,10 @@ import (
 	"github.com/lyft/flytestdlib/contextutils"
 	v1 "k8s.io/api/core/v1"
 
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 )
 
 func GetContextEnvVars(ownerCtx context.Context) []v1.EnvVar {

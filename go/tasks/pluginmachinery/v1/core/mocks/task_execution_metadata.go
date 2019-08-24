@@ -2,7 +2,7 @@
 
 package mocks
 
-import core "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+import core "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 import mock "github.com/stretchr/testify/mock"
 import types "k8s.io/apimachinery/pkg/types"
 import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

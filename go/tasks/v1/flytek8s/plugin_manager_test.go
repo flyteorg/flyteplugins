@@ -8,12 +8,12 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+	pluginsk8sMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
-	pluginsk8sMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s/mocks"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
 
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"

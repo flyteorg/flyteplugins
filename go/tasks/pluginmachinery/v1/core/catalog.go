@@ -5,7 +5,7 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 )
 
 // An interface to interest with the catalog service

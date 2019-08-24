@@ -8,7 +8,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 )
 
 //go:generate mockery -all -case=underscore

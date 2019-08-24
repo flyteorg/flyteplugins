@@ -15,10 +15,11 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/ioutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 
 	k8stypes "k8s.io/apimachinery/pkg/types"
 
@@ -170,7 +171,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 	}
 
 	if p.Phase() == pluginsCore.PhaseSuccess {
-		opReader := NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())
+		opReader := ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())
 		err := tCtx.OutputWriter().Put(ctx, opReader)
 		if err != nil {
 			return pluginsCore.UnknownTransition, err

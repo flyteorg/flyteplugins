@@ -3,7 +3,7 @@
 package mocks
 
 import context "context"
-import io "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
+import io "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 import mock "github.com/stretchr/testify/mock"
 import storage "github.com/lyft/flytestdlib/storage"
 
