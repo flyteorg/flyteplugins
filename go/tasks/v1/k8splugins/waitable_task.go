@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	eventErrors "github.com/lyft/flyteidl/clients/go/events/errors"
+
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/v1/config"
 
 	"github.com/lyft/flytestdlib/config"
@@ -22,12 +23,12 @@ import (
 	utils2 "github.com/lyft/flytestdlib/utils"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	tasksV1 "github.com/lyft/flyteplugins/go/tasks/v1"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/events"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 )
 
 const (

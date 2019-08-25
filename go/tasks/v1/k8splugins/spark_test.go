@@ -3,13 +3,20 @@ package k8splugins
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+
+	pluginIOMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io/mocks"
 
 	sj "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta1"
 	"github.com/golang/protobuf/jsonpb"
@@ -18,11 +25,6 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
-
-	pluginIOMocks "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io/mocks"
 )
 
 const sparkApplicationFile = "local:///spark_app.py"

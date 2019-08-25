@@ -3,17 +3,17 @@ package k8splugins
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
+	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 
@@ -191,7 +191,7 @@ func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8
 }
 
 func init() {
-	pluginmachinery.PluginRegistry.RegisterK8sPlugin(
+	pluginMachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:	sidecarTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{sidecarTaskType},

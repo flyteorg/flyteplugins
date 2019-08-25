@@ -2,12 +2,13 @@ package k8splugins
 
 import (
 	"context"
-	"github.com/lyft/flytestdlib/storage"
-	"github.com/stretchr/testify/mock"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/lyft/flytestdlib/storage"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -18,12 +19,12 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
-	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
 )
 
 const ResourceNvidiaGPU = "nvidia.com/gpu"

@@ -17,7 +17,11 @@ type taskPluginRegistry struct {
 }
 
 // A singleton variable that maintains a registry of all plugins. The framework uses this to access all plugins
-var PluginRegistry = taskPluginRegistry{}
+var pluginRegistry = &taskPluginRegistry{}
+
+func PluginRegistry() *taskPluginRegistry {
+	return pluginRegistry
+}
 
 // Use this method to register Kubernetes Plugins
 func (p *taskPluginRegistry) RegisterK8sPlugin(info k8s.PluginEntry) {

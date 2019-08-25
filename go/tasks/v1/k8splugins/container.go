@@ -5,11 +5,11 @@ import (
 
 	"k8s.io/api/core/v1"
 
+	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
 )
 
 const (
@@ -73,7 +73,7 @@ func (containerTaskExecutor) BuildIdentityResource(_ context.Context, _ pluginsC
 }
 
 func init() {
-	pluginmachinery.PluginRegistry.RegisterK8sPlugin(
+	pluginMachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  containerTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{containerTaskType},
