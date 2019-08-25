@@ -3,7 +3,7 @@ package config
 import (
 	"github.com/lyft/flytestdlib/config"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 )
 
 //go:generate pflags Config
