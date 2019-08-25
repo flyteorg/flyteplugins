@@ -2,23 +2,19 @@ package k8splugins
 
 import (
 	"context"
+	"errors"
 	"testing"
 
-	"errors"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	eventErrors "github.com/lyft/flyteidl/clients/go/events/errors"
-	utils2 "github.com/lyft/flyteplugins/go/tasks/v1/utils"
+
+	utils2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 
 	adminMocks "github.com/lyft/flyteidl/clients/go/admin/mocks"
 	"github.com/lyft/flyteidl/clients/go/coreutils"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
-	flytek8sMocks "github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/v1/k8splugins/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	tasksMocks "github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/lyft/flytestdlib/utils"
@@ -29,6 +25,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
+	flytek8sMocks "github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/v1/k8splugins/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/v1/types"
+	tasksMocks "github.com/lyft/flyteplugins/go/tasks/v1/types/mocks"
 )
 
 //go:generate mockery -dir ../../../../vendor/github.com/lyft/flytestdlib/utils -name AutoRefreshCache

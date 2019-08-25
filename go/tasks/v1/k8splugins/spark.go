@@ -2,16 +2,16 @@ package k8splugins
 
 import (
 	"context"
-
 	"fmt"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
+	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -25,7 +25,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/v1/config"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 )
 
 const KindSparkApplication = "SparkApplication"
@@ -282,10 +281,10 @@ func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	occuredAt := time.Now()
+	occurredAt := time.Now()
 	switch app.Status.AppState.State {
 	case sparkOp.NewState, sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
-		return pluginsCore.PhaseInfoQueued(occuredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
 	case sparkOp.FailedSubmissionState:
 		reason := fmt.Sprintf("Spark Job  Submission Failed with Error: %s", app.Status.AppState.ErrorMessage)
 		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
@@ -294,10 +293,8 @@ func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.
 		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
 	case sparkOp.CompletedState:
 		return pluginsCore.PhaseInfoSuccess(info), nil
-	default:
-		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 	}
-	return pluginsCore.PhaseInfo{}, nil
+	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
 
 func init() {
@@ -305,7 +302,7 @@ func init() {
 		panic(err)
 	}
 
-	pluginmachinery.PluginRegistry.RegisterK8sPlugin(
+	pluginMachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  sparkTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{sparkTaskType},
