@@ -193,10 +193,10 @@ func useDefaultsParametersIfNotSet(sparkConfig map[string]string) map[string]str
 	}
 
 	// Set pod limits.
-	if sparkConfig["spark.kubernetes.driver.limit.cores"] == "" && sparkConfig["spark.driver.cores"] != "" {
+	if sparkConfig["spark.kubernetes.driver.limit.cores"] == "" {
 		sparkConfig["spark.kubernetes.driver.limit.cores"] = sparkConfig["spark.driver.cores"]
 	}
-	if sparkConfig["spark.kubernetes.executor.limit.cores"] == "" && sparkConfig["spark.executor.cores"] != "" {
+	if sparkConfig["spark.kubernetes.executor.limit.cores"] == "" {
 		sparkConfig["spark.kubernetes.executor.limit.cores"] = sparkConfig["spark.executor.cores"]
 	}
 	return sparkConfig
