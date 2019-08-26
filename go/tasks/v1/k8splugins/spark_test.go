@@ -35,6 +35,12 @@ var (
 		"spark.executor.memory":    "500M",
 	}
 
+	dummySparkConfMissingCores = map[string]string{
+		"spark.driver.memory":      "500M",
+		"spark.executor.instances": "3",
+		"spark.executor.memory":    "500M",
+	}
+
 	dummyEnvVars = []*core.KeyValuePair{
 		{Key: "Env_Var", Value: "Env_Val"},
 	}
@@ -248,23 +254,25 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, testArgs, sparkApp.Spec.Arguments)
 	assert.Equal(t, testImage, *sparkApp.Spec.Image)
 
-	for confKey, confVal := range dummySparkConf {
-		exists := false
-		for k, v := range sparkApp.Spec.SparkConf {
-			if k == confKey {
-				assert.Equal(t, v, confVal)
-				exists = true
+	for _, sparkConf := range []map[string]string {dummySparkConf, dummySparkConfMissingCores} {
+		for confKey, confVal := range sparkConf {
+			exists := false
+			for k, v := range sparkApp.Spec.SparkConf {
+				if k == confKey {
+					assert.Equal(t, v, confVal)
+					exists = true
+				}
 			}
+			assert.True(t, exists)
 		}
-		assert.True(t, exists)
+
+		assert.Equal(t, dummySparkConf["spark.driver.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.driver.limit.cores"])
+		assert.Equal(t, dummySparkConf["spark.executor.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.executor.limit.cores"])
+
+		// Case2: Invalid Spark Task-Template
+		taskTemplate.Custom = nil
+		resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(), taskTemplate, nil)
+		assert.NotNil(t, err)
+		assert.Nil(t, resource)
 	}
-
-	assert.Equal(t, dummySparkConf["spark.driver.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.driver.limit.cores"])
-	assert.Equal(t, dummySparkConf["spark.executor.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.executor.limit.cores"])
-
-	// Case2: Invalid Spark Task-Template
-	taskTemplate.Custom = nil
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(), taskTemplate, nil)
-	assert.NotNil(t, err)
-	assert.Nil(t, resource)
 }

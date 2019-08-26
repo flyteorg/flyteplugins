@@ -36,6 +36,8 @@ var sparkTaskType = "spark"
 type SparkConfig struct {
 	DefaultSparkConfig    map[string]string `json:"spark-config-default" pflag:",Key value pairs of default spark configuration that should be applied to every SparkJob"`
 	SparkHistoryServerURL string            `json:"spark-history-server-url" pflag:",URL for SparkHistory Server that each job will publish the execution history to."`
+	DefaultExecutorCores  string            `json:"spark-executor-cores-default" pflag:"1,Number of executor cores if not specified"`
+	DefaultDriverCores    string            `json:"spark-executor-cores-default" pflag:"1,Number of driver cores if not specified"`
 }
 
 var (
@@ -122,13 +124,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx types.Tas
 		sparkConfig[k] = v
 	}
 
-	// Set pod limits.
-	if sparkConfig["spark.kubernetes.driver.limit.cores"] == "" && sparkConfig["spark.driver.cores"] != "" {
-		sparkConfig["spark.kubernetes.driver.limit.cores"] = sparkConfig["spark.driver.cores"]
-	}
-	if sparkConfig["spark.kubernetes.executor.limit.cores"] == "" && sparkConfig["spark.executor.cores"] != "" {
-		sparkConfig["spark.kubernetes.executor.limit.cores"] = sparkConfig["spark.executor.cores"]
-	}
+	sparkConfig = useDefaultsParametersIfNotSet(sparkConfig)
 
 	j := &sparkOp.SparkApplication{
 		TypeMeta: metav1.TypeMeta{
@@ -184,6 +180,26 @@ func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx t
 			APIVersion: sparkOp.SchemeGroupVersion.String(),
 		},
 	}, nil
+}
+
+func useDefaultsParametersIfNotSet(sparkConfig map[string]string) map[string]string {
+	pluginConfig := GetSparkConfig()
+	// use default for driver cores and executor cores if not set
+	if sparkConfig["spark.driver.cores"] == "" {
+		sparkConfig["spark.driver.cores"] = pluginConfig.DefaultDriverCores
+	}
+	if sparkConfig["spark.executor.cores"] == "" {
+		sparkConfig["spark.executor.cores"] = pluginConfig.DefaultExecutorCores
+	}
+
+	// Set pod limits.
+	if sparkConfig["spark.kubernetes.driver.limit.cores"] == "" && sparkConfig["spark.driver.cores"] != "" {
+		sparkConfig["spark.kubernetes.driver.limit.cores"] = sparkConfig["spark.driver.cores"]
+	}
+	if sparkConfig["spark.kubernetes.executor.limit.cores"] == "" && sparkConfig["spark.executor.cores"] != "" {
+		sparkConfig["spark.kubernetes.executor.limit.cores"] = sparkConfig["spark.executor.cores"]
+	}
+	return sparkConfig
 }
 
 func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*events.TaskEventInfo, error) {
