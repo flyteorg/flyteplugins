@@ -52,6 +52,7 @@ func GetOrCreateResourceManagerFor(ctx context.Context, resourceName string) (Re
 	return NoopResourceManager{}, nil
 }
 
+
 func GetResourceManagerByType(ctx context.Context, managerType string, scope promutils.Scope, redisClient *redis.Client) (
 	ResourceManager, error) {
 

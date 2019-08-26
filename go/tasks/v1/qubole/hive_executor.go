@@ -3,7 +3,6 @@ package qubole
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis"
 	"strconv"
 	"time"
 
@@ -38,9 +37,9 @@ type HiveExecutor struct {
 	executionsCache utils2.AutoRefreshCache
 	metrics         HiveExecutorMetrics
 	quboleClient    client.QuboleClient
-	redisClient     *redis.Client
-	resourceManager resourcemanager.ResourceManager
-	executionBuffer resourcemanager.ExecutionLooksideBuffer
+	// redisClient     *redis.Client
+	// resourceManager resourcemanager.ResourceManager
+	// executionBuffer resourcemanager.ExecutionLooksideBuffer
 }
 
 type HiveExecutorMetrics struct {
@@ -88,10 +87,13 @@ func (h *HiveExecutor) Initialize(ctx context.Context, param types.ExecutorIniti
 		return err
 	}
 
+
+/*
 	// Create Redis client
 	redisHost := config.GetQuboleConfig().RedisHostPath
 	redisPassword := config.GetQuboleConfig().RedisHostKey
 	redisMaxRetries := config.GetQuboleConfig().RedisMaxRetries
+
 	redisClient, err := resourcemanager.NewRedisClient(ctx, redisHost, redisPassword, redisMaxRetries)
 	if err != nil {
 		return err
@@ -105,7 +107,7 @@ func (h *HiveExecutor) Initialize(ctx context.Context, param types.ExecutorIniti
 		return err
 	}
 	h.resourceManager = resourceManager
-
+*/
 	// Create a lookaside buffer in Redis to hold the command IDs created by Qubole
 	expiryDuration := config.GetQuboleConfig().LookasideExpirySeconds.Duration
 	h.executionBuffer = resourcemanager.NewRedisLookasideBuffer(ctx, h.redisClient,
@@ -117,6 +119,16 @@ func (h *HiveExecutor) Initialize(ctx context.Context, param types.ExecutorIniti
 
 	return nil
 }
+
+
+func (h HiveExecutor) requestResourceQuota(taskCtx types.TaskContext, idx int) string {
+
+	resourceManager, err := resourcemanager.GetResourceManagerByType(ctx, config.GetQuboleConfig().ResourceManagerType,
+		param.MetricsScope, h.redisClient)
+
+
+}
+
 
 func (h HiveExecutor) getUniqueCacheKey(taskCtx types.TaskContext, idx int) string {
 	// The cache will be holding all hive jobs across the engine, so it's imperative that the id of the cache

@@ -26,10 +26,12 @@ var (
 // Qubole plugin configs
 type Config struct {
 	QuboleTokenPath        string          `json:"quboleTokenPath" pflag:",Where to find the Qubole secret"`
+	/*
 	ResourceManagerType    string          `json:"resourceManagerType" pflag:"noop,Which resource manager to use"`
 	RedisHostPath          string          `json:"redisHostPath" pflag:",Redis host location"`
 	RedisHostKey           string          `json:"redisHostKey" pflag:",Key for local Redis access"`
 	RedisMaxRetries        int             `json:"redisMaxRetries" pflag:",See Redis client options for more info"`
+	 */
 	QuboleLimit            int             `json:"quboleLimit" pflag:",Global limit for concurrent Qubole queries"`
 	LruCacheSize           int             `json:"lruCacheSize" pflag:",Size of the AutoRefreshCache"`
 	LookasideBufferPrefix  string          `json:"lookasideBufferPrefix" pflag:",Prefix used for lookaside buffer"`
