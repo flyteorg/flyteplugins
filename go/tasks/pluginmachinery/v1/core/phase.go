@@ -23,7 +23,7 @@ const (
 	PhaseInitializing
 	// Indicates that the task has started executing
 	PhaseRunning
-	// Indicates that the task has completed successfull
+	// Indicates that the task has completed successfully
 	PhaseSuccess
 	// Indicates that the Failure is recoverable, by re-executing the task if retries permit
 	PhaseRetryableFailure
@@ -81,7 +81,7 @@ type PhaseInfo struct {
 	version uint8
 	// In case info needs to be provided
 	info *TaskInfo
-	// If only an error is observed. It is complimentary to info
+	// If only an error is observed. It is complementary to info
 	err *core.ExecutionError
 	// reason why the current phase exists.
 	reason string
