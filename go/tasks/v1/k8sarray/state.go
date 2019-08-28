@@ -40,11 +40,24 @@ const (
 
 */
 
+func RunCatalogCheckAndBuildMappingFile(ctx context.Context, tCtx core.TaskExecutionContext, state State) (State, error) {
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return state, err
+	}
 
-// Constructs a k8s pod to execute the generator task off Dynamic Job. Note that Name is not set on the result object.
+	podSpec, pluginArrayJob, err := FlyteArrayJobToK8sPod(ctx, tCtx, taskTemplate)
+	if err != nil {
+		return state, err
+	}
+
+	return state, nil
+}
+
+// Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
-func FlyteArrayJobToK8sPod(ctx context.Context, tCtx core.TaskExecutionContext, taskTemplate *idlCore.TaskTemplate, inputs *idlCore.LiteralMap) (
-	podTemplate v1.Pod, job *plugins.ArrayJob, err error) {
+func FlyteArrayJobToK8sPod(ctx context.Context, tCtx core.TaskExecutionContext, taskTemplate *idlCore.TaskTemplate) (
+	podTemplate v1.Pod, job *idlPlugins.ArrayJob, err error) {
 
 	if taskTemplate.GetContainer() == nil {
 		return v1.Pod{}, nil, errors.Errorf(errors.BadTaskSpecification,
@@ -61,25 +74,23 @@ func FlyteArrayJobToK8sPod(ctx context.Context, tCtx core.TaskExecutionContext, 
 		}
 	}
 
-	/*
-	func ToK8sPod(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader, inputs io.InputReader,
-		outputPrefixPath string) (*v1.PodSpec, error) {
-	*/
-	podSpec, err := flytek8s.ToK8sPod(ctx, taskCtx, taskTemplate.GetContainer(), inputs)
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, tCtx.TaskExecutionMetadata(), tCtx.TaskReader(), tCtx.InputReader(),
+		tCtx.OutputWriter().GetOutputPrefixPath().String())
 	if err != nil {
-		return corev1.Pod{}, nil, err
+		return v1.Pod{}, nil, err
 	}
 
-	// TODO: This is a hack
+	// TODO: confirm whether this can be done when creating the pod spec directly above
 	podSpec.Containers[0].Command = taskTemplate.GetContainer().Command
 	podSpec.Containers[0].Args = taskTemplate.GetContainer().Args
 
-	return corev1.Pod{
+	return v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       K8sPodKind,
-			APIVersion: corev1.SchemeGroupVersion.String(),
+			APIVersion: v1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
+			// Note that name is missing here
 			Namespace:       tCtx.TaskExecutionMetadata().GetNamespace(),
 			Labels:          tCtx.TaskExecutionMetadata().GetLabels(),
 			Annotations:     tCtx.TaskExecutionMetadata().GetAnnotations(),
