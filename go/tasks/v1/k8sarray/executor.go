@@ -2,12 +2,10 @@ package k8sarray
 
 import (
 	"context"
-	"fmt"
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	v1 "k8s.io/api/core/v1"
 )
 
 const executorName = "k8s-array-executor"
@@ -15,9 +13,9 @@ const arrayTaskType = "container_array"
 const pluginStateVersion = 0
 
 type Executor struct {
-	catalogReader DoOnceWorkerInterface
-	catalogWriter DoOnceWorkerInterface
-	kubeClient core.KubeClient
+	catalogReader workqueue.IndexedWorkQueue
+	catalogWriter workqueue.IndexedWorkQueue
+	kubeClient    core.KubeClient
 }
 
 func NewExecutor() Executor {
