@@ -15,6 +15,9 @@ const arrayTaskType = "container_array"
 const pluginStateVersion = 0
 
 type Executor struct {
+	catalogReader DoOnceWorkerInterface
+	catalogWriter DoOnceWorkerInterface
+	kubeClient core.KubeClient
 }
 
 func NewExecutor() Executor {
@@ -29,7 +32,7 @@ func (Executor) GetProperties() core.PluginProperties {
 	return core.PluginProperties{}
 }
 
-func (Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
+func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 
 	pluginState := State{}
 
@@ -37,7 +40,20 @@ func (Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (cor
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
+	switch pluginState.currentPhase {
+	case NotStarted:
+		taskTemplate, err := tCtx.TaskReader().Read(ctx)
+		if err != nil {
+			return core.UnknownTransition, err
+		}
+		taskTemplate.GetCustom()
 
+		for item := range tCtx.TaskReader
+
+	case MappingFileCreated:
+	case JobSubmitted:
+	case JobsFinished:
+	}
 
 
 }
