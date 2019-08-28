@@ -80,7 +80,7 @@ func (q QuboleHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutio
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
 	}
 
-	return Finalize(ctx, tCtx, incomingState, q.quboleClient, q.secretsManager)
+	return Finalize(ctx, tCtx, incomingState)
 }
 
 func (q *QuboleHiveExecutor) Setup(ctx context.Context, iCtx core.SetupContext) error {

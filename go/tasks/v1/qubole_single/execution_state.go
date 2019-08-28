@@ -261,7 +261,7 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	return cachedExecutionState, nil
 }
 
-func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient,
+func Abort(ctx context.Context, _ core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient,
 	manager SecretsManager) error {
 
 	// Cancel Qubole query if non-terminal state
@@ -301,4 +301,11 @@ func Copy(e ExecutionState) ExecutionState {
 
 func InTerminalState(e ExecutionState) bool {
 	return e.Phase == PhaseQuerySucceeded || e.Phase == PhaseQueryFailed
+}
+
+func IsNotYetSubmitted(e ExecutionState) bool {
+	if e.Phase == PhaseNotStarted || e.Phase == PhaseQueued {
+		return true
+	}
+	return false
 }

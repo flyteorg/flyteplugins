@@ -55,8 +55,9 @@ func InitializeStates(ctx context.Context, tCtx core.TaskExecutionContext) (Coll
 	}, nil
 }
 
-// This function does everything - launches, gets allocation tokens, does everything.
-func DoEverything(ctx context.Context, tCtx core.TaskExecutionContext, currentState CollectionExecutionState,
+// This function does everything - it attempts to launch queries by reading the task template, requesting allocation
+// tokens, submitting to Qubole, and updating statuses of previously submitted Qubole queries.
+func AttemptKickoffAndMonitoring(ctx context.Context, tCtx core.TaskExecutionContext, currentState CollectionExecutionState,
 	quboleClient client.QuboleClient, secretsManager SecretsManager, cache utils2.AutoRefreshCache) (
 	CollectionExecutionState, error) {
 
@@ -110,14 +111,14 @@ func Abort(ctx context.Context, tCtx core.TaskExecutionContext, current Collecti
 
 func DetermineCollectionPhaseFrom(states []qubole_single.ExecutionState) CollectionExecutionPhase {
 	for _, x := range states {
-		// If any are Queued or NotStarted, then we continue to do everything
-		if x.Phase < qubole_single.PhaseSubmitted {
+		// If any have yet to be submitted, then we will continue to attempt both query kickoff, and monitoring.
+		if qubole_single.IsNotYetSubmitted(x) {
 			return PhaseAttemptAllQueries
 		}
 	}
 
 	for _, x := range states {
-		// If any are Queued or NotStarted, then we continue to do everything
+		// If any are not finished, then we continue to monitor
 		if !qubole_single.InTerminalState(x) {
 			return PhaseAllQueriesLaunched
 		}

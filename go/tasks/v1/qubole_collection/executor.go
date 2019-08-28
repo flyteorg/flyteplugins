@@ -50,12 +50,12 @@ func (q QuboleCollectionHiveExecutor) Handle(ctx context.Context, tCtx core.Task
 	case PhaseInitializing:
 		newState, transformError = InitializeStates(ctx, tCtx)
 	case PhaseAttemptAllQueries:
-		newState, transformError = DoEverything(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
+		newState, transformError = AttemptKickoffAndMonitoring(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
 
 	// TODO: This is an optimization - in cases where we've already launched all the queries, we don't have to do read the input
 	//       file to get all the queries. In cases where we have lots of queries, this will save a bit of time.
 	case PhaseAllQueriesLaunched:
-		newState, transformError = DoEverything(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
+		newState, transformError = AttemptKickoffAndMonitoring(ctx, tCtx, currentState, q.quboleClient, q.secretsManager, q.executionsCache)
 
 	case PhaseAllQueriesTerminated:
 		newState = currentState
