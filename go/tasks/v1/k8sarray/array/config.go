@@ -1,0 +1,24 @@
+/*
+ * Copyright (c) 2018 Lyft. All rights reserved.
+ */
+
+package array
+
+import (
+	"github.com/lyft/flytestdlib/config"
+)
+
+//go:generate pflags Config
+
+var configSection = config.MustRegisterSection(configSectionKey, &Config{})
+
+const configSectionKey = "k8s-array"
+
+// Defines custom config for K8s Array plugin
+type Config struct {
+	DefaultScheduler string `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
+}
+
+func GetConfig() *Config {
+	return configSection.GetConfig().(*Config)
+}
