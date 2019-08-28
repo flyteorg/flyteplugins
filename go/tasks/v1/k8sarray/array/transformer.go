@@ -38,7 +38,7 @@ func FlyteArrayJobToK8sPod(ctx context.Context, taskCtx types.TaskContext, taskT
 		}
 	}
 
-	podSpec, err := flytek8s.ToK8sPod(ctx, taskCtx, taskTemplate.GetContainer(), inputs)
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx, taskTemplate.GetContainer(), inputs)
 	if err != nil {
 		return corev1.Pod{}, nil, err
 	}
