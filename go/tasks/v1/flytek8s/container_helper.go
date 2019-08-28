@@ -74,7 +74,7 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 }
 
 // Returns a K8s Container for the execution
-func ToK8sContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskContainer *core.Container,
+func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskContainer *core.Container,
 	inputReader io.InputReader, outputPrefixPath string) (*v1.Container, error) {
 	inputFile := inputReader.GetInputPath()
 	// TODO: Performance improvement potential. Resolve inputs only when needed
@@ -98,23 +98,23 @@ func ToK8sContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetada
 		return nil, err
 	}
 
-	envVars := DecorateEnvVars(ctx, ToK8sEnvVar(taskContainer.GetEnv()), taskCtx.GetTaskExecutionID())
+	envVars := DecorateEnvVars(ctx, ToK8sEnvVar(taskContainer.GetEnv()), taskExecutionMetadata.GetTaskExecutionID())
 
-	if taskCtx.GetOverrides() == nil {
+	if taskExecutionMetadata.GetOverrides() == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "platform/compiler error, overrides not set for task")
 	}
-	if taskCtx.GetOverrides() == nil || taskCtx.GetOverrides().GetResources() == nil {
+	if taskExecutionMetadata.GetOverrides() == nil || taskExecutionMetadata.GetOverrides().GetResources() == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
 	}
 
-	res := taskCtx.GetOverrides().GetResources()
+	res := taskExecutionMetadata.GetOverrides().GetResources()
 	if res != nil {
 		res = ApplyResourceOverrides(ctx, *res)
 	}
 
 	// Make the container name the same as the pod name, unless it violates K8s naming conventions
 	// Container names are subject to the DNS-1123 standard
-	containerName := taskCtx.GetTaskExecutionID().GetGeneratedName()
+	containerName := taskExecutionMetadata.GetTaskExecutionID().GetGeneratedName()
 	if !isAcceptableK8sName.MatchString(containerName) || len(containerName) > 63 {
 		containerName = rand.String(4)
 	}
