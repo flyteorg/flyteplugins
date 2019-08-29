@@ -33,27 +33,26 @@ func (Executor) GetProperties() core.PluginProperties {
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 
 	pluginState := State{}
-
 	if _, err := tCtx.PluginStateReader().Get(&pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
+	var nextState State
+	var err error
+
 	switch pluginState.currentPhase {
 	case NotStarted:
-		taskTemplate, err := tCtx.TaskReader().Read(ctx)
-		if err != nil {
-			return core.UnknownTransition, err
-		}
-		taskTemplate.GetCustom()
+		nextState, err := DetermineDiscoverability(ctx, tCtx, pluginState, e.catalogReader)
 
-		for item := range tCtx.TaskReader
+	case SubmittedToCatalogReader:
 
 	case MappingFileCreated:
+		nextState, err := LaunchIndividualJobs(ctx, tCtx, pluginState)
 	case JobSubmitted:
 	case JobsFinished:
 	}
 
-
+	// Write the new state using the pluginstatewriter
 }
 
 func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {

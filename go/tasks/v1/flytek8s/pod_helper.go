@@ -15,7 +15,7 @@ import (
 
 const PodKind = "pod"
 
-func ToK8sPod(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
+func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
 	inputs io.InputReader, outputPrefixPath string) (*v1.PodSpec, error) {
 	task, err := taskReader.Read(ctx)
 	if err != nil {
