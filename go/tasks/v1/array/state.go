@@ -26,7 +26,6 @@ import (
 )
 
 const K8sPodKind = "pod"
-const maxDataSize = int64(50000000)
 
 type Phase uint8
 
@@ -82,18 +81,10 @@ func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
 	return s
 }
 
-/*
-  Discovery for sub-tasks
-  Build mapping file
----
-  submit jobs (either as a batch or individually)
----BestEffort
-  Detect changes to individual job states
-    - Check failure ratios
----
-  Submit to discovery
-
-*/
+const (
+	ErrorQueuingCatalogReader errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
+	ErrorReaderWorkItemCast                    = "READER_WORK_ITEM_CAST_FAILED"
+)
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
 	arrayJob := &idlPlugins.ArrayJob{}
@@ -137,7 +128,6 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
 	// build output writers
 	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
-
 	// build work items from inputs and outputs
 	workItems := ConstructCatalogReaderWorkItems(tCtx.TaskReader(), inputReaders, outputWriters)
 
@@ -172,6 +162,37 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	return state, nil
 }
 
+func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catalogWriter workqueue.IndexedWorkQueue,
+	state State) (State, error) {
+
+	// Check that the taskTemplate is valid
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return state, err
+	} else if taskTemplate == nil {
+		return state, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
+	}
+
+	// Extract the custom plugin pb
+	arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
+	if err != nil {
+		return state, err
+	} else if arrayJob == nil {
+		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
+	}
+
+	// input readers
+	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+
+	// output reader
+	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
+
+	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
+
+	// All launched sub-tasks should have written outputs to catalog, mark as success.
+	return state, nil
+}
+
 func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
 	return &idlCore.Literal{
 		Value: &idlCore.Literal_Scalar{
@@ -191,7 +212,7 @@ func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
 func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet) *idlCore.LiteralCollection {
 	literals := make([]*idlCore.Literal, 0, catalogResults.Len())
 	for i := 0; i < catalogResults.Len(); i++ {
-		if catalogResults.IsSet(uint(i)) {
+		if !catalogResults.IsSet(uint(i)) {
 			literals = append(literals, NewLiteralScalarOfInteger(int64(i)))
 		}
 	}
@@ -210,7 +231,7 @@ func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue,
 	for _, w := range workItems {
 		err := catalogReader.Queue(w)
 		if err != nil {
-			return false, catalogResults, cachedCount, errors.Wrapf(errors.DownstreamSystemError, err,
+			return false, catalogResults, cachedCount, errors.Wrapf(ErrorQueuingCatalogReader, err,
 				"Error enqueuing work item %s", w.GetId())
 		}
 	}
@@ -233,7 +254,7 @@ func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue,
 
 		castedItem, ok := retrievedItem.(*catalog.ReaderWorkItem)
 		if !ok {
-			return false, catalogResults, cachedCount, errors.Errorf(errors.DownstreamSystemError,
+			return false, catalogResults, cachedCount, errors.Errorf(ErrorReaderWorkItemCast,
 				"Failed to cast when reading from work queue.")
 		}
 
@@ -277,7 +298,6 @@ func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, in
 func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
 	size int) ([]io.OutputWriter, error) {
 
-	// turn into output writer
 	outputWriters := make([]io.OutputWriter, size)
 
 	for i := 0; i < int(size); i++ {
@@ -289,6 +309,23 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 		outputWriters = append(outputWriters, writer)
 	}
 	return outputWriters, nil
+}
+
+func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
+	size int) ([]io.OutputReader, error) {
+
+	outputReaders := make([]io.OutputReader, size)
+
+	for i := 0; i < int(size); i++ {
+		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
+		if err != nil {
+			return outputReaders, err
+		}
+		outputPath := ioutils.NewSimpleOutputFilePaths(ctx, dataStore, dataReference)
+		reader := ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999))
+		outputReaders = append(outputReaders, reader)
+	}
+	return outputReaders, nil
 }
 
 // Note that Name is not set on the result object.
