@@ -39,7 +39,7 @@ func (item *ReaderWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func( item *ReaderWorkItem) GetCached() bool {
+func( item *ReaderWorkItem) IsCached() bool {
 	return item.cached
 }
 
