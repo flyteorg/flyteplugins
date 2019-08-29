@@ -127,54 +127,68 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
 
 	// build work items from inputs and outputs
-	workItems := ConstructCatalogReaderWorkItems(ctx, tCtx.TaskReader(), inputReaders, outputWriters)
+	workItems := ConstructCatalogReaderWorkItems(tCtx.TaskReader(), inputReaders, outputWriters)
+
+	doneCheckingCatalog, catalogResults, err := CheckCatalog(ctx, catalogReader, workItems)
+
+	//  If all done, store catalog results, and move to writing the mapping file.
+	if doneCheckingCatalog {
+		state.currentPhase = PhaseCreateMappingFile
+		state.catalogResults = catalogResults
+	}
+
+	return state, nil
+}
+
+func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue, workItems []*catalog.ReaderWorkItem) (
+	bool, *bitarray.BitSet, error) {
+
+	catalogResults := bitarray.NewBitSet(uint(len(workItems)))
 
 	// enqueue work items
 	for _, w := range workItems {
 		err := catalogReader.Queue(w)
 		if err != nil {
-			return state, errors.Wrapf(errors.DownstreamSystemError, err, "Error enqueuing work item %s")
+			return false, catalogResults, errors.Wrapf(errors.DownstreamSystemError, err,
+				"Error enqueuing work item %s", w.GetId())
 		}
 	}
 
 	// Immediately read back from the work queue, and store results into a bitset if available
-	catalogResults := bitarray.NewBitSet(uint(arrayJob.Size))
+
 	for idx, w := range workItems {
 		retrievedItem, found, err := catalogReader.Get(w.GetId())
 		if err != nil {
-			return state, err
+			return false, catalogResults, err
 		}
 		if !found {
-			logger.Warnf(ctx, "wtf")
+			logger.Warnf(ctx, "Item just placed into Catalog work queue has disappeared")
 		}
 
 		if retrievedItem.GetWorkStatus() != workqueue.WorkStatusDone {
 			logger.Debugf(ctx, "Found at least one catalog work item unfinished, skipping rest of round. ID %s",
 				retrievedItem.GetId())
-			return state, nil
+			return false, catalogResults, nil
 		}
 
 		castedItem, ok := retrievedItem.(*catalog.ReaderWorkItem)
 		if !ok {
-			return state, errors.Errorf(errors.DownstreamSystemError, "Failed to cast when reading from work queue.")
+			return false, catalogResults, errors.Errorf(errors.DownstreamSystemError,
+				"Failed to cast when reading from work queue.")
 		}
 
-		if castedItem.GetCached() {
+		if castedItem.IsCached() {
 			catalogResults.Set(uint(idx))
 		}
 	}
 
-	//  If all done, store catalog results, and move to writing the mapping file.
-	state.currentPhase = PhaseCreateMappingFile
-	state.catalogResults = catalogResults
-
-	return state, nil
+	return true, catalogResults, nil
 }
 
-func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskReader, inputs []io.InputReader,
-	outputs []io.OutputWriter) []workqueue.WorkItem {
+func ConstructCatalogReaderWorkItems(taskReader core.TaskReader, inputs []io.InputReader,
+	outputs []io.OutputWriter) []*catalog.ReaderWorkItem {
 
-	workItems := make([]workqueue.WorkItem, len(inputs))
+	workItems := make([]*catalog.ReaderWorkItem, len(inputs))
 	for idx, inputReader := range inputs {
 		item := catalog.NewReaderWorkItem(workqueue.WorkItemID(inputReader.GetInputPath()), taskReader, inputReader, outputs[idx])
 		workItems = append(workItems, item)
@@ -209,7 +223,7 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 	for i := 0; i < int(size); i++ {
 		dataReference, err := ioutils.GetPath(ctx, dataStore, outputPrefix, strconv.Itoa(i))
 		if err != nil {
-			return err
+			return outputWriters, err
 		}
 		writer := ioutils.NewSimpleOutputWriter(ctx, dataStore, ioutils.NewSimpleOutputFilePaths(ctx, dataStore, dataReference))
 		outputWriters = append(outputWriters, writer)
