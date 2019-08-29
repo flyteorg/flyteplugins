@@ -2,7 +2,7 @@
  * Copyright (c) 2018 Lyft. All rights reserved.
  */
 
-package array
+package k8s
 
 import (
 	"github.com/lyft/flytestdlib/config"

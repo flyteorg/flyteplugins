@@ -31,6 +31,18 @@ const (
 	PhasePermanentFailure
 )
 
+var Phases = []Phase{
+	PhaseUndefined,
+	PhaseNotReady,
+	PhaseWaitingForResources,
+	PhaseQueued,
+	PhaseInitializing,
+	PhaseRunning,
+	PhaseSuccess,
+	PhaseRetryableFailure,
+	PhasePermanentFailure,
+}
+
 func (p Phase) String() string {
 	switch p {
 	case PhaseNotReady:
@@ -58,7 +70,6 @@ func (p Phase) String() string {
 func (p Phase) IsTerminal() bool {
 	return p == PhasePermanentFailure || p == PhaseRetryableFailure || p == PhaseSuccess
 }
-
 
 type TaskInfo struct {
 	// log information for the task execution
