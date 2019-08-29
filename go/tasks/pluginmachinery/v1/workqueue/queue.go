@@ -3,8 +3,9 @@ package workqueue
 import (
 	"context"
 	"fmt"
-	lru "github.com/hashicorp/golang-lru"
 	"sync"
+
+	lru "github.com/hashicorp/golang-lru"
 
 	"k8s.io/client-go/util/workqueue"
 )
@@ -49,10 +50,21 @@ type queue struct {
 }
 
 type workItemCache struct {
-	lru.Cache
+	*lru.Cache
 }
 
-func (c workItemCache) 
+func (c workItemCache) Get(id WorkItemID) (item *workItemWrapper, found bool) {
+	o, found := c.Cache.Get(id)
+	if !found {
+		return nil, found
+	}
+
+	return o.(*workItemWrapper), true
+}
+
+func (c workItemCache) Add(item *workItemWrapper) (evicted bool) {
+	return c.Cache.Add(item.payload.GetId(), item)
+}
 
 func (q *queue) Queue(once WorkItem) error {
 	q.wlock.Lock()
@@ -63,7 +75,7 @@ func (q *queue) Queue(once WorkItem) error {
 	}
 
 	q.queue.Add(wrapper)
-	q.index[once.GetId()] = wrapper
+	q.index.Add(wrapper)
 	return nil
 }
 
@@ -71,7 +83,7 @@ func (q queue) Get(id WorkItemID) (item WorkItem, found bool, err error) {
 	q.rlock.Lock()
 	defer q.rlock.Unlock()
 
-	wrapper, found := q.index[id]
+	wrapper, found := q.index.Get(id)
 	if !found {
 		return nil, found, nil
 	}
@@ -132,6 +144,11 @@ func (q queue) Start(ctx context.Context) error {
 }
 
 func NewIndexedWorkQueue(processor Processor, config Config) (IndexedWorkQueue, error) {
+	cache, err := lru.New(config.IndexCacheMaxItems)
+	if err != nil {
+		return nil, err
+	}
+
 	return &queue{
 		wlock:      sync.Mutex{},
 		rlock:      sync.RWMutex{},
@@ -140,7 +157,7 @@ func NewIndexedWorkQueue(processor Processor, config Config) (IndexedWorkQueue, 
 		// TODO: assign name to get metrics
 		queue: workqueue.New(),
 		// TODO: Default size?
-		index:     map[string]*workItemWrapper{},
+		index:     workItemCache{Cache: cache},
 		processor: processor,
 	}, nil
 }

@@ -2,35 +2,46 @@ package k8sarray
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go/service/batch"
+
+	"github.com/lyft/flyteplugins/go/tasks/v1/array/arraystatus"
+
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
-	"github.com/lyft/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	)
+)
 
 const K8sPodKind = "pod"
-
-type State struct {
-	currentPhase Phase
-}
 
 type Phase uint8
 
 const (
-	NotStarted Phase = iota
-	SubmittedToCatalogReader
-	MappingFileCreated
-	JobSubmitted
-	JobsFinished
+	PhaseNotStarted Phase = iota
+	PhaseSubmittedToCatalogReader
+	PhaseMappingFileCreated
+	PhaseJobSubmitted
+	PhaseJobsFinished
 )
+
+type State struct {
+	currentPhase Phase
+	arrayStatus  arraystatus.CustomState
+}
+
+func (s *State) SetPhase(newPhase Phase) *State {
+	s.currentPhase = newPhase
+	return s
+}
+
+func (s *State) SetArrayStatus(state arraystatus.CustomState) *State {
+	s.arrayStatus = state
+	return s
+}
 
 /*
   Discovery for sub-tasks
@@ -85,17 +96,23 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		//  if all done, write mapping file, then build updated state (new size, new phase)
 	}
 
-
 	numCachedJobs := int64(0)
-
 
 	return state, nil
 }
 
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
-func FlyteArrayJobToK8sPod(ctx context.Context, tCtx core.TaskExecutionContext, taskTemplate *idlCore.TaskTemplate) (
+func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionContext) (
 	podTemplate v1.Pod, job *idlPlugins.ArrayJob, err error) {
+
+	// Check that the taskTemplate is valid
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return v1.Pod{}, nil, err
+	} else if taskTemplate == nil {
+		return v1.Pod{}, nil, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
+	}
 
 	if taskTemplate.GetContainer() == nil {
 		return v1.Pod{}, nil, errors.Errorf(errors.BadTaskSpecification,
@@ -135,4 +152,3 @@ func FlyteArrayJobToK8sPod(ctx context.Context, tCtx core.TaskExecutionContext, 
 		Spec: *podSpec,
 	}, arrayJob, nil
 }
-
