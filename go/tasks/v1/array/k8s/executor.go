@@ -48,7 +48,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case k8sarray.PhaseNotStarted:
 		nextState, err := k8sarray.DetermineDiscoverability(ctx, tCtx, pluginState, e.catalogReader)
 
-	case k8sarray.PhaseSubmittedToCatalogReader:
+	case k8sarray.PhaseCreateMappingFile:
 
 	case k8sarray.PhaseMappingFileCreated:
 		nextState, err := LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)

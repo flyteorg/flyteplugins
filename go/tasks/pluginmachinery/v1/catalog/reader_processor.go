@@ -17,32 +17,36 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 )
 
-type readerWorkItem struct {
+type ReaderWorkItem struct {
 	id workqueue.WorkItemID
 
-	// readerWorkItem outputs:
+	// ReaderWorkItem outputs:
 	cached     bool
 	workStatus workqueue.WorkStatus
 
-	// readerWorkItem Inputs:
+	// ReaderWorkItem Inputs:
 	outputsWriter io.OutputWriter
 	// Inputs to query data catalog
 	inputReader io.InputReader
 	taskReader  core2.TaskReader
 }
 
-func (item *readerWorkItem) GetId() workqueue.WorkItemID {
+func (item *ReaderWorkItem) GetId() workqueue.WorkItemID {
 	return item.id
 }
 
-func (item *readerWorkItem) GetWorkStatus() workqueue.WorkStatus {
+func (item *ReaderWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func NewReaderWorkItem(id workqueue.WorkItemID, taskReader core2.TaskReader, inputReader io.InputReader,
-	outputsWriter io.OutputWriter) workqueue.WorkItem {
+func( item *ReaderWorkItem) IsCached() bool {
+	return item.cached
+}
 
-	return &readerWorkItem{
+func NewReaderWorkItem(id workqueue.WorkItemID, taskReader core2.TaskReader, inputReader io.InputReader,
+	outputsWriter io.OutputWriter) *ReaderWorkItem {
+
+	return &ReaderWorkItem{
 		id:            id,
 		inputReader:   inputReader,
 		outputsWriter: outputsWriter,
@@ -50,12 +54,12 @@ func NewReaderWorkItem(id workqueue.WorkItemID, taskReader core2.TaskReader, inp
 	}
 }
 
-type readerProcessor struct {
+type ReaderProcessor struct {
 	catalogClient core2.CatalogClient
 }
 
-func (p readerProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
-	wi, casted := workItem.(*readerWorkItem)
+func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
+	wi, casted := workItem.(*ReaderWorkItem)
 	if !casted {
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
 	}
@@ -86,8 +90,8 @@ func (p readerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewReaderProcessor(catalogClient core2.CatalogClient) workqueue.Processor {
-	return readerProcessor{
+func NewReaderProcessor(catalogClient core2.CatalogClient) ReaderProcessor {
+	return ReaderProcessor{
 		catalogClient: catalogClient,
 	}
 }
