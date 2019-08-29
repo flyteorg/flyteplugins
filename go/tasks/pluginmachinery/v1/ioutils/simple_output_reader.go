@@ -8,16 +8,18 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 )
 
-type simpleOutputReader struct {
+type SimpleOutputReader struct {
 	literals *core.LiteralMap
 	err      *io.ExecutionError
 }
 
-func (r simpleOutputReader) IsError(ctx context.Context) (bool, error) {
+var _ io.OutputReader = SimpleOutputReader{}
+
+func (r SimpleOutputReader) IsError(ctx context.Context) (bool, error) {
 	return r.err != nil, nil
 }
 
-func (r simpleOutputReader) ReadError(ctx context.Context) (io.ExecutionError, error) {
+func (r SimpleOutputReader) ReadError(ctx context.Context) (io.ExecutionError, error) {
 	if r.err != nil {
 		return *r.err, nil
 	}
@@ -25,21 +27,21 @@ func (r simpleOutputReader) ReadError(ctx context.Context) (io.ExecutionError, e
 	return io.ExecutionError{}, fmt.Errorf("no execution error specified")
 }
 
-func (r simpleOutputReader) IsFile(ctx context.Context) bool {
+func (r SimpleOutputReader) IsFile(ctx context.Context) bool {
 	return false
 }
 
-func (r simpleOutputReader) Exists(ctx context.Context) (bool, error) {
+func (r SimpleOutputReader) Exists(ctx context.Context) (bool, error) {
 	// TODO: should this return true if there is an error?
 	return r.literals != nil, nil
 }
 
-func (r simpleOutputReader) Read(ctx context.Context) (*core.LiteralMap, *io.ExecutionError, error) {
+func (r SimpleOutputReader) Read(ctx context.Context) (*core.LiteralMap, *io.ExecutionError, error) {
 	return r.literals, r.err, nil
 }
 
-func NewSimpleOutputReader(literals *core.LiteralMap, err *io.ExecutionError) io.OutputReader {
-	return simpleOutputReader{
+func NewSimpleOutputReader(literals *core.LiteralMap, err *io.ExecutionError) SimpleOutputReader {
+	return SimpleOutputReader{
 		literals: literals,
 		err:      err,
 	}
