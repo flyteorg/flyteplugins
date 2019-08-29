@@ -35,8 +35,26 @@ const (
 )
 
 type State struct {
-	currentPhase Phase
-	arrayStatus  arraystatus.CustomState
+	currentPhase    Phase
+	actualArraySize int
+	arrayStatus     arraystatus.ArrayStatus
+}
+
+func (s State) GetActualArraySize() int {
+	return s.actualArraySize
+}
+
+func (s State) GetPhase() Phase {
+	return s.currentPhase
+}
+
+func (s State) GetArrayStatus() arraystatus.ArrayStatus {
+	return s.arrayStatus
+}
+
+func (s *State) SetActualArraySize(size int) *State {
+	s.actualArraySize = size
+	return s
 }
 
 func (s *State) SetPhase(newPhase Phase) *State {
@@ -44,7 +62,7 @@ func (s *State) SetPhase(newPhase Phase) *State {
 	return s
 }
 
-func (s *State) SetArrayStatus(state arraystatus.CustomState) *State {
+func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
 	s.arrayStatus = state
 	return s
 }
@@ -168,7 +186,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {
-		arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
+		arrayJob, err = ToArrayJob(taskTemplate.GetCustom())
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}

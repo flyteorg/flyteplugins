@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
+
 	k8sarray "github.com/lyft/flyteplugins/go/tasks/v1/array"
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/arraystatus"
 
@@ -26,12 +28,38 @@ const (
 	FlyteK8sArrayIndexVarName string            = "FLYTE_K8S_ARRAY_INDEX"
 )
 
+var arrayJobEnvVars = []corev1.EnvVar{
+	{
+		Name:  JobIndexVarName,
+		Value: FlyteK8sArrayIndexVarName,
+	},
+}
+
 func formatSubTaskName(_ context.Context, parentName, suffix string) (subTaskName string) {
 	return fmt.Sprintf("%v-%v", parentName, suffix)
 }
 
-func LaunchIndividualJobs(ctx context.Context, kubeClient core.KubeClient, tCtx core.TaskExecutionContext, currentState k8sarray.State) (newState k8sarray.State, err error) {
-	podTemplate, arrayProps, err := k8sarray.FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
+func newStatusCompactArray(count uint) bitarray.CompactArray {
+	a, err := bitarray.NewCompactArray(count, bitarray.Item(len(core.Phases)-1))
+	if err != nil {
+		return bitarray.CompactArray{}
+	}
+
+	return a
+}
+
+func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
+	if len(cfg.DefaultScheduler) > 0 {
+		pod.Spec.SchedulerName = cfg.DefaultScheduler
+	}
+
+	return pod
+}
+
+// Launches subtasks
+func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
+	config *Config, currentState k8sarray.State) (newState k8sarray.State, err error) {
+	podTemplate, _, err := k8sarray.FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
 	}
@@ -43,37 +71,29 @@ func LaunchIndividualJobs(ctx context.Context, kubeClient core.KubeClient, tCtx 
 	}
 
 	args := utils.CommandLineTemplateArgs{
-		Input:        tCtx.GetDataDir().String(),
-		OutputPrefix: tCtx.GetDataDir().String(),
+		Input:        tCtx.InputReader().GetInputPrefixPath().String(),
+		OutputPrefix: tCtx.OutputWriter().GetOutputPrefixPath().String(),
 	}
 
-	size := int64(1)
-	if arrayProps != nil {
-		size = arrayProps.Size
-	}
-
-	// TODO: Respect slots param
-	for i := int64(0); i < size; i++ {
+	size := currentState.GetActualArraySize()
+	// TODO: Respect parallelism param
+	for i := 0; i < size; i++ {
 		pod := podTemplate.DeepCopy()
-		indexStr := strconv.Itoa(int(i))
-		if size > 1 {
-			pod.Name = formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
-			pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
-				Name:  FlyteK8sArrayIndexVarName,
-				Value: indexStr,
-			})
+		indexStr := strconv.Itoa(i)
+		pod.Name = formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  FlyteK8sArrayIndexVarName,
+			Value: indexStr,
+		})
 
-			pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
-		} else {
-			pod.Name = tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		}
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
 
 		pod.Spec.Containers[0].Command, err = utils.ReplaceTemplateCommandArgs(ctx, command, args)
 		if err != nil {
 			return currentState, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
 		}
 
-		pod = e.ApplyPodPolicies(ctx, pod)
+		pod = ApplyPodPolicies(ctx, config, pod)
 
 		err = kubeClient.GetClient().Create(ctx, pod)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
@@ -81,26 +101,15 @@ func LaunchIndividualJobs(ctx context.Context, kubeClient core.KubeClient, tCtx 
 		}
 	}
 
-	logger.Infof(ctx, "Successfully submitted Job [%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	logger.Infof(ctx, "Successfully submitted Job(s) with Prefix:[%v], Count:[%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), size)
 
-	var arrayStatus *arraystatus.ArrayStatus
-	if size > 1 {
-		arrayStatus = &arraystatus.ArrayStatus{
-			Summary:  arraystatus.ArraySummary{},
-			Detailed: newStatusCompactArray(uint(size)),
-		}
-	}
-
-	var arrayJob *arraystatus.ArrayJob
-	if arrayProps != nil {
-		arrayJob = &arraystatus.ArrayJob{ArrayJob: *arrayProps}
+	arrayStatus := arraystatus.ArrayStatus{
+		Summary:  arraystatus.ArraySummary{},
+		Detailed: newStatusCompactArray(uint(size)),
 	}
 
 	currentState.SetPhase(k8sarray.PhaseJobSubmitted)
-	currentState.SetArrayStatus(arraystatus.CustomState{
-		ArrayStatus:     arrayStatus,
-		ArrayProperties: arrayJob,
-	})
+	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil
 }

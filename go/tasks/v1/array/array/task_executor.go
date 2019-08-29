@@ -7,6 +7,7 @@ package array
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/v1/array/k8s"
 	"strconv"
 	"time"
 
@@ -151,7 +152,7 @@ func (e Executor) StartTask(ctx context.Context, taskCtx types.TaskContext, task
 }
 
 func (e Executor) ApplyPodPolicies(ctx context.Context, pod *corev1.Pod) *corev1.Pod {
-	c := GetConfig()
+	c := k8s.GetConfig()
 	if len(c.DefaultScheduler) > 0 {
 		pod.Spec.SchedulerName = c.DefaultScheduler
 	}

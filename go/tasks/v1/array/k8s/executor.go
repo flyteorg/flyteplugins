@@ -2,10 +2,11 @@ package k8s
 
 import (
 	"context"
+
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
-	"github.com/lyft/flyteplugins/go/tasks/v1/array"
+	k8sarray "github.com/lyft/flyteplugins/go/tasks/v1/array"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 )
 
@@ -33,6 +34,8 @@ func (Executor) GetProperties() core.PluginProperties {
 
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 
+	pluginConfig := GetConfig()
+
 	pluginState := k8sarray.State{}
 	if _, err := tCtx.PluginStateReader().Get(&pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
@@ -41,14 +44,14 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var nextState k8sarray.State
 	var err error
 
-	switch pluginState.currentPhase {
+	switch pluginState.GetPhase() {
 	case k8sarray.PhaseNotStarted:
 		nextState, err := k8sarray.DetermineDiscoverability(ctx, tCtx, pluginState, e.catalogReader)
 
 	case k8sarray.PhaseSubmittedToCatalogReader:
 
 	case k8sarray.PhaseMappingFileCreated:
-		nextState, err := LaunchIndividualJobs(ctx, tCtx, pluginState)
+		nextState, err := LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 	case k8sarray.PhaseJobSubmitted:
 	case k8sarray.PhaseJobsFinished:
 	}

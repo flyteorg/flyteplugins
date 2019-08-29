@@ -5,18 +5,13 @@
 package arraystatus
 
 import (
-	"context"
-	"encoding/json"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-
-	"github.com/lyft/flytedynamicjoboperator/pkg/internal/bitarray"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
 )
 
 type JobID = string
+type ArraySummary map[core.Phase]int64
 
 type ArrayStatus struct {
 	// Summary of the array job. It's a map of phases and how many jobs are in that phase.
@@ -24,11 +19,18 @@ type ArrayStatus struct {
 
 	// Status of every job in the array.
 	Detailed bitarray.CompactArray `json:"details"`
+
+	// Bits indicating, for each job, whether the output was retrieved from the cache or not.
+	CachedStatus *ArrayCachedStatus `json:"cachedStatus,omitempty"`
 }
 
-type ArraySummary map[types.TaskPhase]int64
+// This is a status object that is returned after we make Catalog calls to see if subtasks are Cached
+type ArrayCachedStatus struct {
+	CachedJobs *bitarray.BitSet `json:"cachedJobs"`
+	NumCached  uint             `json:"numCached"`
+}
 
-func deleteOrSet(summary ArraySummary, key types.TaskPhase, value int64) {
+func deleteOrSet(summary ArraySummary, key core.Phase, value int64) {
 	if value == 0 {
 		delete(summary, key)
 	} else {
@@ -36,7 +38,7 @@ func deleteOrSet(summary ArraySummary, key types.TaskPhase, value int64) {
 	}
 }
 
-func (in ArraySummary) IncByCount(phase types.TaskPhase, count int64) {
+func (in ArraySummary) IncByCount(phase core.Phase, count int64) {
 	if existing, found := in[phase]; !found {
 		in[phase] = count
 	} else {
@@ -44,11 +46,11 @@ func (in ArraySummary) IncByCount(phase types.TaskPhase, count int64) {
 	}
 }
 
-func (in ArraySummary) Inc(phase types.TaskPhase) {
+func (in ArraySummary) Inc(phase core.Phase) {
 	in.IncByCount(phase, 1)
 }
 
-func (in ArraySummary) Dec(phase types.TaskPhase) {
+func (in ArraySummary) Dec(phase core.Phase) {
 	// TODO: Error if already 0?
 	in.IncByCount(phase, -1)
 }
@@ -83,73 +85,4 @@ func (in ArraySummary) MergeFrom(other ArraySummary) (updated bool) {
 	}
 
 	return
-}
-
-func CopyArraySummaryFrom(original ArraySummary) ArraySummary {
-	copy := make(map[types.TaskPhase]int64)
-	for key, value := range original {
-		copy[key] = value
-	}
-	return copy
-}
-
-type CustomState struct {
-	JobID JobID `json:"job-id,omitempty"`
-	// Optional status of the array job.
-	ArrayStatus *ArrayStatus `json:"arr,omitempty"`
-
-	ArrayProperties *ArrayJob `json:"arrJob,omitempty"`
-
-	ArrayCachedStatus *ArrayCachedStatus `json:"taskMetadata,omitempty"`
-}
-
-// This is a status object that is returned after we make Catalog calls to see if subtasks are Cached
-type ArrayCachedStatus struct {
-	TaskIdentifier      *core.Identifier `json:"taskIdentifier,omitempty"`
-	DiscoverableVersion string           `json:"discoverableVersion"`
-	CachedArrayJobs     *bitarray.BitSet `json:"cachedArrayJobs"`
-	NumCached           uint             `json:"numCached"`
-}
-
-type ArrayJob struct {
-	plugins.ArrayJob
-}
-
-func (s CustomState) AsMap(ctx context.Context) (types.CustomState, error) {
-	raw, err := json.Marshal(s)
-	if err != nil {
-		logger.Warnf(ctx, "Failed to marshal custom status as Map. Error: %v", err)
-		return nil, err
-	}
-
-	m := map[string]interface{}{}
-	err = json.Unmarshal(raw, &m)
-	if err != nil {
-		logger.Warnf(ctx, "Failed to unmarshal custom status into map. Error: %v", err)
-		return nil, err
-	}
-
-	return m, nil
-}
-
-func (s *CustomState) MergeFrom(ctx context.Context, customStatus types.CustomState) error {
-	raw, err := json.Marshal(customStatus)
-	if err != nil {
-		logger.Warnf(ctx, "Failed to marshal plugins custom status. Error: %v", err)
-		return err
-	}
-
-	// json.Unmarshal doesn't wipe out existing keys from maps so nil the summary here to ensure we don't unmarshal into
-	// a dirty map.
-	if s.ArrayStatus != nil {
-		s.ArrayStatus.Summary = nil
-	}
-
-	err = json.Unmarshal(raw, s)
-	if err != nil {
-		logger.Warnf(ctx, "Failed to unmarshal plugins custom status into AWS Custom status. Error: %v", err)
-		return err
-	}
-
-	return nil
 }
