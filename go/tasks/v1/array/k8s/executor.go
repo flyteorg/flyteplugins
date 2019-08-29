@@ -53,6 +53,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case k8sarray.PhaseMappingFileCreated:
 		nextState, err := LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 	case k8sarray.PhaseJobSubmitted:
+		nextState, err := CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginState)
 	case k8sarray.PhaseJobsFinished:
 	}
 
