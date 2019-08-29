@@ -33,7 +33,6 @@ func (Executor) GetProperties() core.PluginProperties {
 }
 
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
-
 	pluginConfig := GetConfig()
 
 	pluginState := k8sarray.State{}
@@ -48,16 +47,22 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case k8sarray.PhaseNotStarted:
 		nextState, err := k8sarray.DetermineDiscoverability(ctx, tCtx, pluginState, e.catalogReader)
 
-	case k8sarray.PhaseCreateMappingFile:
-
-	case k8sarray.PhaseMappingFileCreated:
+	case k8sarray.PhaseLaunch:
 		nextState, err := LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
-	case k8sarray.PhaseJobSubmitted:
+
+	case k8sarray.PhaseCheckingSubTaskExecutions:
 		nextState, err := CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginState)
+
+	case k8sarray.WriteToDiscovery:
+
 	case k8sarray.PhaseJobsFinished:
 	}
 
-	// Write the new state using the pluginstatewriter
+	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, nextState); err != nil {
+		return core.UnknownTransition, err
+	}
+
+	// Determine transition information from the state
 }
 
 func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {

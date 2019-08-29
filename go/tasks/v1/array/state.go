@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
@@ -31,9 +32,9 @@ type Phase uint8
 
 const (
 	PhaseNotStarted Phase = iota
-	PhaseCreateMappingFile
-	PhaseMappingFileCreated
-	PhaseJobSubmitted
+	PhaseLaunch
+	PhaseCheckingSubTaskExecutions
+	PhaseWriteToDiscovery
 	PhaseJobsFinished
 )
 
@@ -127,7 +128,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
-		// TODO: set the phase to launch and return
+		state.currentPhase = PhaseLaunch
+		return state, nil
 	}
 
 	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
@@ -139,37 +141,85 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	// build work items from inputs and outputs
 	workItems := ConstructCatalogReaderWorkItems(tCtx.TaskReader(), inputReaders, outputWriters)
 
-	doneCheckingCatalog, catalogResults, err := CheckCatalog(ctx, catalogReader, workItems)
-
-	//  If all done, store catalog results, and move to writing the mapping file.
+	// Check catalog, and if we have responses from catalog for everything, then move to writing the mapping file.
+	doneCheckingCatalog, catalogResults, cachedCount, err := CheckCatalog(ctx, catalogReader, workItems)
 	if doneCheckingCatalog {
-		state.currentPhase = PhaseCreateMappingFile
+		// If all the sub-tasks are actually done, then we can just move on.
+		if cachedCount == int(arrayJob.Size) {
+			// TODO: This is not correct?  We still need to write parent level results?
+			state.currentPhase = PhaseJobsFinished
+			return state, nil
+		}
+
+		indexLookup := CatalogBitsetToLiteralCollection(catalogResults)
+		// TODO: Is the right thing to use?  Haytham please take a look
+		indexLookupPath, err := ioutils.GetIndexLookupPath(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath())
+		if err != nil {
+			return state, err
+		}
+
+		logger.Infof(ctx, "Writing indexlookup file to [%s], cached count [%d/%d], ",
+			indexLookupPath, cachedCount, arrayJob.Size)
+		err = tCtx.DataStore().WriteProtobuf(ctx, indexLookupPath, storage.Options{}, indexLookup)
+		if err != nil {
+			return state, err
+		}
+
+		state.currentPhase = PhaseLaunch
 		state.catalogResults = catalogResults
 	}
 
 	return state, nil
 }
 
-func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue, workItems []*catalog.ReaderWorkItem) (
-	bool, *bitarray.BitSet, error) {
+func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
+	return &idlCore.Literal{
+		Value: &idlCore.Literal_Scalar{
+			Scalar: &idlCore.Scalar{
+				Value: &idlCore.Scalar_Primitive{
+					Primitive: &idlCore.Primitive{
+						Value: &idlCore.Primitive_Integer{
+							Integer: number,
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
+func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet) *idlCore.LiteralCollection {
+	literals := make([]*idlCore.Literal, 0, catalogResults.Len())
+	for i := 0; i < catalogResults.Len(); i++ {
+		if catalogResults.IsSet(uint(i)) {
+			literals = append(literals, NewLiteralScalarOfInteger(int64(i)))
+		}
+	}
+	return &idlCore.LiteralCollection{
+		Literals: literals,
+	}
+}
+
+func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue, workItems []*catalog.ReaderWorkItem) (
+	bool, *bitarray.BitSet, int, error) {
+
+	var cachedCount = 0
 	catalogResults := bitarray.NewBitSet(uint(len(workItems)))
 
 	// enqueue work items
 	for _, w := range workItems {
 		err := catalogReader.Queue(w)
 		if err != nil {
-			return false, catalogResults, errors.Wrapf(errors.DownstreamSystemError, err,
+			return false, catalogResults, cachedCount, errors.Wrapf(errors.DownstreamSystemError, err,
 				"Error enqueuing work item %s", w.GetId())
 		}
 	}
 
 	// Immediately read back from the work queue, and store results into a bitset if available
-
 	for idx, w := range workItems {
 		retrievedItem, found, err := catalogReader.Get(w.GetId())
 		if err != nil {
-			return false, catalogResults, err
+			return false, catalogResults, cachedCount, err
 		}
 		if !found {
 			logger.Warnf(ctx, "Item just placed into Catalog work queue has disappeared")
@@ -178,21 +228,22 @@ func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue,
 		if retrievedItem.GetWorkStatus() != workqueue.WorkStatusDone {
 			logger.Debugf(ctx, "Found at least one catalog work item unfinished, skipping rest of round. ID %s",
 				retrievedItem.GetId())
-			return false, catalogResults, nil
+			return false, catalogResults, cachedCount, nil
 		}
 
 		castedItem, ok := retrievedItem.(*catalog.ReaderWorkItem)
 		if !ok {
-			return false, catalogResults, errors.Errorf(errors.DownstreamSystemError,
+			return false, catalogResults, cachedCount, errors.Errorf(errors.DownstreamSystemError,
 				"Failed to cast when reading from work queue.")
 		}
 
 		if castedItem.IsCached() {
 			catalogResults.Set(uint(idx))
+			cachedCount++
 		}
 	}
 
-	return true, catalogResults, nil
+	return true, catalogResults, cachedCount, nil
 }
 
 func ConstructCatalogReaderWorkItems(taskReader core.TaskReader, inputs []io.InputReader,
@@ -212,8 +263,7 @@ func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, in
 
 	inputReaders := make([]io.InputReader, size)
 	for i := 0; i < int(size); i++ {
-
-		indexedInputLocation, err := ioutils.GetPath(ctx, dataStore, inputPrefix, strconv.Itoa(i))
+		indexedInputLocation, err := dataStore.ConstructReference(ctx, inputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return inputReaders, err
 		}
@@ -231,7 +281,7 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 	outputWriters := make([]io.OutputWriter, size)
 
 	for i := 0; i < int(size); i++ {
-		dataReference, err := ioutils.GetPath(ctx, dataStore, outputPrefix, strconv.Itoa(i))
+		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return outputWriters, err
 		}
