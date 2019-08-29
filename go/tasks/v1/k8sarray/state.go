@@ -12,9 +12,11 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/storage"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	)
+	"strconv"
+)
 
 const K8sPodKind = "pod"
 
@@ -45,13 +47,12 @@ const (
 
 */
 
-func toArrayJob(arrayJob *idlPlugins.ArrayJob, structObj *structpb.Struct) error {
-	if err := utils.UnmarshalStruct(structObj, arrayJob); err != nil {
-		return errors.Wrapf(errors.BadTaskSpecification, err,
-			"Could not unmarshal taskTemplate custom into ArrayJob plugin pb")
-	}
-	return nil
+func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
+	arrayJob := &idlPlugins.ArrayJob{}
+	err := utils.UnmarshalStruct(structObj, arrayJob)
+	return arrayJob, err
 }
+
 
 // Check if there are any previously cached tasks. If there are we will only submit an ArrayJob for the
 // non-cached tasks. The ArrayJob is now a different size, and each task will get a new index location
@@ -70,27 +71,54 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Extract the custom plugin pb
-	// TODO: Understand why this doesn't check if GetCustom is nil but array one does.
-	var arrayJob *idlPlugins.ArrayJob
-	err = toArrayJob(arrayJob, taskTemplate.GetCustom())
+	arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
 	if err != nil {
 		return state, err
+	} else if arrayJob == nil {
+		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
 	}
 
 	// If discoverable, then submit all the tasks to the data catalog worker
 	if taskTemplate.Metadata != nil && taskTemplate.Metadata.Discoverable {
+		// build input readers
+		err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
 		// build work items
 		// enqueue
 		// check work item status
 		//  if all done, write mapping file, then build updated state (new size, new phase)
+	} else {
+		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
 	}
-
-
-	numCachedJobs := int64(0)
 
 
 	return state, nil
 }
+
+type Blah struct {
+	loc storage.DataReference
+}
+
+func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
+	size int) error {
+
+	// Turn into input reader
+	arrayInputPaths := make([]storage.DataReference, size)
+
+	for i := 0; i < int(size); i++ {
+		dataReference, err := GetPath(ctx, dataStore, inputPrefix, strconv.Itoa(i))
+		if err != nil {
+			return err
+		}
+		arrayInputPaths = append(arrayInputPaths, dataReference)
+	}
+	return nil
+}
+
+func ConstructOutputWriters(ctx context.Context, tCtx core.TaskExecutionContext, size int) error {
+
+}
+
+
 
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
@@ -104,7 +132,7 @@ func FlyteArrayJobToK8sPod(ctx context.Context, tCtx core.TaskExecutionContext, 
 
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {
-		err := toArrayJob(arrayJob, taskTemplate.GetCustom())
+		arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}
