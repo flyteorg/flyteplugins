@@ -137,9 +137,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		}
 	}
 
-	// check work item status and store into a bitset
+	// Immediately read back from the work queue, and store results into a bitset if available
 	catalogResults := bitarray.NewBitSet(uint(arrayJob.Size))
-
 	for idx, w := range workItems {
 		retrievedItem, found, err := catalogReader.Get(w.GetId())
 		if err != nil {
@@ -157,7 +156,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		castedItem, ok := retrievedItem.(*catalog.ReaderWorkItem)
 		if !ok {
-
+			return state, errors.Errorf(errors.DownstreamSystemError, "Failed to cast when reading from work queue.")
 		}
 
 		if castedItem.GetCached() {
