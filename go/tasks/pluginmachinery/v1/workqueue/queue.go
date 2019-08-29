@@ -3,6 +3,7 @@ package workqueue
 import (
 	"context"
 	"fmt"
+	lru "github.com/hashicorp/golang-lru"
 	"sync"
 
 	"k8s.io/client-go/util/workqueue"
@@ -37,14 +38,21 @@ type workItemWrapper struct {
 }
 
 type queue struct {
-	wlock     sync.Mutex
-	rlock     sync.RWMutex
-	workers   uint
-	started   bool
-	queue     workqueue.Interface
-	index     map[string]*workItemWrapper
-	processor Processor
+	wlock      sync.Mutex
+	rlock      sync.RWMutex
+	workers    int
+	maxRetries int
+	started    bool
+	queue      workqueue.Interface
+	index      workItemCache
+	processor  Processor
 }
+
+type workItemCache struct {
+	lru.Cache
+}
+
+func (c workItemCache) 
 
 func (q *queue) Queue(once WorkItem) error {
 	q.wlock.Lock()
@@ -83,7 +91,7 @@ func (q queue) Start(ctx context.Context) error {
 		return fmt.Errorf("queue already started")
 	}
 
-	for i := uint(0); i < q.workers; i++ {
+	for i := 0; i < q.workers; i++ {
 		go func() {
 			for {
 				select {
@@ -93,6 +101,7 @@ func (q queue) Start(ctx context.Context) error {
 				default:
 					item, shutdown := q.queue.Get()
 					if shutdown {
+						// TODO: log
 						return
 					}
 
@@ -100,7 +109,13 @@ func (q queue) Start(ctx context.Context) error {
 					ws, err := q.processor.Process(ctx, wrapper.payload)
 					if err != nil {
 						wrapper.retryCount++
-						q.queue.Add(wrapper)
+						wrapper.err = err
+						if wrapper.retryCount >= uint(q.maxRetries) {
+							// TODO: log
+						} else {
+							q.queue.Add(wrapper)
+						}
+
 						continue
 					}
 
@@ -116,11 +131,12 @@ func (q queue) Start(ctx context.Context) error {
 	return nil
 }
 
-func NewIndexedWorkQueue(processor Processor, workers uint) (IndexedWorkQueue, error) {
+func NewIndexedWorkQueue(processor Processor, config Config) (IndexedWorkQueue, error) {
 	return &queue{
-		wlock:   sync.Mutex{},
-		rlock:   sync.RWMutex{},
-		workers: workers,
+		wlock:      sync.Mutex{},
+		rlock:      sync.RWMutex{},
+		workers:    config.Workers,
+		maxRetries: config.MaxRetries,
 		// TODO: assign name to get metrics
 		queue: workqueue.New(),
 		// TODO: Default size?
