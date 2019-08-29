@@ -42,13 +42,17 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	switch pluginState.currentPhase {
 	case NotStarted:
-		nextState, err := RunCatalogCheckAndBuildMappingFile(ctx, tCtx, pluginState)
+		nextState, err := DetermineDiscoverability(ctx, tCtx, pluginState, e.catalogReader)
+
+	case SubmittedToCatalogReader:
 
 	case MappingFileCreated:
+		nextState, err := LaunchIndividualJobs(ctx, tCtx, pluginState)
 	case JobSubmitted:
 	case JobsFinished:
 	}
 
+	// Write the new state using the pluginstatewriter
 }
 
 func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
