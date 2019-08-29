@@ -3,6 +3,7 @@ package k8sarray
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
+	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/arraystatus"
 
@@ -30,7 +31,7 @@ type Phase uint8
 
 const (
 	PhaseNotStarted Phase = iota
-	PhaseSubmittedToCatalogReader
+	PhaseCreateMappingFile
 	PhaseMappingFileCreated
 	PhaseJobSubmitted
 	PhaseJobsFinished
@@ -40,6 +41,7 @@ type State struct {
 	currentPhase    Phase
 	actualArraySize int
 	arrayStatus     arraystatus.ArrayStatus
+	catalogResults  *bitarray.BitSet
 }
 
 func (s State) GetActualArraySize() int {
@@ -118,7 +120,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// TODO: set the phase to launch and return
 	}
 
-	// Otherwise,
+	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
 	// build input readers
 	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
 	// build output writers
@@ -128,14 +130,44 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	workItems := ConstructCatalogReaderWorkItems(ctx, tCtx.TaskReader(), inputReaders, outputWriters)
 
 	// enqueue work items
-	for _, w := range {
+	for _, w := range workItems {
 		err := catalogReader.Queue(w)
 		if err != nil {
 			return state, errors.Wrapf(errors.DownstreamSystemError, err, "Error enqueuing work item %s")
 		}
 	}
-	// check work item status
-	//  if all done, write mapping file, then build updated state (new size, new phase)
+
+	// check work item status and store into a bitset
+	catalogResults := bitarray.NewBitSet(uint(arrayJob.Size))
+
+	for idx, w := range workItems {
+		retrievedItem, found, err := catalogReader.Get(w.GetId())
+		if err != nil {
+			return state, err
+		}
+		if !found {
+			logger.Warnf(ctx, "wtf")
+		}
+
+		if retrievedItem.GetWorkStatus() != workqueue.WorkStatusDone {
+			logger.Debugf(ctx, "Found at least one catalog work item unfinished, skipping rest of round. ID %s",
+				retrievedItem.GetId())
+			return state, nil
+		}
+
+		castedItem, ok := retrievedItem.(*catalog.ReaderWorkItem)
+		if !ok {
+
+		}
+
+		if castedItem.GetCached() {
+			catalogResults.Set(uint(idx))
+		}
+	}
+
+	//  If all done, store catalog results, and move to writing the mapping file.
+	state.currentPhase = PhaseCreateMappingFile
+	state.catalogResults = catalogResults
 
 	return state, nil
 }
