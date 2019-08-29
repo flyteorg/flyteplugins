@@ -22,42 +22,44 @@ var (
 )
 
 type RemoteFileInputReader struct {
-	inputPath      io.InputFilePaths
-	store          storage.ComposedProtobufStore
+	io.InputFilePaths
+	store          storage.ProtobufStore
 	maxPayloadSize int64
-}
-
-func (r RemoteFileInputReader) GetInputPath() storage.DataReference {
-	return r.inputPath.GetInputPath()
 }
 
 func (r RemoteFileInputReader) Get(ctx context.Context) (*core.LiteralMap, error) {
 	d := &core.LiteralMap{}
-	if err := r.store.ReadProtobuf(ctx, r.inputPath.GetInputPath(), d); err != nil {
+	if err := r.store.ReadProtobuf(ctx, r.InputFilePaths.GetInputPath(), d); err != nil {
 		// TODO change flytestdlib to return protobuf unmarshal errors separately. As this can indicate malformed output and we should catch that
-		return nil, errors.Wrapf(ErrFailedRead, err, "failed to read data from dataDir [%v].", r.inputPath.GetInputPath())
+		return nil, errors.Wrapf(ErrFailedRead, err, "failed to read data from dataDir [%v].", r.InputFilePaths.GetInputPath())
 	}
 
 	return d, nil
 
 }
 
-func NewRemoteFileInputReader(_ context.Context, store storage.ComposedProtobufStore, inputPaths io.InputFilePaths, maxDatasetSize int64) RemoteFileInputReader {
+func NewRemoteFileInputReader(_ context.Context, store storage.ProtobufStore, inputPaths io.InputFilePaths) RemoteFileInputReader {
 	return RemoteFileInputReader{
-		inputPath:      inputPaths,
+		InputFilePaths: inputPaths,
 		store:          store,
-		maxPayloadSize: maxDatasetSize,
 	}
 }
 
 type SimpleInputFilePath struct {
-	filePath storage.DataReference
+	pathPrefix storage.DataReference
+	store      storage.ReferenceConstructor
+}
+
+func (s SimpleInputFilePath) GetInputPrefixPath() storage.DataReference {
 }
 
 func (s SimpleInputFilePath) GetInputPath() storage.DataReference {
-	return s.filePath
+	return constructPath(s.store, s.pathPrefix, InputsSuffix)
 }
 
-func NewInputFilePaths(_ context.Context, inputPath storage.DataReference) SimpleInputFilePath {
-	return SimpleInputFilePath{filePath: inputPath}
+func NewInputFilePaths(_ context.Context, store storage.ReferenceConstructor, inputPathPrefix storage.DataReference) SimpleInputFilePath {
+	return SimpleInputFilePath{
+		store:      store,
+		pathPrefix: inputPathPrefix,
+	}
 }

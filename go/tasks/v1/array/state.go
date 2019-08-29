@@ -140,7 +140,7 @@ func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, in
 	arrayInputPaths := make([]storage.DataReference, size)
 
 	for i := 0; i < int(size); i++ {
-		dataReference, err := GetPath(ctx, dataStore, inputPrefix, strconv.Itoa(i))
+		dataReference, err := ioutils.GetPath(ctx, dataStore, inputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return err
 		}
@@ -155,11 +155,12 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 	arrayInputPaths := make([]storage.DataReference, size)
 
 	for i := 0; i < int(size); i++ {
-		dataReference, err := GetPath(ctx, dataStore, outputPrefix, strconv.Itoa(i))
+		dataReference, err := ioutils.GetPath(ctx, dataStore, outputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return err
 		}
-		ioutils.NewSimpleOutputReader()
+
+		ioutils.NewSimpleOutputWriter(ctx, dataStore, ioutils.NewSimpleOutputFilePaths(ctx, dataStore, outputPrefix))
 		arrayInputPaths = append(arrayInputPaths, dataReference)
 	}
 	return nil

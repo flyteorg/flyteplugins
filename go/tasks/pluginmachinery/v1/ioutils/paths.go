@@ -1,7 +1,9 @@
-package k8sarray
+package ioutils
 
 import (
 	"context"
+
+	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flytestdlib/storage"
 )
@@ -13,6 +15,15 @@ const (
 	ErrorsSuffix      = "error.pb"
 	IndexLookupSuffix = "indexlookup.pb"
 )
+
+func constructPath(store storage.ReferenceConstructor, base storage.DataReference, suffix string) storage.DataReference {
+	res, err := store.ConstructReference(context.Background(), base, suffix)
+	if err != nil {
+		logger.Error(context.Background(), "Failed to construct path. Base[%v] Error: %v", base, err)
+	}
+
+	return res
+}
 
 func GetPath(ctx context.Context, store storage.ReferenceConstructor, root storage.DataReference, subNames ...string) (res storage.DataReference, err error) {
 	return store.ConstructReference(ctx, root, subNames...)
