@@ -108,7 +108,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		Detailed: newStatusCompactArray(uint(size)),
 	}
 
-	currentState.SetPhase(k8sarray.PhaseJobSubmitted)
+	currentState.SetPhase(k8sarray.PhaseCheckingSubTaskExecutions)
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil
