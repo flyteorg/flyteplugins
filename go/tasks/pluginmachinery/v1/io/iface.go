@@ -12,6 +12,8 @@ import (
 // If using Files for IO with tasks, then the input will be written to this path
 // All the files are always created in a sandbox per execution
 type InputFilePaths interface {
+	// The inputs file path, minus the protobuf file name.
+	GetInputPrefixPath() storage.DataReference
 	// Gets a path for where the protobuf encoded inputs of type `core.LiteralMap` can be found. The returned value is an URN in the configured storage backend
 	GetInputPath() storage.DataReference
 }
