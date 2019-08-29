@@ -5,13 +5,19 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/arraystatus"
 
+	"strconv"
+
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/ioutils"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
+	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/storage"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -56,12 +62,10 @@ func (s *State) SetArrayStatus(state arraystatus.CustomState) *State {
 
 */
 
-func toArrayJob(arrayJob *idlPlugins.ArrayJob, structObj *structpb.Struct) error {
-	if err := utils.UnmarshalStruct(structObj, arrayJob); err != nil {
-		return errors.Wrapf(errors.BadTaskSpecification, err,
-			"Could not unmarshal taskTemplate custom into ArrayJob plugin pb")
-	}
-	return nil
+func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
+	arrayJob := &idlPlugins.ArrayJob{}
+	err := utils.UnmarshalStruct(structObj, arrayJob)
+	return arrayJob, err
 }
 
 // Check if there are any previously cached tasks. If there are we will only submit an ArrayJob for the
@@ -81,24 +85,67 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Extract the custom plugin pb
-	// TODO: Understand why this doesn't check if GetCustom is nil but array one does.
-	var arrayJob *idlPlugins.ArrayJob
-	err = toArrayJob(arrayJob, taskTemplate.GetCustom())
+	arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
 	if err != nil {
 		return state, err
+	} else if arrayJob == nil {
+		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
 	}
 
 	// If discoverable, then submit all the tasks to the data catalog worker
 	if taskTemplate.Metadata != nil && taskTemplate.Metadata.Discoverable {
+		// build input readers
+		err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+		// build output writers
+		err = ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
+
 		// build work items
 		// enqueue
 		// check work item status
 		//  if all done, write mapping file, then build updated state (new size, new phase)
+	} else {
+		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
 	}
 
-	numCachedJobs := int64(0)
-
 	return state, nil
+}
+
+type Blah struct {
+	io.OutputWriter
+	loc storage.DataReference
+}
+
+func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
+	size int) error {
+
+	// Turn into input reader
+	arrayInputPaths := make([]storage.DataReference, size)
+
+	for i := 0; i < int(size); i++ {
+		dataReference, err := GetPath(ctx, dataStore, inputPrefix, strconv.Itoa(i))
+		if err != nil {
+			return err
+		}
+		arrayInputPaths = append(arrayInputPaths, dataReference)
+	}
+	return nil
+}
+
+func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference, size int) error {
+
+	// turn into output writer
+	arrayInputPaths := make([]storage.DataReference, size)
+
+	for i := 0; i < int(size); i++ {
+		dataReference, err := GetPath(ctx, dataStore, outputPrefix, strconv.Itoa(i))
+		if err != nil {
+			return err
+		}
+		ioutils.NewSimpleOutputReader()
+		arrayInputPaths = append(arrayInputPaths, dataReference)
+	}
+	return nil
+
 }
 
 // Note that Name is not set on the result object.
@@ -121,7 +168,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {
-		err := toArrayJob(arrayJob, taskTemplate.GetCustom())
+		arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}
