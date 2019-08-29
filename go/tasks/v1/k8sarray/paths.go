@@ -18,10 +18,6 @@ func GetPath(ctx context.Context, store storage.ReferenceConstructor, root stora
 	return store.ConstructReference(ctx, root, subNames...)
 }
 
-func GetArrayOutputsPrefixPath(ctx context.Context, store storage.ReferenceConstructor, temp storage.DataReference, subName ...string) (res storage.DataReference, err error) {
-	return store.ConstructReference(ctx, temp, subName...)
-}
-
 func GetMasterOutputsPath(ctx context.Context, store storage.ReferenceConstructor, output storage.DataReference) (res storage.DataReference, err error) {
 	return store.ConstructReference(ctx, output, OutputsSuffix)
 }

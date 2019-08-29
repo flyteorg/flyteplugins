@@ -7,6 +7,8 @@ import (
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/ioutils"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
@@ -82,6 +84,9 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	if taskTemplate.Metadata != nil && taskTemplate.Metadata.Discoverable {
 		// build input readers
 		err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+		// build output writers
+		err = ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
+
 		// build work items
 		// enqueue
 		// check work item status
@@ -95,6 +100,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 }
 
 type Blah struct {
+	io.OutputWriter
 	loc storage.DataReference
 }
 
@@ -114,7 +120,20 @@ func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, in
 	return nil
 }
 
-func ConstructOutputWriters(ctx context.Context, tCtx core.TaskExecutionContext, size int) error {
+func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference, size int) error {
+
+	// turn into output writer
+	arrayInputPaths := make([]storage.DataReference, size)
+
+	for i := 0; i < int(size); i++ {
+		dataReference, err := GetPath(ctx, dataStore, outputPrefix, strconv.Itoa(i))
+		if err != nil {
+			return err
+		}
+		ioutils.NewSimpleOutputReader()
+		arrayInputPaths = append(arrayInputPaths, dataReference)
+	}
+	return nil
 
 }
 
