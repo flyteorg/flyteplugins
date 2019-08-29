@@ -2,6 +2,8 @@ package array
 
 import (
 	"context"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
+	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/arraystatus"
 
@@ -23,12 +25,13 @@ import (
 )
 
 const K8sPodKind = "pod"
+const maxDataSize = int64(50000000)
 
 type Phase uint8
 
 const (
 	PhaseNotStarted Phase = iota
-	PhaseSubmittedToCatalogReader
+	PhaseCreateMappingFile
 	PhaseMappingFileCreated
 	PhaseJobSubmitted
 	PhaseJobsFinished
@@ -39,6 +42,7 @@ type State struct {
 	reason          string
 	actualArraySize int
 	arrayStatus     arraystatus.ArrayStatus
+	catalogResults  *bitarray.BitSet
 }
 
 func (s State) GetReason() string {
@@ -120,61 +124,121 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
 	}
 
-	// If discoverable, then submit all the tasks to the data catalog worker
-	if taskTemplate.Metadata != nil && taskTemplate.Metadata.Discoverable {
-		// build input readers
-		err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
-		// build output writers
-		err = ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
-
-		// build work items
-		// enqueue
-		// check work item status
-		//  if all done, write mapping file, then build updated state (new size, new phase)
-	} else {
+	// If the task is not discoverable, then skip data catalog work and move directly to launch
+	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
+		// TODO: set the phase to launch and return
+	}
+
+	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
+	// build input readers
+	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+	// build output writers
+	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
+
+	// build work items from inputs and outputs
+	workItems := ConstructCatalogReaderWorkItems(tCtx.TaskReader(), inputReaders, outputWriters)
+
+	doneCheckingCatalog, catalogResults, err := CheckCatalog(ctx, catalogReader, workItems)
+
+	//  If all done, store catalog results, and move to writing the mapping file.
+	if doneCheckingCatalog {
+		state.currentPhase = PhaseCreateMappingFile
+		state.catalogResults = catalogResults
 	}
 
 	return state, nil
 }
 
-type Blah struct {
-	io.OutputWriter
-	loc storage.DataReference
+func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue, workItems []*catalog.ReaderWorkItem) (
+	bool, *bitarray.BitSet, error) {
+
+	catalogResults := bitarray.NewBitSet(uint(len(workItems)))
+
+	// enqueue work items
+	for _, w := range workItems {
+		err := catalogReader.Queue(w)
+		if err != nil {
+			return false, catalogResults, errors.Wrapf(errors.DownstreamSystemError, err,
+				"Error enqueuing work item %s", w.GetId())
+		}
+	}
+
+	// Immediately read back from the work queue, and store results into a bitset if available
+
+	for idx, w := range workItems {
+		retrievedItem, found, err := catalogReader.Get(w.GetId())
+		if err != nil {
+			return false, catalogResults, err
+		}
+		if !found {
+			logger.Warnf(ctx, "Item just placed into Catalog work queue has disappeared")
+		}
+
+		if retrievedItem.GetWorkStatus() != workqueue.WorkStatusDone {
+			logger.Debugf(ctx, "Found at least one catalog work item unfinished, skipping rest of round. ID %s",
+				retrievedItem.GetId())
+			return false, catalogResults, nil
+		}
+
+		castedItem, ok := retrievedItem.(*catalog.ReaderWorkItem)
+		if !ok {
+			return false, catalogResults, errors.Errorf(errors.DownstreamSystemError,
+				"Failed to cast when reading from work queue.")
+		}
+
+		if castedItem.IsCached() {
+			catalogResults.Set(uint(idx))
+		}
+	}
+
+	return true, catalogResults, nil
+}
+
+func ConstructCatalogReaderWorkItems(taskReader core.TaskReader, inputs []io.InputReader,
+	outputs []io.OutputWriter) []*catalog.ReaderWorkItem {
+
+	workItems := make([]*catalog.ReaderWorkItem, len(inputs))
+	for idx, inputReader := range inputs {
+		item := catalog.NewReaderWorkItem(workqueue.WorkItemID(inputReader.GetInputPath()), taskReader, inputReader, outputs[idx])
+		workItems = append(workItems, item)
+	}
+
+	return workItems
 }
 
 func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
-	size int) error {
+	size int) ([]io.InputReader, error) {
 
-	// Turn into input reader
-	arrayInputPaths := make([]storage.DataReference, size)
-
+	inputReaders := make([]io.InputReader, size)
 	for i := 0; i < int(size); i++ {
-		dataReference, err := ioutils.GetPath(ctx, dataStore, inputPrefix, strconv.Itoa(i))
+
+		indexedInputLocation, err := ioutils.GetPath(ctx, dataStore, inputPrefix, strconv.Itoa(i))
 		if err != nil {
-			return err
+			return inputReaders, err
 		}
-		arrayInputPaths = append(arrayInputPaths, dataReference)
+
+		inputReader := ioutils.NewRemoteFileInputReader(ctx, dataStore, ioutils.NewInputFilePaths(ctx, dataStore, indexedInputLocation))
+		inputReaders = append(inputReaders, inputReader)
 	}
-	return nil
+	return inputReaders, nil
 }
 
-func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference, size int) error {
+func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
+	size int) ([]io.OutputWriter, error) {
 
 	// turn into output writer
-	arrayInputPaths := make([]storage.DataReference, size)
+	outputWriters := make([]io.OutputWriter, size)
 
 	for i := 0; i < int(size); i++ {
 		dataReference, err := ioutils.GetPath(ctx, dataStore, outputPrefix, strconv.Itoa(i))
 		if err != nil {
-			return err
+			return outputWriters, err
 		}
-
-		ioutils.NewSimpleOutputWriter(ctx, dataStore, ioutils.NewSimpleOutputFilePaths(ctx, dataStore, outputPrefix))
-		arrayInputPaths = append(arrayInputPaths, dataReference)
+		writer := ioutils.NewSimpleOutputWriter(ctx, dataStore, ioutils.NewSimpleOutputFilePaths(ctx, dataStore, dataReference))
+		outputWriters = append(outputWriters, writer)
 	}
-	return nil
-
+	return outputWriters, nil
 }
 
 // Note that Name is not set on the result object.
