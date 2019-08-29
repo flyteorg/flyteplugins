@@ -1,4 +1,4 @@
-package k8sarray
+package array
 
 import (
 	"context"
@@ -36,8 +36,13 @@ const (
 
 type State struct {
 	currentPhase    Phase
+	reason          string
 	actualArraySize int
 	arrayStatus     arraystatus.ArrayStatus
+}
+
+func (s State) GetReason() string {
+	return s.reason
 }
 
 func (s State) GetActualArraySize() int {
@@ -50,6 +55,11 @@ func (s State) GetPhase() Phase {
 
 func (s State) GetArrayStatus() arraystatus.ArrayStatus {
 	return s.arrayStatus
+}
+
+func (s *State) SetReason(reason string) *State {
+	s.reason = reason
+	return s
 }
 
 func (s *State) SetActualArraySize(size int) *State {

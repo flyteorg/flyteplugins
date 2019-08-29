@@ -19,9 +19,6 @@ type ArrayStatus struct {
 
 	// Status of every job in the array.
 	Detailed bitarray.CompactArray `json:"details"`
-
-	// Bits indicating, for each job, whether the output was retrieved from the cache or not.
-	CachedStatus *ArrayCachedStatus `json:"cachedStatus,omitempty"`
 }
 
 // This is a status object that is returned after we make Catalog calls to see if subtasks are Cached

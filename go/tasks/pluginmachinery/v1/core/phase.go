@@ -68,7 +68,15 @@ func (p Phase) String() string {
 
 // Returns true if the given phase is failure, retryable failure or success
 func (p Phase) IsTerminal() bool {
-	return p == PhasePermanentFailure || p == PhaseRetryableFailure || p == PhaseSuccess
+	return p.IsFailure() || p.IsSuccess()
+}
+
+func (p Phase) IsFailure() bool {
+	return p == PhasePermanentFailure || p == PhaseRetryableFailure
+}
+
+func (p Phase) IsSuccess() bool {
+	return p == PhaseSuccess
 }
 
 type TaskInfo struct {
