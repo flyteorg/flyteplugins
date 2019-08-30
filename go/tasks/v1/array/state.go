@@ -165,6 +165,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catalogWriter workqueue.IndexedWorkQueue,
 	state State) (State, error) {
 
+		// TODO: handle failure ratio
+
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {

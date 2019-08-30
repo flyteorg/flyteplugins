@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
 
