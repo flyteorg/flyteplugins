@@ -269,7 +269,8 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catal
 	return state, nil
 }
 
-func WriteToCatalog(ctx context.Context, catalogWriter workqueue.IndexedWorkQueue, workItems []catalog.WriterWorkItem) (bool, error) {
+func WriteToCatalog(ctx context.Context, catalogWriter workqueue.IndexedWorkQueue,
+	workItems []*catalog.WriterWorkItem) (bool, error) {
 
 	// Enqueue work items
 	for _, w := range workItems {
@@ -305,9 +306,9 @@ func WriteToCatalog(ctx context.Context, catalogWriter workqueue.IndexedWorkQueu
 
 func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
 	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
-	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]catalog.WriterWorkItem, error) {
+	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]*catalog.WriterWorkItem, error) {
 
-	writerWorkItems := make([]catalog.WriterWorkItem, 0, len(inputReaders))
+	writerWorkItems := make([]*catalog.WriterWorkItem, 0, len(inputReaders))
 
 	if len(inputReaders) != len(outputReaders) {
 		return nil, errors.Errorf(ErrorInternalMismatch, "Length different building catalog writer items %d %d",
@@ -327,7 +328,7 @@ func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.Ta
 		}, output, core.CatalogMetadata{
 			TaskExecutionIdentifier: &taskExecId,
 		})
-		writerWorkItems = append(writerWorkItems, wi)
+		writerWorkItems = append(writerWorkItems, &wi)
 	}
 	return writerWorkItems, nil
 }

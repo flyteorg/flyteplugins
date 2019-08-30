@@ -30,8 +30,8 @@ func (item *WriterWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func NewWriterWorkItem(id workqueue.WorkItemID, key core.CatalogKey, data io.OutputReader, metadata core.CatalogMetadata) workqueue.WorkItem {
-	return &WriterWorkItem{
+func NewWriterWorkItem(id workqueue.WorkItemID, key core.CatalogKey, data io.OutputReader, metadata core.CatalogMetadata) WriterWorkItem {
+	return WriterWorkItem{
 		id:       id,
 		key:      key,
 		data:     data,
