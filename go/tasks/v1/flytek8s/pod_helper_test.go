@@ -2,7 +2,7 @@ package flytek8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -15,9 +15,9 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
-	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io/mocks"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io/mocks"
 )
 
 func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {

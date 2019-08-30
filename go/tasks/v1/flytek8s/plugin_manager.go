@@ -15,10 +15,11 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/ioutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 
 	k8stypes "k8s.io/apimachinery/pkg/types"
 
@@ -31,6 +32,8 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
+
+const finalizer = "flyte/flytek8s"
 
 const pluginStateVersion = 1
 
@@ -80,7 +83,12 @@ func AddObjectMetadata(taskCtx pluginsCore.TaskExecutionMetadata, o k8s.Resource
 	}
 }
 
-// A generic task executor for k8s-resource reliant tasks.
+func IsK8sObjectNotExists(err error) bool {
+	return k8serrors.IsNotFound(err) || k8serrors.IsGone(err) || k8serrors.IsResourceExpired(err)
+}
+
+// A generic Plugin for managing k8s-resources. Plugin writers wishing to use K8s resource can use the simplified api specified in
+// pluginmachinery.core
 type PluginManager struct {
 	id              string
 	plugin          k8s.Plugin
@@ -96,82 +104,6 @@ type PluginManager struct {
 
 func (e *PluginManager) GetProperties() pluginsCore.PluginProperties {
 	return pluginsCore.PluginProperties{}
-}
-
-
-
-func (e *PluginManager) Setup(ctx context.Context, iCtx pluginsCore.SetupContext) error {
-	if iCtx.EnqueueOwner() == nil {
-		return errors.Errorf(errors.PluginInitializationFailed, "Failed to initialize plugin, enqueue Owner cannot be nil or empty.")
-	}
-
-	metricScope := iCtx.MetricsScope().NewSubScope(e.GetID())
-	e.metrics = newPluginMetrics(metricScope)
-
-	e.kubeClient = iCtx.KubeClient()
-	if e.kubeClient == nil {
-		return errors.Errorf(errors.PluginInitializationFailed, "Failed to initialize K8sResource Plugin, Kubeclient cannot be nil!")
-	}
-
-	src := source.Kind{
-		Type: e.resourceToWatch,
-	}
-
-	/*
-		if _, err := inject.CacheInto(instance.informersCache, &src); err != nil {
-			return err
-		}*/
-
-	// TODO: a more unique workqueue name
-	q := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
-		e.resourceToWatch.GetObjectKind().GroupVersionKind().Kind)
-
-	workflowParentPredicate := func(o metav1.Object) bool {
-		ownerReference := metav1.GetControllerOf(o)
-		if ownerReference != nil {
-			if ownerReference.Kind == e.ownerKind {
-				return true
-			}
-		}
-		return false
-	}
-
-	return src.Start(handler.Funcs{
-		CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
-			if err := e.enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Create event for object [%v]", evt.Meta.GetName())
-			}
-		},
-		UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
-			if err := e.enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
-			}
-		},
-		DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
-			if err := e.enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Delete event for object [%v]", evt.Meta.GetName())
-			}
-		},
-		GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
-			if err := e.enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
-				logger.Warnf(ctx, "Failed to handle Generic event for object [%v]", evt.Meta.GetName())
-			}
-		},
-	}, q, predicate.Funcs{
-		CreateFunc: func(createEvent event.CreateEvent) bool {
-			return workflowParentPredicate(createEvent.Meta)
-		},
-		UpdateFunc: func(updateEvent event.UpdateEvent) bool {
-			// TODO we should filter out events in case there are no updates observed between the old and new?
-			return workflowParentPredicate(updateEvent.MetaNew)
-		},
-		DeleteFunc: func(deleteEvent event.DeleteEvent) bool {
-			return workflowParentPredicate(deleteEvent.Meta)
-		},
-		GenericFunc: func(genericEvent event.GenericEvent) bool {
-			return workflowParentPredicate(genericEvent.Meta)
-		},
-	})
 }
 
 func (e *PluginManager) GetID() string {
@@ -239,7 +171,7 @@ func (e *PluginManager) CheckResourcePhase(ctx context.Context, tCtx pluginsCore
 	}
 
 	if p.Phase() == pluginsCore.PhaseSuccess {
-		opReader := NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())
+		opReader := ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())
 		err := tCtx.OutputWriter().Put(ctx, opReader)
 		if err != nil {
 			return pluginsCore.UnknownTransition, err
@@ -334,13 +266,88 @@ func (e *PluginManager) Finalize(ctx context.Context, tCtx pluginsCore.TaskExecu
 }
 
 // Creates a K8s generic task executor. This provides an easier way to build task executors that create K8s resources.
-func NewPluginManager(entry k8s.PluginEntry) *PluginManager {
+func NewPluginManager(ctx context.Context, iCtx pluginsCore.SetupContext, entry k8s.PluginEntry) (*PluginManager, error) {
+	if iCtx.EnqueueOwner() == nil {
+		return nil, errors.Errorf(errors.PluginInitializationFailed, "Failed to initialize plugin, enqueue Owner cannot be nil or empty.")
+	}
+
+	if iCtx.KubeClient() == nil {
+		return nil, errors.Errorf(errors.PluginInitializationFailed, "Failed to initialize K8sResource Plugin, Kubeclient cannot be nil!")
+	}
+
+	src := source.Kind{
+		Type: entry.ResourceToWatch,
+	}
+
+	/*
+		if _, err := inject.CacheInto(instance.informersCache, &src); err != nil {
+			return err
+		}*/
+
+	// TODO: a more unique workqueue name
+	q := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
+		entry.ResourceToWatch.GetObjectKind().GroupVersionKind().Kind)
+
+	ownerKind := iCtx.OwnerKind()
+	workflowParentPredicate := func(o metav1.Object) bool {
+		ownerReference := metav1.GetControllerOf(o)
+		if ownerReference != nil {
+			if ownerReference.Kind == ownerKind {
+				return true
+			}
+		}
+		return false
+	}
+
+	enqueueOwner := iCtx.EnqueueOwner()
+	err := src.Start(handler.Funcs{
+		CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
+			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
+				logger.Warnf(ctx, "Failed to handle Create event for object [%v]", evt.Meta.GetName())
+			}
+		},
+		UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
+			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.MetaNew.GetName(), Namespace: evt.MetaNew.GetNamespace()}); err != nil {
+				logger.Warnf(ctx, "Failed to handle Update event for object [%v]", evt.MetaNew.GetName())
+			}
+		},
+		DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
+			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
+				logger.Warnf(ctx, "Failed to handle Delete event for object [%v]", evt.Meta.GetName())
+			}
+		},
+		GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
+			if err := enqueueOwner(k8stypes.NamespacedName{Name: evt.Meta.GetName(), Namespace: evt.Meta.GetNamespace()}); err != nil {
+				logger.Warnf(ctx, "Failed to handle Generic event for object [%v]", evt.Meta.GetName())
+			}
+		},
+	}, q, predicate.Funcs{
+		CreateFunc: func(createEvent event.CreateEvent) bool {
+			return workflowParentPredicate(createEvent.Meta)
+		},
+		UpdateFunc: func(updateEvent event.UpdateEvent) bool {
+			// TODO we should filter out events in case there are no updates observed between the old and new?
+			return workflowParentPredicate(updateEvent.MetaNew)
+		},
+		DeleteFunc: func(deleteEvent event.DeleteEvent) bool {
+			return workflowParentPredicate(deleteEvent.Meta)
+		},
+		GenericFunc: func(genericEvent event.GenericEvent) bool {
+			return workflowParentPredicate(genericEvent.Meta)
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &PluginManager{
 		id:              entry.ID,
 		plugin:          entry.Plugin,
 		resourceToWatch: entry.ResourceToWatch,
-	}
+		metrics:         newPluginMetrics(iCtx.MetricsScope().NewSubScope(entry.ID)),
+		kubeClient:      iCtx.KubeClient(),
+	}, nil
 }
 
 func init() {

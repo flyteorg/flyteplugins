@@ -3,21 +3,24 @@ package flytek8s_test
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
-	pluginsk8sMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s/mocks"
-	"github.com/lyft/flytestdlib/promutils"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/k8s"
+	"github.com/lyft/flytestdlib/promutils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+	pluginsk8sMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/k8s"
+
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
@@ -42,12 +45,17 @@ func (k8sSampleHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.Plug
 }
 
 func ExampleNewK8sTaskExecutorForResource() {
-	exec := flytek8s.NewPluginManager(k8s.PluginEntry{
-		ID:                  "SampleHandler",
-		RegisteredTaskTypes: []pluginsCore.TaskType{"k8sbatch"},
-		ResourceToWatch:     &k8sBatch.Job{},
-		Plugin:              k8sSampleHandler{},
-	})
+	sCtx := &pluginsCoreMock.SetupContext{}
+	exec, err := flytek8s.NewPluginManager(
+		context.TODO(),
+		sCtx,
+		k8s.PluginEntry{
+			ID:                  "SampleHandler",
+			RegisteredTaskTypes: []pluginsCore.TaskType{"k8sbatch"},
+			ResourceToWatch:     &k8sBatch.Job{},
+			Plugin:              k8sSampleHandler{},
+		})
+	assert.NoError(t, err)
 	fmt.Printf("Created executor: %v\n", exec.GetID())
 
 	// Output:
@@ -58,11 +66,11 @@ func getMockTaskContext() pluginsCore.TaskExecutionContext {
 	taskExecutionContext := &pluginsCoreMock.TaskExecutionContext{}
 	taskExecutionContext.On("TaskExecutionMetadata").Return(getMockTaskExecutionMetadata())
 
-	customStateReader := &pluginsCoreMock.CustomStateReader{}
+	customStateReader := &pluginsCoreMock.PluginStateReader{}
 	customStateReader.On("Get", mock.Anything).Return(nil)
 	taskExecutionContext.On("CustomStateReader").Return(customStateReader)
 
-	customStateWriter := &pluginsCoreMock.CustomStateWriter{}
+	customStateWriter := &pluginsCoreMock.PluginStateWriter{}
 	customStateWriter.On("Put", mock.Anything).Return(nil)
 	taskExecutionContext.On("CustomStateWriter").Return(customStateWriter)
 	return taskExecutionContext
@@ -85,7 +93,7 @@ func getMockTaskExecutionMetadata() pluginsCore.TaskExecutionMetadata {
 	return taskExecutionMetadata
 }
 
-func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext{
+func dummySetupContext(fakeClient client.Client) pluginsCore.SetupContext {
 	setupContext := &pluginsCoreMock.SetupContext{}
 	var enqueueOwnerFunc = pluginsCore.EnqueueOwner(func(ownerId k8stypes.NamespacedName) error { return nil })
 	setupContext.On("EnqueueOwner").Return(enqueueOwnerFunc)
@@ -109,11 +117,11 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 	t.Run("jobQueued", func(t *testing.T) {
 		// common setup code
 		mockResourceHandler := &pluginsk8sMock.Plugin{}
-		//evRecorder := &mocks2.EventRecorder{}
+		// evRecorder := &mocks2.EventRecorder{}
 		pluginManager := flytek8s.NewPluginManager(k8s.PluginEntry{
-			ID:                  "x",
-			ResourceToWatch:     &v1.Pod{},
-			Plugin:              mockResourceHandler,
+			ID:              "x",
+			ResourceToWatch: &v1.Pod{},
+			Plugin:          mockResourceHandler,
 		})
 		fakeClient := fake.NewFakeClient()
 		mockResourceHandler.On("BuildResource", mock.Anything, tctx).Return(&v1.Pod{}, nil)
@@ -121,16 +129,15 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 		assert.NoError(t, err)
 
 		/*evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)*/
+		mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)*/
 
 		transition, err := pluginManager.Handle(ctx, tctx)
 		assert.NoError(t, err)
 		assert.NotNil(t, transition)
 		transitionInfo := transition.Info()
 		assert.NotNil(t, transitionInfo)
-		assert.Equal(t, pluginsCore.PhaseQueued,transitionInfo.Phase())
+		assert.Equal(t, pluginsCore.PhaseQueued, transitionInfo.Phase())
 		createdPod := &v1.Pod{}
-
 
 		flytek8s.AddObjectMetadata(tctx.TaskExecutionMetadata(), createdPod, &config.K8sPluginConfig{})
 		assert.NoError(t, fakeClient.Get(ctx, k8stypes.NamespacedName{Namespace: tctx.TaskExecutionMetadata().GetNamespace(),
@@ -139,122 +146,123 @@ func TestK8sTaskExecutor_StartTask(t *testing.T) {
 		assert.NoError(t, fakeClient.Delete(ctx, createdPod))
 	})
 	/*
-	t.Run("jobAlreadyExists", func(t *testing.T) {
-		// common setup code
-		mockResourceHandler := &mocks.K8sResourceHandler{}
-		evRecorder := &mocks2.EventRecorder{}
-		k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
-		mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
-		err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
-		assert.NoError(t, err)
+		t.Run("jobAlreadyExists", func(t *testing.T) {
+			// common setup code
+			mockResourceHandler := &mocks.K8sResourceHandler{}
+			evRecorder := &mocks2.EventRecorder{}
+			k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
+			mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
+			err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
+			assert.NoError(t, err)
 
-		expectedNewStatus := types.TaskStatusQueued
-		mockResourceHandler.On("GetTaskStatus", mock.Anything, mock.Anything, mock.MatchedBy(func(o *v1.Pod) bool { return true })).Return(expectedNewStatus, nil, nil)
+			expectedNewStatus := types.TaskStatusQueued
+			mockResourceHandler.On("GetTaskStatus", mock.Anything, mock.Anything, mock.MatchedBy(func(o *v1.Pod) bool { return true })).Return(expectedNewStatus, nil, nil)
 
-		evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)
+			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
+				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)
 
-		status, err := k.StartTask(ctx, tctx, nil, nil)
-		assert.NoError(t, err)
-		assert.Nil(t, status.State)
-		assert.Equal(t, types.TaskPhaseQueued, status.Phase)
-		createdPod := &v1.Pod{}
-		flytek8s.AddObjectMetadata(tctx, createdPod)
-		assert.NoError(t, c.Get(ctx, k8stypes.NamespacedName{Namespace: tctx.GetNamespace(), Name: tctx.GetTaskExecutionID().GetGeneratedName()}, createdPod))
-		assert.Equal(t, tctx.GetTaskExecutionID().GetGeneratedName(), createdPod.Name)
-	})
-
-	t.Run("jobDifferentTerminalState", func(t *testing.T) {
-		// common setup code
-		mockResourceHandler := &mocks.K8sResourceHandler{}
-		evRecorder := &mocks2.EventRecorder{}
-		k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
-		mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
-		err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
-		assert.NoError(t, err)
-
-		expectedNewStatus := types.TaskStatusQueued
-		mockResourceHandler.On("GetTaskStatus", mock.Anything, mock.Anything, mock.MatchedBy(func(o *v1.Pod) bool { return true })).Return(expectedNewStatus, nil, nil)
-
-		evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool {
-				return e.Phase == core.TaskExecution_QUEUED
-			})).Return(&eventErrors.EventError{Code: eventErrors.EventAlreadyInTerminalStateError,
-			Cause: errors.New("already exists"),
+			status, err := k.StartTask(ctx, tctx, nil, nil)
+			assert.NoError(t, err)
+			assert.Nil(t, status.State)
+			assert.Equal(t, types.TaskPhaseQueued, status.Phase)
+			createdPod := &v1.Pod{}
+			flytek8s.AddObjectMetadata(tctx, createdPod)
+			assert.NoError(t, c.Get(ctx, k8stypes.NamespacedName{Namespace: tctx.GetNamespace(), Name: tctx.GetTaskExecutionID().GetGeneratedName()}, createdPod))
+			assert.Equal(t, tctx.GetTaskExecutionID().GetGeneratedName(), createdPod.Name)
 		})
 
-		status, err := k.StartTask(ctx, tctx, nil, nil)
-		assert.NoError(t, err)
-		assert.Nil(t, status.State)
-		assert.Equal(t, types.TaskPhasePermanentFailure, status.Phase)
-	})
-
-	t.Run("jobQuotaExceeded", func(t *testing.T) {
-		// common setup code
-		mockResourceHandler := &mocks.K8sResourceHandler{}
-		evRecorder := &mocks2.EventRecorder{}
-		k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
-		mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
-		err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
-		assert.NoError(t, err)
-
-		evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)
-
-		// override create to return quota exceeded
-		mockRuntimeClient := mocks.NewMockRuntimeClient()
-		mockRuntimeClient.CreateCb = func(ctx context.Context, obj runtime.Object) (err error) {
-			return k8serrs.NewForbidden(schema.GroupResource{}, "", errors.New("exceeded quota"))
-		}
-		if err := flytek8s.InjectClient(mockRuntimeClient); err != nil {
+		t.Run("jobDifferentTerminalState", func(t *testing.T) {
+			// common setup code
+			mockResourceHandler := &mocks.K8sResourceHandler{}
+			evRecorder := &mocks2.EventRecorder{}
+			k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
+			mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
+			err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
 			assert.NoError(t, err)
-		}
 
-		status, err := k.StartTask(ctx, tctx, nil, nil)
-		assert.NoError(t, err)
-		assert.Nil(t, status.State)
-		assert.Equal(t, types.TaskPhaseNotReady, status.Phase)
+			expectedNewStatus := types.TaskStatusQueued
+			mockResourceHandler.On("GetTaskStatus", mock.Anything, mock.Anything, mock.MatchedBy(func(o *v1.Pod) bool { return true })).Return(expectedNewStatus, nil, nil)
 
-		// reset the client back to fake client
-		if err := flytek8s.InjectClient(fake.NewFakeClient()); err != nil {
+			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
+				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool {
+					return e.Phase == core.TaskExecution_QUEUED
+				})).Return(&eventErrors.EventError{Code: eventErrors.EventAlreadyInTerminalStateError,
+				Cause: errors.New("already exists"),
+			})
+
+			status, err := k.StartTask(ctx, tctx, nil, nil)
 			assert.NoError(t, err)
-		}
-	})
+			assert.Nil(t, status.State)
+			assert.Equal(t, types.TaskPhasePermanentFailure, status.Phase)
+		})
 
-	t.Run("jobForbidden", func(t *testing.T) {
-		// common setup code
-		mockResourceHandler := &mocks.K8sResourceHandler{}
-		evRecorder := &mocks2.EventRecorder{}
-		k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
-		mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
-		err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
-		assert.NoError(t, err)
-
-		evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
-			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_FAILED })).Return(nil)
-
-		// override create to return forbidden
-		mockRuntimeClient := mocks.NewMockRuntimeClient()
-		mockRuntimeClient.CreateCb = func(ctx context.Context, obj runtime.Object) (err error) {
-			return k8serrs.NewForbidden(schema.GroupResource{}, "", nil)
-		}
-		if err := flytek8s.InjectClient(mockRuntimeClient); err != nil {
+		t.Run("jobQuotaExceeded", func(t *testing.T) {
+			// common setup code
+			mockResourceHandler := &mocks.K8sResourceHandler{}
+			evRecorder := &mocks2.EventRecorder{}
+			k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
+			mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
+			err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
 			assert.NoError(t, err)
-		}
 
-		status, err := k.StartTask(ctx, tctx, nil, nil)
-		assert.NoError(t, err)
-		assert.Nil(t, status.State)
-		assert.Equal(t, types.TaskPhasePermanentFailure, status.Phase)
+			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
+				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_QUEUED })).Return(nil)
 
-		// reset the client back to fake client
-		if err := flytek8s.InjectClient(fake.NewFakeClient()); err != nil {
+			// override create to return quota exceeded
+			mockRuntimeClient := mocks.NewMockRuntimeClient()
+			mockRuntimeClient.CreateCb = func(ctx context.Context, obj runtime.Object) (err error) {
+				return k8serrs.NewForbidden(schema.GroupResource{}, "", errors.New("exceeded quota"))
+			}
+			if err := flytek8s.InjectClient(mockRuntimeClient); err != nil {
+				assert.NoError(t, err)
+			}
+
+			status, err := k.StartTask(ctx, tctx, nil, nil)
 			assert.NoError(t, err)
-		}
-	})
+			assert.Nil(t, status.State)
+			assert.Equal(t, types.TaskPhaseNotReady, status.Phase)
+
+			// reset the client back to fake client
+			if err := flytek8s.InjectClient(fake.NewFakeClient()); err != nil {
+				assert.NoError(t, err)
+			}
+		})
+
+		t.Run("jobForbidden", func(t *testing.T) {
+			// common setup code
+			mockResourceHandler := &mocks.K8sResourceHandler{}
+			evRecorder := &mocks2.EventRecorder{}
+			k := flytek8s.NewK8sTaskExecutorForResource("x", &v1.Pod{}, mockResourceHandler, time.Second)
+			mockResourceHandler.On("BuildResource", mock.Anything, tctx, tmpl, inputs).Return(&v1.Pod{}, nil)
+			err := k.Initialize(ctx, createExecutorInitializationParams(t, evRecorder))
+			assert.NoError(t, err)
+
+			evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
+				mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return e.Phase == core.TaskExecution_FAILED })).Return(nil)
+
+			// override create to return forbidden
+			mockRuntimeClient := mocks.NewMockRuntimeClient()
+			mockRuntimeClient.CreateCb = func(ctx context.Context, obj runtime.Object) (err error) {
+				return k8serrs.NewForbidden(schema.GroupResource{}, "", nil)
+			}
+			if err := flytek8s.InjectClient(mockRuntimeClient); err != nil {
+				assert.NoError(t, err)
+			}
+
+			status, err := k.StartTask(ctx, tctx, nil, nil)
+			assert.NoError(t, err)
+			assert.Nil(t, status.State)
+			assert.Equal(t, types.TaskPhasePermanentFailure, status.Phase)
+
+			// reset the client back to fake client
+			if err := flytek8s.InjectClient(fake.NewFakeClient()); err != nil {
+				assert.NoError(t, err)
+			}
+		})
 
 	*/
 }
+
 /*
 func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 	ctx := context.TODO()

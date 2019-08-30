@@ -2,8 +2,9 @@ package k8splugins
 
 import (
 	"context"
-	"github.com/stretchr/testify/mock"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -19,9 +20,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core/mocks"
-	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/io/mocks"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io/mocks"
 )
 
 var resourceRequirements = &v1.ResourceRequirements{
