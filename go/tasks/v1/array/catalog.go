@@ -31,6 +31,7 @@ func SubmitAndCheck(ctx context.Context, worker workqueue.IndexedWorkQueue, work
 		}
 		if !found {
 			logger.Warnf(ctx, "Item just placed into work queue has disappeared")
+			allFinished = false
 		}
 
 		retrievedItems = append(retrievedItems, retrievedItem)
