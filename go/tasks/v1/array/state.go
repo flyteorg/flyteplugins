@@ -48,7 +48,7 @@ type State struct {
 	arrayStatus     arraystatus.ArrayStatus
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
-	writeToCatalog  *bitarray.BitSet
+	writeToCatalog *bitarray.BitSet
 }
 
 func (s State) GetReason() string {
@@ -108,7 +108,7 @@ func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
 	return arrayJob, err
 }
 
-func SummaryToTaskPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, summary arraystatus.ArraySummary) Phase {
+func SummaryToPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, summary arraystatus.ArraySummary) Phase {
 	minSuccesses := int64(1)
 	if arrayJobProps != nil {
 		minSuccesses = arrayJobProps.MinSuccesses
@@ -137,14 +137,14 @@ func SummaryToTaskPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob,
 
 	if totalCount < minSuccesses {
 		logger.Infof(ctx, "Array failed because totalCount[%v] < minSuccesses[%v]", totalCount, minSuccesses)
-		return PhasePermanetFailure
+		return PhasePermanentFailure
 	}
 
 	// No chance to reach the required success numbers.
 	if totalRunning+totalSuccesses < minSuccesses {
 		logger.Infof(ctx, "Array failed early because totalRunning[%v] + totalSuccesses[%v] < minSuccesses[%v]",
 			totalRunning, totalSuccesses, minSuccesses)
-		return PhasePermanetFailure
+		return PhasePermanentFailure
 	}
 
 	if totalSuccesses >= minSuccesses && totalRunning == 0 {
@@ -162,8 +162,8 @@ func SummaryToTaskPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob,
 // which is different than their original location. To find the original index we construct an indexLookup array.
 // The subtask can find it's original index value in indexLookup[JOB_ARRAY_INDEX] where JOB_ARRAY_INDEX is an
 // environment variable in the pod
-func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state State,
-	catalogReader workqueue.IndexedWorkQueue) (State, error) {
+func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state *State,
+	catalogReader workqueue.IndexedWorkQueue) (*State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -228,7 +228,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 }
 
 func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catalogWriter workqueue.IndexedWorkQueue,
-	state State) (State, error) {
+	state *State) (*State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -257,8 +257,6 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catal
 	catalogWriterItems, err := ConstructCatalogWriterItems(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
 		*taskTemplate.Interface, inputReaders, outputReaders)
-
-
 
 	// All launched sub-tasks should have written outputs to catalog, mark as success.
 	return state, nil
