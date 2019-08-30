@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
 
@@ -58,7 +59,7 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, currentState k8sarray.State) (newState k8sarray.State, err error) {
+	config *Config, currentState *k8sarray.State) (newState *k8sarray.State, err error) {
 	podTemplate, _, err := k8sarray.FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
@@ -97,6 +98,18 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 		err = kubeClient.GetClient().Create(ctx, pod)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			if k8serrors.IsForbidden(err) {
+				if strings.Contains(err.Error(), "exceeded quota") {
+					// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
+					logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. Err: %v", err)
+					return currentState, nil
+				}
+
+				currentState = currentState.SetPhase(k8sarray.PhaseRetryableFailure)
+				currentState = currentState.SetReason(err.Error())
+				return currentState, nil
+			}
+
 			return currentState, errors2.Wrapf(ErrSubmitJob, err, "Failed to submit job")
 		}
 	}
