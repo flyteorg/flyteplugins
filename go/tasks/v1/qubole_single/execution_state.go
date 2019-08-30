@@ -102,7 +102,7 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 	case PhaseQueued:
 		// TODO: Turn into config
 		if state.QuboleApiCreationFailures > 5 {
-			phaseInfo = core.PhaseInfoFailure("QuboleFailure", "Too many creation attempts", nil)
+			phaseInfo = core.PhaseInfoRetryableFailure("QuboleFailure", "Too many creation attempts", nil)
 		} else {
 			phaseInfo = core.PhaseInfoQueued(t, uint8(state.QuboleApiCreationFailures), "Waiting for Qubole launch")
 		}
@@ -129,13 +129,14 @@ func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 
 func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
+	t := time.Now()
 	if e.CommandId != "" {
 		logs = append(logs, ConstructTaskLog(e))
 		return &core.TaskInfo{
 			Logs: logs,
+			OccurredAt: &t,
 		}
 	}
-
 	return nil
 }
 
