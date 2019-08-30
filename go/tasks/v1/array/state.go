@@ -97,9 +97,9 @@ func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
 }
 
 const (
-	ErrorQueuingCatalogReader errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
-	ErrorReaderWorkItemCast                    = "READER_WORK_ITEM_CAST_FAILED"
-	ErrorInternalMismatch                      = "ARRAY_MISMATCH"
+	ErrorWorkQueue          errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
+	ErrorReaderWorkItemCast                  = "READER_WORK_ITEM_CAST_FAILED"
+	ErrorInternalMismatch                    = "ARRAY_MISMATCH"
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
@@ -253,7 +253,6 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catal
 	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
 
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
-	// TODO: handle failure ratio
 	catalogWriterItems, err := ConstructCatalogWriterItems(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
 		*taskTemplate.Interface, inputReaders, outputReaders)
@@ -273,7 +272,6 @@ func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.Ta
 			len(inputReaders), len(outputReaders))
 	}
 
-	// TODO: handle failure ratio
 	for idx, input := range inputReaders {
 		output := outputReaders[idx]
 		wi := catalog.NewWriterWorkItem(workqueue.WorkItemID(input.GetInputPrefixPath()), core.CatalogKey{
@@ -327,7 +325,7 @@ func CheckCatalog(ctx context.Context, catalogReader workqueue.IndexedWorkQueue,
 	for _, w := range workItems {
 		err := catalogReader.Queue(w)
 		if err != nil {
-			return false, catalogResults, cachedCount, errors.Wrapf(ErrorQueuingCatalogReader, err,
+			return false, catalogResults, cachedCount, errors.Wrapf(ErrorWorkQueue, err,
 				"Error enqueuing work item %s", w.GetId())
 		}
 	}
