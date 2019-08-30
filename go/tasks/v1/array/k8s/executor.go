@@ -56,7 +56,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case k8sarray.PhaseWriteToDiscovery:
 		nextState, err = k8sarray.WriteToDiscovery(ctx, tCtx, e.catalogWriter, pluginState)
 
-	case k8sarray.PhaseJobsFinished:
+	default:
 		nextState = pluginState
 		err = nil
 	}
