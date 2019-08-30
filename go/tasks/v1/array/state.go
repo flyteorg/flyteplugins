@@ -2,6 +2,7 @@ package array
 
 import (
 	"context"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
 
@@ -39,6 +40,7 @@ const (
 
 type State struct {
 	currentPhase    Phase
+	phaseVersion    uint32
 	reason          string
 	actualArraySize int
 	arrayStatus     arraystatus.ArrayStatus
@@ -51,6 +53,10 @@ func (s State) GetReason() string {
 
 func (s State) GetActualArraySize() int {
 	return s.actualArraySize
+}
+
+func (s State) GetPhaseVersion() uint32 {
+	return s.phaseVersion
 }
 
 func (s State) GetPhase() Phase {
@@ -68,6 +74,11 @@ func (s *State) SetReason(reason string) *State {
 
 func (s *State) SetActualArraySize(size int) *State {
 	s.actualArraySize = size
+	return s
+}
+
+func (s *State) SetPhaseVersion(version uint32) *State {
+	s.phaseVersion = version
 	return s
 }
 
@@ -90,6 +101,55 @@ func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
 	arrayJob := &idlPlugins.ArrayJob{}
 	err := utils.UnmarshalStruct(structObj, arrayJob)
 	return arrayJob, err
+}
+
+func SummaryToTaskPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, summary arraystatus.ArraySummary) Phase {
+	minSuccesses := int64(1)
+	if arrayJobProps != nil {
+		minSuccesses = arrayJobProps.MinSuccesses
+	}
+
+	totalCount := int64(0)
+	totalSuccesses := int64(0)
+	totalFailures := int64(0)
+	totalRunning := int64(0)
+	for phase, count := range summary {
+		totalCount += count
+		if phase.IsTerminal() {
+			if phase.IsSuccess() {
+				totalSuccesses += count
+			} else {
+				// TODO: Split out retryable failures to be retried without doing the entire array task.
+				// TODO: Other option: array tasks are only retriable as a full set and to get single task retriability
+				// TODO: dynamic_task must be updated to not auto-combine to array tasks.  For scale reasons, it is
+				// TODO: preferable to auto-combine to array tasks for now.
+				totalFailures += count
+			}
+		} else {
+			totalRunning += count
+		}
+	}
+
+	if totalCount < minSuccesses {
+		logger.Infof(ctx, "Array failed because totalCount[%v] < minSuccesses[%v]", totalCount, minSuccesses)
+		return PhasePermanetFailure
+	}
+
+	// No chance to reach the required success numbers.
+	if totalRunning+totalSuccesses < minSuccesses {
+		logger.Infof(ctx, "Array failed early because totalRunning[%v] + totalSuccesses[%v] < minSuccesses[%v]",
+			totalRunning, totalSuccesses, minSuccesses)
+		return PhasePermanetFailure
+	}
+
+	if totalSuccesses >= minSuccesses && totalRunning == 0 {
+		logger.Infof(ctx, "Array succeeded because totalSuccesses[%v] >= minSuccesses[%v]", totalSuccesses, minSuccesses)
+		return PhaseSuccess
+	}
+
+	logger.Debugf(ctx, "Array is still running [Successes: %v, Failures: %v, Total: %v, MinSuccesses: %v]",
+		totalSuccesses, totalFailures, totalCount, minSuccesses)
+	return PhaseCheckingSubTaskExecutions
 }
 
 // Check if there are any previously cached tasks. If there are we will only submit an ArrayJob for the

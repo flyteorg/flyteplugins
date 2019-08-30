@@ -7,7 +7,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 )
 
-const DefaultPhaseVersion = uint8(0)
+const DefaultPhaseVersion = uint32(0)
 
 type Phase int8
 
@@ -97,7 +97,7 @@ type PhaseInfo struct {
 	// Phase version. by default this can be left as empty => 0. This can be used if there is some additional information
 	// to be provided to the Control plane. Phase information is immutable in control plane for a given Phase, unless
 	// a new version is provided.
-	version uint8
+	version uint32
 	// In case info needs to be provided
 	info *TaskInfo
 	// If only an error is observed. It is complementary to info
@@ -110,7 +110,7 @@ func (p *PhaseInfo) Phase() Phase {
 	return p.phase
 }
 
-func (p *PhaseInfo) Version() uint8 {
+func (p *PhaseInfo) Version() uint32 {
 	return p.version
 }
 
@@ -129,7 +129,7 @@ func (p *PhaseInfo) Err() *core.ExecutionError {
 // Undefined entity, associated with an error
 var PhaseInfoUndefined = PhaseInfo{phase: PhaseUndefined}
 
-func phaseInfo(p Phase, v uint8, err *core.ExecutionError, info *TaskInfo) PhaseInfo {
+func phaseInfo(p Phase, v uint32, err *core.ExecutionError, info *TaskInfo) PhaseInfo {
 	if info == nil {
 		t := time.Now()
 		info = &TaskInfo{
@@ -145,26 +145,26 @@ func phaseInfo(p Phase, v uint8, err *core.ExecutionError, info *TaskInfo) Phase
 }
 
 // Return in the case the plugin is not ready to start
-func PhaseInfoNotReady(t time.Time, version uint8, reason string) PhaseInfo {
+func PhaseInfoNotReady(t time.Time, version uint32, reason string) PhaseInfo {
 	pi := phaseInfo(PhaseNotReady, version, nil, &TaskInfo{OccurredAt: &t})
 	pi.reason = reason
 	return pi
 }
 
 // Return in the case the plugin is not ready to start
-func PhaseInfoWaitingForResources(t time.Time, version uint8, reason string) PhaseInfo {
+func PhaseInfoWaitingForResources(t time.Time, version uint32, reason string) PhaseInfo {
 	pi := phaseInfo(PhaseWaitingForResources, version, nil, &TaskInfo{OccurredAt: &t})
 	pi.reason = reason
 	return pi
 }
 
-func PhaseInfoQueued(t time.Time, version uint8, reason string) PhaseInfo {
+func PhaseInfoQueued(t time.Time, version uint32, reason string) PhaseInfo {
 	pi := phaseInfo(PhaseQueued, version, nil, &TaskInfo{OccurredAt: &t})
 	pi.reason = reason
 	return pi
 }
 
-func PhaseInfoInitializing(t time.Time, version uint8, reason string) PhaseInfo {
+func PhaseInfoInitializing(t time.Time, version uint32, reason string) PhaseInfo {
 	pi := phaseInfo(PhaseInitializing, version, nil, &TaskInfo{OccurredAt: &t})
 	pi.reason = reason
 	return pi
@@ -180,7 +180,7 @@ func PhaseInfoFailed(p Phase, err *core.ExecutionError, info *TaskInfo) PhaseInf
 	return phaseInfo(p, DefaultPhaseVersion, err, info)
 }
 
-func PhaseInfoRunning(version uint8, info *TaskInfo) PhaseInfo {
+func PhaseInfoRunning(version uint32, info *TaskInfo) PhaseInfo {
 	return phaseInfo(PhaseRunning, version, nil, info)
 }
 
