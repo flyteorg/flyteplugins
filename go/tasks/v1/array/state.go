@@ -34,7 +34,9 @@ const (
 	PhaseLaunch
 	PhaseCheckingSubTaskExecutions
 	PhaseWriteToDiscovery
-	PhaseJobsFinished
+	PhaseSuccess
+	PhaseRetryableFailure
+	PhasePermanentFailure
 )
 
 type State struct {
@@ -42,7 +44,9 @@ type State struct {
 	reason          string
 	actualArraySize int
 	arrayStatus     arraystatus.ArrayStatus
-	catalogResults  *bitarray.BitSet
+
+	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
+	writeToCatalog  *bitarray.BitSet
 }
 
 func (s State) GetReason() string {
@@ -84,6 +88,7 @@ func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
 const (
 	ErrorQueuingCatalogReader errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
 	ErrorReaderWorkItemCast                    = "READER_WORK_ITEM_CAST_FAILED"
+	ErrorInternalMismatch                      = "ARRAY_MISMATCH"
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
@@ -137,7 +142,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// If all the sub-tasks are actually done, then we can just move on.
 		if cachedCount == int(arrayJob.Size) {
 			// TODO: This is not correct?  We still need to write parent level results?
-			state.currentPhase = PhaseJobsFinished
+			state.currentPhase = PhaseSuccess
 			return state, nil
 		}
 
@@ -156,7 +161,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		}
 
 		state.currentPhase = PhaseLaunch
-		state.catalogResults = catalogResults
+		state.actualArraySize = int(arrayJob.Size) - cachedCount
 	}
 
 	return state, nil
@@ -189,15 +194,41 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catal
 
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	// TODO: handle failure ratio
+	catalogWriterItems, err := ConstructCatalogWriterItems(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
+		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
+		*taskTemplate.Interface, inputReaders, outputReaders)
+
 
 
 	// All launched sub-tasks should have written outputs to catalog, mark as success.
 	return state, nil
 }
 
-func ConstructCatalogWriterItems(ctx context.Context, keyId idlCore.Identifier, execId idlCore.TaskExecutionIdentifier,
-	cacheVersion string, taskInterface idlCore.TypedInterface, inputReaders []io.InputReader, outputReaders []io.OutputReader) {
+func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
+	cacheVersion string, taskInterface idlCore.TypedInterface, inputReaders []io.InputReader,
+	outputReaders []io.OutputReader) ([]workqueue.WorkItem, error) {
 
+	writerWorkItems := make([]workqueue.WorkItem, 0, len(inputReaders))
+
+	if len(inputReaders) != len(outputReaders) {
+		return nil, errors.Errorf(ErrorInternalMismatch, "Length different building catalog writer items %d %d",
+			len(inputReaders), len(outputReaders))
+	}
+
+	// TODO: handle failure ratio
+	for idx, input := range inputReaders {
+		output := outputReaders[idx]
+		wi := catalog.NewWriterWorkItem(workqueue.WorkItemID(input.GetInputPrefixPath()), core.CatalogKey{
+			Identifier:     keyId,
+			InputReader:    input,
+			CacheVersion:   cacheVersion,
+			TypedInterface: taskInterface,
+		}, output, core.CatalogMetadata{
+			TaskExecutionIdentifier: &taskExecId,
+		})
+		writerWorkItems = append(writerWorkItems, wi)
+	}
+	return writerWorkItems, nil
 }
 
 func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
