@@ -35,12 +35,12 @@ func (Executor) GetProperties() core.PluginProperties {
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	pluginConfig := GetConfig()
 
-	pluginState := k8sarray.State{}
-	if _, err := tCtx.PluginStateReader().Get(&pluginState); err != nil {
+	pluginState := &k8sarray.State{}
+	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextState k8sarray.State
+	var nextState *k8sarray.State
 	var err error
 
 	switch pluginState.GetPhase() {
@@ -51,7 +51,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
 	case k8sarray.PhaseCheckingSubTaskExecutions:
-		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginState)
+		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
 	case k8sarray.PhaseWriteToDiscovery:
 		nextState, err = k8sarray.WriteToDiscovery(ctx, tCtx, e.catalogWriter, pluginState)
