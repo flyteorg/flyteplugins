@@ -2,13 +2,12 @@ package qubole_single
 
 import (
 	"context"
+	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/config"
-	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/promutils/labeled"
 	utils2 "github.com/lyft/flytestdlib/utils"
 )
 
@@ -83,14 +82,18 @@ func (q QuboleHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutio
 	return Finalize(ctx, tCtx, incomingState)
 }
 
-func (q *QuboleHiveExecutor) Setup(ctx context.Context, iCtx core.SetupContext) error {
+func (q QuboleHiveExecutor) GetProperties() core.PluginProperties {
+	return core.PluginProperties{}
+}
 
+func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
+	q := NewQuboleHiveExecutor()
 	q.quboleClient = client.NewQuboleClient()
 	q.secretsManager = NewSecretsManager()
 	_, err := q.secretsManager.GetToken()
 	if err != nil {
 		logger.Errorf(ctx, "Failed to read secret in QuboleHiveExecutor Setup")
-		return err
+		return q, err
 	}
 	q.metrics = getQuboleHiveExecutorMetrics(iCtx.MetricsScope())
 
@@ -98,14 +101,15 @@ func (q *QuboleHiveExecutor) Setup(ctx context.Context, iCtx core.SetupContext) 
 		config.GetQuboleConfig().LruCacheSize, iCtx.MetricsScope().NewSubScope(hiveTaskType))
 	if err != nil {
 		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleHiveExecutor Setup")
-		return err
+		return q, err
 	}
 	q.executionsCache = executionsAutoRefreshCache
 	q.executionsCache.Start(ctx)
 
-	return nil
+	return q, nil
 }
 
+// type PluginLoader func(ctx context.Context, iCtx SetupContext) (Plugin, error)
 func NewQuboleHiveExecutor() QuboleHiveExecutor {
 	return QuboleHiveExecutor{
 		id: quboleHiveExecutorId,
@@ -113,5 +117,11 @@ func NewQuboleHiveExecutor() QuboleHiveExecutor {
 }
 
 func init() {
-	labeled.SetMetricKeys(contextutils.ProjectKey, contextutils.DomainKey, contextutils.WorkflowIDKey, contextutils.TaskIDKey)
+	pluginMachinery.PluginRegistry().RegisterCorePlugin(
+		core.PluginEntry{
+			ID:                  quboleHiveExecutorId,
+			RegisteredTaskTypes: []core.TaskType{hiveTaskType},
+			LoadPlugin:          QuboleHiveExecutorLoader,
+			IsDefault:           false,
+		})
 }

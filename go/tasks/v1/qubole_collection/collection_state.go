@@ -5,11 +5,11 @@ import (
 	"fmt"
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single"
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
 	utils2 "github.com/lyft/flytestdlib/utils"
 )
 

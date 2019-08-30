@@ -7,8 +7,8 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/lyft/flyteplugins/go/tasks/v1/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 )
 
 type CustomTaskExecutionContext struct {
