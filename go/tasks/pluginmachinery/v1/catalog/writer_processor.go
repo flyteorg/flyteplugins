@@ -10,28 +10,28 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 )
 
-type writerWorkItem struct {
+type WriterWorkItem struct {
 	id workqueue.WorkItemID
 
-	// writerWorkItem outputs
+	// WriterWorkItem outputs
 	workStatus workqueue.WorkStatus
 
-	// writerWorkItem Inputs
+	// WriterWorkItem Inputs
 	key      core.CatalogKey
 	data     io.OutputReader
 	metadata core.CatalogMetadata
 }
 
-func (item *writerWorkItem) GetId() workqueue.WorkItemID {
+func (item *WriterWorkItem) GetId() workqueue.WorkItemID {
 	return item.id
 }
 
-func (item *writerWorkItem) GetWorkStatus() workqueue.WorkStatus {
+func (item *WriterWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
 func NewWriterWorkItem(id workqueue.WorkItemID, key core.CatalogKey, data io.OutputReader, metadata core.CatalogMetadata) workqueue.WorkItem {
-	return &writerWorkItem{
+	return &WriterWorkItem{
 		id:       id,
 		key:      key,
 		data:     data,
@@ -44,7 +44,7 @@ type writerProcessor struct {
 }
 
 func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
-	wi, casted := workItem.(*writerWorkItem)
+	wi, casted := workItem.(*WriterWorkItem)
 	if !casted {
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
 	}

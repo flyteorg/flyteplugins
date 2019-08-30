@@ -255,17 +255,59 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catal
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogWriterItems(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		*taskTemplate.Interface, inputReaders, outputReaders)
+		*taskTemplate.Interface, state.writeToCatalog, inputReaders, outputReaders)
 
-	// All launched sub-tasks should have written outputs to catalog, mark as success.
+	if len(catalogWriterItems) == 0 {
+		state.currentPhase = PhaseSuccess
+	}
+
+	allWritten, err := WriteToCatalog(ctx, catalogWriter, catalogWriterItems)
+	if allWritten {
+		state.currentPhase = PhaseSuccess
+	}
+
 	return state, nil
 }
 
-func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
-	cacheVersion string, taskInterface idlCore.TypedInterface, inputReaders []io.InputReader,
-	outputReaders []io.OutputReader) ([]workqueue.WorkItem, error) {
+func WriteToCatalog(ctx context.Context, catalogWriter workqueue.IndexedWorkQueue, workItems []catalog.WriterWorkItem) (bool, error) {
 
-	writerWorkItems := make([]workqueue.WorkItem, 0, len(inputReaders))
+	// Enqueue work items
+	for _, w := range workItems {
+		err := catalogWriter.Queue(w)
+		if err != nil {
+			return false, errors.Wrapf(ErrorWorkQueue, err,
+				"Error enqueuing work item %s", w.GetId())
+		}
+	}
+
+	// Immediately read back from the work queue, and see if it's done.
+	var allDone = true
+	for _, w := range workItems {
+		retrievedItem, found, err := catalogWriter.Get(w.GetId())
+		if err != nil {
+			return false, err
+		}
+		if !found {
+			logger.Warnf(ctx, "Item just placed into Catalog work queue has disappeared")
+			allDone = false
+			continue
+		}
+
+		if retrievedItem.GetWorkStatus() != workqueue.WorkStatusDone {
+			logger.Debugf(ctx, "Found at least one catalog work item unfinished, skipping rest of round. ID %s",
+				retrievedItem.GetId())
+			return false, nil
+		}
+	}
+
+	return allDone, nil
+}
+
+func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
+	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
+	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]catalog.WriterWorkItem, error) {
+
+	writerWorkItems := make([]catalog.WriterWorkItem, 0, len(inputReaders))
 
 	if len(inputReaders) != len(outputReaders) {
 		return nil, errors.Errorf(ErrorInternalMismatch, "Length different building catalog writer items %d %d",
@@ -273,6 +315,9 @@ func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.Ta
 	}
 
 	for idx, input := range inputReaders {
+		if !whichTasksToCache.IsSet(uint(idx)) {
+			continue
+		}
 		output := outputReaders[idx]
 		wi := catalog.NewWriterWorkItem(workqueue.WorkItemID(input.GetInputPrefixPath()), core.CatalogKey{
 			Identifier:     keyId,
