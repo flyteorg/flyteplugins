@@ -12,6 +12,10 @@ import (
 
 const ResyncDuration = 30 * time.Second
 
+const (
+	BadQuboleReturnCodeError errors.ErrorCode = "QUBOLE_RETURNED_UNKNOWN"
+)
+
 type QuboleHiveExecutionsCache struct {
 	utils.AutoRefreshCache
 	quboleClient   client.QuboleClient
@@ -78,7 +82,10 @@ func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj uti
 		// Make sure we don't return nil for the first argument, because that deletes it from the cache.
 		return executionState, utils.Update, err
 	}
-	newExecutionPhase := QuboleStatusToExecutionPhase(commandStatus)
+	newExecutionPhase, err := QuboleStatusToExecutionPhase(commandStatus)
+	if err != nil {
+		return executionState, utils.Unchanged, err
+	}
 
 	if newExecutionPhase > executionState.Phase {
 		logger.Infof(ctx, "Moving ExecutionPhase for %s %s from %s to %s", executionState.CommandId,
@@ -93,24 +100,24 @@ func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj uti
 }
 
 // We need some way to translate results we get from Qubole, into a plugin phase
-// NB: This function should only return plugin phases that are greater than ">" phases that represent states before
+// NB: This function should only return plugin phases that are greater than (">") phases that represent states before
 //     the query was kicked off. That is, it will never make sense to go back to PhaseNotStarted, after we've
 //     submitted the query to Qubole.
-func QuboleStatusToExecutionPhase(s client.QuboleStatus) ExecutionPhase {
+func QuboleStatusToExecutionPhase(s client.QuboleStatus) (ExecutionPhase, error) {
 	switch s {
 	case client.QuboleStatusDone:
-		return PhaseQuerySucceeded
+		return PhaseQuerySucceeded, nil
 	case client.QuboleStatusCancelled:
-		return PhaseQueryFailed
+		return PhaseQueryFailed, nil
 	case client.QuboleStatusError:
-		return PhaseQueryFailed
+		return PhaseQueryFailed, nil
 	case client.QuboleStatusWaiting:
-		return PhaseSubmitted
+		return PhaseSubmitted, nil
 	case client.QuboleStatusRunning:
-		return PhaseSubmitted
+		return PhaseSubmitted, nil
 	case client.QuboleStatusUnknown:
-		return PhaseUnknown
+		return PhaseQueryFailed, errors.Errorf(BadQuboleReturnCodeError, "Qubole returned status Unknown")
 	default:
-		return PhaseUnknown
+		return PhaseQueryFailed, errors.Errorf(BadQuboleReturnCodeError, "default fallthrough case")
 	}
 }

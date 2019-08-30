@@ -25,10 +25,6 @@ const (
 
 	PhaseQuerySucceeded
 	PhaseQueryFailed
-
-	// TODO: Remove this and return an error instead
-	// This is bad and shouldn't happen. It's here to encapsulate unknown statuses returned from the Qubole API itself
-	PhaseUnknown
 )
 
 func (p ExecutionPhase) String() string {
@@ -43,8 +39,6 @@ func (p ExecutionPhase) String() string {
 		return "PhaseQuerySucceeded"
 	case PhaseQueryFailed:
 		return "PhaseQueryFailed"
-	case PhaseUnknown:
-		return "PhaseUnknown"
 	}
 	return "Bad Qubole execution phase"
 }
