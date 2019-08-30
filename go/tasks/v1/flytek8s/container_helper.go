@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
@@ -73,62 +72,66 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 	return &resources
 }
 
-// Returns a K8s Container for the execution
-func ToK8sContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskContainer *core.Container,
-	inputReader io.InputReader, outputPrefixPath string) (*v1.Container, error) {
-	inputFile := inputReader.GetInputPath()
-	// TODO: Performance improvement potential. Resolve inputs only when needed
-	inputs, err := inputReader.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	cmdLineArgs := utils.CommandLineTemplateArgs{
-		Input:        inputFile.String(),
-		OutputPrefix: outputPrefixPath,
-		Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
-	}
-
-	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetCommand(), cmdLineArgs)
-	if err != nil {
-		return nil, err
-	}
-
-	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetArgs(), cmdLineArgs)
-	if err != nil {
-		return nil, err
-	}
-
-	envVars := DecorateEnvVars(ctx, ToK8sEnvVar(taskContainer.GetEnv()), taskCtx.GetTaskExecutionID())
-
-	if taskCtx.GetOverrides() == nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "platform/compiler error, overrides not set for task")
-	}
-	if taskCtx.GetOverrides() == nil || taskCtx.GetOverrides().GetResources() == nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
-	}
-
-	res := taskCtx.GetOverrides().GetResources()
-	if res != nil {
-		res = ApplyResourceOverrides(ctx, *res)
-	}
-
+// Transforms the task container definition to a core kubernetes container.
+func ToK8sContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskContainer *core.Container) (
+	*v1.Container, error) {
 	// Make the container name the same as the pod name, unless it violates K8s naming conventions
 	// Container names are subject to the DNS-1123 standard
 	containerName := taskCtx.GetTaskExecutionID().GetGeneratedName()
 	if !isAcceptableK8sName.MatchString(containerName) || len(containerName) > 63 {
 		containerName = rand.String(4)
 	}
-	c := &v1.Container{
+	return &v1.Container{
 		Name:    containerName,
 		Image:   taskContainer.GetImage(),
-		Args:    modifiedArgs,
-		Command: modifiedCommand,
-		Env:     envVars,
+		Args:    taskContainer.GetArgs(),
+		Command: taskContainer.GetCommand(),
+		Env:     ToK8sEnvVar(taskContainer.GetEnv()),
+	}, nil
+}
+
+// Takes a raw kubernetes container and modifies it so that it is suitable to run on Flyte.
+// These changes include substituting command line args, modifying resources according to Flyte platform constraints
+// and updating env vars.
+func AddFlyteModificationsForContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext,
+	container *v1.Container) error {
+	inputs, err := taskCtx.InputReader().Get(ctx)
+	if err != nil {
+		return err
 	}
 
-	if res != nil {
-		c.Resources = *res
-	}
+	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx,
+		container.Command,
+		utils.CommandLineTemplateArgs{
+			Input:        taskCtx.InputReader().GetInputPath().String(),
+			OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
+			Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
+		})
 
-	return c, nil
+	if err != nil {
+		return err
+	}
+	container.Command = modifiedCommand
+
+	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx,
+		container.Args,
+		utils.CommandLineTemplateArgs{
+			Input:        taskCtx.InputReader().GetInputPath().String(),
+			OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
+			Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
+		})
+
+	if err != nil {
+		return err
+	}
+	container.Args = modifiedArgs
+
+	if taskCtx.TaskExecutionMetadata().GetOverrides() == nil || taskCtx.TaskExecutionMetadata().GetOverrides().GetResources() == nil {
+		return errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
+	}
+	resourceRequirements := ApplyResourceOverrides(ctx, *(taskCtx.TaskExecutionMetadata().GetOverrides().GetResources()))
+	container.Resources = *resourceRequirements
+
+	container.Env = DecorateEnvVars(ctx, container.Env, taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
+	return nil
 }

@@ -109,7 +109,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPod(ctx, x, dummyTaskReader(), dummyInputReader(), "")
+		p, err := AddFlyteModificationsForPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), "")
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 1)
 	})
@@ -126,7 +126,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPod(ctx, x, dummyTaskReader(), dummyInputReader(), "")
+		p, err := AddFlyteModificationsForPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), "")
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 0)
 		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)

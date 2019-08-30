@@ -3,40 +3,26 @@ package flytek8s
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
 	"time"
 
-	"github.com/lyft/flytestdlib/logger"
 	"k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 )
 
 const PodKind = "pod"
 
-func ToK8sPod(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader, inputs io.InputReader,
-	outputPrefixPath string) (*v1.PodSpec, error) {
-	task, err := taskReader.Read(ctx)
-	if err != nil {
-		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
-		return nil, err
-	}
-	c, err := ToK8sContainer(ctx, taskCtx, task.GetContainer(), inputs, outputPrefixPath)
-	if err != nil {
-		return nil, err
-	}
+// Add modifications required by the Flyte platform to an existing podSpec.
+func AddFlyteModificationsForPodSpec(taskCtx pluginsCore.TaskExecutionContext, containers []v1.Container,
+	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
+	// We could specify Scheduler, Affinity, nodename etc
+	podSpec.RestartPolicy = v1.RestartPolicyNever
+	podSpec.Containers = containers
+	podSpec.Tolerations = GetTolerationsForResources(resourceRequirements...)
+	podSpec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
 
-	containers := []v1.Container{
-		*c,
-	}
-	return &v1.PodSpec{
-		// We could specify Scheduler, Affinity, nodename etc
-		RestartPolicy:      v1.RestartPolicyNever,
-		Containers:         containers,
-		Tolerations:        GetTolerationsForResources(c.Resources),
-		ServiceAccountName: taskCtx.GetK8sServiceAccount(),
-	}, nil
 }
 
 func BuildPodWithSpec(podSpec *v1.PodSpec) *v1.Pod {
@@ -201,3 +187,31 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
 	return lastTransitionTime
 }
 
+func GetTaskPhaseFromPod(ctx context.Context, pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
+	t := GetLastTransitionOccurredAt(pod).Time
+	info := pluginsCore.TaskInfo{
+		OccurredAt: &t,
+	}
+	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
+		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")
+		if err != nil {
+			return pluginsCore.PhaseInfoUndefined, err
+		}
+		info.Logs = taskLogs
+	}
+	switch pod.Status.Phase {
+	case v1.PodSucceeded:
+		return pluginsCore.PhaseInfoSuccess(&info), nil
+	case v1.PodFailed:
+		code, message := ConvertPodFailureToError(pod.Status)
+		return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil
+	case v1.PodPending:
+		return DemystifyPending(pod.Status)
+	case v1.PodUnknown:
+		return pluginsCore.PhaseInfoUndefined, nil
+	}
+	if len(info.Logs) > 0 {
+		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, &info), nil
+	}
+	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
+}
