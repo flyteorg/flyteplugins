@@ -3,24 +3,23 @@ package catalog
 import (
 	"context"
 	"fmt"
-
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
-
-	core2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
+	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
+	"github.com/lyft/flytestdlib/logger"
 )
 
 type writerWorkItem struct {
 	id workqueue.WorkItemID
 
-	// writerWorkItem outputs:
+	// writerWorkItem outputs
 	workStatus workqueue.WorkStatus
 
-	// writerWorkItem Inputs:
-	// TODO: Caching task execution context looks like an anti pattern. Figure out why catalog interface requires it.
-	taskCtx      core2.TaskExecutionContext
-	outputReader io.OutputReader
+	// writerWorkItem Inputs
+	key      core.CatalogKey
+	data     io.OutputReader
+	metadata core.CatalogMetadata
 }
 
 func (item *writerWorkItem) GetId() workqueue.WorkItemID {
@@ -31,17 +30,17 @@ func (item *writerWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func NewWriterWorkItem(id workqueue.WorkItemID, taskCtx core2.TaskExecutionContext, outputReader io.OutputReader) workqueue.WorkItem {
-
+func NewWriterWorkItem(id workqueue.WorkItemID, key core.CatalogKey, data io.OutputReader, metadata core.CatalogMetadata) workqueue.WorkItem {
 	return &writerWorkItem{
-		id:           id,
-		taskCtx:      taskCtx,
-		outputReader: outputReader,
+		id:       id,
+		key:      key,
+		data:     data,
+		metadata: metadata,
 	}
 }
 
 type writerProcessor struct {
-	catalogClient core2.CatalogClient
+	catalogClient core.CatalogClient
 }
 
 func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
@@ -50,16 +49,18 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
 	}
 
-	err := p.catalogClient.Put(ctx, wi.taskCtx, wi.outputReader)
+	err := p.catalogClient.Put(ctx, wi.key, wi.data, wi.metadata)
 	if err != nil {
-		// TODO: wrap & log error
-		return workqueue.WorkStatusNotDone, err
+		logger.Errorf(ctx, "Error putting to catalog [%s]", err)
+		return workqueue.WorkStatusNotDone, errors.Wrapf(errors.DownstreamSystemError, err,
+			"Error writing [%s] to catalog, key id [%s] cache version [%s]",
+			wi.id, wi.key.Identifier, wi.key.CacheVersion)
 	}
 
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewWriterProcessor(catalogClient core2.CatalogClient) workqueue.Processor {
+func NewWriterProcessor(catalogClient core.CatalogClient) workqueue.Processor {
 	return writerProcessor{
 		catalogClient: catalogClient,
 	}
