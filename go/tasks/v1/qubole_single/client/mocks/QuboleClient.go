@@ -2,7 +2,7 @@
 
 package mocks
 
-import client "github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/client"
+import client "github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
 import context "context"
 import mock "github.com/stretchr/testify/mock"
 
