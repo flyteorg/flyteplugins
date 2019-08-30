@@ -15,10 +15,10 @@ type CatalogMetadata struct {
 }
 
 type CatalogKey struct {
-	Identifier core.Identifier
-	DiscoveryVersion string
+	Identifier     core.Identifier
+	CacheVersion   string
 	TypedInterface core.TypedInterface
-	InputReader io.InputReader
+	InputReader    io.InputReader
 }
 
 // An interface to interest with the catalog service

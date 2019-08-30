@@ -165,8 +165,6 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catalogWriter workqueue.IndexedWorkQueue,
 	state State) (State, error) {
 
-		// TODO: handle failure ratio
-
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -190,9 +188,16 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, catal
 	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
 
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
+	// TODO: handle failure ratio
+
 
 	// All launched sub-tasks should have written outputs to catalog, mark as success.
 	return state, nil
+}
+
+func ConstructCatalogWriterItems(ctx context.Context, keyId idlCore.Identifier, execId idlCore.TaskExecutionIdentifier,
+	cacheVersion string, taskInterface idlCore.TypedInterface, inputReaders []io.InputReader, outputReaders []io.OutputReader) {
+
 }
 
 func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
