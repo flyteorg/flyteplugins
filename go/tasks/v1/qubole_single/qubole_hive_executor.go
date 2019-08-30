@@ -14,6 +14,10 @@ import (
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
 const quboleHiveExecutorId = "qubole-hive-executor"
 
+// Version of the custom state this plugin stores.  Useful for backwards compatibility if you one day need to update
+// the structure of the stored state
+const pluginStateVersion = 0
+
 // NB: This is a different string than the old one. The old one will now only be used for multiple query Hive tasks.
 const hiveTaskType = "hive-task" // This needs to match the type defined in Flytekit constants.py
 
@@ -53,7 +57,7 @@ func (q QuboleHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionC
 	// If no error, then infer the new Phase from the various states
 	phaseInfo := MapExecutionStateToPhaseInfo(outgoingState)
 
-	if err := tCtx.PluginStateWriter().Put(0, outgoingState); err != nil {
+	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, outgoingState); err != nil {
 		return core.UnknownTransition, err
 	}
 
