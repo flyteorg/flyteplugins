@@ -2,7 +2,6 @@ package array
 
 import (
 	"context"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
 
@@ -107,6 +106,35 @@ func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
 	err := utils.UnmarshalStruct(structObj, arrayJob)
 	return arrayJob, err
 }
+
+//func MapArrayStateToPluginPhase(ctx context.Context, state State) core.PhaseInfo {
+//
+//	var phaseInfo core.PhaseInfo
+//	t := time.Now()
+//
+//	switch state.currentPhase {
+//	case PhaseNotStarted:
+//		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, "Running catalog check")
+//
+//	case PhaseLaunch:
+//		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, nil)
+//
+//	case PhaseCheckingSubTaskExecutions:
+//		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, nil)
+//
+//	case PhaseWriteToDiscovery:
+//		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, nil)
+//
+//	case PhaseSuccess:
+//		phaseInfo = core.PhaseInfoSuccess(nil)
+//	case PhaseRetryableFailure:
+//		phaseInfo = core.PhaseInfoFailure(e)
+//	case PhasePermanentFailure:
+//		phaseInfo = core.PhaseInfoSuccess(nil)
+//	}
+//
+//	return phaseInfo
+//}
 
 func SummaryToPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, summary arraystatus.ArraySummary) Phase {
 	minSuccesses := int64(1)

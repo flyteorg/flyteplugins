@@ -69,6 +69,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
+
 }
 
 func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
