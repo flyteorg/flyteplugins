@@ -5,6 +5,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
 	mocks2 "github.com/lyft/flyteplugins/go/tasks/v1/k8splugins/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -240,21 +241,52 @@ func TestFinalize(t *testing.T) {
 func TestMonitorQuery(t *testing.T) {
 	ctx := context.Background()
 	tCtx := GetMockTaskExecutionContext()
-	es := ExecutionState{
+	state := ExecutionState{
 		Id:    "unique-id",
 		Phase: PhaseSubmitted,
 	}
 	var getOrCreateCalled = false
 	mockCache := &mocks2.AutoRefreshCache{}
-	mockCache.On("GetOrCreate", mock.Anything, mock.Anything, mock.MatchedBy(func(id string) bool {
-		return id == es.Id
+	mockCache.On("GetOrCreate", mock.MatchedBy(func(s ExecutionState) bool {
+		return s.Id == state.Id
 	})).Run(func(_ mock.Arguments) {
 		getOrCreateCalled = true
-	}).Return(ExecutionState{Id: es.Id, Phase: PhaseQuerySucceeded}, nil)
+	}).Return(ExecutionState{Id: state.Id, Phase: PhaseQuerySucceeded}, nil)
 
-	newState, err := MonitorQuery(ctx, tCtx, es, mockCache)
+	newState, err := MonitorQuery(ctx, tCtx, state, mockCache)
 	assert.NoError(t, err)
 	assert.True(t, getOrCreateCalled)
 	assert.Equal(t, PhaseQuerySucceeded, newState.Phase)
 }
 
+func TestKickOffQuery(t *testing.T) {
+	ctx := context.Background()
+	tCtx := GetMockTaskExecutionContext()
+
+	// TODO: This will need to be replaced with the mock when we switch to using the mock
+	dummySecrets := &secretsManager{quboleKey: "fake key"}
+
+	var quboleCalled = false
+	quboleCommandDetails := &client.QuboleCommandDetails{
+		ID:     int64(453298043),
+		Status: client.QuboleStatusWaiting,
+	}
+	mockQubole := &quboleMocks.QuboleClient{}
+	mockQubole.On("ExecuteHiveCommand", mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+		mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
+		quboleCalled = true
+	}).Return(quboleCommandDetails, nil)
+
+	var getOrCreateCalled = false
+	mockCache := &mocks2.AutoRefreshCache{}
+	mockCache.On("GetOrCreate", mock.Anything).Run(func(_ mock.Arguments) {
+		getOrCreateCalled = true
+	}).Return(ExecutionState{}, nil)
+
+	state := ExecutionState{}
+	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, dummySecrets, mockCache)
+	assert.NoError(t, err)
+	assert.Equal(t, PhaseSubmitted, newState.Phase)
+	assert.True(t, getOrCreateCalled)
+	assert.True(t, quboleCalled)
+}

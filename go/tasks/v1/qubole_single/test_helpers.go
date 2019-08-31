@@ -110,7 +110,7 @@ func GetMockTaskExecutionContext() core.TaskExecutionContext {
 	taskCtx.On("OutputWriter").Return(outputReader)
 
 	taskReader := &coreMock.TaskReader{}
-	taskReader.On("Read", mock.Anything).Return(tt, nil)
+	taskReader.On("Read", mock.Anything).Return(&tt, nil)
 	taskCtx.On("TaskReader").Return(taskReader)
 
 	resourceManager := &coreMock.ResourceManager{}
