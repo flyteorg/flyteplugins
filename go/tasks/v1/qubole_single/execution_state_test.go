@@ -2,6 +2,7 @@ package qubole_single
 
 import (
 	"context"
+	"fmt"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
 	"github.com/stretchr/testify/assert"
@@ -93,10 +94,10 @@ func TestConstructTaskInfo(t *testing.T) {
 	assert.Nil(t, empty)
 
 	e := ExecutionState{
-		Phase:PhaseQuerySucceeded,
-		CommandId: "123",
+		Phase:                 PhaseQuerySucceeded,
+		CommandId:             "123",
 		SyncQuboleApiFailures: 0,
-		Id: "some_id",
+		Id:                    "some_id",
 	}
 	taskInfo := ConstructTaskInfo(e)
 	assert.Equal(t, "https://api.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
@@ -105,7 +106,7 @@ func TestConstructTaskInfo(t *testing.T) {
 func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 	t.Run("NotStarted", func(t *testing.T) {
 		e := ExecutionState{
-			Id: "test",
+			Id:    "test",
 			Phase: PhaseNotStarted,
 		}
 		phaseInfo := MapExecutionStateToPhaseInfo(e)
@@ -114,16 +115,16 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 
 	t.Run("Queued", func(t *testing.T) {
 		e := ExecutionState{
-			Id: "test",
-			Phase: PhaseQueued,
+			Id:                        "test",
+			Phase:                     PhaseQueued,
 			QuboleApiCreationFailures: 0,
 		}
 		phaseInfo := MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseQueued, phaseInfo.Phase())
 
 		e = ExecutionState{
-			Id: "test",
-			Phase: PhaseQueued,
+			Id:                        "test",
+			Phase:                     PhaseQueued,
 			QuboleApiCreationFailures: 100,
 		}
 		phaseInfo = MapExecutionStateToPhaseInfo(e)
@@ -133,10 +134,53 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 
 	t.Run("Submitted", func(t *testing.T) {
 		e := ExecutionState{
-			Id: "test",
+			Id:    "test",
 			Phase: PhaseSubmitted,
 		}
 		phaseInfo := MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
+	})
+}
+
+func TestGetAllocationToken(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("allocation granted", func(t *testing.T) {
+		tCtx := GetMockTaskExecutionContext()
+		mockResourceManager := tCtx.ResourceManager()
+		fmt.Println(mockResourceManager)
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything).
+			Return(core.AllocationStatusGranted, nil)
+
+		state, err := GetAllocationToken(ctx, tCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, PhaseQueued, state.Phase)
+	})
+
+	t.Run("exhausted", func(t *testing.T) {
+		tCtx := GetMockTaskExecutionContext()
+		mockResourceManager := tCtx.ResourceManager()
+		fmt.Println(mockResourceManager)
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything).
+			Return(core.AllocationStatusExhausted, nil)
+
+		state, err := GetAllocationToken(ctx, tCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, PhaseNotStarted, state.Phase)
+	})
+
+	t.Run("namespace exhausted", func(t *testing.T) {
+		tCtx := GetMockTaskExecutionContext()
+		mockResourceManager := tCtx.ResourceManager()
+		fmt.Println(mockResourceManager)
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything).
+			Return(core.AllocationStatusNamespaceQuotaExceeded, nil)
+
+		state, err := GetAllocationToken(ctx, tCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, PhaseNotStarted, state.Phase)
 	})
 }
