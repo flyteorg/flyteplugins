@@ -13,6 +13,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/config"
 )
 
+// TODO: Deprecate this entire file in favor of the
+
 type secretsManager struct {
 	// Memoize the key
 	quboleKey string

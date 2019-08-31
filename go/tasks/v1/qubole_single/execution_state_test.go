@@ -2,9 +2,10 @@ package qubole_single
 
 import (
 	"context"
-	"fmt"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+	mocks2 "github.com/lyft/flyteplugins/go/tasks/v1/k8splugins/mocks"
+	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -148,7 +149,6 @@ func TestGetAllocationToken(t *testing.T) {
 	t.Run("allocation granted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
 		mockResourceManager := tCtx.ResourceManager()
-		fmt.Println(mockResourceManager)
 		x := mockResourceManager.(*mocks.ResourceManager)
 		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusGranted, nil)
@@ -161,7 +161,6 @@ func TestGetAllocationToken(t *testing.T) {
 	t.Run("exhausted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
 		mockResourceManager := tCtx.ResourceManager()
-		fmt.Println(mockResourceManager)
 		x := mockResourceManager.(*mocks.ResourceManager)
 		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusExhausted, nil)
@@ -174,7 +173,6 @@ func TestGetAllocationToken(t *testing.T) {
 	t.Run("namespace exhausted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
 		mockResourceManager := tCtx.ResourceManager()
-		fmt.Println(mockResourceManager)
 		x := mockResourceManager.(*mocks.ResourceManager)
 		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusNamespaceQuotaExceeded, nil)
@@ -184,3 +182,79 @@ func TestGetAllocationToken(t *testing.T) {
 		assert.Equal(t, PhaseNotStarted, state.Phase)
 	})
 }
+
+func TestAbort(t *testing.T) {
+	ctx := context.Background()
+
+	// TODO: This will need to be replaced with the mock when we switch to using the mock
+	dummySecrets := &secretsManager{quboleKey: "fake key"}
+
+	t.Run("Terminate called when not in terminal state", func(t *testing.T) {
+		var x = false
+		mockQubole := &quboleMocks.QuboleClient{}
+		mockQubole.On("KillCommand", mock.Anything, mock.MatchedBy(func(commandId string) bool {
+			return commandId == "123456"
+		}), mock.Anything).Run(func(_ mock.Arguments) {
+			x = true
+		}).Return(nil)
+
+		err := Abort(ctx, nil, ExecutionState{Phase: PhaseSubmitted, CommandId: "123456"}, mockQubole, dummySecrets)
+		assert.NoError(t, err)
+		assert.True(t, x)
+	})
+
+	t.Run("Terminate not called when in terminal state", func(t *testing.T) {
+		var x = false
+		mockQubole := &quboleMocks.QuboleClient{}
+		mockQubole.On("KillCommand", mock.Anything, mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
+			x = true
+		}).Return(nil)
+
+		err := Abort(ctx, nil, ExecutionState{Phase: PhaseQuerySucceeded, CommandId: "123456"}, mockQubole, dummySecrets)
+		assert.NoError(t, err)
+		assert.False(t, x)
+	})
+}
+
+func TestFinalize(t *testing.T) {
+	// Test that Finalize releases resources
+	ctx := context.Background()
+	tCtx := GetMockTaskExecutionContext()
+	state := ExecutionState{
+		Id: "fjfklasj",
+	}
+	var called = false
+	mockResourceManager := tCtx.ResourceManager()
+	x := mockResourceManager.(*mocks.ResourceManager)
+	x.On("ReleaseResource", mock.Anything, mock.Anything, mock.MatchedBy(func(id string) bool {
+		return id == state.Id
+	})).Run(func(_ mock.Arguments) {
+		called = true
+	}).Return(nil)
+
+	err := Finalize(ctx, tCtx, state)
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestMonitorQuery(t *testing.T) {
+	ctx := context.Background()
+	tCtx := GetMockTaskExecutionContext()
+	es := ExecutionState{
+		Id:    "unique-id",
+		Phase: PhaseSubmitted,
+	}
+	var getOrCreateCalled = false
+	mockCache := &mocks2.AutoRefreshCache{}
+	mockCache.On("GetOrCreate", mock.Anything, mock.Anything, mock.MatchedBy(func(id string) bool {
+		return id == es.Id
+	})).Run(func(_ mock.Arguments) {
+		getOrCreateCalled = true
+	}).Return(ExecutionState{Id: es.Id, Phase: PhaseQuerySucceeded}, nil)
+
+	newState, err := MonitorQuery(ctx, tCtx, es, mockCache)
+	assert.NoError(t, err)
+	assert.True(t, getOrCreateCalled)
+	assert.Equal(t, PhaseQuerySucceeded, newState.Phase)
+}
+
