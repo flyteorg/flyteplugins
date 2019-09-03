@@ -48,9 +48,9 @@ func (a *CompactArray) SetItem(index int, value Item) {
 	x := Item(1)
 	for i := int(a.ItemSize - 1); i >= 0; i-- {
 		if x&value != 0 {
-			Set(bitIndex + uint(i))
+			a.BitSet.Set(bitIndex + uint(i))
 		} else {
-			Clear(bitIndex + uint(i))
+			a.BitSet.Clear(bitIndex + uint(i))
 		}
 
 		x <<= 1
@@ -64,7 +64,7 @@ func (a *CompactArray) GetItem(index int) Item {
 	res := Item(0)
 	x := Item(1)
 	for i := int(a.ItemSize - 1); i >= 0; i-- {
-		if IsSet(bitIndex + uint(i)) {
+		if a.BitSet.IsSet(bitIndex + uint(i)) {
 			res |= x
 		}
 
