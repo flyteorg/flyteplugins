@@ -22,7 +22,7 @@ type Executor struct {
 	kubeClient    core.KubeClient
 }
 
-func NewExecutor(catalogClient core.CatalogClient, kubeClient core.KubeClient) (Executor, error) {
+func NewExecutor(catalogClient catalog.Client, kubeClient core.KubeClient) (Executor, error) {
 	catalogReader, err := workqueue.NewIndexedWorkQueue(catalog.NewReaderProcessor(catalogClient), workqueue.Config{})
 	if err != nil {
 		return Executor{}, err

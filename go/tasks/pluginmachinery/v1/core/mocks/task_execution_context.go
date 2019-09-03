@@ -3,6 +3,7 @@
 package mocks
 
 import (
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 )
 import "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
@@ -15,15 +16,15 @@ type TaskExecutionContext struct {
 }
 
 // Catalog provides a mock function with given fields:
-func (_m *TaskExecutionContext) Catalog() core.CatalogClient {
+func (_m *TaskExecutionContext) Catalog() catalog.Client {
 	ret := _m.Called()
 
-	var r0 core.CatalogClient
-	if rf, ok := ret.Get(0).(func() core.CatalogClient); ok {
+	var r0 catalog.Client
+	if rf, ok := ret.Get(0).(func() catalog.Client); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(core.CatalogClient)
+			r0 = ret.Get(0).(catalog.Client)
 		}
 	}
 

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
 	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
@@ -43,7 +44,7 @@ type TaskExecutionContext interface {
 	PluginStateWriter() PluginStateWriter
 
 	// Get a handle to catalog client
-	Catalog() CatalogClient
+	Catalog() catalog.Client
 
 	// Returns a handle to the Task events recorder, which get stored in the Admin.
 	EventsRecorder() EventsRecorder

@@ -2,9 +2,10 @@ package array
 
 import (
 	"context"
+	"time"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
-	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/arraystatus"
 
@@ -44,6 +45,7 @@ type State struct {
 	currentPhase       Phase
 	phaseVersion       uint32
 	reason             string
+	err                *io.ExecutionError
 	executionArraySize int
 	originalArraySize  int64
 	arrayStatus        arraystatus.ArrayStatus
@@ -129,7 +131,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 
 	switch state.currentPhase {
 	case PhaseStart:
-		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, "Running catalog check")
+		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason())
 
 	case PhaseLaunch:
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
@@ -374,12 +376,12 @@ func ConstructCatalogWriterItems(keyId idlCore.Identifier, taskExecId idlCore.Ta
 			continue
 		}
 		output := outputReaders[idx]
-		wi := catalog.NewWriterWorkItem(workqueue.WorkItemID(input.GetInputPrefixPath()), core.CatalogKey{
+		wi := catalog.NewWriterWorkItem(workqueue.WorkItemID(input.GetInputPrefixPath()), catalog.Key{
 			Identifier:     keyId,
 			InputReader:    input,
 			CacheVersion:   cacheVersion,
 			TypedInterface: taskInterface,
-		}, output, core.CatalogMetadata{
+		}, output, catalog.Metadata{
 			TaskExecutionIdentifier: &taskExecId,
 		})
 		writerWorkItems = append(writerWorkItems, &wi)

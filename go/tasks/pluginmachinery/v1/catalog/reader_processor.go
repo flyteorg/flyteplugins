@@ -12,8 +12,6 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 
-	core2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 )
 
@@ -27,8 +25,7 @@ type ReaderWorkItem struct {
 	// ReaderWorkItem Inputs:
 	outputsWriter io.OutputWriter
 	// Inputs to query data catalog
-	inputReader io.InputReader
-	taskReader  core2.TaskReader
+	key Key
 }
 
 func (item *ReaderWorkItem) GetId() workqueue.WorkItemID {
@@ -39,23 +36,21 @@ func (item *ReaderWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func( item *ReaderWorkItem) IsCached() bool {
+func (item *ReaderWorkItem) IsCached() bool {
 	return item.cached
 }
 
-func NewReaderWorkItem(id workqueue.WorkItemID, taskReader core2.TaskReader, inputReader io.InputReader,
-	outputsWriter io.OutputWriter) *ReaderWorkItem {
+func NewReaderWorkItem(id workqueue.WorkItemID, key Key, outputsWriter io.OutputWriter) *ReaderWorkItem {
 
 	return &ReaderWorkItem{
 		id:            id,
-		inputReader:   inputReader,
+		key:           key,
 		outputsWriter: outputsWriter,
-		taskReader:    taskReader,
 	}
 }
 
 type ReaderProcessor struct {
-	catalogClient core2.CatalogClient
+	catalogClient Client
 }
 
 func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
@@ -64,7 +59,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
 	}
 
-	literalMap, err := p.catalogClient.Get(ctx, wi.taskReader, wi.inputReader)
+	literalMap, err := p.catalogClient.Download(ctx, ).Get(ctx, wi.key, )
 	if err != nil {
 		if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
 			logger.Infof(ctx, "Artifact not found in Catalog.")
@@ -90,7 +85,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewReaderProcessor(catalogClient core2.CatalogClient) ReaderProcessor {
+func NewReaderProcessor(catalogClient Client) ReaderProcessor {
 	return ReaderProcessor{
 		catalogClient: catalogClient,
 	}
