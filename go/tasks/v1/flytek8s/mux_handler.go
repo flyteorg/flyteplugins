@@ -12,15 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	ctrlHandler "sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var instance *flytek8s
@@ -109,55 +102,4 @@ func Initialize(ctx context.Context, watchNamespace string, resyncPeriod time.Du
 	}
 
 	return nil
-}
-
-func RegisterResource(ctx context.Context, resourceToWatch runtime.Object, handler Handler) error {
-	if instance == nil {
-		return fmt.Errorf("instance not initialized")
-	}
-
-	if handler == nil {
-		return fmt.Errorf("nil Handler for resource %s", resourceToWatch.GetObjectKind())
-	}
-
-	src := source.Kind{
-		Type: resourceToWatch,
-	}
-
-	if _, err := inject.CacheInto(instance.informersCache, &src); err != nil {
-		return err
-	}
-
-	// TODO: a more unique workqueue name
-	q := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
-		resourceToWatch.GetObjectKind().GroupVersionKind().Kind)
-
-	err := src.Start(ctrlHandler.Funcs{
-		CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
-			err := handler.Handle(ctx, evt.Object)
-			if err != nil {
-				logger.Warnf(ctx, "Failed to handle Create event for object [%v]", evt.Object)
-			}
-		},
-		UpdateFunc: func(evt event.UpdateEvent, q2 workqueue.RateLimitingInterface) {
-			err := handler.Handle(ctx, evt.ObjectNew)
-			if err != nil {
-				logger.Warnf(ctx, "Failed to handle Update event for object [%v]", evt.ObjectNew)
-			}
-		},
-		DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
-			err := handler.Handle(ctx, evt.Object)
-			if err != nil {
-				logger.Warnf(ctx, "Failed to handle Delete event for object [%v]", evt.Object)
-			}
-		},
-		GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
-			err := handler.Handle(ctx, evt.Object)
-			if err != nil {
-				logger.Warnf(ctx, "Failed to handle Generic event for object [%v]", evt.Object)
-			}
-		},
-	}, q)
-
-	return err
 }

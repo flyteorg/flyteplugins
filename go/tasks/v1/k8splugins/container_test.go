@@ -10,8 +10,6 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -187,49 +185,4 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 		assert.NotNil(t, phaseInfo)
 		assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
 	})
-}
-
-func advancePodPhases(ctx context.Context, runtimeClient client.Client) error {
-	podList := &v1.PodList{}
-	err := runtimeClient.List(ctx, &client.ListOptions{
-		Raw: &metav1.ListOptions{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       flytek8s.PodKind,
-				APIVersion: v1.SchemeGroupVersion.String(),
-			},
-		},
-	}, podList)
-	if err != nil {
-		return err
-	}
-
-	for _, pod := range podList.Items {
-		pod.Status.Phase = nextHappyPodPhase(pod.Status.Phase)
-		pod.Status.ContainerStatuses = []v1.ContainerStatus{
-			{ContainerID: "cont_123"},
-		}
-		err = runtimeClient.Update(ctx, pod.DeepCopy())
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func nextHappyPodPhase(phase v1.PodPhase) v1.PodPhase {
-	switch phase {
-	case v1.PodUnknown:
-		fallthrough
-	case v1.PodPending:
-		fallthrough
-	case "":
-		return v1.PodRunning
-	case v1.PodRunning:
-		return v1.PodSucceeded
-	case v1.PodSucceeded:
-		return v1.PodSucceeded
-	}
-
-	return v1.PodUnknown
 }

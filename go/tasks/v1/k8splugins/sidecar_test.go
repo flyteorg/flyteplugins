@@ -3,6 +3,7 @@ package k8splugins
 import (
 	"context"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"os"
 	"path"
 	"testing"
@@ -102,7 +103,12 @@ func TestBuildSidecarResource(t *testing.T) {
 		},
 	}))
 	handler := &sidecarResourceHandler{}
-	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
+	taskCtx := getDummySidecarTaskContext(&task, &v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+		},
+	})
 	resource, err := handler.BuildResource(context.TODO(), taskCtx)
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{
@@ -147,10 +153,10 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 	task := getSidecarTaskTemplateForTest(sideCarJob)
 
 	var testCases = map[v1.PodPhase]pluginsCore.Phase{
-		v1.PodSucceeded:           pluginsCore.PhaseSuccess,
-		v1.PodFailed:              pluginsCore.PhasePermanentFailure,
+		/*v1.PodSucceeded:           pluginsCore.PhaseSuccess,
+		v1.PodFailed:              pluginsCore.PhaseRetryableFailure,*/
 		v1.PodReasonUnschedulable: pluginsCore.PhaseQueued,
-		v1.PodUnknown:             pluginsCore.PhaseUndefined,
+		//v1.PodUnknown:             pluginsCore.PhaseUndefined,
 	}
 
 	for podPhase, expectedTaskPhase := range testCases {

@@ -3,6 +3,7 @@ package k8splugins
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flytestdlib/logger"
 
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
@@ -24,6 +25,8 @@ const (
 
 type sidecarResourceHandler struct{}
 
+var allContainers = false
+
 // This method handles templatizing primary container input args, env variables and adds a GPU toleration to the pod
 // spec if necessary.
 func validateAndFinalizePod(
@@ -40,9 +43,12 @@ func validateAndFinalizePod(
 		if err != nil {
 			return err
 		}
+		logger.Warnf(ctx, "appending resources [%+v]", container.Resources)
 		resReqs = append(resReqs, container.Resources)
 		finalizedContainers[index] = container
 	}
+	logger.Warnf(ctx, "resReqs [%+v]", resReqs)
+	logger.Warnf(ctx, "podSpec.Containers [%+v]", podSpec.Containers)
 	if !hasPrimaryContainer {
 		return errors.Errorf(errors.BadTaskSpecification,
 			"invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
@@ -111,7 +117,7 @@ func determinePrimaryContainerPhase(primaryContainerName string, statuses []k8sv
 func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r k8s.Resource) (
 	pluginsCore.PhaseInfo, error) {
 	pod := r.(*k8sv1.Pod)
-	phaseInfo, err := flytek8s.GetTaskPhaseFromPod(ctx, pod)
+	phaseInfo, err := flytek8s.GetTaskPhaseFromPod(ctx, pod, flytek8s.AllContainers)
 	if err != nil || phaseInfo.Phase() != pluginsCore.PhaseRunning {
 		return phaseInfo, err
 	}

@@ -2,21 +2,18 @@ package flytek8s
 
 import (
 	"context"
-	"regexp"
-
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/utils"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
 	"github.com/lyft/flyteplugins/go/tasks/v1/flytek8s/config"
 )
-
-var isAcceptableK8sName, _ = regexp.Compile("[a-z0-9]([-a-z0-9]*[a-z0-9])?")
 
 const resourceGPU = "GPU"
 
@@ -73,12 +70,12 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 }
 
 // Transforms the task container definition to a core kubernetes container.
-func ToK8sContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata, taskContainer *core.Container) (
+func ToK8sContainer(taskCtx pluginsCore.TaskExecutionMetadata, taskContainer *core.Container) (
 	*v1.Container, error) {
 	// Make the container name the same as the pod name, unless it violates K8s naming conventions
 	// Container names are subject to the DNS-1123 standard
 	containerName := taskCtx.GetTaskExecutionID().GetGeneratedName()
-	if !isAcceptableK8sName.MatchString(containerName) || len(containerName) > 63 {
+	if errs := validation.IsDNS1123Label(containerName); len(errs) > 0 {
 		containerName = rand.String(4)
 	}
 	return &v1.Container{
@@ -88,6 +85,18 @@ func ToK8sContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetada
 		Command: taskContainer.GetCommand(),
 		Env:     ToK8sEnvVar(taskContainer.GetEnv()),
 	}, nil
+}
+
+func mergeResourceLists(a, b v1.ResourceList) v1.ResourceList {
+	if a == nil {
+		a = make(v1.ResourceList)
+	}
+	if b != nil {
+		for name, quantity := range b {
+			a[name] = quantity
+		}
+	}
+	return a
 }
 
 // Takes a raw kubernetes container and modifies it so that it is suitable to run on Flyte.
@@ -130,7 +139,8 @@ func AddFlyteModificationsForContainer(ctx context.Context, taskCtx pluginsCore.
 		return errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
 	}
 	resourceRequirements := ApplyResourceOverrides(ctx, *(taskCtx.TaskExecutionMetadata().GetOverrides().GetResources()))
-	container.Resources = *resourceRequirements
+	container.Resources.Limits = mergeResourceLists(container.Resources.Limits, resourceRequirements.Limits)
+	container.Resources.Requests = mergeResourceLists(container.Resources.Requests, resourceRequirements.Requests)
 
 	container.Env = DecorateEnvVars(ctx, container.Env, taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
 	return nil

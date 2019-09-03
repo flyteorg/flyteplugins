@@ -2,10 +2,9 @@ package flytek8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
-	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
 	"testing"
+	"time"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,6 @@ import (
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
-	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io/mocks"
 )
 
 func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
@@ -50,31 +48,29 @@ func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	return taskExecutionMetadata
 }
 
-func dummyTaskReader() pluginsCore.TaskReader {
-	taskReader := &pluginsCoreMock.TaskReader{}
+func dummyContainerTaskContext(resources *v1.ResourceRequirements, command []string, args []string) pluginsCore.TaskExecutionContext {
+	taskCtx := &pluginsCoreMock.TaskExecutionContext{}
+
 	task := &core.TaskTemplate{
 		Type: "test",
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
-				Command: []string{"command"},
-				Args: []string{"{{.Input}}"},
+				Command: command,
+				Args:    args,
 			},
 		},
 	}
+
+	taskReader := &pluginsCoreMock.TaskReader{}
 	taskReader.On("Read", mock.Anything).Return(task, nil)
-	return taskReader
+	taskCtx.On("TaskReader").Return(taskReader)
+
+	dummyTaskMetadata := dummyTaskExecutionMetadata(resources)
+	taskCtx.On("TaskExecutionMetadata").Return(dummyTaskMetadata)
+	return taskCtx
 }
 
-func dummyInputReader() io.InputReader{
-	inputReader := &pluginsIOMock.InputReader{}
-	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
-	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
-	return inputReader
-}
-
-func TestToK8sPod(t *testing.T) {
-	ctx := context.TODO()
-
+func TestAddFlyteModificationsForPodSpec(t *testing.T) {
 	tolGPU := v1.Toleration{
 		Key:      "flyte/gpu",
 		Value:    "dedicated",
@@ -97,39 +93,42 @@ func TestToK8sPod(t *testing.T) {
 	)
 
 	t.Run("WithGPU", func(t *testing.T) {
-		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				v1.ResourceCPU:     resource.MustParse("1024m"),
-				v1.ResourceStorage: resource.MustParse("100M"),
-				ResourceNvidiaGPU:  resource.MustParse("1"),
-			},
-			Requests: v1.ResourceList{
-				v1.ResourceCPU:     resource.MustParse("1024m"),
-				v1.ResourceStorage: resource.MustParse("100M"),
-			},
-		})
-
-		p, err := AddFlyteModificationsForPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), "")
-		assert.NoError(t, err)
-		assert.Equal(t, len(p.Tolerations), 1)
+		resourceRequirements := v1.ResourceRequirements{
+				Limits: v1.ResourceList{
+					v1.ResourceCPU:     resource.MustParse("1024m"),
+					ResourceNvidiaGPU:  resource.MustParse("1"),
+				},
+				Requests: v1.ResourceList{
+					v1.ResourceCPU:     resource.MustParse("1024m"),
+				},
+		}
+		var podSpec v1.PodSpec
+		AddFlyteModificationsForPodSpec(
+			dummyContainerTaskContext(&resourceRequirements, []string{"command"}, []string{"args"}),
+			[]v1.Container{}, []v1.ResourceRequirements{resourceRequirements}, &podSpec)
+		assert.Equal(t, len(podSpec.Tolerations), 1)
 	})
 
 	t.Run("NoGPU", func(t *testing.T) {
-		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
+		resourceRequirements := v1.ResourceRequirements{
 			Limits: v1.ResourceList{
 				v1.ResourceCPU:     resource.MustParse("1024m"),
-				v1.ResourceStorage: resource.MustParse("100M"),
 			},
 			Requests: v1.ResourceList{
 				v1.ResourceCPU:     resource.MustParse("1024m"),
-				v1.ResourceStorage: resource.MustParse("100M"),
 			},
-		})
+		}
 
-		p, err := AddFlyteModificationsForPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), "")
-		assert.NoError(t, err)
-		assert.Equal(t, len(p.Tolerations), 0)
-		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
+		var podSpec v1.PodSpec
+		AddFlyteModificationsForPodSpec(
+			dummyContainerTaskContext(&resourceRequirements, []string{"command"}, []string{"args"}),
+			[]v1.Container{
+				{
+					Name: "some-acceptable-name",
+				},
+			}, []v1.ResourceRequirements{resourceRequirements}, &podSpec)
+		assert.Equal(t, len(podSpec.Tolerations), 0)
+		assert.Equal(t, "some-acceptable-name", podSpec.Containers[0].Name)
 	})
 }
 
@@ -345,3 +344,90 @@ func TestConvertPodFailureToError(t *testing.T) {
 	})
 }
 
+func getRunningPod() *v1.Pod{
+	return &v1.Pod{
+		Status: v1.PodStatus{
+			Phase: v1.PodRunning,
+			ContainerStatuses: []v1.ContainerStatus{
+				{
+					LastTerminationState: v1.ContainerState{
+						Running:    &v1.ContainerStateRunning{
+							StartedAt: metaV1.NewTime(time.Now()),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func getTerminatedPod(phase v1.PodPhase) *v1.Pod{
+	pod := getRunningPod()
+	pod.Status.Phase = phase
+	pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, v1.ContainerStatus{
+			LastTerminationState: v1.ContainerState{
+				Terminated:    &v1.ContainerStateTerminated{
+					StartedAt: metaV1.NewTime(pod.Status.ContainerStatuses[0].LastTerminationState.Running.StartedAt.Add(30 *time.Second)),
+					FinishedAt: metaV1.NewTime(pod.Status.ContainerStatuses[0].LastTerminationState.Running.StartedAt.Add(time.Minute)),
+				},
+			},
+		})
+	return pod
+}
+
+func TestGetTaskPhaseFromPod(t *testing.T) {
+	ctx := context.TODO()
+	t.Run("running", func(t *testing.T) {
+		job := getRunningPod()
+		phaseInfo, err := GetTaskPhaseFromPod(ctx, job, UserOnly)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginsCore.PhaseRunning, phaseInfo.Phase())
+		assert.Equal(t, job.Status.ContainerStatuses[0].LastTerminationState.Running.StartedAt.Unix(),
+			phaseInfo.Info().OccurredAt.Unix())
+	})
+
+	t.Run("queued", func(t *testing.T) {
+		job := getRunningPod()
+		job.Status.Phase = v1.PodPending
+		phaseInfo, err := GetTaskPhaseFromPod(ctx, job, UserOnly)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginsCore.PhaseQueued, phaseInfo.Phase())
+	})
+
+	t.Run("failNoCondition", func(t *testing.T) {
+		job := getTerminatedPod(v1.PodFailed)
+		phaseInfo, err := GetTaskPhaseFromPod(ctx, job, UserOnly)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		ec := phaseInfo.Err().GetCode()
+		assert.Equal(t, "UnknownError", ec)
+		assert.Equal(t, job.Status.ContainerStatuses[1].LastTerminationState.Terminated.StartedAt.Unix(),
+			phaseInfo.Info().OccurredAt.Unix())
+	})
+
+	t.Run("failConditionUnschedulable", func(t *testing.T) {
+		job := getTerminatedPod(v1.PodFailed)
+		job.Status.Reason = "Unschedulable"
+		job.Status.Message = "some message"
+		job.Status.Conditions = []v1.PodCondition{
+			{
+				Type: v1.PodReasonUnschedulable,
+			},
+		}
+		phaseInfo, err := GetTaskPhaseFromPod(ctx, job, UserOnly)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		ec := phaseInfo.Err().GetCode()
+		assert.Equal(t, "Unschedulable", ec)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		job := getTerminatedPod(v1.PodSucceeded)
+		phaseInfo, err := GetTaskPhaseFromPod(ctx, job, UserOnly)
+		assert.NoError(t, err)
+		assert.NotNil(t, phaseInfo)
+		assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
+		assert.Equal(t, job.Status.ContainerStatuses[1].LastTerminationState.Terminated.StartedAt.Unix(),
+			phaseInfo.Info().OccurredAt.Unix())
+	})
+}

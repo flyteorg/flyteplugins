@@ -16,12 +16,14 @@ const (
 	containerTaskType = "container"
 )
 
+var userContainerOnly = true
+
 type containerTaskExecutor struct {
 }
 
 func (containerTaskExecutor) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r k8s.Resource) (pluginsCore.PhaseInfo, error) {
 	pod := r.(*v1.Pod)
-	return flytek8s.GetTaskPhaseFromPod(ctx, pod)
+	return flytek8s.GetTaskPhaseFromPod(ctx, pod, flytek8s.UserOnly)
 }
 
 // Creates a new Pod that will Exit on completion. The pods have no retries by design
@@ -32,7 +34,7 @@ func (containerTaskExecutor) BuildResource(ctx context.Context, taskCtx pluginsC
 		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
 		return nil, err
 	}
-	c, err := flytek8s.ToK8sContainer(ctx, taskCtx.TaskExecutionMetadata(), task.GetContainer())
+	c, err := flytek8s.ToK8sContainer(taskCtx.TaskExecutionMetadata(), task.GetContainer())
 	if err != nil {
 		return nil, err
 	}

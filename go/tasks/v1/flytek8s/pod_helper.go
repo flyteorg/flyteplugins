@@ -3,7 +3,9 @@ package flytek8s
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/logs"
+	"github.com/lyft/flytestdlib/logger"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -20,9 +22,14 @@ func AddFlyteModificationsForPodSpec(taskCtx pluginsCore.TaskExecutionContext, c
 	// We could specify Scheduler, Affinity, nodename etc
 	podSpec.RestartPolicy = v1.RestartPolicyNever
 	podSpec.Containers = containers
-	podSpec.Tolerations = GetTolerationsForResources(resourceRequirements...)
+	finalizedResourceReqs := resourceRequirements
+	if taskCtx.TaskExecutionMetadata().GetOverrides() != nil &&
+		taskCtx.TaskExecutionMetadata().GetOverrides().GetResources() != nil {
+		finalizedResourceReqs = append(finalizedResourceReqs,
+			*taskCtx.TaskExecutionMetadata().GetOverrides().GetResources())
+	}
+	podSpec.Tolerations = GetTolerationsForResources(finalizedResourceReqs...)
 	podSpec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
-
 }
 
 func BuildPodWithSpec(podSpec *v1.PodSpec) *v1.Pod {
@@ -187,13 +194,43 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
 	return lastTransitionTime
 }
 
-func GetTaskPhaseFromPod(ctx context.Context, pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
+type ContainerLogReportingMode int
+
+const (
+	UserOnly ContainerLogReportingMode = iota
+	AllContainers
+)
+
+func getContainerLogs(ctx context.Context, pod *v1.Pod, reportingMode ContainerLogReportingMode) ([]*core.TaskLog, error) {
+	if reportingMode == UserOnly {
+		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")
+		if err != nil {
+			return nil, err
+		}
+		return taskLogs, nil
+	}
+	if reportingMode == AllContainers {
+		taskLogs := make([]*core.TaskLog, 0)
+		for idx, container := range pod.Spec.Containers {
+			containerLogs, err := logs.GetLogsForContainerInPod(ctx, pod, uint32(idx), fmt.Sprintf(" (%s)", container.Name))
+			if err != nil {
+				return nil, err
+			}
+			taskLogs = append(taskLogs, containerLogs...)
+		}
+		return taskLogs, nil
+	}
+	logger.Warnf(ctx, "Internal system error, unrecognized container log reporting mode [%+v]", reportingMode)
+	return make([]*core.TaskLog, 0), nil
+}
+
+func GetTaskPhaseFromPod(ctx context.Context, pod *v1.Pod, reportingMode ContainerLogReportingMode) (pluginsCore.PhaseInfo, error) {
 	t := GetLastTransitionOccurredAt(pod).Time
 	info := pluginsCore.TaskInfo{
 		OccurredAt: &t,
 	}
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")
+		taskLogs, err := getContainerLogs(ctx, pod, reportingMode)
 		if err != nil {
 			return pluginsCore.PhaseInfoUndefined, err
 		}
@@ -205,6 +242,8 @@ func GetTaskPhaseFromPod(ctx context.Context, pod *v1.Pod) (pluginsCore.PhaseInf
 	case v1.PodFailed:
 		code, message := ConvertPodFailureToError(pod.Status)
 		return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil
+	case v1.PodReasonUnschedulable:
+		fallthrough
 	case v1.PodPending:
 		return DemystifyPending(pod.Status)
 	case v1.PodUnknown:
