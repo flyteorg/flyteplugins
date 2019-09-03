@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
+
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
@@ -20,8 +22,22 @@ type Executor struct {
 	kubeClient    core.KubeClient
 }
 
-func NewExecutor() Executor {
-	return Executor{}
+func NewExecutor(catalogClient core.CatalogClient, kubeClient core.KubeClient) (Executor, error) {
+	catalogReader, err := workqueue.NewIndexedWorkQueue(catalog.NewReaderProcessor(catalogClient), workqueue.Config{})
+	if err != nil {
+		return Executor{}, err
+	}
+
+	catalogWriter, err := workqueue.NewIndexedWorkQueue(catalog.NewWriterProcessor(catalogClient), workqueue.Config{})
+	if err != nil {
+		return Executor{}, err
+	}
+
+	return Executor{
+		catalogReader: catalogReader,
+		catalogWriter: catalogWriter,
+		kubeClient:    kubeClient,
+	}, nil
 }
 
 func (e Executor) GetID() string {
@@ -91,5 +107,5 @@ func init() {
 }
 
 func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
-	return NewExecutor(), nil
+	return NewExecutor(iCtx.KubeClient())
 }
