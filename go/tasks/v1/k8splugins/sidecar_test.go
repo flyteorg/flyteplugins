@@ -153,10 +153,10 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 	task := getSidecarTaskTemplateForTest(sideCarJob)
 
 	var testCases = map[v1.PodPhase]pluginsCore.Phase{
-		/*v1.PodSucceeded:           pluginsCore.PhaseSuccess,
-		v1.PodFailed:              pluginsCore.PhaseRetryableFailure,*/
+		v1.PodSucceeded:           pluginsCore.PhaseSuccess,
+		v1.PodFailed:              pluginsCore.PhaseRetryableFailure,
 		v1.PodReasonUnschedulable: pluginsCore.PhaseQueued,
-		//v1.PodUnknown:             pluginsCore.PhaseUndefined,
+		v1.PodUnknown:             pluginsCore.PhaseUndefined,
 	}
 
 	for podPhase, expectedTaskPhase := range testCases {
