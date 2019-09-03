@@ -3,7 +3,6 @@ package catalog
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
@@ -17,9 +16,9 @@ type WriterWorkItem struct {
 	workStatus workqueue.WorkStatus
 
 	// WriterWorkItem Inputs
-	key      core.CatalogKey
+	key      Key
 	data     io.OutputReader
-	metadata core.CatalogMetadata
+	metadata Metadata
 }
 
 func (item *WriterWorkItem) GetId() workqueue.WorkItemID {
@@ -30,7 +29,7 @@ func (item *WriterWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func NewWriterWorkItem(id workqueue.WorkItemID, key core.CatalogKey, data io.OutputReader, metadata core.CatalogMetadata) WriterWorkItem {
+func NewWriterWorkItem(id workqueue.WorkItemID, key Key, data io.OutputReader, metadata Metadata) WriterWorkItem {
 	return WriterWorkItem{
 		id:       id,
 		key:      key,
@@ -40,7 +39,7 @@ func NewWriterWorkItem(id workqueue.WorkItemID, key core.CatalogKey, data io.Out
 }
 
 type writerProcessor struct {
-	catalogClient core.CatalogClient
+	catalogClient Client
 }
 
 func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
@@ -60,7 +59,7 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewWriterProcessor(catalogClient core.CatalogClient) workqueue.Processor {
+func NewWriterProcessor(catalogClient Client) workqueue.Processor {
 	return writerProcessor{
 		catalogClient: catalogClient,
 	}

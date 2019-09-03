@@ -1,43 +1,56 @@
-package core
+package catalog
 
 import (
 	"context"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/workqueue"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/io"
 )
 
-type CatalogMetadata struct {
+type Metadata struct {
 	WorkflowExecutionIdentifier *core.WorkflowExecutionIdentifier
 	NodeExecutionIdentifier     *core.NodeExecutionIdentifier
 	TaskExecutionIdentifier     *core.TaskExecutionIdentifier
 }
 
-type CatalogKey struct {
+type Key struct {
 	Identifier     core.Identifier
 	CacheVersion   string
 	TypedInterface core.TypedInterface
 	InputReader    io.InputReader
 }
 
-type CatalogOutput struct {
+type UploadRequest struct {
+	Key              Key
 	ArtifactData     io.OutputReader
-	ArtifactMetadata *CatalogMetadata
-	Error            error
+	ArtifactMetadata Metadata
 }
 
-type CatalogPutInput struct {
-	Key              CatalogKey
-	ArtifactData     io.OutputReader
-	ArtifactMetadata CatalogMetadata
+type Future interface {
+	GetStatus() workqueue.WorkStatus
+}
+
+type UploadFuture interface {
+	Future
+}
+
+type DownloadRequest struct {
+	Key    Key
+	Target io.OutputWriter
+}
+
+type DownloadFuture interface {
+	Future
 }
 
 // An interface to interest with the catalog service
-type CatalogClient interface {
+type Client interface {
 	// Returns if an entry exists for the given task and input. It returns the data as a LiteralMap
-	Get(ctx context.Context, keys ...CatalogKey) (output CatalogOutput, err error)
+	Download(ctx context.Context, keys ...DownloadRequest) (outputFuture DownloadFuture, err error)
 
 	// Adds a new entry to catalog for the given task execution context and the generated output
-	Put(ctx context.Context, inputs ...CatalogPutInput) error
+	Upload(ctx context.Context, inputs ...UploadRequest) (putFuture UploadFuture, err error)
 }
