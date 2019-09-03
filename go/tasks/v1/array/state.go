@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/bitarray"
+	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/v1/array/arraystatus"
 
@@ -30,7 +31,7 @@ const K8sPodKind = "pod"
 type Phase uint8
 
 const (
-	PhaseNotStarted Phase = iota
+	PhaseStart Phase = iota
 	PhaseLaunch
 	PhaseCheckingSubTaskExecutions
 	PhaseWriteToDiscovery
@@ -40,11 +41,12 @@ const (
 )
 
 type State struct {
-	currentPhase    Phase
-	phaseVersion    uint32
-	reason          string
-	actualArraySize int
-	arrayStatus     arraystatus.ArrayStatus
+	currentPhase       Phase
+	phaseVersion       uint32
+	reason             string
+	executionArraySize int
+	originalArraySize  int64
+	arrayStatus        arraystatus.ArrayStatus
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
 	writeToCatalog *bitarray.BitSet
@@ -54,8 +56,8 @@ func (s State) GetReason() string {
 	return s.reason
 }
 
-func (s State) GetActualArraySize() int {
-	return s.actualArraySize
+func (s State) GetExecutionArraySize() int {
+	return s.executionArraySize
 }
 
 func (s State) GetPhaseVersion() uint32 {
@@ -76,7 +78,7 @@ func (s *State) SetReason(reason string) *State {
 }
 
 func (s *State) SetActualArraySize(size int) *State {
-	s.actualArraySize = size
+	s.executionArraySize = size
 	return s
 }
 
@@ -99,6 +101,7 @@ const (
 	ErrorWorkQueue          errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
 	ErrorReaderWorkItemCast                  = "READER_WORK_ITEM_CAST_FAILED"
 	ErrorInternalMismatch                    = "ARRAY_MISMATCH"
+	ErrorArrayPhaseError                     = "ARRAY_JOB_FAILURE"
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
@@ -107,34 +110,54 @@ func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
 	return arrayJob, err
 }
 
-//func MapArrayStateToPluginPhase(ctx context.Context, state State) core.PhaseInfo {
-//
-//	var phaseInfo core.PhaseInfo
-//	t := time.Now()
-//
-//	switch state.currentPhase {
-//	case PhaseNotStarted:
-//		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, "Running catalog check")
-//
-//	case PhaseLaunch:
-//		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, nil)
-//
-//	case PhaseCheckingSubTaskExecutions:
-//		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, nil)
-//
-//	case PhaseWriteToDiscovery:
-//		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, nil)
-//
-//	case PhaseSuccess:
-//		phaseInfo = core.PhaseInfoSuccess(nil)
-//	case PhaseRetryableFailure:
-//		phaseInfo = core.PhaseInfoFailure(e)
-//	case PhasePermanentFailure:
-//		phaseInfo = core.PhaseInfoSuccess(nil)
-//	}
-//
-//	return phaseInfo
-//}
+func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
+	// NB: Make sure this is the last/highest value of the Phase!
+	return uint32(length * int64(core.PhasePermanentFailure) * int64(currentPhase))
+}
+
+// Any state of the plugin needs to map to a core.PhaseInfo (which in turn will map to Admin events) so that the rest
+// of the Flyte platform can understand what's happening. That is, each possible state that our plugin state
+// machine returns should map to a unique (core.Phase, core.PhaseInfo.version).
+// Info fields will always be nil, because we're going to send log links individually. This simplifies our state
+// handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
+// all the log links takes up a lot of space).
+func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
+
+	var phaseInfo core.PhaseInfo
+	t := time.Now()
+	nowTaskInfo := &core.TaskInfo{OccurredAt: &t}
+
+	switch state.currentPhase {
+	case PhaseStart:
+		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, "Running catalog check")
+
+	case PhaseLaunch:
+		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
+		version := state.phaseVersion
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
+	case PhaseCheckingSubTaskExecutions:
+		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
+		// which means we need to offset things.
+		version := GetPhaseVersionOffset(state.currentPhase, state.originalArraySize) + state.phaseVersion
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
+	case PhaseWriteToDiscovery:
+		version := GetPhaseVersionOffset(state.currentPhase, state.originalArraySize) + state.phaseVersion
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
+	case PhaseSuccess:
+		phaseInfo = core.PhaseInfoSuccess(nowTaskInfo)
+
+	case PhaseRetryableFailure:
+		phaseInfo = core.PhaseInfoRetryableFailure(ErrorArrayPhaseError, state.reason, nowTaskInfo)
+
+	case PhasePermanentFailure:
+		phaseInfo = core.PhaseInfoFailure(ErrorArrayPhaseError, state.reason, nowTaskInfo)
+	}
+
+	return phaseInfo
+}
 
 func SummaryToPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, summary arraystatus.ArraySummary) Phase {
 	minSuccesses := int64(1)
@@ -153,7 +176,7 @@ func SummaryToPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, sum
 				totalSuccesses += count
 			} else {
 				// TODO: Split out retryable failures to be retried without doing the entire array task.
-				// TODO: Other option: array tasks are only retriable as a full set and to get single task retriability
+				// TODO: Other option: array tasks are only retryable as a full set and to get single task retriability
 				// TODO: dynamic_task must be updated to not auto-combine to array tasks.  For scale reasons, it is
 				// TODO: preferable to auto-combine to array tasks for now.
 				totalFailures += count
@@ -209,6 +232,9 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
 	}
 
+	// Save this in the state
+	state.originalArraySize = arrayJob.Size
+
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
@@ -249,7 +275,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		}
 
 		state.currentPhase = PhaseLaunch
-		state.actualArraySize = int(arrayJob.Size) - cachedCount
+		state.executionArraySize = int(arrayJob.Size) - cachedCount
 	}
 
 	return state, nil
