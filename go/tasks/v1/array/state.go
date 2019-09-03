@@ -44,6 +44,7 @@ type State struct {
 	currentPhase       Phase
 	phaseVersion       uint32
 	reason             string
+	executionErr       *idlCore.ExecutionError
 	executionArraySize int
 	originalArraySize  int64
 	arrayStatus        arraystatus.ArrayStatus
@@ -101,7 +102,7 @@ const (
 	ErrorWorkQueue          errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
 	ErrorReaderWorkItemCast                  = "READER_WORK_ITEM_CAST_FAILED"
 	ErrorInternalMismatch                    = "ARRAY_MISMATCH"
-	ErrorArrayPhaseError                     = "ARRAY_JOB_FAILURE"
+	ErrorK8sArrayGeneric                     = "ARRAY_JOB_GENERIC_FAILURE"
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
@@ -150,10 +151,18 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 		phaseInfo = core.PhaseInfoSuccess(nowTaskInfo)
 
 	case PhaseRetryableFailure:
-		phaseInfo = core.PhaseInfoRetryableFailure(ErrorArrayPhaseError, state.reason, nowTaskInfo)
+		if state.executionErr != nil {
+			phaseInfo = core.PhaseInfoFailed(core.PhaseRetryableFailure, state.executionErr, nowTaskInfo)
+		} else {
+			phaseInfo = core.PhaseInfoRetryableFailure(ErrorK8sArrayGeneric, state.reason, nowTaskInfo)
+		}
 
 	case PhasePermanentFailure:
-		phaseInfo = core.PhaseInfoFailure(ErrorArrayPhaseError, state.reason, nowTaskInfo)
+		if state.executionErr != nil {
+			phaseInfo = core.PhaseInfoFailed(core.PhasePermanentFailure, state.executionErr, nowTaskInfo)
+		} else {
+			phaseInfo = core.PhaseInfoFailure(ErrorK8sArrayGeneric, state.reason, nowTaskInfo)
+		}
 	}
 
 	return phaseInfo
