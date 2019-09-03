@@ -50,7 +50,7 @@ func NewReaderWorkItem(id workqueue.WorkItemID, key Key, outputsWriter io.Output
 }
 
 type ReaderProcessor struct {
-	catalogClient Client
+	catalogClient RawClient
 }
 
 func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
@@ -59,7 +59,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
 	}
 
-	literalMap, err := Download(ctx, ).Get(ctx, wi.key, )
+	literalMap, err := p.catalogClient.Get(ctx)
 	if err != nil {
 		if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
 			logger.Infof(ctx, "Artifact not found in Catalog.")
@@ -85,7 +85,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewReaderProcessor(catalogClient Client) ReaderProcessor {
+func NewReaderProcessor(catalogClient RawClient) ReaderProcessor {
 	return ReaderProcessor{
 		catalogClient: catalogClient,
 	}

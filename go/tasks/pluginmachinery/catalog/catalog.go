@@ -54,3 +54,22 @@ type Client interface {
 	// Adds a new entry to catalog for the given task execution context and the generated output
 	Upload(ctx context.Context, inputs ...UploadRequest) (putFuture UploadFuture, err error)
 }
+
+// TODO: Match the actual catalog service interface
+type RawClient interface {
+	Get(ctx context.Context) (*core.LiteralMap, error)
+	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) error
+}
+
+type client struct {
+	Reader workqueue.IndexedWorkQueue
+	Writer workqueue.IndexedWorkQueue
+}
+
+func (c client) Download(ctx context.Context, keys ...DownloadRequest) (outputFuture DownloadFuture, err error) {
+	panic("implement me")
+}
+
+func (c client) Upload(ctx context.Context, inputs ...UploadRequest) (putFuture UploadFuture, err error) {
+	panic("implement me")
+}
