@@ -76,7 +76,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		OutputPrefix: tCtx.OutputWriter().GetOutputPrefixPath().String(),
 	}
 
-	size := currentState.GetActualArraySize()
+	size := currentState.GetExecutionArraySize()
 	// TODO: Respect parallelism param
 	for i := 0; i < size; i++ {
 		pod := podTemplate.DeepCopy()
