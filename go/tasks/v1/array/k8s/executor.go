@@ -60,7 +60,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var err error
 
 	switch pluginState.GetPhase() {
-	case k8sarray.PhaseNotStarted:
+	case k8sarray.PhaseStart:
 		nextState, err = k8sarray.DetermineDiscoverability(ctx, tCtx, pluginState, e.catalogReader)
 
 	case k8sarray.PhaseLaunch:
@@ -85,7 +85,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-
+	phaseInfo := k8sarray.MapArrayStateToPluginPhase(ctx, *nextState)
+	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 
 func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
