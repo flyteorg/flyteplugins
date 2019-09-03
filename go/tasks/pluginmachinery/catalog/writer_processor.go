@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"fmt"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
@@ -39,7 +40,7 @@ func NewWriterWorkItem(id workqueue.WorkItemID, key Key, data io.OutputReader, m
 }
 
 type writerProcessor struct {
-	catalogClient Client
+	catalogClient RawClient
 }
 
 func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
@@ -52,14 +53,14 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	if err != nil {
 		logger.Errorf(ctx, "Error putting to catalog [%s]", err)
 		return workqueue.WorkStatusNotDone, errors.Wrapf(errors.DownstreamSystemError, err,
-			"Error writing [%s] to catalog, key id [%s] cache version [%s]",
-			wi.id, Identifier, CacheVersion)
+			"Error writing [%s] to catalog, key id [%v] cache version [%v]",
+			wi.id, wi.key.Identifier, wi.key.CacheVersion)
 	}
 
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewWriterProcessor(catalogClient Client) workqueue.Processor {
+func NewWriterProcessor(catalogClient RawClient) workqueue.Processor {
 	return writerProcessor{
 		catalogClient: catalogClient,
 	}

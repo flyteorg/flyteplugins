@@ -143,8 +143,8 @@ func (q queue) Start(ctx context.Context) error {
 	return nil
 }
 
-func NewIndexedWorkQueue(processor Processor, config Config) (IndexedWorkQueue, error) {
-	cache, err := lru.New(IndexCacheMaxItems)
+func NewIndexedWorkQueue(processor Processor, cfg Config) (IndexedWorkQueue, error) {
+	cache, err := lru.New(cfg.IndexCacheMaxItems)
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +152,8 @@ func NewIndexedWorkQueue(processor Processor, config Config) (IndexedWorkQueue, 
 	return &queue{
 		wlock:      sync.Mutex{},
 		rlock:      sync.RWMutex{},
-		workers:    Workers,
-		maxRetries: MaxRetries,
+		workers:    cfg.Workers,
+		maxRetries: cfg.MaxRetries,
 		// TODO: assign name to get metrics
 		queue: workqueue.New(),
 		// TODO: Default size?
