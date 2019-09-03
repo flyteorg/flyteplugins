@@ -51,6 +51,7 @@ type SimpleInputFilePath struct {
 }
 
 func (s SimpleInputFilePath) GetInputPrefixPath() storage.DataReference {
+	return s.pathPrefix
 }
 
 func (s SimpleInputFilePath) GetInputPath() storage.DataReference {
