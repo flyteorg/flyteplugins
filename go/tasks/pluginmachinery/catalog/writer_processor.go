@@ -22,16 +22,16 @@ type WriterWorkItem struct {
 	metadata Metadata
 }
 
-func (item *WriterWorkItem) GetId() workqueue.WorkItemID {
+func (item WriterWorkItem) GetId() workqueue.WorkItemID {
 	return item.id
 }
 
-func (item *WriterWorkItem) GetWorkStatus() workqueue.WorkStatus {
+func (item WriterWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func NewWriterWorkItem(id workqueue.WorkItemID, key Key, data io.OutputReader, metadata Metadata) WriterWorkItem {
-	return WriterWorkItem{
+func NewWriterWorkItem(id workqueue.WorkItemID, key Key, data io.OutputReader, metadata Metadata) *WriterWorkItem {
+	return &WriterWorkItem{
 		id:       id,
 		key:      key,
 		data:     data,

@@ -70,6 +70,10 @@ func (q *queue) Queue(once WorkItem) error {
 	q.wlock.Lock()
 	defer q.wlock.Unlock()
 
+	if _, found := q.index.Get(once.GetId()); found {
+		return nil
+	}
+
 	wrapper := &workItemWrapper{
 		payload: once,
 	}
