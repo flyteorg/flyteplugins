@@ -51,8 +51,6 @@ type OutputFilePaths interface {
 	// A Fully qualified path (URN) where the error information should be placed as a protobuf core.ErrorDocument. It is not directly
 	// used by the framework, but could be used in the future
 	GetErrorPath() storage.DataReference
-	// A fully qualified path where the futures file in the case of dynamic tasks should be placed.
-	GetFuturesPath() storage.DataReference
 }
 
 // Framework Output writing interface.
