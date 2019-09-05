@@ -28,15 +28,15 @@ type ReaderWorkItem struct {
 	key Key
 }
 
-func (item *ReaderWorkItem) GetId() workqueue.WorkItemID {
+func (item ReaderWorkItem) GetId() workqueue.WorkItemID {
 	return item.id
 }
 
-func (item *ReaderWorkItem) GetWorkStatus() workqueue.WorkStatus {
+func (item ReaderWorkItem) GetWorkStatus() workqueue.WorkStatus {
 	return item.workStatus
 }
 
-func (item *ReaderWorkItem) IsCached() bool {
+func (item ReaderWorkItem) IsCached() bool {
 	return item.cached
 }
 
@@ -74,7 +74,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	}
 
 	// TODO: Check task interface, if it has outputs but literalmap is empty (or not matching output), error.
-	err = wi.outputsWriter.Put(ctx, ioutils.NewSimpleOutputReader(literalMap, nil))
+	err = wi.outputsWriter.Put(ctx, ioutils.NewInMemoryOutputReader(literalMap, nil))
 	if err != nil {
 		// TODO: wrap error
 		return workqueue.WorkStatusNotDone, err
