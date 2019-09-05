@@ -1,8 +1,13 @@
 package catalog
 
-import "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
+import (
+	"github.com/lyft/flyteplugins/go/tasks/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
+)
 
 //go:generate pflags Config --default-var=defaultConfig
+
+var cfgSection = config.MustRegisterSubSection("catalogCache", defaultConfig)
 
 type Config struct {
 	ReaderWorkqueueConfig workqueue.Config
@@ -20,4 +25,8 @@ var defaultConfig = &Config{
 		Workers:            10,
 		IndexCacheMaxItems: 1000,
 	},
+}
+
+func GetConfig() *Config {
+	return cfgSection.GetConfig().(*Config)
 }

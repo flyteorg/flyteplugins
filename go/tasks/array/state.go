@@ -7,27 +7,14 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
 	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 
-	"strconv"
-
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
-
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/storage"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-const K8sPodKind = "pod"
 
 type Phase uint8
 
@@ -92,10 +79,9 @@ func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
 }
 
 const (
-	ErrorWorkQueue          errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
-	ErrorReaderWorkItemCast                  = "READER_WORK_ITEM_CAST_FAILED"
-	ErrorInternalMismatch                    = "ARRAY_MISMATCH"
-	ErrorK8sArrayGeneric                     = "ARRAY_JOB_GENERIC_FAILURE"
+	ErrorWorkQueue        errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
+	ErrorInternalMismatch                  = "ARRAY_MISMATCH"
+	ErrorK8sArrayGeneric                   = "ARRAY_JOB_GENERIC_FAILURE"
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
@@ -208,57 +194,4 @@ func SummaryToPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, sum
 	logger.Debugf(ctx, "Array is still running [Successes: %v, Failures: %v, Total: %v, MinSuccesses: %v]",
 		totalSuccesses, totalFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
-}
-
-
-// Note that Name is not set on the result object.
-// It's up to the caller to set the Name before creating the object in K8s.
-func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionContext) (
-	podTemplate v1.Pod, job *idlPlugins.ArrayJob, err error) {
-
-	// Check that the taskTemplate is valid
-	taskTemplate, err := tCtx.TaskReader().Read(ctx)
-	if err != nil {
-		return v1.Pod{}, nil, err
-	} else if taskTemplate == nil {
-		return v1.Pod{}, nil, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
-	}
-
-	if taskTemplate.GetContainer() == nil {
-		return v1.Pod{}, nil, errors.Errorf(errors.BadTaskSpecification,
-			"Required value not set, taskTemplate Container")
-	}
-
-	var arrayJob *idlPlugins.ArrayJob
-	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = ToArrayJob(taskTemplate.GetCustom())
-		if err != nil {
-			return v1.Pod{}, nil, err
-		}
-	}
-
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, tCtx.TaskExecutionMetadata(), tCtx.TaskReader(), tCtx.InputReader(),
-		tCtx.OutputWriter().GetOutputPrefixPath().String())
-	if err != nil {
-		return v1.Pod{}, nil, err
-	}
-
-	// TODO: confirm whether this can be done when creating the pod spec directly above
-	podSpec.Containers[0].Command = taskTemplate.GetContainer().Command
-	podSpec.Containers[0].Args = taskTemplate.GetContainer().Args
-
-	return v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       K8sPodKind,
-			APIVersion: v1.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			// Note that name is missing here
-			Namespace:       tCtx.TaskExecutionMetadata().GetNamespace(),
-			Labels:          tCtx.TaskExecutionMetadata().GetLabels(),
-			Annotations:     tCtx.TaskExecutionMetadata().GetAnnotations(),
-			OwnerReferences: []metav1.OwnerReference{tCtx.TaskExecutionMetadata().GetOwnerReference()},
-		},
-		Spec: *podSpec,
-	}, arrayJob, nil
 }

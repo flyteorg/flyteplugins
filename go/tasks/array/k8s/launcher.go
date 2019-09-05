@@ -3,10 +3,11 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 	"strconv"
 	"strings"
+
+	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
+	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 
 	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
 	errors2 "github.com/lyft/flytestdlib/errors"
@@ -48,8 +49,8 @@ func newStatusCompactArray(count uint) bitarray.CompactArray {
 }
 
 func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
-	if len(DefaultScheduler) > 0 {
-		pod.Spec.SchedulerName = DefaultScheduler
+	if len(cfg.DefaultScheduler) > 0 {
+		pod.Spec.SchedulerName = cfg.DefaultScheduler
 	}
 
 	return pod
@@ -58,7 +59,7 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, currentState *k8sarray.State) (newState *k8sarray.State, err error) {
-	podTemplate, _, err := k8sarray.FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
+	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
 	}
@@ -103,7 +104,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 					return currentState, nil
 				}
 
-				currentState = currentState.SetPhase(k8sarray.PhaseRetryableFailure)
+				currentState = currentState.SetPhase(k8sarray.PhaseRetryableFailure, 0)
 				currentState = currentState.SetReason(err.Error())
 				return currentState, nil
 			}
@@ -119,7 +120,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		Detailed: newStatusCompactArray(uint(size)),
 	}
 
-	currentState.SetPhase(k8sarray.PhaseCheckingSubTaskExecutions)
+	currentState.SetPhase(k8sarray.PhaseCheckingSubTaskExecutions, 0)
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil
