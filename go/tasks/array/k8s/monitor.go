@@ -3,11 +3,12 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
 	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 	"github.com/lyft/flyteplugins/go/tasks/array/errorcollector"
-	"strconv"
-	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
 	v1 "k8s.io/api/core/v1"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
-	"github.com/lyft/flytedynamicjoboperator/pkg/apis/futures/v1alpha1"
 	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
@@ -92,13 +92,11 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 
 	phase := array.SummaryToPhase(ctx, arrayJob, newArrayStatus.Summary)
 	if phase == array.PhasePermanentFailure || phase == array.PhaseRetryableFailure {
-		errorMsg := msg.Summary(MaxErrorStringLength)
+		errorMsg := msg.Summary(GetConfig().MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg)
 	}
 
-	newState = newState.SetPhase(phase)
-
-	if newState.GetPhase() == array.PhaseCheckingSubTaskExecutions {
+	if phase == array.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
 		if phase == array.PhaseCheckingSubTaskExecutions {
 			// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
@@ -107,9 +105,9 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 			}
 		}
 
-		newState = newState.SetPhaseVersion(newPhaseVersion)
+		newState = newState.SetPhase(phase, newPhaseVersion)
 	} else {
-		newState = newState.SetPhaseVersion(core.DefaultPhaseVersion)
+		newState = newState.SetPhase(phase, core.DefaultPhaseVersion)
 	}
 
 	return newState, nil
@@ -120,7 +118,7 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name types2.Nam
 
 	pod := &v1.Pod{
 		TypeMeta: v12.TypeMeta{
-			Kind:       v1alpha1.KindK8sPod,
+			Kind:       K8sPodKind,
 			APIVersion: v1.SchemeGroupVersion.String(),
 		},
 	}
