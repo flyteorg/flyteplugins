@@ -179,16 +179,11 @@
   packages = [
     "jsonpb",
     "proto",
-    "protoc-gen-go/descriptor",
-    "protoc-gen-go/generator",
-    "protoc-gen-go/generator/internal/remap",
-    "protoc-gen-go/plugin",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
     "ptypes/struct",
     "ptypes/timestamp",
-    "ptypes/wrappers",
   ]
   pruneopts = ""
   revision = "6c65a5562fc06764971b7c5d05c76c75e84bdbf7"
@@ -243,40 +238,6 @@
   ]
   pruneopts = ""
   revision = "901d90724c7919163f472a9812253fb26761123d"
-
-[[projects]]
-  digest = "1:9a0b2dd1f882668a3d7fbcd424eed269c383a16f1faa3a03d14e0dd5fba571b1"
-  name = "github.com/grpc-ecosystem/go-grpc-middleware"
-  packages = [
-    ".",
-    "retry",
-    "util/backoffutils",
-    "util/metautils",
-  ]
-  pruneopts = ""
-  revision = "c250d6563d4d4c20252cd865923440e829844f4e"
-  version = "v1.0.0"
-
-[[projects]]
-  digest = "1:e24dc5ef44694848785de507f439a24e9e6d96d7b43b8cf3d6cfa857aa1e2186"
-  name = "github.com/grpc-ecosystem/go-grpc-prometheus"
-  packages = ["."]
-  pruneopts = ""
-  revision = "c225b8c3b01faf2899099b768856a9e916e5087b"
-  version = "v1.2.0"
-
-[[projects]]
-  digest = "1:34e08080e732c137007c9972a71bac3ecf945b867b240f969f7fbc34184706da"
-  name = "github.com/grpc-ecosystem/grpc-gateway"
-  packages = [
-    "internal",
-    "protoc-gen-swagger/options",
-    "runtime",
-    "utilities",
-  ]
-  pruneopts = ""
-  revision = "fd2d159495beeea56e2b747d3d4b68299a81210c"
-  version = "v1.9.6"
 
 [[projects]]
   digest = "1:7f6f07500a0b7d3766b00fa466040b97f2f5b5f3eef2ecabfe516e703b05119a"
@@ -351,16 +312,11 @@
   digest = "1:2b5f0e6bc8fb862fed5bccf9fbb1ab819c8b3f8a21e813fe442c06aec3bb3e86"
   name = "github.com/lyft/flyteidl"
   packages = [
-    "clients/go/admin",
-    "clients/go/admin/mocks",
     "clients/go/coreutils",
     "clients/go/coreutils/logs",
-    "clients/go/events/errors",
-    "gen/pb-go/flyteidl/admin",
     "gen/pb-go/flyteidl/core",
     "gen/pb-go/flyteidl/event",
     "gen/pb-go/flyteidl/plugins",
-    "gen/pb-go/flyteidl/service",
   ]
   pruneopts = ""
   revision = "793b09d190148236f41ad8160b5cec9a3325c16f"
@@ -381,7 +337,6 @@
     "logger",
     "promutils",
     "promutils/labeled",
-    "sets",
     "storage",
     "utils",
   ]
@@ -658,8 +613,6 @@
     "http2",
     "http2/hpack",
     "idna",
-    "internal/timeseries",
-    "trace",
   ]
   pruneopts = ""
   revision = "74dc4d7220e7acc4e100824340f3e66577424772"
@@ -739,12 +692,7 @@
   branch = "master"
   digest = "1:e1505a39ad844b6a89856ffb97363cc47cbee0c511c1423d2d9c673cc4a215a0"
   name = "google.golang.org/genproto"
-  packages = [
-    "googleapis/api/annotations",
-    "googleapis/api/httpbody",
-    "googleapis/rpc/status",
-    "protobuf/field_mask",
-  ]
+  packages = ["googleapis/rpc/status"]
   pruneopts = ""
   revision = "24fa4b261c55da65468f2abfdae2b024eef27dfb"
 
@@ -752,39 +700,11 @@
   digest = "1:e8a4007e58ea9431f6460d1bc5c7f9dd29fdc0211ab780b6ad3d0581478f2076"
   name = "google.golang.org/grpc"
   packages = [
-    ".",
-    "balancer",
-    "balancer/base",
-    "balancer/roundrobin",
-    "binarylog/grpc_binarylog_v1",
     "codes",
     "connectivity",
-    "credentials",
-    "credentials/internal",
-    "encoding",
-    "encoding/proto",
     "grpclog",
     "internal",
-    "internal/backoff",
-    "internal/balancerload",
-    "internal/binarylog",
-    "internal/channelz",
-    "internal/envconfig",
-    "internal/grpcrand",
-    "internal/grpcsync",
-    "internal/syscall",
-    "internal/transport",
-    "keepalive",
-    "metadata",
-    "naming",
-    "peer",
-    "resolver",
-    "resolver/dns",
-    "resolver/passthrough",
-    "serviceconfig",
-    "stats",
     "status",
-    "tap",
   ]
   pruneopts = ""
   revision = "6eaf6f47437a6b4e2153a190160ef39a92c7eceb"
@@ -1001,23 +921,19 @@
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/struct",
-    "github.com/lyft/flyteidl/clients/go/admin",
-    "github.com/lyft/flyteidl/clients/go/admin/mocks",
+    "github.com/hashicorp/golang-lru",
     "github.com/lyft/flyteidl/clients/go/coreutils",
     "github.com/lyft/flyteidl/clients/go/coreutils/logs",
-    "github.com/lyft/flyteidl/clients/go/events/errors",
-    "github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins",
-    "github.com/lyft/flyteidl/gen/pb-go/flyteidl/service",
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",
     "github.com/lyft/flytestdlib/contextutils",
+    "github.com/lyft/flytestdlib/errors",
     "github.com/lyft/flytestdlib/logger",
     "github.com/lyft/flytestdlib/promutils",
     "github.com/lyft/flytestdlib/promutils/labeled",
-    "github.com/lyft/flytestdlib/sets",
     "github.com/lyft/flytestdlib/storage",
     "github.com/lyft/flytestdlib/utils",
     "github.com/magiconair/properties/assert",
@@ -1027,7 +943,8 @@
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
-    "google.golang.org/grpc",
+    "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/status",
     "k8s.io/api/apps/v1",
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
@@ -1039,7 +956,6 @@
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
-    "k8s.io/apimachinery/pkg/util/json",
     "k8s.io/apimachinery/pkg/util/rand",
     "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/client-go/kubernetes/scheme",
@@ -1053,7 +969,6 @@
     "sigs.k8s.io/controller-runtime/pkg/event",
     "sigs.k8s.io/controller-runtime/pkg/handler",
     "sigs.k8s.io/controller-runtime/pkg/predicate",
-    "sigs.k8s.io/controller-runtime/pkg/runtime/inject",
     "sigs.k8s.io/controller-runtime/pkg/source",
   ]
   solver-name = "gps-cdcl"
