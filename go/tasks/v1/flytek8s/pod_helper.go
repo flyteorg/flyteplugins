@@ -162,7 +162,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 }
 
 // Cases have been observed where a pod will report success but a container has been killed due to OOM.
-func DemystifySuccess(podStatus v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
+func DemystifySuccess(podStatus *v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
 	for _, container := range podStatus.ContainerStatuses {
 		if container.State.Terminated != nil && container.State.Terminated.Reason == OOMKilled {
 			return pluginsCore.PhaseInfoRetryableFailure(container.State.Terminated.Reason, container.State.Terminated.Message, &info), nil
@@ -249,7 +249,7 @@ func GetTaskPhaseFromPod(ctx context.Context, pod *v1.Pod, reportingMode Contain
 	}
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
-		return DemystifySuccess(pod.Status, info)
+		return DemystifySuccess(&pod.Status, info)
 	case v1.PodFailed:
 		code, message := ConvertPodFailureToError(pod.Status)
 		return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil

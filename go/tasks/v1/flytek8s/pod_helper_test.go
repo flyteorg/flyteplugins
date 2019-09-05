@@ -132,6 +132,42 @@ func TestAddFlyteModificationsForPodSpec(t *testing.T) {
 	})
 }
 
+func TestDemystifySuccess(t *testing.T) {
+	genuineSuccess := &v1.PodStatus{
+		Phase:                 v1.PodSucceeded,
+		ContainerStatuses: []v1.ContainerStatus{
+			{
+				State: v1.ContainerState{
+					Terminated: &v1.ContainerStateTerminated{
+						ExitCode:    0,
+						Reason:      "Container terminated successfully",
+					},
+				},
+			},
+		},
+	}
+	phaseInfo, err := DemystifySuccess(genuineSuccess, pluginsCore.TaskInfo{})
+	assert.Nil(t, err)
+	assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
+
+	oomKilled := &v1.PodStatus{
+		Phase:                 v1.PodSucceeded,
+		ContainerStatuses: []v1.ContainerStatus{
+			{
+				State: v1.ContainerState{
+					Terminated: &v1.ContainerStateTerminated{
+						ExitCode:    0,
+						Reason:      OOMKilled,
+					},
+				},
+			},
+		},
+	}
+	phaseInfo, err = DemystifySuccess(oomKilled, pluginsCore.TaskInfo{})
+	assert.Nil(t, err)
+	assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+}
+
 func TestDemystifyPending(t *testing.T) {
 
 	t.Run("PodNotScheduled", func(t *testing.T) {
