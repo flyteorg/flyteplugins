@@ -15,6 +15,7 @@ import (
 )
 
 const PodKind = "pod"
+const OOMKilled = "OOMKilled"
 
 // Add modifications required by the Flyte platform to an existing podSpec.
 func AddFlyteModificationsForPodSpec(taskCtx pluginsCore.TaskExecutionContext, containers []v1.Container,
@@ -160,6 +161,16 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 	return pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "Scheduling"), nil
 }
 
+// Cases have been observed where a pod will report success but a container has been killed due to OOM.
+func DemystifySuccess(podStatus v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
+	for _, container := range podStatus.ContainerStatuses {
+		if container.State.Terminated != nil && container.State.Terminated.Reason == OOMKilled {
+			return pluginsCore.PhaseInfoRetryableFailure(container.State.Terminated.Reason, container.State.Terminated.Message, &info), nil
+		}
+	}
+	return pluginsCore.PhaseInfoSuccess(&info), nil
+}
+
 func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 	code = "UnknownError"
 	message = "Container/Pod failed. No message received from kubernetes. Could be permissions?"
@@ -238,7 +249,7 @@ func GetTaskPhaseFromPod(ctx context.Context, pod *v1.Pod, reportingMode Contain
 	}
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
-		return pluginsCore.PhaseInfoSuccess(&info), nil
+		return DemystifySuccess(pod.Status, info)
 	case v1.PodFailed:
 		code, message := ConvertPodFailureToError(pod.Status)
 		return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil
