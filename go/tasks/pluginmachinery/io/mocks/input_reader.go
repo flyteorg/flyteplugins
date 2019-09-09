@@ -49,3 +49,17 @@ func (_m *InputReader) GetInputPath() storage.DataReference {
 
 	return r0
 }
+
+// GetInputPrefixPath provides a mock function with given fields:
+func (_m *InputReader) GetInputPrefixPath() storage.DataReference {
+	ret := _m.Called()
+
+	var r0 storage.DataReference
+	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(storage.DataReference)
+	}
+
+	return r0
+}
