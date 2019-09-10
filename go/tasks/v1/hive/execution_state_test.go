@@ -1,12 +1,12 @@
-package qubole_single
+package hive
 
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/v1/core/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/v1/hive/client"
+	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/hive/client/mocks"
 	mocks2 "github.com/lyft/flyteplugins/go/tasks/v1/k8splugins/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
-	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 

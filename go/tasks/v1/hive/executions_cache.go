@@ -1,9 +1,9 @@
-package qubole_single
+package hive
 
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
+	"github.com/lyft/flyteplugins/go/tasks/v1/hive/client"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"

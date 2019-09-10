@@ -1,4 +1,4 @@
-package qubole_single
+package hive
 
 import (
 	"github.com/lyft/flytestdlib/promutils"

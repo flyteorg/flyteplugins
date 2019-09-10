@@ -1,4 +1,4 @@
-package qubole_single
+package hive
 
 import (
 	structpb "github.com/golang/protobuf/ptypes/struct"

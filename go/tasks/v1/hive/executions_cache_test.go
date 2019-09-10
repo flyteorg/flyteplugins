@@ -1,10 +1,10 @@
-package qubole_single
+package hive
 
 import (
 	"context"
+	"github.com/lyft/flyteplugins/go/tasks/v1/hive/client"
+	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/hive/client/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/v1/k8splugins/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client"
-	quboleMocks "github.com/lyft/flyteplugins/go/tasks/v1/qubole_single/client/mocks"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 
 		state := ExecutionState{
 			CommandId: "123456",
-			Phase: PhaseSubmitted,
+			Phase:     PhaseSubmitted,
 		}
 		mockQubole.On("GetCommandStatus", mock.Anything, mock.MatchedBy(func(commandId string) bool {
 			return commandId == state.CommandId

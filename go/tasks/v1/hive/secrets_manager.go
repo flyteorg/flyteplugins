@@ -1,4 +1,4 @@
-package qubole_single
+package hive
 
 import (
 	"context"
@@ -10,10 +10,10 @@ import (
 
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/config"
+	"github.com/lyft/flyteplugins/go/tasks/v1/hive/config"
 )
 
-// TODO: Deprecate this entire file in favor of the
+// TODO: Deprecate this entire file in favor of the secrets manager provided by the task execution context
 
 type secretsManager struct {
 	// Memoize the key
