@@ -118,7 +118,7 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name types2.Nam
 
 	pod := &v1.Pod{
 		TypeMeta: v12.TypeMeta{
-			Kind:       K8sPodKind,
+			Kind:       PodKind,
 			APIVersion: v1.SchemeGroupVersion.String(),
 		},
 	}

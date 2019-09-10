@@ -15,7 +15,8 @@ ignored = ["k8s.io/spark-on-k8s-operator",
 [[constraint]]
   name = "github.com/lyft/flytestdlib"
   source = "https://github.com/lyft/flytestdlib"
-  version = "^0.2.x"
+  #version = "^0.2.x"
+  revision = "8eb404d211e461e6bd9269579d9d692191237025"
 
 [[constraint]]
   name = "sigs.k8s.io/controller-runtime"
@@ -50,3 +51,7 @@ ignored = ["k8s.io/spark-on-k8s-operator",
 [[override]]
   name = "github.com/stretchr/objx"
   version = "0.1.1"
+
+[[override]]
+  branch = "master"
+  name = "golang.org/x/net"

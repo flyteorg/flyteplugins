@@ -5,7 +5,7 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 
-	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
+	"github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
@@ -35,26 +35,26 @@ func (Executor) GetProperties() core.PluginProperties {
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	pluginConfig := GetConfig()
 
-	pluginState := &k8sarray.State{}
+	pluginState := &array.State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextState *k8sarray.State
+	var nextState *array.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
-	case k8sarray.PhaseStart:
-		nextState, err = k8sarray.DetermineDiscoverability(ctx, tCtx, pluginState)
+	case array.PhaseStart:
+		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
-	case k8sarray.PhaseLaunch:
+	case array.PhaseLaunch:
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case k8sarray.PhaseCheckingSubTaskExecutions:
+	case array.PhaseCheckingSubTaskExecutions:
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case k8sarray.PhaseWriteToDiscovery:
-		nextState, err = k8sarray.WriteToDiscovery(ctx, tCtx, pluginState)
+	case array.PhaseWriteToDiscovery:
+		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
 
 	default:
 		nextState = pluginState
@@ -69,7 +69,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := k8sarray.MapArrayStateToPluginPhase(ctx, *nextState)
+	phaseInfo := array.MapArrayStateToPluginPhase(ctx, *nextState)
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 

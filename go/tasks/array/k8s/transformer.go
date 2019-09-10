@@ -14,7 +14,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-const K8sPodKind = "pod"
+const PodKind = "pod"
 
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
@@ -54,7 +54,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 
 	return v1.Pod{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       K8sPodKind,
+			Kind:       PodKind,
 			APIVersion: v1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
