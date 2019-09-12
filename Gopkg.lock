@@ -14,14 +14,6 @@
   version = "v0.1.3"
 
 [[projects]]
-  digest = "1:60942d250d0e06d3722ddc8e22bc52f8cef7961ba6d8d3e95327a32b6b024a7b"
-  name = "github.com/appscode/jsonpatch"
-  packages = ["."]
-  pruneopts = ""
-  revision = "7c0e3b262f30165a8ec3d0b4c6059fd92703bfb2"
-  version = "1.0.0"
-
-[[projects]]
   digest = "1:807098bf985d81cfffd0c4efee548930c4c8f56076f59a91ab1d4ec267a758ec"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -97,14 +89,6 @@
   pruneopts = ""
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
-
-[[projects]]
-  digest = "1:46ddeb9dd35d875ac7568c4dc1fc96ce424e034bdbb984239d8ffc151398ec01"
-  name = "github.com/evanphx/json-patch"
-  packages = ["."]
-  pruneopts = ""
-  revision = "026c730a0dcc5d11f93f1cf1cc65b01247ea7b6f"
-  version = "v4.5.0"
 
 [[projects]]
   digest = "1:e988ed0ca0d81f4d28772760c02ee95084961311291bdfefc1b04617c178b722"
@@ -309,7 +293,7 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:2b5f0e6bc8fb862fed5bccf9fbb1ab819c8b3f8a21e813fe442c06aec3bb3e86"
+  digest = "1:dec8d616f023c717c476cad2b30d5afebb4b6ed2f23d215bf309b9889c2a377b"
   name = "github.com/lyft/flyteidl"
   packages = [
     "clients/go/coreutils",
@@ -319,9 +303,9 @@
     "gen/pb-go/flyteidl/plugins",
   ]
   pruneopts = ""
-  revision = "793b09d190148236f41ad8160b5cec9a3325c16f"
+  revision = "fac461ff1d6926e98b48e2f3374419afdb69de18"
   source = "https://github.com/lyft/flyteidl"
-  version = "v0.1.0"
+  version = "v0.14.1"
 
 [[projects]]
   digest = "1:c368fe9a00a38c8702e24475dd3a8348d2a191892ef9030aceb821f8c035b737"
@@ -730,7 +714,6 @@
   digest = "1:73ee122857f257aa507ebae097783fe08ad8af49398e5b3876787325411f1a4b"
   name = "k8s.io/api"
   packages = [
-    "admission/v1beta1",
     "admissionregistration/v1alpha1",
     "admissionregistration/v1beta1",
     "apps/v1",
@@ -835,7 +818,6 @@
     "rest",
     "rest/watch",
     "restmapper",
-    "testing",
     "tools/auth",
     "tools/cache",
     "tools/clientcmd",
@@ -886,18 +868,9 @@
     "pkg/client",
     "pkg/client/apiutil",
     "pkg/client/config",
-    "pkg/client/fake",
     "pkg/controller/controllertest",
-    "pkg/event",
-    "pkg/handler",
     "pkg/internal/objectutil",
-    "pkg/predicate",
-    "pkg/reconcile",
-    "pkg/runtime/inject",
     "pkg/runtime/log",
-    "pkg/source",
-    "pkg/source/internal",
-    "pkg/webhook/admission/types",
   ]
   pruneopts = ""
   revision = "477bf4f046c31c351b46fa00262bc814ac0bbca1"
@@ -933,7 +906,6 @@
     "github.com/lyft/flytestdlib/errors",
     "github.com/lyft/flytestdlib/logger",
     "github.com/lyft/flytestdlib/promutils",
-    "github.com/lyft/flytestdlib/promutils/labeled",
     "github.com/lyft/flytestdlib/storage",
     "github.com/lyft/flytestdlib/utils",
     "github.com/magiconair/properties/assert",
@@ -946,7 +918,6 @@
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/status",
     "k8s.io/api/apps/v1",
-    "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/meta",
@@ -965,11 +936,6 @@
     "sigs.k8s.io/controller-runtime/pkg/cache/informertest",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
-    "sigs.k8s.io/controller-runtime/pkg/client/fake",
-    "sigs.k8s.io/controller-runtime/pkg/event",
-    "sigs.k8s.io/controller-runtime/pkg/handler",
-    "sigs.k8s.io/controller-runtime/pkg/predicate",
-    "sigs.k8s.io/controller-runtime/pkg/source",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
