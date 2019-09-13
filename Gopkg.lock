@@ -2,6 +2,37 @@
 
 
 [[projects]]
+  digest = "1:62010c37b093a63520b29cefd17edb3aa43735b265d2f2ede22e85fa86bf4cf0"
+  name = "cloud.google.com/go"
+  packages = ["compute/metadata"]
+  pruneopts = ""
+  revision = "d1af076dc3f6a314e9dd6610fe83b0f7afaff6d6"
+  version = "v0.45.1"
+
+[[projects]]
+  digest = "1:9a11be778d5fcb8e4873e64a097dfd2862d8665d9e2d969b90810d5272e51acb"
+  name = "github.com/Azure/azure-sdk-for-go"
+  packages = ["storage"]
+  pruneopts = ""
+  revision = "2d49bb8f2cee530cc16f1f1a9f0aae763dee257d"
+  version = "v10.2.1-beta"
+
+[[projects]]
+  digest = "1:49d1526a17b46732f253a580a8c978bf8519cfa76e8075d9c8093080360aa104"
+  name = "github.com/Azure/go-autorest"
+  packages = [
+    "autorest",
+    "autorest/adal",
+    "autorest/azure",
+    "autorest/date",
+    "logger",
+    "tracing",
+  ]
+  pruneopts = ""
+  revision = "69b4126ece6b5257e2f9b0017007d2334153655f"
+  version = "v13.0.1"
+
+[[projects]]
   digest = "1:e1549ae10031ac55dd7d26ac4d480130ddbdf97f9a26ebbedff089aa0335798f"
   name = "github.com/GoogleCloudPlatform/spark-on-k8s-operator"
   packages = [
@@ -51,6 +82,8 @@
     "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
     "service/s3",
+    "service/s3/s3iface",
+    "service/s3/s3manager",
     "service/sts",
     "service/sts/stsiface",
   ]
@@ -89,6 +122,14 @@
   pruneopts = ""
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:6098222470fe0172157ce9bbef5d2200df4edde17ee649c5d6e48330e4afa4c6"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = ""
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
 
 [[projects]]
   digest = "1:e988ed0ca0d81f4d28772760c02ee95084961311291bdfefc1b04617c178b722"
@@ -190,6 +231,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:6120f027b9d68ef460b8731e27b0dcf2017f80605c17eb0b4cc151866ba38f6d"
+  name = "github.com/googleapis/gax-go"
+  packages = ["v2"]
+  pruneopts = ""
+  revision = "bd5b16380fd03dc758d11cef74ba2e3bc8b0e8c2"
+  version = "v2.0.5"
+
+[[projects]]
   digest = "1:728f28282e0edc47e2d8f41c9ec1956ad645ad6b15e6376ab31e2c3b094fc38f"
   name = "github.com/googleapis/gnostic"
   packages = [
@@ -202,15 +251,19 @@
   version = "v0.3.1"
 
 [[projects]]
-  digest = "1:94697ef521414e9814e038c512699e3ef984519a301b7a499b00cf851c928b29"
+  digest = "1:1ea91d049b6a609f628ecdfda32e85f445a0d3671980dcbf7cbe1bbd7ee6aabc"
   name = "github.com/graymeta/stow"
   packages = [
     ".",
+    "azure",
+    "google",
     "local",
+    "oracle",
     "s3",
+    "swift",
   ]
   pruneopts = ""
-  revision = "77c84b1dd69c41b74fe0a94ca8ee257d85947327"
+  revision = "903027f87de7054953efcdb8ba70d5dc02df38c7"
 
 [[projects]]
   branch = "master"
@@ -308,7 +361,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:c368fe9a00a38c8702e24475dd3a8348d2a191892ef9030aceb821f8c035b737"
+  digest = "1:b8860863eb1eb7fe4f7d2b3c6b34b89aaedeaae88d761d2c9a4eccc46262abcc"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
@@ -323,11 +376,12 @@
     "promutils/labeled",
     "storage",
     "utils",
+    "utils/mocks",
   ]
   pruneopts = ""
-  revision = "c0e1a9369cb442d70093564fbbc21d8298f5aeb6"
+  revision = "a758bbb91a09d6e9474fa160a633fdb05f3abc03"
   source = "https://github.com/lyft/flytestdlib"
-  version = "v0.2.11"
+  version = "v0.2.17"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -387,6 +441,14 @@
   pruneopts = ""
   revision = "4b7aa43c6742a2c18fdef89dd197aaae7dac7ccd"
   version = "1.0.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:b6c101f6c8ab09c631e969c30d3a4b42aeca82580499253bad77cb2426d4fc27"
+  name = "github.com/ncw/swift"
+  packages = ["."]
+  pruneopts = ""
+  revision = "a24ef33bc9b7e59ae4bed9e87a51d7bc76122731"
 
 [[projects]]
   digest = "1:3d2c33720d4255686b9f4a7e4d3b94938ee36063f14705c5eb0f73347ed4c496"
@@ -471,6 +533,14 @@
   version = "v0.0.3"
 
 [[projects]]
+  digest = "1:7f569d906bdd20d906b606415b7d794f798f91a62fcfb6a4daa6d50690fb7a3f"
+  name = "github.com/satori/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:1a405cddcf3368445051fb70ab465ae99da56ad7be8d8ca7fc52159d1c2d873c"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -548,6 +618,31 @@
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:1967fb934ef747bf690fcc56487a06c46bf674bd91cb3381a78a7e4d5c2e1a82"
+  name = "go.opencensus.io"
+  packages = [
+    ".",
+    "internal",
+    "internal/tagencoding",
+    "metric/metricdata",
+    "metric/metricproducer",
+    "plugin/ochttp",
+    "plugin/ochttp/propagation/b3",
+    "resource",
+    "stats",
+    "stats/internal",
+    "stats/view",
+    "tag",
+    "trace",
+    "trace/internal",
+    "trace/propagation",
+    "trace/tracestate",
+  ]
+  pruneopts = ""
+  revision = "59d1ce35d30f3c25ba762169da2a37eab6ffa041"
+  version = "v0.22.1"
+
+[[projects]]
   digest = "1:e6ff7840319b6fda979a918a8801005ec2049abca62af19211d96971d8ec3327"
   name = "go.uber.org/atomic"
   packages = ["."]
@@ -588,7 +683,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cd0b3836d3ade8018db36062149a29bddb21ab48fb8f01daf58a4fed54c5588c"
+  digest = "1:6cb053a62bf923c2b5d17fb53fa027a479e7b438a8be5b0c5d948dced78c2d1c"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -597,9 +692,11 @@
     "http2",
     "http2/hpack",
     "idna",
+    "internal/timeseries",
+    "trace",
   ]
   pruneopts = ""
-  revision = "74dc4d7220e7acc4e100824340f3e66577424772"
+  revision = "24e19bdeb0f2d062d8e2640d50a7aaf2a7f80e7a"
 
 [[projects]]
   branch = "master"
@@ -607,7 +704,10 @@
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "google",
     "internal",
+    "jws",
+    "jwt",
   ]
   pruneopts = ""
   revision = "0f29369cfe4552d0e4bcddc57cc75f4d7e672a33"
@@ -657,13 +757,34 @@
   revision = "9d24e82272b4f38b78bc8cff74fa936d31ccd8ef"
 
 [[projects]]
+  branch = "master"
+  digest = "1:304f84b3a0c6704002688ca942f9243fe10242745002d359605a4c1aba339a1f"
+  name = "google.golang.org/api"
+  packages = [
+    "googleapi",
+    "googleapi/internal/uritemplates",
+    "googleapi/transport",
+    "internal",
+    "internal/gensupport",
+    "option",
+    "storage/v1",
+    "transport/http",
+    "transport/http/internal/propagation",
+  ]
+  pruneopts = ""
+  revision = "c06e0e8e492aac211f75852f5cf0d680c31071de"
+
+[[projects]]
   digest = "1:47f391ee443f578f01168347818cb234ed819521e49e4d2c8dd2fb80d48ee41a"
   name = "google.golang.org/appengine"
   packages = [
+    ".",
     "internal",
+    "internal/app_identity",
     "internal/base",
     "internal/datastore",
     "internal/log",
+    "internal/modules",
     "internal/remote_api",
     "internal/urlfetch",
     "urlfetch",
@@ -684,11 +805,39 @@
   digest = "1:e8a4007e58ea9431f6460d1bc5c7f9dd29fdc0211ab780b6ad3d0581478f2076"
   name = "google.golang.org/grpc"
   packages = [
+    ".",
+    "balancer",
+    "balancer/base",
+    "balancer/roundrobin",
+    "binarylog/grpc_binarylog_v1",
     "codes",
     "connectivity",
+    "credentials",
+    "credentials/internal",
+    "encoding",
+    "encoding/proto",
     "grpclog",
     "internal",
+    "internal/backoff",
+    "internal/balancerload",
+    "internal/binarylog",
+    "internal/channelz",
+    "internal/envconfig",
+    "internal/grpcrand",
+    "internal/grpcsync",
+    "internal/syscall",
+    "internal/transport",
+    "keepalive",
+    "metadata",
+    "naming",
+    "peer",
+    "resolver",
+    "resolver/dns",
+    "resolver/passthrough",
+    "serviceconfig",
+    "stats",
     "status",
+    "tap",
   ]
   pruneopts = ""
   revision = "6eaf6f47437a6b4e2153a190160ef39a92c7eceb"
@@ -863,12 +1012,10 @@
   name = "sigs.k8s.io/controller-runtime"
   packages = [
     "pkg/cache",
-    "pkg/cache/informertest",
     "pkg/cache/internal",
     "pkg/client",
     "pkg/client/apiutil",
     "pkg/client/config",
-    "pkg/controller/controllertest",
     "pkg/internal/objectutil",
     "pkg/runtime/log",
   ]
@@ -906,8 +1053,10 @@
     "github.com/lyft/flytestdlib/errors",
     "github.com/lyft/flytestdlib/logger",
     "github.com/lyft/flytestdlib/promutils",
+    "github.com/lyft/flytestdlib/promutils/labeled",
     "github.com/lyft/flytestdlib/storage",
     "github.com/lyft/flytestdlib/utils",
+    "github.com/lyft/flytestdlib/utils/mocks",
     "github.com/magiconair/properties/assert",
     "github.com/mitchellh/mapstructure",
     "github.com/pkg/errors",
@@ -917,13 +1066,10 @@
     "github.com/stretchr/testify/mock",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/status",
-    "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
-    "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
-    "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
@@ -933,7 +1079,6 @@
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/workqueue",
     "sigs.k8s.io/controller-runtime/pkg/cache",
-    "sigs.k8s.io/controller-runtime/pkg/cache/informertest",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
   ]
