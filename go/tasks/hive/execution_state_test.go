@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/hive/client/mocks"
-	mocks2 "github.com/lyft/flyteplugins/go/tasks/k8splugins/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -246,7 +246,7 @@ func TestMonitorQuery(t *testing.T) {
 		Phase: PhaseSubmitted,
 	}
 	var getOrCreateCalled = false
-	mockCache := &mocks2.AutoRefreshCache{}
+	mockCache := &stdlibMocks.AutoRefreshCache{}
 	mockCache.On("GetOrCreate", mock.MatchedBy(func(s ExecutionState) bool {
 		return s.Id == state.Id
 	})).Run(func(_ mock.Arguments) {
@@ -278,7 +278,7 @@ func TestKickOffQuery(t *testing.T) {
 	}).Return(quboleCommandDetails, nil)
 
 	var getOrCreateCalled = false
-	mockCache := &mocks2.AutoRefreshCache{}
+	mockCache := &stdlibMocks.AutoRefreshCache{}
 	mockCache.On("GetOrCreate", mock.Anything).Run(func(_ mock.Arguments) {
 		getOrCreateCalled = true
 	}).Return(ExecutionState{}, nil)

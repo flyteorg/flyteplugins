@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/hive/client/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/k8splugins/mocks"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
+	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -16,7 +16,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("terminal state return unchanged", func(t *testing.T) {
-		mockCache := &mocks.AutoRefreshCache{}
+		mockCache := &stdlibMocks.AutoRefreshCache{}
 		mockQubole := &quboleMocks.QuboleClient{}
 		testScope := promutils.NewTestScope()
 		secrets := &secretsManager{quboleKey: "test key"}
@@ -38,7 +38,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 	})
 
 	t.Run("move to success", func(t *testing.T) {
-		mockCache := &mocks.AutoRefreshCache{}
+		mockCache := &stdlibMocks.AutoRefreshCache{}
 		mockQubole := &quboleMocks.QuboleClient{}
 		testScope := promutils.NewTestScope()
 		secrets := &secretsManager{quboleKey: "test key"}
