@@ -1,12 +1,13 @@
-package k8splugins
+package container
 
 import (
 	"context"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
 	"k8s.io/api/core/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"

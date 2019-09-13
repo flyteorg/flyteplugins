@@ -2,11 +2,13 @@ package flytek8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"testing"
+
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
-	"testing"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
