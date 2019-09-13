@@ -6,10 +6,11 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/array"
 
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/lyft/flyteplugins/go/tasks/errors"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
 	v1 "k8s.io/api/core/v1"
 )
