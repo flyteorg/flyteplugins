@@ -2,6 +2,7 @@ package flytek8s
 
 import (
 	"context"
+
 	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
 
 	"github.com/lyft/flytestdlib/contextutils"
@@ -13,7 +14,7 @@ import (
 )
 
 func GetContextEnvVars(ownerCtx context.Context) []v1.EnvVar {
-	envVars := []v1.EnvVar{}
+	var envVars []v1.EnvVar
 
 	if ownerCtx == nil {
 		return envVars

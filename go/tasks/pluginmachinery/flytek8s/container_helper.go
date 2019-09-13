@@ -2,7 +2,6 @@ package flytek8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
 	"regexp"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )

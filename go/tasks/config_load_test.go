@@ -10,10 +10,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/config"
-	flyteK8sConfig "github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
-	quboleConfig "github.com/lyft/flyteplugins/go/tasks/hive/config"
-	"github.com/lyft/flyteplugins/go/tasks/k8splugins"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
+	flyteK8sConfig "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/spark"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -78,11 +77,11 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("spark-config-test", func(t *testing.T) {
-		assert.NotNil(t, k8splugins.GetSparkConfig())
-		assert.NotNil(t, k8splugins.GetSparkConfig().DefaultSparkConfig)
+		assert.NotNil(t, spark.GetSparkConfig())
+		assert.NotNil(t, spark.GetSparkConfig().DefaultSparkConfig)
 	})
 
-	t.Run("qubole_collection-config-test", func(t *testing.T) {
+	t.Run("qubole-config-test", func(t *testing.T) {
 		assert.NotNil(t, quboleConfig.GetQuboleConfig())
 		assert.Equal(t, "redis-resource-manager.flyte:6379", quboleConfig.GetQuboleConfig().RedisHostPath)
 	})
