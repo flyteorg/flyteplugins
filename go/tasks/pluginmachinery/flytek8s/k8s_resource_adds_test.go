@@ -2,7 +2,6 @@ package flytek8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
 	"reflect"
 	"testing"
 
