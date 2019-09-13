@@ -90,13 +90,13 @@ func testDecodeSlice_LogConfig(t *testing.T, vStringSlice, result interface{}) {
 
 func TestLogConfig_GetPFlagSet(t *testing.T) {
 	val := LogConfig{}
-	cmdFlags := GetPFlagSet("")
+	cmdFlags := val.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 }
 
 func TestLogConfig_SetFlags(t *testing.T) {
 	actual := LogConfig{}
-	cmdFlags := GetPFlagSet("")
+	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
 	t.Run("Test_cloudwatch-enabled", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("cloudwatch-enabled", testValue)
 			if vBool, err := cmdFlags.GetBool("cloudwatch-enabled"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vBool), &IsCloudwatchEnabled)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vBool), &actual.IsCloudwatchEnabled)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -136,7 +136,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("cloudwatch-region", testValue)
 			if vString, err := cmdFlags.GetString("cloudwatch-region"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &CloudwatchRegion)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &actual.CloudwatchRegion)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -158,7 +158,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("cloudwatch-log-group", testValue)
 			if vString, err := cmdFlags.GetString("cloudwatch-log-group"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &CloudwatchLogGroup)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &actual.CloudwatchLogGroup)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -180,7 +180,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("kubernetes-enabled", testValue)
 			if vBool, err := cmdFlags.GetBool("kubernetes-enabled"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vBool), &IsKubernetesEnabled)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vBool), &actual.IsKubernetesEnabled)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -202,7 +202,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("kubernetes-url", testValue)
 			if vString, err := cmdFlags.GetString("kubernetes-url"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &KubernetesURL)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &actual.KubernetesURL)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -224,7 +224,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("stackdriver-enabled", testValue)
 			if vBool, err := cmdFlags.GetBool("stackdriver-enabled"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vBool), &IsStackDriverEnabled)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vBool), &actual.IsStackDriverEnabled)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -246,7 +246,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("gcp-project", testValue)
 			if vString, err := cmdFlags.GetString("gcp-project"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &GCPProjectName)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &actual.GCPProjectName)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -268,7 +268,7 @@ func TestLogConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("stackdriver-logresourcename", testValue)
 			if vString, err := cmdFlags.GetString("stackdriver-logresourcename"); err == nil {
-				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &StackdriverLogResourceName)
+				testDecodeJson_LogConfig(t, fmt.Sprintf("%v", vString), &actual.StackdriverLogResourceName)
 
 			} else {
 				assert.FailNow(t, err.Error())

@@ -99,22 +99,66 @@ func TestConfig_SetFlags(t *testing.T) {
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
-	t.Run("Test_enabled-plugins", func(t *testing.T) {
+	t.Run("Test_quboleTokenPath", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vStringSlice, err := cmdFlags.GetStringSlice("enabled-plugins"); err == nil {
-				assert.Equal(t, []string([]string{"*"}), vStringSlice)
+			if vString, err := cmdFlags.GetString("quboleTokenPath"); err == nil {
+				assert.Equal(t, string(defaultConfig.QuboleTokenPath), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := join_Config([]string{"*"}, ",")
+			testValue := "1"
 
-			cmdFlags.Set("enabled-plugins", testValue)
-			if vStringSlice, err := cmdFlags.GetStringSlice("enabled-plugins"); err == nil {
-				testDecodeSlice_Config(t, join_Config(vStringSlice, ","), &actual.EnabledPlugins)
+			cmdFlags.Set("quboleTokenPath", testValue)
+			if vString, err := cmdFlags.GetString("quboleTokenPath"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.QuboleTokenPath)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_quboleLimit", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("quboleLimit"); err == nil {
+				assert.Equal(t, int(defaultConfig.QuboleLimit), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("quboleLimit", testValue)
+			if vInt, err := cmdFlags.GetInt("quboleLimit"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.QuboleLimit)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_lruCacheSize", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("lruCacheSize"); err == nil {
+				assert.Equal(t, int(defaultConfig.LruCacheSize), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("lruCacheSize", testValue)
+			if vInt, err := cmdFlags.GetInt("lruCacheSize"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.LruCacheSize)
 
 			} else {
 				assert.FailNow(t, err.Error())
