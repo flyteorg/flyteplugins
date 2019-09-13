@@ -3,7 +3,7 @@ package flytek8s
 import (
 	"context"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	"github.com/lyft/flytestdlib/contextutils"
 	v1 "k8s.io/api/core/v1"
