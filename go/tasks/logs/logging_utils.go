@@ -15,14 +15,14 @@ func GetLogsForContainerInPod(ctx context.Context, pod *v1.Pod, index uint32, na
 
 	logPlugins := map[string]logUtils.LogPlugin{}
 
-	if IsKubernetesEnabled {
-		logPlugins["Kubernetes Logs"] = logUtils.NewKubernetesLogPlugin(KubernetesURL)
+	if logConfig.IsKubernetesEnabled {
+		logPlugins["Kubernetes Logs"] = logUtils.NewKubernetesLogPlugin(logConfig.KubernetesURL)
 	}
-	if IsCloudwatchEnabled {
-		logPlugins["Cloudwatch Logs"] = logUtils.NewCloudwatchLogPlugin(CloudwatchRegion, CloudwatchLogGroup)
+	if logConfig.IsCloudwatchEnabled {
+		logPlugins["Cloudwatch Logs"] = logUtils.NewCloudwatchLogPlugin(logConfig.CloudwatchRegion, logConfig.CloudwatchLogGroup)
 	}
-	if IsStackDriverEnabled {
-		logPlugins["Stackdriver Logs"] = logUtils.NewStackdriverLogPlugin(GCPProjectName, StackdriverLogResourceName)
+	if logConfig.IsStackDriverEnabled {
+		logPlugins["Stackdriver Logs"] = logUtils.NewStackdriverLogPlugin(logConfig.GCPProjectName, logConfig.StackdriverLogResourceName)
 	}
 
 	if len(logPlugins) == 0 {
