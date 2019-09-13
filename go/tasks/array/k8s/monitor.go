@@ -10,19 +10,21 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 	"github.com/lyft/flyteplugins/go/tasks/array/errorcollector"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	errors2 "github.com/lyft/flytestdlib/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	errors2 "github.com/lyft/flytestdlib/errors"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
