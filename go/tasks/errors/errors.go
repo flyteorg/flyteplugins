@@ -20,6 +20,7 @@ const (
 	CacheFailed                ErrorCode = "AutoRefreshCacheFailed"
 	RuntimeFailure             ErrorCode = "RuntimeFailure"
 	CorruptedPluginState       ErrorCode = "CorruptedPluginState"
+	ResourceManagerFailure     ErrorCode = "ResourceManagerFailure"
 )
 
 type TaskError struct {

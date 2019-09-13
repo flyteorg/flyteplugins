@@ -90,13 +90,13 @@ func testDecodeSlice_Config(t *testing.T, vStringSlice, result interface{}) {
 
 func TestConfig_GetPFlagSet(t *testing.T) {
 	val := Config{}
-	cmdFlags := GetPFlagSet("")
+	cmdFlags := val.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 }
 
 func TestConfig_SetFlags(t *testing.T) {
 	actual := Config{}
-	cmdFlags := GetPFlagSet("")
+	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
 	t.Run("Test_scheduler", func(t *testing.T) {
@@ -114,7 +114,29 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("scheduler", testValue)
 			if vString, err := cmdFlags.GetString("scheduler"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &DefaultScheduler)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultScheduler)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_maxErrLength", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("maxErrLength"); err == nil {
+				assert.Equal(t, int(*new(int)), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("maxErrLength", testValue)
+			if vInt, err := cmdFlags.GetInt("maxErrLength"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.MaxErrorStringLength)
 
 			} else {
 				assert.FailNow(t, err.Error())
