@@ -75,7 +75,7 @@ func (a *CompactArray) GetItem(index int) Item {
 }
 
 // Gets all items stored in the array. The size of the returned array matches the ItemsCount it was initialized with.
-func (a *CompactArray) GetItems() []Item {
+func (a CompactArray) GetItems() []Item {
 	res := make([]Item, 0, a.ItemsCount)
 	for i := 0; i < int(a.ItemsCount); i++ {
 		res = append(res, a.GetItem(i))

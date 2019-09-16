@@ -29,52 +29,52 @@ const (
 )
 
 type State struct {
-	currentPhase       Phase
-	phaseVersion       uint32
-	reason             string
-	executionErr       *idlCore.ExecutionError
-	executionArraySize int
-	originalArraySize  int64
-	arrayStatus        arraystatus.ArrayStatus
+	CurrentPhase       Phase                   `json:"phase"`
+	PhaseVersion       uint32                  `json:"phaseVersion"`
+	Reason             string                  `json:"reason"`
+	ExecutionErr       *idlCore.ExecutionError `json:"err"`
+	ExecutionArraySize int                     `json:"arraySize"`
+	OriginalArraySize  int64                   `json:"originalArraySize"`
+	ArrayStatus        arraystatus.ArrayStatus `json:"arrayStatus"`
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
-	writeToCatalog *bitarray.BitSet
+	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
 }
 
 func (s State) GetReason() string {
-	return s.reason
+	return s.Reason
 }
 
 func (s State) GetExecutionArraySize() int {
-	return s.executionArraySize
+	return s.ExecutionArraySize
 }
 
 func (s State) GetPhase() (phase Phase, version uint32) {
-	return s.currentPhase, s.phaseVersion
+	return s.CurrentPhase, s.PhaseVersion
 }
 
 func (s State) GetArrayStatus() arraystatus.ArrayStatus {
-	return s.arrayStatus
+	return s.ArrayStatus
 }
 
 func (s *State) SetReason(reason string) *State {
-	s.reason = reason
+	s.Reason = reason
 	return s
 }
 
 func (s *State) SetActualArraySize(size int) *State {
-	s.executionArraySize = size
+	s.ExecutionArraySize = size
 	return s
 }
 
 func (s *State) SetPhase(phase Phase, phaseVersion uint32) *State {
-	s.currentPhase = phase
-	s.phaseVersion = phaseVersion
+	s.CurrentPhase = phase
+	s.PhaseVersion = phaseVersion
 	return s
 }
 
 func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
-	s.arrayStatus = state
+	s.ArrayStatus = state
 	return s
 }
 
@@ -107,40 +107,40 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 	t := time.Now()
 	nowTaskInfo := &core.TaskInfo{OccurredAt: &t}
 
-	switch state.currentPhase {
+	switch state.CurrentPhase {
 	case PhaseStart:
 		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason())
 
 	case PhaseLaunch:
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
-		version := state.phaseVersion
+		version := state.PhaseVersion
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseCheckingSubTaskExecutions:
 		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
 		// which means we need to offset things.
-		version := GetPhaseVersionOffset(state.currentPhase, state.originalArraySize) + state.phaseVersion
+		version := GetPhaseVersionOffset(state.CurrentPhase, state.OriginalArraySize) + state.PhaseVersion
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseWriteToDiscovery:
-		version := GetPhaseVersionOffset(state.currentPhase, state.originalArraySize) + state.phaseVersion
+		version := GetPhaseVersionOffset(state.CurrentPhase, state.OriginalArraySize) + state.PhaseVersion
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseSuccess:
 		phaseInfo = core.PhaseInfoSuccess(nowTaskInfo)
 
 	case PhaseRetryableFailure:
-		if state.executionErr != nil {
-			phaseInfo = core.PhaseInfoFailed(core.PhaseRetryableFailure, state.executionErr, nowTaskInfo)
+		if state.ExecutionErr != nil {
+			phaseInfo = core.PhaseInfoFailed(core.PhaseRetryableFailure, state.ExecutionErr, nowTaskInfo)
 		} else {
-			phaseInfo = core.PhaseInfoRetryableFailure(ErrorK8sArrayGeneric, state.reason, nowTaskInfo)
+			phaseInfo = core.PhaseInfoRetryableFailure(ErrorK8sArrayGeneric, state.Reason, nowTaskInfo)
 		}
 
 	case PhasePermanentFailure:
-		if state.executionErr != nil {
-			phaseInfo = core.PhaseInfoFailed(core.PhasePermanentFailure, state.executionErr, nowTaskInfo)
+		if state.ExecutionErr != nil {
+			phaseInfo = core.PhaseInfoFailed(core.PhasePermanentFailure, state.ExecutionErr, nowTaskInfo)
 		} else {
-			phaseInfo = core.PhaseInfoFailure(ErrorK8sArrayGeneric, state.reason, nowTaskInfo)
+			phaseInfo = core.PhaseInfoFailure(ErrorK8sArrayGeneric, state.Reason, nowTaskInfo)
 		}
 	}
 

@@ -12,16 +12,16 @@ import (
 
 func TestIndexRangeCollection_simplify(t *testing.T) {
 	c := &indexRangeCollection{}
-	Add(0)
-	Add(1)
-	Add(5)
-	Add(10)
-	Add(4)
-	Add(3)
-	Add(2)
-	Add(8)
+	c.Add(0)
+	c.Add(1)
+	c.Add(5)
+	c.Add(10)
+	c.Add(4)
+	c.Add(3)
+	c.Add(2)
+	c.Add(8)
 
-	simplify()
+	c.simplify()
 
 	arr := make([]indexRange, 0, len(*c))
 	for _, item := range *c {
