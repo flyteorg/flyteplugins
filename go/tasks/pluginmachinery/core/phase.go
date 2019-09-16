@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"time"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -89,6 +90,10 @@ type TaskInfo struct {
 	CustomInfo *structpb.Struct
 }
 
+func (t *TaskInfo) String() string {
+	return fmt.Sprintf("Info<@%s>", t.OccurredAt.String())
+}
+
 // Additional info that should be sent to the front end. The Information is sent to the front-end if it meets certain
 // criterion, for example currently, it is sent only if an event was not already sent for
 type PhaseInfo struct {
@@ -106,24 +111,31 @@ type PhaseInfo struct {
 	reason string
 }
 
-func (p *PhaseInfo) Phase() Phase {
+func (p PhaseInfo) Phase() Phase {
 	return p.phase
 }
 
-func (p *PhaseInfo) Version() uint32 {
+func (p PhaseInfo) Version() uint32 {
 	return p.version
 }
 
-func (p *PhaseInfo) Reason() string {
+func (p PhaseInfo) Reason() string {
 	return p.reason
 }
 
-func (p *PhaseInfo) Info() *TaskInfo {
+func (p PhaseInfo) Info() *TaskInfo {
 	return p.info
 }
 
-func (p *PhaseInfo) Err() *core.ExecutionError {
+func (p PhaseInfo) Err() *core.ExecutionError {
 	return p.err
+}
+
+func (p PhaseInfo) String() string {
+	if p.err != nil {
+		return fmt.Sprintf("Phase<%s:%d Error:%s>", p.phase, p.version, p.err)
+	}
+	return fmt.Sprintf("Phase<%s:%d %s Reason:%s>", p.phase, p.version, p.info, p.reason)
 }
 
 // Undefined entity, associated with an error

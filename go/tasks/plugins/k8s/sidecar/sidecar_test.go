@@ -1,4 +1,4 @@
-package k8splugins
+package sidecar
 
 import (
 	"context"
@@ -17,8 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
-
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -70,7 +69,7 @@ func TestBuildSidecarResource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sidecarCustomJSON, err := ioutil.ReadFile(path.Join(dir, "mocks", "sidecar_custom"))
+	sidecarCustomJSON, err := ioutil.ReadFile(path.Join(dir, "testdata", "sidecar_custom"))
 	if err != nil {
 		t.Fatal(sidecarCustomJSON)
 	}
@@ -103,7 +102,7 @@ func TestBuildSidecarResource(t *testing.T) {
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
-	resource, err := BuildResource(context.TODO(), taskCtx)
+	resource, err := handler.BuildResource(context.TODO(), taskCtx)
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{
 		primaryContainerKey: "a container",
@@ -127,7 +126,7 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(task, resourceRequirements)
-	_, err := BuildResource(context.TODO(), taskCtx)
+	_, err := handler.BuildResource(context.TODO(), taskCtx)
 	assert.EqualError(t, err,
 		"task failed, BadTaskSpecification: invalid Sidecar task, primary container [PrimaryContainer] not defined")
 }
@@ -165,7 +164,7 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 		})
 		handler := &sidecarResourceHandler{}
 		taskCtx := getDummySidecarTaskContext(task, resourceRequirements)
-		phaseInfo, err := GetTaskPhase(context.TODO(), taskCtx, resource)
+		phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 		assert.Nil(t, err)
 		assert.Equal(t, expectedTaskPhase, phaseInfo.Phase(),
 			"Expected [%v] got [%v] instead", expectedTaskPhase, phaseInfo.Phase())
@@ -194,7 +193,7 @@ func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 	})
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
-	phaseInfo, err := GetTaskPhase(context.TODO(), taskCtx, resource)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
 	assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
 }
@@ -221,7 +220,7 @@ func TestDemystifiedSidecarStatus_PrimarySucceeded(t *testing.T) {
 	})
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
-	phaseInfo, err := GetTaskPhase(context.TODO(), taskCtx, resource)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
 	assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
 }
@@ -248,7 +247,7 @@ func TestDemystifiedSidecarStatus_PrimaryRunning(t *testing.T) {
 	})
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
-	phaseInfo, err := GetTaskPhase(context.TODO(), taskCtx, resource)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, phaseInfo.Phase())
 }
@@ -270,7 +269,7 @@ func TestDemystifiedSidecarStatus_PrimaryMissing(t *testing.T) {
 	})
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, resourceRequirements)
-	phaseInfo, err := GetTaskPhase(context.TODO(), taskCtx, resource)
+	phaseInfo, err := handler.GetTaskPhase(context.TODO(), taskCtx, resource)
 	assert.Nil(t, err)
 	assert.Equal(t, pluginsCore.PhasePermanentFailure, phaseInfo.Phase())
 }

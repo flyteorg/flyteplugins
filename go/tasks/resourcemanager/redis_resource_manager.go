@@ -9,12 +9,12 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/qubole/config"
+	"github.com/lyft/flyteplugins/go/tasks/v1/qubole_collection/config"
 )
 
 // This is the key that will point to the Redis Set.
 // https://redis.io/commands#set
-const RedisSetKey = "qubole"
+const RedisSetKey = "qubole_collection"
 
 type RedisResourceManager struct {
 	client      *redis.Client

@@ -1,4 +1,4 @@
-package k8splugins
+package container
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -22,6 +21,7 @@ import (
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 )
 
@@ -101,7 +101,7 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, command []str
 func TestContainerTaskExecutor_BuildIdentityResource(t *testing.T) {
 	c := containerTaskExecutor{}
 	taskMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
-	r, err := BuildIdentityResource(context.TODO(), taskMetadata)
+	r, err := c.BuildIdentityResource(context.TODO(), taskMetadata)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 	_, ok := r.(*v1.Pod)
@@ -115,7 +115,7 @@ func TestContainerTaskExecutor_BuildResource(t *testing.T) {
 	args := []string{"{{.Input}}"}
 	taskCtx := dummyContainerTaskContext(resourceRequirements, command, args)
 
-	r, err := BuildResource(context.TODO(), taskCtx)
+	r, err := c.BuildResource(context.TODO(), taskCtx)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
 	j, ok := r.(*v1.Pod)
@@ -143,21 +143,21 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 	ctx := context.TODO()
 	t.Run("running", func(t *testing.T) {
 		j.Status.Phase = v1.PodRunning
-		phaseInfo, err := GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseRunning, phaseInfo.Phase())
 	})
 
 	t.Run("queued", func(t *testing.T) {
 		j.Status.Phase = v1.PodPending
-		phaseInfo, err := GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseQueued, phaseInfo.Phase())
 	})
 
 	t.Run("failNoCondition", func(t *testing.T) {
 		j.Status.Phase = v1.PodFailed
-		phaseInfo, err := GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
 		ec := phaseInfo.Err().GetCode()
@@ -173,7 +173,7 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 				Type: v1.PodReasonUnschedulable,
 			},
 		}
-		phaseInfo, err := GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
 		ec := phaseInfo.Err().GetCode()
@@ -182,7 +182,7 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		j.Status.Phase = v1.PodSucceeded
-		phaseInfo, err := GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
 		assert.NoError(t, err)
 		assert.NotNil(t, phaseInfo)
 		assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())

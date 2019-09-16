@@ -1,12 +1,14 @@
-package k8splugins
+package spark
 
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
@@ -21,7 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
 
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/config"
 )

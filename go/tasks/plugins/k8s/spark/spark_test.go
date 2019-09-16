@@ -1,4 +1,4 @@
-package k8splugins
+package spark
 
 import (
 	"context"
