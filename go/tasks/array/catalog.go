@@ -40,12 +40,12 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Save this in the state
-	state.originalArraySize = arrayJob.Size
+	state.OriginalArraySize = arrayJob.Size
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
-		state.currentPhase = PhaseLaunch
+		state.CurrentPhase = PhaseLaunch
 		return state, nil
 	}
 
@@ -83,7 +83,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
 			// TODO: This is not correct?  We still need to write parent level results?
-			state.currentPhase = PhaseSuccess
+			state.CurrentPhase = PhaseSuccess
 			return state, nil
 		}
 
@@ -135,15 +135,15 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		*taskTemplate.Interface, state.writeToCatalog, inputReaders, outputReaders)
+		*taskTemplate.Interface, state.IndexesToCache, inputReaders, outputReaders)
 
 	if len(catalogWriterItems) == 0 {
-		state.currentPhase = PhaseSuccess
+		state.CurrentPhase = PhaseSuccess
 	}
 
 	allWritten, err := WriteToCatalog(ctx, tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
-		state.currentPhase = PhaseSuccess
+		state.CurrentPhase = PhaseSuccess
 	}
 
 	return state, nil
