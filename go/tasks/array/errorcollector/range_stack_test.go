@@ -12,10 +12,10 @@ import (
 
 func TestRangeStack_Add(t *testing.T) {
 	s := rangeStack{}
-	assert.Nil(t, Top())
+	assert.Nil(t, s.Top())
 
-	Push(&indexRange{start: 0, end: 1})
+	s.Push(&indexRange{start: 0, end: 1})
 	second := &indexRange{start: 2, end: 5}
-	Push(second)
-	assert.Equal(t, second, Top())
+	s.Push(second)
+	assert.Equal(t, second, s.Top())
 }

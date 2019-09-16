@@ -5,30 +5,30 @@
 package arraystatus
 
 import (
-	"context"
 	"testing"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
+	types "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestArraySummary_MergeFrom(t *testing.T) {
 	t.Run("Update when not equal", func(t *testing.T) {
 		expected := ArraySummary{
-			types.TaskPhaseRunning: 1,
+			types.PhaseRunning: 1,
 		}
 
 		other := ArraySummary{
-			types.TaskPhaseRunning: 1,
-			types.TaskPhaseQueued:  0,
+			types.PhaseRunning: 1,
+			types.PhaseQueued:  0,
 		}
 
 		actual := ArraySummary{
-			types.TaskPhaseRunning:          2,
-			types.TaskPhasePermanentFailure: 2,
-			types.TaskPhaseQueued:           10,
+			types.PhaseRunning:          2,
+			types.PhasePermanentFailure: 2,
+			types.PhaseQueued:           10,
 		}
-		updated := MergeFrom(other)
+
+		updated := actual.MergeFrom(other)
 		assert.True(t, updated)
 
 		assert.Equal(t, expected, actual)
@@ -36,16 +36,16 @@ func TestArraySummary_MergeFrom(t *testing.T) {
 
 	t.Run("Delete when 0", func(t *testing.T) {
 		expected := ArraySummary{
-			types.TaskPhaseRunning: 1,
+			types.PhaseRunning: 1,
 		}
 
 		other := ArraySummary{
-			types.TaskPhaseRunning: 1,
-			types.TaskPhaseQueued:  0,
+			types.PhaseRunning: 1,
+			types.PhaseQueued:  0,
 		}
 
 		actual := ArraySummary{}
-		updated := MergeFrom(other)
+		updated := actual.MergeFrom(other)
 		assert.True(t, updated)
 
 		assert.Equal(t, expected, actual)
@@ -55,144 +55,64 @@ func TestArraySummary_MergeFrom(t *testing.T) {
 		expected := ArraySummary{}
 
 		actual := ArraySummary{
-			types.TaskPhaseRunning: 10,
+			types.PhaseRunning: 10,
 		}
 
-		updated := MergeFrom(nil)
+		updated := actual.MergeFrom(nil)
 		assert.True(t, updated)
 		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Not Updated when equal", func(t *testing.T) {
 		expected := ArraySummary{
-			types.TaskPhaseRunning: 1,
-			types.TaskPhaseQueued:  10,
+			types.PhaseRunning: 1,
+			types.PhaseQueued:  10,
 		}
 
 		other := ArraySummary{
-			types.TaskPhaseRunning:          1,
-			types.TaskPhaseQueued:           10,
-			types.TaskPhaseRetryableFailure: 0,
+			types.PhaseRunning:          1,
+			types.PhaseQueued:           10,
+			types.PhaseRetryableFailure: 0,
 		}
 
 		actual := ArraySummary{
-			types.TaskPhaseRunning: 1,
-			types.TaskPhaseQueued:  10,
+			types.PhaseRunning: 1,
+			types.PhaseQueued:  10,
 		}
-		updated := MergeFrom(other)
+		updated := actual.MergeFrom(other)
 		assert.False(t, updated)
 
 		assert.Equal(t, expected, actual)
 	})
 }
 
-func TestArraySummary_CopyFrom(t *testing.T) {
-
-	original := ArraySummary{
-		types.TaskPhaseRunning:          2,
-		types.TaskPhasePermanentFailure: 2,
-		types.TaskPhaseQueued:           10,
-	}
-	copy := CopyArraySummaryFrom(original)
-
-	assert.EqualValues(t, original, copy)
-
-	original[types.TaskPhaseSucceeded] = 1
-	assert.NotEqual(t, original, copy)
-}
-
 func TestArraySummary_Inc(t *testing.T) {
 	original := ArraySummary{
-		types.TaskPhaseRunning:          2,
-		types.TaskPhasePermanentFailure: 2,
-		types.TaskPhaseQueued:           10,
+		types.PhaseRunning:          2,
+		types.PhasePermanentFailure: 2,
+		types.PhaseQueued:           10,
 	}
 
-	Inc(types.TaskPhaseRunning)
-	Inc(types.TaskPhaseRetryableFailure)
+	original.Inc(types.PhaseRunning)
+	original.Inc(types.PhaseRetryableFailure)
 
 	validatedCount := 0
 	for phase, count := range original {
 		switch phase {
-		case types.TaskPhaseRunning:
+		case types.PhaseRunning:
 			assert.Equal(t, int64(3), count)
 			validatedCount++
-		case types.TaskPhasePermanentFailure:
+		case types.PhasePermanentFailure:
 			assert.Equal(t, int64(2), count)
 			validatedCount++
-		case types.TaskPhaseQueued:
+		case types.PhaseQueued:
 			assert.Equal(t, int64(10), count)
 			validatedCount++
-		case types.TaskPhaseRetryableFailure:
+		case types.PhaseRetryableFailure:
 			assert.Equal(t, int64(1), count)
 			validatedCount++
 		}
 	}
 
 	assert.Equal(t, 4, validatedCount)
-}
-
-func TestCustomState_AsMap(t *testing.T) {
-	input := CustomState{
-		JobID: "abc",
-		ArrayStatus: &ArrayStatus{
-			Summary: ArraySummary{
-				types.TaskPhaseRunning: 2,
-			},
-		},
-	}
-
-	actual, err := input.AsMap(context.TODO())
-	assert.NoError(t, err)
-	assert.NotNil(t, actual)
-	assert.Equal(t, 2, len(actual))
-	assert.Equal(t, "abc", actual["job-id"])
-}
-
-func TestCustomState_MergeFrom(t *testing.T) {
-	t.Run("OverridingSummary", func(t *testing.T) {
-		input := CustomState{
-			JobID: "abc",
-			ArrayStatus: &ArrayStatus{
-				Summary: ArraySummary{
-					types.TaskPhaseRunning: 2,
-				},
-			},
-		}
-
-		other, err := CustomState{
-			JobID: "abc",
-			ArrayStatus: &ArrayStatus{
-				Summary: ArraySummary{
-					types.TaskPhaseSucceeded: 2,
-				},
-			},
-		}.AsMap(context.TODO())
-
-		assert.NoError(t, err)
-		assert.NotNil(t, other)
-
-		assert.NoError(t, input.MergeFrom(context.TODO(), other))
-		assert.Equal(t, 1, len(input.ArrayStatus.Summary))
-	})
-
-	t.Run("JobID", func(t *testing.T) {
-		input := CustomState{}
-
-		other, err := CustomState{
-			JobID: "abc",
-			ArrayStatus: &ArrayStatus{
-				Summary: ArraySummary{
-					types.TaskPhaseSucceeded: 2,
-				},
-			},
-		}.AsMap(context.TODO())
-
-		assert.NoError(t, err)
-		assert.NotNil(t, other)
-
-		assert.NoError(t, input.MergeFrom(context.TODO(), other))
-		assert.Equal(t, 1, len(input.ArrayStatus.Summary))
-		assert.Equal(t, "abc", input.JobID)
-	})
 }
