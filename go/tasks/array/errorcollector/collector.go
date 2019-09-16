@@ -17,12 +17,12 @@ type ErrorMessageCollector struct {
 
 func (c ErrorMessageCollector) Collect(idx int, msg string) {
 	if existing, found := c.messages[msg]; found {
-		Add(idx)
+		existing.Add(idx)
 		return
 	}
 
 	newRangeCollection := &indexRangeCollection{}
-	Add(idx)
+	newRangeCollection.Add(idx)
 	c.messages[msg] = newRangeCollection
 }
 
@@ -40,7 +40,7 @@ func (c ErrorMessageCollector) Summary(charLimit int) string {
 	}
 
 	for _, msg := range sortedKeys.List() {
-		res += fmt.Sprintf("%v: %v\n", String(), msg)
+		res += fmt.Sprintf("%v: %v\n", c.messages[msg].String(), msg)
 		if len(res) >= charLimit {
 			// TODO: If this is the last element, don't append this message
 			res += appendIfNotEnough

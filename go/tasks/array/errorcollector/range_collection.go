@@ -15,11 +15,11 @@ func (c *indexRangeCollection) Len() int {
 func (c *indexRangeCollection) Less(i, j int) bool {
 	first := (*c)[i]
 	second := (*c)[j]
-	if start != start {
-		return start < start
+	if first.start != second.start {
+		return first.start < second.start
 	}
 
-	return end < end
+	return first.end < second.end
 }
 
 func (c *indexRangeCollection) Swap(i, j int) {
@@ -31,8 +31,8 @@ func (c *indexRangeCollection) Swap(i, j int) {
 func (c *indexRangeCollection) Add(idx int) {
 	newRange := &indexRange{start: idx, end: idx}
 	for _, r := range *c {
-		if CanMerge(*newRange) {
-			MergeFrom(*newRange)
+		if r.CanMerge(*newRange) {
+			r.MergeFrom(*newRange)
 			return
 		}
 	}
@@ -47,22 +47,22 @@ func (c *indexRangeCollection) simplify() {
 	sort.Sort(c)
 
 	// push the first interval to stack
-	Push((*c)[0])
+	s.Push((*c)[0])
 
 	// Start from the next interval and merge if necessary
 	for i := 1; i < len(*c); i++ {
 		// get interval from stack top
-		top := Top()
-		if CanMerge(*(*c)[i]) {
-			MergeFrom(*(*c)[i])
+		top := s.Top()
+		if top.CanMerge(*(*c)[i]) {
+			top.MergeFrom(*(*c)[i])
 			hasImproved = true
 		} else {
-			Push((*c)[i])
+			s.Push((*c)[i])
 		}
 	}
 
 	if hasImproved {
-		*c = List()
+		*c = s.List()
 
 		// Keep simplifying until we have nothing to simplify
 		c.simplify()
@@ -73,7 +73,7 @@ func (c indexRangeCollection) String() string {
 	c.simplify()
 	res := ""
 	for _, r := range c {
-		res += String()
+		res += r.String()
 	}
 
 	return res
