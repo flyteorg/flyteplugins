@@ -16,7 +16,7 @@ ignored = ["k8s.io/spark-on-k8s-operator",
   name = "github.com/lyft/flytestdlib"
   source = "https://github.com/lyft/flytestdlib"
   #version = "^0.2.x"
-  revision = "8eb404d211e461e6bd9269579d9d692191237025"
+  revision = "e2f9ee2c5d8fd45790a287d11f3b95b517972911"
 
 [[constraint]]
   name = "sigs.k8s.io/controller-runtime"

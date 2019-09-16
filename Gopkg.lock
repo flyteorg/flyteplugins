@@ -361,7 +361,6 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:b8860863eb1eb7fe4f7d2b3c6b34b89aaedeaae88d761d2c9a4eccc46262abcc"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
@@ -379,7 +378,7 @@
     "utils/mocks",
   ]
   pruneopts = ""
-  revision = "8eb404d211e461e6bd9269579d9d692191237025"
+  revision = "e2f9ee2c5d8fd45790a287d11f3b95b517972911"
   source = "https://github.com/lyft/flytestdlib"
 
 [[projects]]
