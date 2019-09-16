@@ -19,7 +19,7 @@ const quboleHiveExecutorId = "qubole-hive-executor"
 const pluginStateVersion = 0
 
 // NB: This is a different string than the old one. The old one will now only be used for multiple query Hive tasks.
-const hiveTaskType = "hive-task" // This needs to match the type defined in Flytekit constants.py
+const hiveTaskType = "hive" // This needs to match the type defined in Flytekit constants.py
 
 type QuboleHiveExecutor struct {
 	id              string
