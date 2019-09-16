@@ -15,20 +15,19 @@ type PluginLoader func(ctx context.Context, iCtx SetupContext) (Plugin, error)
 // An entry that identifies the CorePlugin
 type PluginEntry struct {
 	// System wide unique identifier for the plugin
-	ID                  TaskType
+	ID TaskType
 	// A list of all the task types for which this plugin is applicable.
 	RegisteredTaskTypes []TaskType
 	// A Lazy loading function, that will load the plugin. Plugins should be initialized in this method. It is guaranteed
 	// that the plugin loader will be called before any Handle/Abort/Finalize functions are invoked
-	LoadPlugin          PluginLoader
+	LoadPlugin PluginLoader
 	// Boolean that indicates if this plugin can be used as the default for unknown task types. There can only be
 	// one default in the system
-	IsDefault           bool
+	IsDefault bool
 }
 
 // System level properties that this Plugin supports
 type PluginProperties struct {
-	DisableNodeLevelCaching bool
 }
 
 // Interface for the core Flyte plugin

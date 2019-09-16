@@ -10,7 +10,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-const executorName = "k8s-array-executor"
+const executorName = "k8s-array"
 const arrayTaskType = "container_array"
 const pluginStateVersion = 0
 
@@ -74,11 +74,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 }
 
 func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	panic("implement me")
+	return nil
 }
 
 func (Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	panic("implement me")
+	return nil
 }
 
 func init() {
