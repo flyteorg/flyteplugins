@@ -13,23 +13,23 @@ import (
 func TestErrorMessageCollector_Collect(t *testing.T) {
 	c := NewErrorMessageCollector()
 	dupeMsg := "duplicate message"
-	Collect(0, dupeMsg)
-	Collect(1, dupeMsg)
-	Collect(2, "unique message")
-	Collect(3, dupeMsg)
+	c.Collect(0, dupeMsg)
+	c.Collect(1, dupeMsg)
+	c.Collect(2, "unique message")
+	c.Collect(3, dupeMsg)
 
-	assert.Len(t, messages, 2)
-	assert.Len(t, *messages[dupeMsg], 2)
+	assert.Len(t, c.messages, 2)
+	assert.Len(t, *c.messages[dupeMsg], 2)
 }
 
 func TestErrorMessageCollector_Summary(t *testing.T) {
 	c := NewErrorMessageCollector()
 	dupeMsg := "duplicate message"
-	Collect(0, dupeMsg)
-	Collect(1, dupeMsg)
-	Collect(2, "unique message")
-	Collect(3, dupeMsg)
+	c.Collect(0, dupeMsg)
+	c.Collect(1, dupeMsg)
+	c.Collect(2, "unique message")
+	c.Collect(3, dupeMsg)
 
-	assert.Equal(t, "[0-1][3]: duplicate message\n[2]: unique message\n", Summary(1000))
-	assert.Equal(t, "[0-1][3]: duplicate message\n... and many more.", Summary(30))
+	assert.Equal(t, "[0-1][3]: duplicate message\n[2]: unique message\n", c.Summary(1000))
+	assert.Equal(t, "[0-1][3]: duplicate message\n... and many more.", c.Summary(30))
 }

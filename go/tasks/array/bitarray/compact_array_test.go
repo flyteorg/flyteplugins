@@ -39,12 +39,12 @@ func TestNewItemArray(t *testing.T) {
 			for i := 0; i < int(itemsCount); i++ {
 				// Ensure inserted items is in the accepted range (0 -> 1<<itemSize)
 				val := getRandInt() % (1 << (itemSize - 1))
-				SetItem(i, val/3)
-				SetItem(i, val)
+				arr.SetItem(i, val/3)
+				arr.SetItem(i, val)
 				expected = append(expected, val)
 			}
 
-			items := GetItems()
+			items := arr.GetItems()
 			//t.Log(items)
 			assert.Equal(t, expected, items)
 		})
@@ -77,8 +77,8 @@ func TestMarshal(t *testing.T) {
 	itemArray, err := NewCompactArray(105, 7)
 	assert.NoError(t, err)
 
-	for idx := range GetItems() {
-		SetItem(idx, Item(4))
+	for idx := range itemArray.GetItems() {
+		itemArray.SetItem(idx, Item(4))
 	}
 
 	raw, err := json.Marshal(itemArray)
@@ -94,7 +94,7 @@ func TestMarshal(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, json.Unmarshal(raw, &actualArray))
 
-	for idx, item := range GetItems() {
+	for idx, item := range actualArray.GetItems() {
 		assert.Equal(t, Item(4), item, "Expecting 4 at idx %v", idx)
 	}
 }
@@ -102,12 +102,12 @@ func TestMarshal(t *testing.T) {
 func TestCompactArray_GetItems(t *testing.T) {
 	itemArray, err := NewCompactArray(2, 15)
 	assert.NoError(t, err)
-	SetItem(0, 3)
-	SetItem(1, 3)
-	SetItem(0, 8)
+	itemArray.SetItem(0, 3)
+	itemArray.SetItem(1, 3)
+	itemArray.SetItem(0, 8)
 
-	assert.Equal(t, uint64(8), GetItem(0))
-	assert.Equal(t, uint64(3), GetItem(1))
+	assert.Equal(t, uint64(8), itemArray.GetItem(0))
+	assert.Equal(t, uint64(3), itemArray.GetItem(1))
 }
 
 func BenchmarkCompactArray_SetItem(b *testing.B) {
@@ -121,24 +121,24 @@ func BenchmarkCompactArray_SetItem(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		// Ensure inserted items is in the accepted range (0 -> 1<<itemSize)
-		val := getRandInt() % (1 << ItemSize)
-		SetItem(i, val)
+		val := getRandInt() % (1 << arr.ItemSize)
+		arr.SetItem(i, val)
 		expected = append(expected, val)
 	}
 
 	b.StopTimer()
-	items := GetItems()
+	items := arr.GetItems()
 	assert.Equal(b, expected, items)
 }
 
 func TestCompactArray_String(t *testing.T) {
 	itemArray, err := NewCompactArray(2, 15)
 	assert.NoError(t, err)
-	SetItem(0, 3)
-	SetItem(1, 3)
-	SetItem(0, 8)
+	itemArray.SetItem(0, 3)
+	itemArray.SetItem(1, 3)
+	itemArray.SetItem(0, 8)
 
-	assert.Equal(t, "[8, 3, ]", String())
+	assert.Equal(t, "[8, 3, ]", itemArray.String())
 }
 
 func TestCompactArray_Size(t *testing.T) {
@@ -152,18 +152,18 @@ func TestCompactArray_Size(t *testing.T) {
 func TestPanicOnOutOfBounds(t *testing.T) {
 	itemArray, err := NewCompactArray(5, 3)
 	assert.NoError(t, err)
-	assert.NotPanics(t, func() { validateIndex(0) })
-	assert.NotPanics(t, func() { validateIndex(4) })
-	assert.Panics(t, func() { validateIndex(-1) })
-	assert.Panics(t, func() { validateIndex(5) })
+	assert.NotPanics(t, func() { itemArray.validateIndex(0) })
+	assert.NotPanics(t, func() { itemArray.validateIndex(4) })
+	assert.Panics(t, func() { itemArray.validateIndex(-1) })
+	assert.Panics(t, func() { itemArray.validateIndex(5) })
 }
 
 func TestPanicOnOversizedValue(t *testing.T) {
 	itemArray, err := NewCompactArray(5, 3)
 	assert.NoError(t, err)
-	assert.Panics(t, func() { validateValue(4) })
+	assert.Panics(t, func() { itemArray.validateValue(4) })
 	for i := 0; i < 4; i++ {
-		assert.NotPanics(t, func() { validateValue(Item(i)) })
+		assert.NotPanics(t, func() { itemArray.validateValue(Item(i)) })
 	}
 }
 

@@ -36,7 +36,7 @@ func TestIndexRange_CanMerge(t *testing.T) {
 				start: tt.fields.start,
 				end:   tt.fields.end,
 			}
-			if got := CanMerge(tt.args.other); got != tt.want {
+			if got := r.CanMerge(tt.args.other); got != tt.want {
 				t.Errorf("indexRange.CanMerge() = %v, want %v", got, tt.want)
 			}
 		})

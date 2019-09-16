@@ -10,7 +10,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -75,7 +74,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, err
 	}
 
-	if future.GetResponseStatus() == workqueue.WorkStatusDone {
+	if future.GetResponseStatus() == catalog.ResponseStatusReady {
 		resp, err := future.GetResponse()
 		if err != nil {
 			return state, err
@@ -161,7 +160,7 @@ func WriteToCatalog(ctx context.Context, catalogClient catalog.Client,
 	}
 
 	// Immediately read back from the work queue, and see if it's done.
-	return future.GetResponseStatus() == workqueue.WorkStatusDone, nil
+	return future.GetResponseStatus() == catalog.ResponseStatusReady, nil
 }
 
 func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
