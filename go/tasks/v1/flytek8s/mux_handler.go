@@ -139,7 +139,6 @@ func RegisterResource(_ context.Context, resourceToWatch runtime.Object, handler
 
 	updateCount := labeled.NewCounter("informer_update", "Update events from informer", metricsScope)
 	droppedUpdateCount := labeled.NewCounter("informer_update_dropped", "Update events from informer that have the same resource version", metricsScope)
-	genericCount := labeled.NewCounter("informer_generic", "Generic events from informer", metricsScope)
 
 	err := src.Start(ctrlHandler.Funcs{
 		CreateFunc: func(evt event.CreateEvent, q2 workqueue.RateLimitingInterface) {
@@ -164,16 +163,6 @@ func RegisterResource(_ context.Context, resourceToWatch runtime.Object, handler
 		DeleteFunc: func(evt event.DeleteEvent, q2 workqueue.RateLimitingInterface) {
 		},
 		GenericFunc: func(evt event.GenericEvent, q2 workqueue.RateLimitingInterface) {
-			if evt.Meta == nil {
-				logger.Errorf(context.Background(), "Received a Generic event with nil Meta field.")
-			} else {
-				newCtx := contextutils.WithNamespace(context.Background(), evt.Meta.GetNamespace())
-				genericCount.Inc(newCtx)
-				err := handler.Handle(newCtx, evt.Object)
-				if err != nil {
-					logger.Warnf(newCtx, "Failed to handle Generic event for object [%v]", evt.Object)
-				}
-			}
 		},
 	}, q)
 
