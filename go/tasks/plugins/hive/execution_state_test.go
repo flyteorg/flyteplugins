@@ -2,10 +2,10 @@ package hive
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
-	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
+	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
 	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
