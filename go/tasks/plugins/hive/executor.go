@@ -3,10 +3,10 @@ package hive
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/hive/client"
-	"github.com/lyft/flyteplugins/go/tasks/hive/config"
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 	"github.com/lyft/flytestdlib/logger"
 	utils2 "github.com/lyft/flytestdlib/utils"
 )

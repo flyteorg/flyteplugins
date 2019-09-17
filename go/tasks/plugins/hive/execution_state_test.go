@@ -2,8 +2,8 @@ package hive
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/hive/client"
-	quboleMocks "github.com/lyft/flyteplugins/go/tasks/hive/client/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
+	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
