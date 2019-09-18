@@ -56,18 +56,6 @@ func TestIsNotYetSubmitted(t *testing.T) {
 
 }
 
-func TestCopy(t *testing.T) {
-	e0 := ExecutionState{
-		Phase:     PhaseQueryFailed,
-		CommandId: "234",
-	}
-	e1 := Copy(e0)
-	e0.Phase = PhaseQuerySucceeded
-	e0.CommandId = "123"
-	assert.Equal(t, "123", e0.CommandId)
-	assert.Equal(t, "234", e1.CommandId)
-}
-
 func TestGetQueryInfo(t *testing.T) {
 	ctx := context.Background()
 

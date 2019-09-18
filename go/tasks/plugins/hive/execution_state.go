@@ -192,16 +192,14 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
 	secretsManager SecretsManager, cache utils2.AutoRefreshCache) (ExecutionState, error) {
 
-	newState := Copy(currentState)
-
 	apiKey, err := secretsManager.GetToken()
 	if err != nil {
-		return newState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
+		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
 	}
 
 	query, cluster, tags, timeoutSec, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
-		return newState, err
+		return currentState, err
 	}
 
 	cmdDetails, err := quboleClient.ExecuteHiveCommand(ctx, query, timeoutSec,
@@ -209,31 +207,29 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
 		logger.Warnf(ctx, "Error creating Qubole query for %s", currentState.Id)
-		newState.QuboleApiCreationFailures = newState.QuboleApiCreationFailures + 1
+		currentState.QuboleApiCreationFailures = currentState.QuboleApiCreationFailures + 1
 	} else {
 		// If we succeed, then store the command id returned from Qubole, and update our state. Also, add to the
 		// AutoRefreshCache so we start getting updates.
 		commandId := strconv.FormatInt(cmdDetails.ID, 10)
 		logger.Infof(ctx, "Created Qubole ID [%s] for token %s", commandId, currentState.Id)
-		newState.CommandId = commandId
-		newState.Phase = PhaseSubmitted
-		_, err := cache.GetOrCreate(newState)
+		currentState.CommandId = commandId
+		currentState.Phase = PhaseSubmitted
+		_, err := cache.GetOrCreate(currentState)
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
 			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]",
-				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), newState.Id,
+				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), currentState.Id,
 				tCtx.TaskExecutionMetadata().GetOwnerReference())
-			return newState, err
+			return currentState, err
 		}
 	}
 
-	return newState, nil
+	return currentState, nil
 }
 
 func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, cache utils2.AutoRefreshCache) (
 	ExecutionState, error) {
-
-	newState := Copy(currentState)
 
 	cachedItem, err := cache.GetOrCreate(currentState)
 	if err != nil {
@@ -241,13 +237,13 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), currentState.Id,
 			tCtx.TaskExecutionMetadata().GetOwnerReference())
-		return newState, errors.Wrapf(errors.CacheFailed, err, "Error when GetOrCreate while monitoring")
+		return currentState, errors.Wrapf(errors.CacheFailed, err, "Error when GetOrCreate while monitoring")
 	}
 
 	cachedExecutionState, ok := cachedItem.(ExecutionState)
 	if !ok {
 		logger.Errorf(ctx, "Error casting cache object into ExecutionState")
-		return newState, errors.Errorf(errors.CacheFailed, "Failed to cast [%v]", cachedItem)
+		return currentState, errors.Errorf(errors.CacheFailed, "Failed to cast [%v]", cachedItem)
 	}
 
 	// TODO: Add a couple of debug lines here - did it change or did it not?
@@ -288,10 +284,6 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, currentState 
 // This function is here to comply with the AutoRefreshCache interface
 func (e ExecutionState) ID() string {
 	return e.Id
-}
-
-func Copy(e ExecutionState) ExecutionState {
-	return ExecutionState(e)
 }
 
 func InTerminalState(e ExecutionState) bool {
