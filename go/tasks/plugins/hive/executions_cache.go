@@ -3,7 +3,7 @@ package hive
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/hive/client"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
