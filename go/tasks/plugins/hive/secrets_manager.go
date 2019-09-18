@@ -10,7 +10,7 @@ import (
 
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/hive/config"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 )
 
 // TODO: Deprecate this entire file in favor of the secrets manager provided by the task execution context
