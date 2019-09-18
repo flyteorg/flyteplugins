@@ -46,21 +46,16 @@ func (p ExecutionPhase) String() string {
 type ExecutionState struct {
 	Phase ExecutionPhase
 
-	// This ID is the cache key and so will need to be unique across all objects in the cache (it will probably be
-	// unique across all of Flyte) and needs to be deterministic.
-	// This will also be used as the allocation token for now.
-	Id string `json:"id"`
-
 	// This will store the command ID from Qubole
 	CommandId string `json:"command_id,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task
 	// level retries, just errors from hitting the Qubole API, inside the sync loop
-	SyncQuboleApiFailures int `json:"sync_qubole_api_failures,omitempty"`
+	SyncFailureCount int `json:"sync_failure_count,omitempty"`
 
-	// In kicking off the Qubole command, this is the number of
-	QuboleApiCreationFailures int `json:"qubole_api_creation_failures,omitempty"`
+	// In kicking off the Qubole command, this is the number of failures
+	CreationFailureCount int `json:"creation_failure_count,omitempty"`
 }
 
 // This is the main state iteration
@@ -101,10 +96,10 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 		phaseInfo = core.PhaseInfoNotReady(t, core.DefaultPhaseVersion, "Haven't received allocation token")
 	case PhaseQueued:
 		// TODO: Turn into config
-		if state.QuboleApiCreationFailures > 5 {
+		if state.CreationFailureCount > 5 {
 			phaseInfo = core.PhaseInfoRetryableFailure("QuboleFailure", "Too many creation attempts", nil)
 		} else {
-			phaseInfo = core.PhaseInfoQueued(t, uint32(state.QuboleApiCreationFailures), "Waiting for Qubole launch")
+			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Qubole launch")
 		}
 	case PhaseSubmitted:
 		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
@@ -192,6 +187,7 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
 	secretsManager SecretsManager, cache utils2.AutoRefreshCache) (ExecutionState, error) {
 
+	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	apiKey, err := secretsManager.GetToken()
 	if err != nil {
 		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
@@ -206,20 +202,26 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		cluster, apiKey, tags)
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
-		logger.Warnf(ctx, "Error creating Qubole query for %s", currentState.Id)
-		currentState.QuboleApiCreationFailures = currentState.QuboleApiCreationFailures + 1
+		logger.Warnf(ctx, "Error creating Qubole query for %s", uniqueId)
+		currentState.CreationFailureCount = currentState.CreationFailureCount + 1
 	} else {
 		// If we succeed, then store the command id returned from Qubole, and update our state. Also, add to the
 		// AutoRefreshCache so we start getting updates.
 		commandId := strconv.FormatInt(cmdDetails.ID, 10)
-		logger.Infof(ctx, "Created Qubole ID [%s] for token %s", commandId, currentState.Id)
+		logger.Infof(ctx, "Created Qubole ID [%s] for token %s", commandId, uniqueId)
 		currentState.CommandId = commandId
 		currentState.Phase = PhaseSubmitted
-		_, err := cache.GetOrCreate(currentState)
+		executionStateCacheItem := ExecutionStateCacheItem{
+			ExecutionState: currentState,
+			Id:             uniqueId,
+		}
+
+		// The first time we put it in the cache, we know it won't have succeeded so we don't need to look at it
+		_, err := cache.GetOrCreate(executionStateCacheItem)
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
 			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]",
-				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), currentState.Id,
+				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
 				tCtx.TaskExecutionMetadata().GetOwnerReference())
 			return currentState, err
 		}
@@ -231,16 +233,21 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, cache utils2.AutoRefreshCache) (
 	ExecutionState, error) {
 
-	cachedItem, err := cache.GetOrCreate(currentState)
+	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	executionStateCacheItem := ExecutionStateCacheItem{
+		ExecutionState: currentState,
+		Id:             uniqueId,
+	}
+	cachedItem, err := cache.GetOrCreate(executionStateCacheItem)
 	if err != nil {
 		// This means that our cache has fundamentally broken... return a system error
 		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), currentState.Id,
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
 			tCtx.TaskExecutionMetadata().GetOwnerReference())
 		return currentState, errors.Wrapf(errors.CacheFailed, err, "Error when GetOrCreate while monitoring")
 	}
 
-	cachedExecutionState, ok := cachedItem.(ExecutionState)
+	cachedExecutionState, ok := cachedItem.(ExecutionStateCacheItem)
 	if !ok {
 		logger.Errorf(ctx, "Error casting cache object into ExecutionState")
 		return currentState, errors.Errorf(errors.CacheFailed, "Failed to cast [%v]", cachedItem)
@@ -249,7 +256,7 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	// TODO: Add a couple of debug lines here - did it change or did it not?
 
 	// If there were updates made to the state, we'll have picked them up automatically. Nothing more to do.
-	return cachedExecutionState, nil
+	return cachedExecutionState.ExecutionState, nil
 }
 
 func Abort(ctx context.Context, _ core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient,
@@ -271,18 +278,18 @@ func Abort(ctx context.Context, _ core.TaskExecutionContext, currentState Execut
 	return nil
 }
 
-func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState) error {
+func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState) error {
 	// Release allocation token
-	err := tCtx.ResourceManager().ReleaseResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), currentState.Id)
+	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	err := tCtx.ResourceManager().ReleaseResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), uniqueId)
 	if err != nil {
-		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", currentState.Id, err)
+		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueId, err)
 		return err
 	}
 	return nil
 }
 
-// This function is here to comply with the AutoRefreshCache interface
-func (e ExecutionState) ID() string {
+func (e ExecutionStateCacheItem) ID() string {
 	return e.Id
 }
 

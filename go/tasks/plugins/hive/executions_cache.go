@@ -41,62 +41,71 @@ func NewQuboleHiveExecutionsCache(ctx context.Context, quboleClient client.Qubol
 	return q, nil
 }
 
+type ExecutionStateCacheItem struct {
+	ExecutionState
+
+	// This ID is the cache key and so will need to be unique across all objects in the cache (it will probably be
+	// unique across all of Flyte) and needs to be deterministic.
+	// This will also be used as the allocation token for now.
+	Id string `json:"id"`
+}
+
 // This basically grab an updated status from the Qubole API and store it in the cache
 // All other handling should be in the synchronous loop.
 func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj utils.CacheItem) (
 	utils.CacheItem, utils.CacheSyncAction, error) {
 
 	// Cast the item back to the thing we want to work with.
-	executionState, ok := obj.(ExecutionState)
+	executionStateCacheItem, ok := obj.(ExecutionStateCacheItem)
 	if !ok {
 		logger.Errorf(ctx, "Sync loop - Error casting cache object into ExecutionState")
 		return obj, utils.Unchanged, errors.Errorf(errors.CacheFailed, "Failed to cast [%v]", obj)
 	}
 
-	if executionState.CommandId == "" {
-		logger.Warnf(ctx, "Sync loop - CommandID is blank for [%s] skipping", executionState.Id)
-		return executionState, utils.Unchanged, nil
+	if executionStateCacheItem.CommandId == "" {
+		logger.Warnf(ctx, "Sync loop - CommandID is blank for [%s] skipping", executionStateCacheItem.Id)
+		return executionStateCacheItem, utils.Unchanged, nil
 	}
 
 	logger.Debugf(ctx, "Sync loop - processing Hive job [%s] - cache key [%s]",
-		executionState.CommandId, executionState.Id)
+		executionStateCacheItem.CommandId, executionStateCacheItem.Id)
 
 	quboleApiKey, err := q.secretsManager.GetToken()
 	if err != nil {
-		return executionState, utils.Unchanged, err
+		return executionStateCacheItem, utils.Unchanged, err
 	}
 
-	if InTerminalState(executionState) {
+	if InTerminalState(executionStateCacheItem.ExecutionState) {
 		logger.Debugf(ctx, "Sync loop - Qubole id [%s] in terminal state [%s]",
-			executionState.CommandId, executionState.Id)
+			executionStateCacheItem.CommandId, executionStateCacheItem.Id)
 
-		return executionState, utils.Unchanged, nil
+		return executionStateCacheItem, utils.Unchanged, nil
 	}
 
 	// Get an updated status from Qubole
-	logger.Debugf(ctx, "Querying Qubole for %s - %s", executionState.CommandId, executionState.Id)
-	commandStatus, err := q.quboleClient.GetCommandStatus(ctx, executionState.CommandId, quboleApiKey)
+	logger.Debugf(ctx, "Querying Qubole for %s - %s", executionStateCacheItem.CommandId, executionStateCacheItem.Id)
+	commandStatus, err := q.quboleClient.GetCommandStatus(ctx, executionStateCacheItem.CommandId, quboleApiKey)
 	if err != nil {
-		logger.Errorf(ctx, "Error from Qubole command %s", executionState.CommandId)
-		executionState.SyncQuboleApiFailures++
+		logger.Errorf(ctx, "Error from Qubole command %s", executionStateCacheItem.CommandId)
+		executionStateCacheItem.SyncFailureCount++
 		// Make sure we don't return nil for the first argument, because that deletes it from the cache.
-		return executionState, utils.Update, err
+		return executionStateCacheItem, utils.Update, err
 	}
 	newExecutionPhase, err := QuboleStatusToExecutionPhase(commandStatus)
 	if err != nil {
-		return executionState, utils.Unchanged, err
+		return executionStateCacheItem, utils.Unchanged, err
 	}
 
-	if newExecutionPhase > executionState.Phase {
-		logger.Infof(ctx, "Moving ExecutionPhase for %s %s from %s to %s", executionState.CommandId,
-			executionState.Id, executionState.Phase, newExecutionPhase)
+	if newExecutionPhase > executionStateCacheItem.Phase {
+		logger.Infof(ctx, "Moving ExecutionPhase for %s %s from %s to %s", executionStateCacheItem.CommandId,
+			executionStateCacheItem.Id, executionStateCacheItem.Phase, newExecutionPhase)
 
-		executionState.Phase = newExecutionPhase
+		executionStateCacheItem.Phase = newExecutionPhase
 
-		return executionState, utils.Update, nil
+		return executionStateCacheItem, utils.Update, nil
 	}
 
-	return executionState, utils.Unchanged, nil
+	return executionStateCacheItem, utils.Unchanged, nil
 }
 
 // We need some way to translate results we get from Qubole, into a plugin phase
