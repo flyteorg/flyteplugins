@@ -289,10 +289,6 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionSt
 	return nil
 }
 
-func (e ExecutionStateCacheItem) ID() string {
-	return e.Id
-}
-
 func InTerminalState(e ExecutionState) bool {
 	return e.Phase == PhaseQuerySucceeded || e.Phase == PhaseQueryFailed
 }

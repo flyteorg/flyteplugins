@@ -50,6 +50,10 @@ type ExecutionStateCacheItem struct {
 	Id string `json:"id"`
 }
 
+func (e ExecutionStateCacheItem) ID() string {
+	return e.Id
+}
+
 // This basically grab an updated status from the Qubole API and store it in the cache
 // All other handling should be in the synchronous loop.
 func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj utils.CacheItem) (
