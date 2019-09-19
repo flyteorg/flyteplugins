@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/pkg/errors"
 )
 
 var inputFileRegex = regexp.MustCompile(`(?i){{\s*[\.$]Input\s*}}`)
@@ -50,9 +51,6 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, args Comm
 func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, args *CommandLineTemplateArgs) (string, error) {
 	val := inputFileRegex.ReplaceAllString(commandTemplate, args.Input)
 	val = outputRegex.ReplaceAllString(val, args.OutputPrefix)
-	if args.Inputs == nil || args.Inputs.Literals == nil {
-		return val, nil
-	}
 	groupMatches := inputVarRegex.FindAllStringSubmatchIndex(val, -1)
 	if len(groupMatches) == 0 {
 		return val, nil
@@ -66,6 +64,10 @@ func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, arg
 		inputStartIdx := groupMatches[0][2]
 		inputEndIdx := groupMatches[0][3]
 		inputName := val[inputStartIdx:inputEndIdx]
+
+		if args.Inputs == nil || args.Inputs.Literals == nil {
+			return val, fmt.Errorf("no inputs provided, cannot bind input name [%s]", inputName)
+		}
 		inputVal, exists := args.Inputs.Literals[inputName]
 		if !exists {
 			return val, fmt.Errorf("requested input is not found [%v] while processing template [%v]",
@@ -74,7 +76,7 @@ func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, arg
 
 		v, err := serializeLiteral(ctx, inputVal)
 		if err != nil {
-			return val, err
+			return val, errors.Wrapf(err, "failed to bind a value to inputName [%s]", inputName)
 		}
 		if endIdx >= len(val) {
 			return val[:startIdx] + v, nil

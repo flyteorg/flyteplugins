@@ -248,4 +248,17 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"output/blah",
 		}, actual)
 	})
+
+	t.Run("nil input", func(t *testing.T) {
+		_, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.arr }}`,
+			"{{ .OutputPrefix }}",
+		}, CommandLineTemplateArgs{
+			Input:        "input/blah",
+			OutputPrefix: "output/blah",
+			Inputs:       &core.LiteralMap{Literals: nil}})
+		assert.Error(t, err)
+	})
 }
