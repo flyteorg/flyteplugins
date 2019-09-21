@@ -53,19 +53,6 @@ func TestIsNotYetSubmitted(t *testing.T) {
 			assert.Equal(t, tt.isNotYetSubmitted, res)
 		})
 	}
-
-}
-
-func TestCopy(t *testing.T) {
-	e0 := ExecutionState{
-		Phase:     PhaseQueryFailed,
-		CommandId: "234",
-	}
-	e1 := Copy(e0)
-	e0.Phase = PhaseQuerySucceeded
-	e0.CommandId = "123"
-	assert.Equal(t, "123", e0.CommandId)
-	assert.Equal(t, "234", e1.CommandId)
 }
 
 func TestGetQueryInfo(t *testing.T) {
@@ -96,10 +83,9 @@ func TestConstructTaskInfo(t *testing.T) {
 	assert.Nil(t, empty)
 
 	e := ExecutionState{
-		Phase:                 PhaseQuerySucceeded,
-		CommandId:             "123",
-		SyncQuboleApiFailures: 0,
-		Id:                    "some_id",
+		Phase:            PhaseQuerySucceeded,
+		CommandId:        "123",
+		SyncFailureCount: 0,
 	}
 	taskInfo := ConstructTaskInfo(e)
 	assert.Equal(t, "https://api.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
@@ -108,7 +94,6 @@ func TestConstructTaskInfo(t *testing.T) {
 func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 	t.Run("NotStarted", func(t *testing.T) {
 		e := ExecutionState{
-			Id:    "test",
 			Phase: PhaseNotStarted,
 		}
 		phaseInfo := MapExecutionStateToPhaseInfo(e)
@@ -117,17 +102,15 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 
 	t.Run("Queued", func(t *testing.T) {
 		e := ExecutionState{
-			Id:                        "test",
-			Phase:                     PhaseQueued,
-			QuboleApiCreationFailures: 0,
+			Phase:                PhaseQueued,
+			CreationFailureCount: 0,
 		}
 		phaseInfo := MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseQueued, phaseInfo.Phase())
 
 		e = ExecutionState{
-			Id:                        "test",
-			Phase:                     PhaseQueued,
-			QuboleApiCreationFailures: 100,
+			Phase:                PhaseQueued,
+			CreationFailureCount: 100,
 		}
 		phaseInfo = MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
@@ -136,7 +119,6 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 
 	t.Run("Submitted", func(t *testing.T) {
 		e := ExecutionState{
-			Id:    "test",
 			Phase: PhaseSubmitted,
 		}
 		phaseInfo := MapExecutionStateToPhaseInfo(e)
@@ -221,15 +203,11 @@ func TestFinalize(t *testing.T) {
 	// Test that Finalize releases resources
 	ctx := context.Background()
 	tCtx := GetMockTaskExecutionContext()
-	state := ExecutionState{
-		Id: "fjfklasj",
-	}
+	state := ExecutionState{}
 	var called = false
 	mockResourceManager := tCtx.ResourceManager()
 	x := mockResourceManager.(*mocks.ResourceManager)
-	x.On("ReleaseResource", mock.Anything, mock.Anything, mock.MatchedBy(func(id string) bool {
-		return id == state.Id
-	})).Run(func(_ mock.Arguments) {
+	x.On("ReleaseResource", mock.Anything, mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		called = true
 	}).Return(nil)
 
@@ -242,16 +220,16 @@ func TestMonitorQuery(t *testing.T) {
 	ctx := context.Background()
 	tCtx := GetMockTaskExecutionContext()
 	state := ExecutionState{
-		Id:    "unique-id",
 		Phase: PhaseSubmitted,
 	}
 	var getOrCreateCalled = false
 	mockCache := &stdlibMocks.AutoRefreshCache{}
-	mockCache.On("GetOrCreate", mock.MatchedBy(func(s ExecutionState) bool {
-		return s.Id == state.Id
-	})).Run(func(_ mock.Arguments) {
+	mockCache.On("GetOrCreate", mock.Anything).Run(func(_ mock.Arguments) {
 		getOrCreateCalled = true
-	}).Return(ExecutionState{Id: state.Id, Phase: PhaseQuerySucceeded}, nil)
+	}).Return(ExecutionStateCacheItem{
+		ExecutionState: ExecutionState{Phase: PhaseQuerySucceeded},
+		Id:             "some-id",
+	}, nil)
 
 	newState, err := MonitorQuery(ctx, tCtx, state, mockCache)
 	assert.NoError(t, err)
@@ -281,12 +259,13 @@ func TestKickOffQuery(t *testing.T) {
 	mockCache := &stdlibMocks.AutoRefreshCache{}
 	mockCache.On("GetOrCreate", mock.Anything).Run(func(_ mock.Arguments) {
 		getOrCreateCalled = true
-	}).Return(ExecutionState{}, nil)
+	}).Return(ExecutionStateCacheItem{}, nil)
 
 	state := ExecutionState{}
 	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, dummySecrets, mockCache)
 	assert.NoError(t, err)
 	assert.Equal(t, PhaseSubmitted, newState.Phase)
+	assert.Equal(t, "453298043", newState.CommandId)
 	assert.True(t, getOrCreateCalled)
 	assert.True(t, quboleCalled)
 }
