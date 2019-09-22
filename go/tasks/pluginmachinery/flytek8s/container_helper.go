@@ -75,25 +75,13 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 
 // Returns a K8s Container for the execution
 func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskContainer *core.Container,
-	inputReader io.InputReader, outputPrefixPath string) (*v1.Container, error) {
-	inputFile := inputReader.GetInputPath()
-	// TODO: Performance improvement potential. Resolve inputs only when needed
-	inputs, err := inputReader.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	cmdLineArgs := utils.CommandLineTemplateArgs{
-		Input:        inputFile.String(),
-		OutputPrefix: outputPrefixPath,
-		Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
-	}
-
-	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetCommand(), cmdLineArgs)
+	inputReader io.InputReader, outputPaths io.OutputFilePaths) (*v1.Container, error) {
+	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetCommand(), inputReader, outputPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetArgs(), cmdLineArgs)
+	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetArgs(), inputReader, outputPaths)
 	if err != nil {
 		return nil, err
 	}
