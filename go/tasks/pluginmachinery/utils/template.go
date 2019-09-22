@@ -31,7 +31,7 @@ var inputVarRegex = regexp.MustCompile(`(?i){{\s*[\.$]Inputs\.(?P<input_name>[^}
 // to create a new location for outputs
 func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.InputReader, out io.OutputFilePaths) ([]string, error) {
 	if len(command) == 0 {
-		return nil, nil
+		return []string{}, nil
 	}
 	if in == nil || out == nil {
 		return nil, fmt.Errorf("input reader and output path cannot be nil")

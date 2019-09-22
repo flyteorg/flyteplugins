@@ -9,15 +9,18 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
 	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 
-	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
 	errors2 "github.com/lyft/flytestdlib/errors"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
+
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
 const (
@@ -83,7 +86,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
 
-		pod.Spec.Containers[0].Command, err = utils.ReplaceTemplateCommandArgs(ctx, command, tCtx.InputReader(), tCtx.OutputWriter(), true)
+		pod.Spec.Containers[0].Command, err = utils.ReplaceTemplateCommandArgs(ctx, command, arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
 		if err != nil {
 			return currentState, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
 		}

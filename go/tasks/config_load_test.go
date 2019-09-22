@@ -81,13 +81,4 @@ func TestLoadConfig(t *testing.T) {
 		assert.NotNil(t, spark.GetSparkConfig().DefaultSparkConfig)
 	})
 
-	t.Run("qubole-config-test", func(t *testing.T) {
-		assert.NotNil(t, quboleConfig.GetQuboleConfig())
-		assert.Equal(t, "redis-resource-manager.flyte:6379", quboleConfig.GetQuboleConfig().RedisHostPath)
-	})
-
-	t.Run("waitable-config-test", func(t *testing.T) {
-		assert.NotNil(t, k8splugins.GetWaitableConfig())
-		assert.Equal(t, "http://localhost:30081/console", k8splugins.GetWaitableConfig().ConsoleURI.String())
-	})
 }
