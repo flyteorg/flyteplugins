@@ -123,7 +123,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 	})
 
 	t.Run("Sub Input Prefix", func(t *testing.T) {
-		in := dummyInputReader{inputPrefix: "input/prefix"}
+		in := dummyInputReader{inputPath: "input/prefix"}
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
 			"hello",
 			"world",
