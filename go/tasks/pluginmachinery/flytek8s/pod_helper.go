@@ -16,13 +16,13 @@ import (
 const PodKind = "pod"
 
 func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
-	inputs io.InputReader, outputPrefixPath string) (*v1.PodSpec, error) {
+	inputs io.InputReader, outputPaths io.OutputFilePaths) (*v1.PodSpec, error) {
 	task, err := taskReader.Read(ctx)
 	if err != nil {
 		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
 		return nil, err
 	}
-	c, err := ToK8sContainer(ctx, taskExecutionMetadata, task.GetContainer(), inputs, outputPrefixPath)
+	c, err := ToK8sContainer(ctx, taskExecutionMetadata, task.GetContainer(), inputs, outputPaths)
 	if err != nil {
 		return nil, err
 	}
