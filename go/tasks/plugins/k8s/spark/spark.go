@@ -34,21 +34,21 @@ const sparkHistoryUI = "sparkHistoryUI"
 var sparkTaskType = "spark"
 
 // Spark-specific configs
-type SparkConfig struct {
+type Config struct {
 	DefaultSparkConfig    map[string]string `json:"spark-config-default" pflag:",Key value pairs of default spark configuration that should be applied to every SparkJob"`
 	SparkHistoryServerURL string            `json:"spark-history-server-url" pflag:",URL for SparkHistory Server that each job will publish the execution history to."`
 }
 
 var (
-	sparkConfigSection = pluginsConfig.MustRegisterSubSection("spark", &SparkConfig{})
+	sparkConfigSection = pluginsConfig.MustRegisterSubSection("spark", &Config{})
 )
 
-func GetSparkConfig() *SparkConfig {
-	return sparkConfigSection.GetConfig().(*SparkConfig)
+func GetSparkConfig() *Config {
+	return sparkConfigSection.GetConfig().(*Config)
 }
 
 // This method should be used for unit testing only
-func setSparkConfig(cfg *SparkConfig) error {
+func setSparkConfig(cfg *Config) error {
 	return sparkConfigSection.SetConfig(cfg)
 }
 
@@ -98,20 +98,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			EnvVars:     sparkEnvVars,
 		},
 	}
-
-	inputs, err := taskCtx.InputReader().Get(ctx)
-	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification inputs [%v], Err: [%v]",
-			taskCtx.InputReader().GetInputPath(), err.Error())
-	}
-	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(context.TODO(),
-		container.GetArgs(),
-		utils.CommandLineTemplateArgs{
-			Input:        taskCtx.InputReader().GetInputPath().String(),
-			OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
-			Inputs:       utils.LiteralMapToTemplateArgs(context.TODO(), inputs),
-		})
-
+	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(context.TODO(), container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, err
 	}

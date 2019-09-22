@@ -55,8 +55,7 @@ func (containerTaskExecutor) GetTaskPhase(ctx context.Context, pluginContext k8s
 // Creates a new Pod that will Exit on completion. The pods have no retries by design
 func (containerTaskExecutor) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx.TaskExecutionMetadata(), taskCtx.TaskReader(), taskCtx.InputReader(),
-		taskCtx.OutputWriter().GetOutputPrefixPath().String())
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx.TaskExecutionMetadata(), taskCtx.TaskReader(), taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, err
 	}
