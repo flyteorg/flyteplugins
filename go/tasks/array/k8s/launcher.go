@@ -70,11 +70,6 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		podTemplate.Spec.Containers[0].Args = []string{}
 	}
 
-	args := utils.CommandLineTemplateArgs{
-		Input:        tCtx.InputReader().GetInputPrefixPath().String(),
-		OutputPrefix: tCtx.OutputWriter().GetOutputPrefixPath().String(),
-	}
-
 	size := currentState.GetExecutionArraySize()
 	// TODO: Respect parallelism param
 	for i := 0; i < size; i++ {
@@ -88,7 +83,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
 
-		pod.Spec.Containers[0].Command, err = utils.ReplaceTemplateCommandArgs(ctx, command, args)
+		pod.Spec.Containers[0].Command, err = utils.ReplaceTemplateCommandArgs(ctx, command, tCtx.InputReader(), tCtx.OutputWriter(), true)
 		if err != nil {
 			return currentState, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
 		}

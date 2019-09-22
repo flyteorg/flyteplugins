@@ -1,13 +1,14 @@
 package utils
 
 import (
-	"bytes"
 	"context"
+	"fmt"
 	"testing"
-	"text/template"
 	"time"
 
 	"github.com/lyft/flyteidl/clients/go/coreutils"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -18,48 +19,42 @@ func BenchmarkRegexCommandArgs(b *testing.B) {
 	}
 }
 
-// Benchmark results:
-// Regex_replacement-8         	 3000000	       583 ns/op
-// NotCompiled-8               	  100000	     14684 ns/op
-// Precompile/Execute-8        	  500000	      2706 ns/op
-func BenchmarkReplacements(b *testing.B) {
-	cmd := `abc {{ .Inputs.x }} `
-	cmdTemplate := `abc {{ index .Inputs "x" }}`
-	cmdArgs := CommandLineTemplateArgs{
-		Input: "inputfile.pb",
-		Inputs: map[string]string{
-			"x": "1",
-		},
+type dummyInputReader struct {
+	inputPrefix storage.DataReference
+	inputPath   storage.DataReference
+	inputs      *core.LiteralMap
+	inputErr    bool
+}
+
+func (d dummyInputReader) GetInputPrefixPath() storage.DataReference {
+	return d.inputPrefix
+}
+
+func (d dummyInputReader) GetInputPath() storage.DataReference {
+	return d.inputPath
+}
+
+func (d dummyInputReader) Get(ctx context.Context) (*core.LiteralMap, error) {
+	if d.inputErr {
+		return nil, fmt.Errorf("expected input fetch error")
 	}
+	return d.inputs, nil
+}
 
-	b.Run("NotCompiled", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			t, err := template.New("NotCompiled").Parse(cmdTemplate)
-			assert.NoError(b, err)
-			var buf bytes.Buffer
-			err = t.Execute(&buf, cmdArgs)
-			assert.NoError(b, err)
-		}
-	})
+type dummyOutputPaths struct {
+	outputPath storage.DataReference
+}
 
-	b.Run("Precompile", func(b *testing.B) {
-		t, err := template.New("NotCompiled").Parse(cmdTemplate)
-		assert.NoError(b, err)
+func (d dummyOutputPaths) GetOutputPrefixPath() storage.DataReference {
+	return d.outputPath
+}
 
-		b.Run("Execute", func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				var buf bytes.Buffer
-				err = t.Execute(&buf, cmdArgs)
-				assert.NoError(b, err)
-			}
-		})
-	})
+func (d dummyOutputPaths) GetOutputPath() storage.DataReference {
+	panic("should not be called")
+}
 
-	b.Run("Regex replacement", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			inputVarRegex.FindAllStringSubmatchIndex(cmd, -1)
-		}
-	})
+func (d dummyOutputPaths) GetErrorPath() storage.DataReference {
+	panic("should not be called")
 }
 
 func TestInputRegexMatch(t *testing.T) {
@@ -91,17 +86,19 @@ func TestOutputRegexMatch(t *testing.T) {
 func TestReplaceTemplateCommandArgs(t *testing.T) {
 	t.Run("empty cmd", func(t *testing.T) {
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(),
-			[]string{},
-			CommandLineTemplateArgs{Input: "input/blah", OutputPrefix: "output/blah"})
+			[]string{}, nil, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{}, actual)
 	})
+
+	in := dummyInputReader{inputPath: "input/blah"}
+	out := dummyOutputPaths{outputPath: "output/blah"}
 
 	t.Run("nothing to substitute", func(t *testing.T) {
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
 			"hello",
 			"world",
-		}, CommandLineTemplateArgs{Input: "input/blah", OutputPrefix: "output/blah"})
+		}, in, out)
 		assert.NoError(t, err)
 
 		assert.Equal(t, []string{
@@ -115,7 +112,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"hello",
 			"world",
 			"{{ .Input }}",
-		}, CommandLineTemplateArgs{Input: "input/blah", OutputPrefix: "output/blah"})
+		}, in, out)
 		assert.NoError(t, err)
 
 		assert.Equal(t, []string{
@@ -125,12 +122,28 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		}, actual)
 	})
 
+	t.Run("Sub Input Prefix", func(t *testing.T) {
+		in := dummyInputReader{inputPrefix: "input/prefix"}
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			"{{ .Input }}",
+		}, in, out)
+		assert.NoError(t, err)
+
+		assert.Equal(t, []string{
+			"hello",
+			"world",
+			"input/prefix",
+		}, actual)
+	})
+
 	t.Run("Sub Output Prefix", func(t *testing.T) {
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
 			"hello",
 			"world",
 			"{{ .OutputPrefix }}",
-		}, CommandLineTemplateArgs{Input: "input/blah", OutputPrefix: "output/blah"})
+		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
 			"hello",
@@ -145,7 +158,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"{{ .Input }}",
 			"{{ .OutputPrefix }}",
-		}, CommandLineTemplateArgs{Input: "input/blah", OutputPrefix: "output/blah"})
+		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
 			"hello",
@@ -161,7 +174,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"${{input}}",
 			"{{ .OutputPrefix }}",
-		}, CommandLineTemplateArgs{Input: "input/blah", OutputPrefix: "output/blah"})
+		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
 			"hello",
@@ -172,17 +185,23 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 	})
 
 	t.Run("Input arg", func(t *testing.T) {
+		in := dummyInputReader{inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"arr": {
+					Value: &core.Literal_Collection{
+						Collection: &core.LiteralCollection{
+							Literals: []*core.Literal{coreutils.MustMakeLiteral("a"), coreutils.MustMakeLiteral("b")},
+						},
+					},
+				},
+			},
+		}}
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
 			"hello",
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"{{ .OutputPrefix }}",
-		}, CommandLineTemplateArgs{
-			Input:        "input/blah",
-			OutputPrefix: "output/blah",
-			Inputs: map[string]string{
-				"arr": "[a,b]",
-			}})
+		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
 			"hello",
@@ -191,49 +210,58 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"output/blah",
 		}, actual)
 	})
-}
 
-func TestLiteralMapToTemplateArgs(t *testing.T) {
-	t.Run("Scalars", func(t *testing.T) {
-		expected := map[string]string{
-			"str":  "blah",
-			"int":  "5",
-			"date": "1900-01-01T01:01:01.000000001Z",
-		}
-
-		dd := time.Date(1900, 1, 1, 1, 1, 1, 1, time.UTC)
-		lit := coreutils.MustMakeLiteral(map[string]interface{}{
-			"str":  "blah",
-			"int":  5,
-			"date": dd,
-		})
-
-		actual := LiteralMapToTemplateArgs(context.TODO(), lit.GetMap())
-
-		assert.Equal(t, expected, actual)
+	t.Run("Date", func(t *testing.T) {
+		in := dummyInputReader{inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"date": coreutils.MustMakeLiteral(time.Date(1900, 01, 01, 01, 01, 01, 000000001, time.UTC)),
+			},
+		}}
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.date }}`,
+			"{{ .OutputPrefix }}",
+		}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"hello",
+			"world",
+			"--someArg 1900-01-01T01:01:01.000000001Z",
+			"output/blah",
+		}, actual)
 	})
 
-	t.Run("1d array", func(t *testing.T) {
-		expected := map[string]string{
-			"arr": "[a,b]",
-		}
-
-		actual := LiteralMapToTemplateArgs(context.TODO(), coreutils.MustMakeLiteral(map[string]interface{}{
-			"arr": []interface{}{"a", "b"},
-		}).GetMap())
-
-		assert.Equal(t, expected, actual)
+	t.Run("2d Array arg", func(t *testing.T) {
+		in := dummyInputReader{inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"arr": coreutils.MustMakeLiteral([]interface{}{[]interface{}{"a", "b"}, []interface{}{1, 2}}),
+			},
+		}}
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.arr }}`,
+			"{{ .OutputPrefix }}",
+		}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"hello",
+			"world",
+			"--someArg [[a,b],[1,2]]",
+			"output/blah",
+		}, actual)
 	})
 
-	t.Run("2d array", func(t *testing.T) {
-		expected := map[string]string{
-			"arr": "[[a,b],[1,2]]",
-		}
+	t.Run("nil input", func(t *testing.T) {
+		in := dummyInputReader{inputs: &core.LiteralMap{}}
 
-		actual := LiteralMapToTemplateArgs(context.TODO(), coreutils.MustMakeLiteral(map[string]interface{}{
-			"arr": []interface{}{[]interface{}{"a", "b"}, []interface{}{1, 2}},
-		}).GetMap())
-
-		assert.Equal(t, expected, actual)
+		_, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.arr }}`,
+			"{{ .OutputPrefix }}",
+		}, in, out)
+		assert.Error(t, err)
 	})
 }

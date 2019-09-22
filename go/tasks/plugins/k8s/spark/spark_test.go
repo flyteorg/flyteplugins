@@ -72,7 +72,7 @@ func TestGetEventInfo(t *testing.T) {
 	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=system_log.var.log.containers.spark-app-name;streamFilter=typeLogStreamPrefix", info.Logs[2].Uri)
 	assert.Equal(t, "https://spark-ui.flyte", info.Logs[3].Uri)
 
-	assert.NoError(t, setSparkConfig(&SparkConfig{
+	assert.NoError(t, setSparkConfig(&Config{
 		SparkHistoryServerURL: "spark-history.flyte",
 	}))
 
