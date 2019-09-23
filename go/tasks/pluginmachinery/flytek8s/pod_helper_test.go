@@ -58,7 +58,7 @@ func dummyTaskReader() pluginsCore.TaskReader {
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
 				Command: []string{"command"},
-				Args: []string{"{{.Input}}"},
+				Args:    []string{"{{.Input}}"},
 			},
 		},
 	}
@@ -97,6 +97,9 @@ func TestToK8sPod(t *testing.T) {
 		}}),
 	)
 
+	op := &pluginsIOMock.OutputFilePaths{}
+	op.On("GetOutputPrefixPath").Return(storage.DataReference(""))
+
 	t.Run("WithGPU", func(t *testing.T) {
 		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
 			Limits: v1.ResourceList{
@@ -110,7 +113,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), "")
+		p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 1)
 	})
@@ -127,7 +130,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), "")
+		p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 0)
 		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
@@ -345,4 +348,3 @@ func TestConvertPodFailureToError(t *testing.T) {
 		assert.Equal(t, code, "hello")
 	})
 }
-

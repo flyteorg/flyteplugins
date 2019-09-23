@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
@@ -30,8 +29,7 @@ type sidecarResourceHandler struct{}
 // This method handles templatizing primary container input args, env variables and adds a GPU toleration to the pod
 // spec if necessary.
 func validateAndFinalizeContainers(
-	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, pod k8sv1.Pod,
-	inputs *core.LiteralMap) (*k8sv1.Pod, error) {
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, pod k8sv1.Pod) (*k8sv1.Pod, error) {
 	var hasPrimaryContainer bool
 
 	finalizedContainers := make([]k8sv1.Container, len(pod.Spec.Containers))
@@ -40,27 +38,13 @@ func validateAndFinalizeContainers(
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 		}
-		modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx,
-			container.Command,
-			utils.CommandLineTemplateArgs{
-				Input:        taskCtx.InputReader().GetInputPath().String(),
-				OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
-				Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
-			})
-
+		modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx, container.Command, taskCtx.InputReader(), taskCtx.OutputWriter())
 		if err != nil {
 			return nil, err
 		}
 		container.Command = modifiedCommand
 
-		modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx,
-			container.Args,
-			utils.CommandLineTemplateArgs{
-				Input:        taskCtx.InputReader().GetInputPath().String(),
-				OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
-				Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
-			})
-
+		modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, container.Args, taskCtx.InputReader(), taskCtx.OutputWriter())
 		if err != nil {
 			return nil, err
 		}
@@ -101,12 +85,7 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 	// We want to Also update the serviceAccount to the serviceaccount of the workflow
 	pod.Spec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
 
-	inputs, err := taskCtx.InputReader().Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	pod, err = validateAndFinalizeContainers(ctx, taskCtx, sidecarJob.PrimaryContainerName, *pod, inputs)
+	pod, err = validateAndFinalizeContainers(ctx, taskCtx, sidecarJob.PrimaryContainerName, *pod)
 	if err != nil {
 		return nil, err
 	}
@@ -193,10 +172,10 @@ func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8
 func init() {
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
-			ID:	sidecarTaskType,
+			ID:                  sidecarTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{sidecarTaskType},
-			ResourceToWatch: &k8sv1.Pod{},
-			Plugin: sidecarResourceHandler{},
-			IsDefault: false,
+			ResourceToWatch:     &k8sv1.Pod{},
+			Plugin:              sidecarResourceHandler{},
+			IsDefault:           false,
 		})
 }
