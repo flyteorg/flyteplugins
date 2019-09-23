@@ -4,18 +4,22 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func newTaskTemplate() *core.TaskTemplate {
+func NewArrayJobTaskTemplate() (*core.TaskTemplate, error) {
 	st := &structpb.Struct{}
 	err := utils.MarshalStruct(&plugins.ArrayJob{
 		Size:         2,
 		MinSuccesses: 2,
 	}, st)
+	if err != nil {
+		return nil, err
+	}
 
 	return &core.TaskTemplate{
 		Type:   arrayTaskType,
@@ -35,11 +39,11 @@ func newTaskTemplate() *core.TaskTemplate {
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 func newMockTaskContext(phase types.TaskPhase, state types.CustomState) types.TaskContext {
-	taskCtx := &mocks2.TaskContext{}
+	taskCtx := &mocks.TaskContext{}
 	taskCtx.On("GetNamespace").Return("fake-namespace")
 	taskCtx.On("GetAnnotations").Return(map[string]string{"aKey": "aVal"})
 	taskCtx.On("GetLabels").Return(map[string]string{"lKey": "lVal"})
