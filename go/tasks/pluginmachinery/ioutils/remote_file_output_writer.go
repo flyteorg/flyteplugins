@@ -8,38 +8,38 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 )
 
-type SimpleOutputWriter struct {
+type RemoteFileOutputWriter struct {
 	io.OutputFilePaths
 	store storage.ProtobufStore
 }
 
-type SimpleOutputFilePaths struct {
+type RemoteFileOutputPaths struct {
 	outputPrefix storage.DataReference
 	store        storage.ReferenceConstructor
 }
 
 var (
-	_ io.OutputWriter    = SimpleOutputWriter{}
-	_ io.OutputFilePaths = SimpleOutputFilePaths{}
+	_ io.OutputWriter    = RemoteFileOutputWriter{}
+	_ io.OutputFilePaths = RemoteFileOutputPaths{}
 )
 
-func (w SimpleOutputFilePaths) GetOutputPrefixPath() storage.DataReference {
+func (w RemoteFileOutputPaths) GetOutputPrefixPath() storage.DataReference {
 	return w.outputPrefix
 }
 
-func (w SimpleOutputFilePaths) GetOutputPath() storage.DataReference {
+func (w RemoteFileOutputPaths) GetOutputPath() storage.DataReference {
 	return constructPath(w.store, w.outputPrefix, OutputsSuffix)
 }
 
-func (w SimpleOutputFilePaths) GetErrorPath() storage.DataReference {
+func (w RemoteFileOutputPaths) GetErrorPath() storage.DataReference {
 	return constructPath(w.store, w.outputPrefix, ErrorsSuffix)
 }
 
-func (w SimpleOutputFilePaths) GetFuturesPath() storage.DataReference {
+func (w RemoteFileOutputPaths) GetFuturesPath() storage.DataReference {
 	return constructPath(w.store, w.outputPrefix, FuturesSuffix)
 }
 
-func (w SimpleOutputWriter) Put(ctx context.Context, reader io.OutputReader) error {
+func (w RemoteFileOutputWriter) Put(ctx context.Context, reader io.OutputReader) error {
 	literals, executionErr, err := reader.Read(ctx)
 	if err != nil {
 		return err
@@ -56,15 +56,15 @@ func (w SimpleOutputWriter) Put(ctx context.Context, reader io.OutputReader) err
 	return fmt.Errorf("no data found to write")
 }
 
-func NewSimpleOutputFilePaths(_ context.Context, store storage.ReferenceConstructor, outputPrefix storage.DataReference) SimpleOutputFilePaths {
-	return SimpleOutputFilePaths{
+func NewRemoteFileOutputPaths(_ context.Context, store storage.ReferenceConstructor, outputPrefix storage.DataReference) RemoteFileOutputPaths {
+	return RemoteFileOutputPaths{
 		store:        store,
 		outputPrefix: outputPrefix,
 	}
 }
 
-func NewSimpleOutputWriter(_ context.Context, store storage.ProtobufStore, outputFilePaths io.OutputFilePaths) SimpleOutputWriter {
-	return SimpleOutputWriter{
+func NewRemoteFileOutputWriter(_ context.Context, store storage.ProtobufStore, outputFilePaths io.OutputFilePaths) RemoteFileOutputWriter {
+	return RemoteFileOutputWriter{
 		OutputFilePaths: outputFilePaths,
 		store:           store,
 	}
