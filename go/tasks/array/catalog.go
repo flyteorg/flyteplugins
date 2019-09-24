@@ -149,7 +149,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	return state, nil
 }
 
-func WriteToCatalog(ctx context.Context, catalogClient catalog.Client,
+func WriteToCatalog(ctx context.Context, catalogClient catalog.AsyncClient,
 	workItems []catalog.UploadRequest) (bool, error) {
 
 	// Enqueue work items

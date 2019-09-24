@@ -44,7 +44,7 @@ type TaskExecutionContext interface {
 	PluginStateWriter() PluginStateWriter
 
 	// Get a handle to catalog client
-	Catalog() catalog.Client
+	Catalog() catalog.AsyncClient
 
 	// Returns a handle to the Task events recorder, which get stored in the Admin.
 	EventsRecorder() EventsRecorder
