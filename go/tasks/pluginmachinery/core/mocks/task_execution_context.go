@@ -14,15 +14,15 @@ type TaskExecutionContext struct {
 }
 
 // Catalog provides a mock function with given fields:
-func (_m *TaskExecutionContext) Catalog() catalog.Client {
+func (_m *TaskExecutionContext) Catalog() catalog.AsyncClient {
 	ret := _m.Called()
 
-	var r0 catalog.Client
-	if rf, ok := ret.Get(0).(func() catalog.Client); ok {
+	var r0 catalog.AsyncClient
+	if rf, ok := ret.Get(0).(func() catalog.AsyncClient); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(catalog.Client)
+			r0 = ret.Get(0).(catalog.AsyncClient)
 		}
 	}
 
