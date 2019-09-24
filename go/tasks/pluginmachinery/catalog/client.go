@@ -30,6 +30,6 @@ func (k Key) String() string {
 
 // TODO: Match the actual catalog service interface
 type Client interface {
-	Get(ctx context.Context, key Key) (*core.LiteralMap, error)
+	Get(ctx context.Context, key Key) (io.OutputReader, error)
 	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) error
 }

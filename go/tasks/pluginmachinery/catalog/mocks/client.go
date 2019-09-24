@@ -4,7 +4,6 @@ package mocks
 
 import catalog "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 import context "context"
-import core "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 import io "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 import mock "github.com/stretchr/testify/mock"
 
@@ -14,15 +13,15 @@ type Client struct {
 }
 
 // Get provides a mock function with given fields: ctx, key
-func (_m *Client) Get(ctx context.Context, key catalog.Key) (*core.LiteralMap, error) {
+func (_m *Client) Get(ctx context.Context, key catalog.Key) (io.OutputReader, error) {
 	ret := _m.Called(ctx, key)
 
-	var r0 *core.LiteralMap
-	if rf, ok := ret.Get(0).(func(context.Context, catalog.Key) *core.LiteralMap); ok {
+	var r0 io.OutputReader
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.Key) io.OutputReader); ok {
 		r0 = rf(ctx, key)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*core.LiteralMap)
+			r0 = ret.Get(0).(io.OutputReader)
 		}
 	}
 
