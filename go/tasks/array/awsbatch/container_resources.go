@@ -37,11 +37,11 @@ type resourceOverrides struct {
 
 func resourceEntriesIndex(ctx context.Context, resources []*core.Resources_ResourceEntry) map[string]*core.Resources_ResourceEntry {
 	res := make(map[string]*core.Resources_ResourceEntry, len(resources))
-	for _, resource := range resources {
-		if resourceName, found := core.Resources_ResourceName_name[int32(resource.Name)]; found {
-			res[strings.ToLower(resourceName)] = resource
+	for _, resourceEntry := range resources {
+		if resourceName, found := core.Resources_ResourceName_name[int32(resourceEntry.Name)]; found {
+			res[strings.ToLower(resourceName)] = resourceEntry
 		} else {
-			logger.Warnf(ctx, "Resource Name value's not recognized [%v]", resource.Name)
+			logger.Warnf(ctx, "Resource Name value's not recognized [%v]", resourceEntry.Name)
 		}
 	}
 

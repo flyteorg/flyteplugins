@@ -29,16 +29,24 @@ const (
 )
 
 type State struct {
-	CurrentPhase       Phase                   `json:"phase"`
-	PhaseVersion       uint32                  `json:"phaseVersion"`
-	Reason             string                  `json:"reason"`
-	ExecutionErr       *idlCore.ExecutionError `json:"err"`
-	ExecutionArraySize int                     `json:"arraySize"`
-	OriginalArraySize  int64                   `json:"originalArraySize"`
-	ArrayStatus        arraystatus.ArrayStatus `json:"arrayStatus"`
+	CurrentPhase         Phase                   `json:"phase"`
+	PhaseVersion         uint32                  `json:"phaseVersion"`
+	Reason               string                  `json:"reason"`
+	ExecutionErr         *idlCore.ExecutionError `json:"err"`
+	ExecutionArraySize   int                     `json:"arraySize"`
+	OriginalArraySize    int64                   `json:"originalArraySize"`
+	ArrayStatus          arraystatus.ArrayStatus `json:"arrayStatus"`
+	OriginalMinSuccesses int64                     `json:"minSuccess"`
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
 	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
+
+	// Optional. For plugins that
+	ExternalJobID *string `json:"externalJobID"`
+}
+
+func (s State) GetExternalJobID() *string {
+	return s.ExternalJobID
 }
 
 func (s State) GetReason() string {
@@ -55,6 +63,11 @@ func (s State) GetPhase() (phase Phase, version uint32) {
 
 func (s State) GetArrayStatus() arraystatus.ArrayStatus {
 	return s.ArrayStatus
+}
+
+func (s *State) SetExternalJobID(jobID string) *State {
+	s.ExternalJobID = &jobID
+	return s
 }
 
 func (s *State) SetReason(reason string) *State {
@@ -147,12 +160,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 	return phaseInfo
 }
 
-func SummaryToPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, summary arraystatus.ArraySummary) Phase {
-	minSuccesses := int64(1)
-	if arrayJobProps != nil {
-		minSuccesses = arrayJobProps.MinSuccesses
-	}
-
+func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
 	totalFailures := int64(0)

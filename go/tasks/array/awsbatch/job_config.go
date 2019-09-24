@@ -15,9 +15,6 @@ const (
 	// https://github.com/lyft/flyteadmin/commit/15dc00010d379c9240657326e0e95c60993ba30b#diff-fc047e54b9dd82ca7c89ac9b32cb07b3R37
 	PrimaryTaskQueueKey = "primary_queue"
 	DynamicTaskQueueKey = "dynamic_queue"
-	// TODO(katrogan): Deprecate these
-	ParentTaskQueueKey = "parent_queue"
-	ChildTaskQueueKey  = "child_queue"
 )
 
 type JobConfig struct {
@@ -27,13 +24,9 @@ type JobConfig struct {
 
 func (j *JobConfig) setKeyIfKnown(key, value string) bool {
 	switch key {
-	case ParentTaskQueueKey:
-		fallthrough
 	case PrimaryTaskQueueKey:
 		j.PrimaryTaskQueue = value
 		return true
-	case ChildTaskQueueKey:
-		fallthrough
 	case DynamicTaskQueueKey:
 		j.DynamicTaskQueue = value
 		return true

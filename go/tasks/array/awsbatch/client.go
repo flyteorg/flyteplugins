@@ -9,10 +9,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flyteplugins/go/tasks/array/awsbatch/definition"
+
 	"github.com/lyft/flyteplugins/go/tasks/aws"
 	"github.com/lyft/flytestdlib/utils"
 
-	"github.com/lyft/flytedynamicjoboperator/pkg/aws/batch/definition"
 	"github.com/lyft/flytestdlib/logger"
 
 	a "github.com/aws/aws-sdk-go/aws"
@@ -33,6 +34,9 @@ type Client interface {
 
 	// Registers a new Job Definition with AWS Batch provided a name, image and role.
 	RegisterJobDefinition(ctx context.Context, name, image, role string) (arn string, err error)
+
+	// Gets the single region this client interacts with.
+	GetRegion() string
 }
 
 // BatchServiceClient is an interface on top of the native AWS Batch client to allow for mocking and alternative implementations.
@@ -45,9 +49,13 @@ type BatchServiceClient interface {
 
 type client struct {
 	Batch              BatchServiceClient
-	store              Store
 	getRateLimiter     utils.RateLimiter
 	defaultRateLimiter utils.RateLimiter
+	region             string
+}
+
+func (b client) GetRegion() string {
+	return b.region
 }
 
 // Registers a new job definition. There is no deduping on AWS side (even for the same name).
@@ -80,11 +88,6 @@ func (b *client) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (Jo
 		return Job{}, nil
 	}
 
-	if existingJob, found, err := b.store.Get(ctx, *input.JobName); found && err == nil {
-		logger.Debugf(ctx, "Not submitting a new job because an existing one with the same name already exists. Existing Job [%v]", existingJob)
-		return existingJob, nil
-	}
-
 	if err := b.defaultRateLimiter.Wait(ctx); err != nil {
 		return Job{}, err
 	}
@@ -101,7 +104,6 @@ func (b *client) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (Jo
 
 	return Job{
 		Id:     *output.JobId,
-		Name:   *output.JobName,
 		Status: JobStatus{},
 	}, nil
 }
@@ -147,21 +149,20 @@ func (b *client) GetJobDetailsBatch(ctx context.Context, jobIds []JobID) ([]*bat
 }
 
 // Initializes a new Batch Client that can be used to interact with AWS Batch.
-func NewBatchClient(aws aws.Client,
-	store Store,
+func NewBatchClient(awsClient aws.Client,
 	getRateLimiter utils.RateLimiter,
 	defaultRateLimiter utils.RateLimiter) Client {
 
-	batchClient := batch.New(aws.GetSession(), aws.GetConfig())
-	return NewCustomBatchClient(batchClient, store, getRateLimiter, defaultRateLimiter)
+	batchClient := batch.New(awsClient.GetSession(), awsClient.GetConfig())
+	return NewCustomBatchClient(batchClient, batchClient.SigningRegion, getRateLimiter, defaultRateLimiter)
 }
 
-func NewCustomBatchClient(batchClient BatchServiceClient, store Store,
+func NewCustomBatchClient(batchClient BatchServiceClient, region string,
 	getRateLimiter utils.RateLimiter,
 	defaultRateLimiter utils.RateLimiter) Client {
 	return &client{
-		store:              store,
 		Batch:              batchClient,
+		region:             region,
 		getRateLimiter:     getRateLimiter,
 		defaultRateLimiter: defaultRateLimiter,
 	}

@@ -13,12 +13,14 @@ import (
 )
 
 var inputFileRegex = regexp.MustCompile(`(?i){{\s*[\.$]Input\s*}}`)
+var inputPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]InputPrefix\s*}}`)
 var outputRegex = regexp.MustCompile(`(?i){{\s*[\.$]OutputPrefix\s*}}`)
 var inputVarRegex = regexp.MustCompile(`(?i){{\s*[\.$]Inputs\.(?P<input_name>[^}\s]+)\s*}}`)
 
 // Contains arguments passed down to command line templates.
 type CommandLineTemplateArgs struct {
 	Input        string            `json:"input"`
+	InputPrefix  string            `json:"inputPrefix"`
 	OutputPrefix string            `json:"output"`
 	Inputs       map[string]string `json:"inputs"`
 }
@@ -51,6 +53,7 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, args Comm
 func replaceTemplateCommandArgs(_ context.Context, commandTemplate string, args *CommandLineTemplateArgs) (string, error) {
 	val := inputFileRegex.ReplaceAllString(commandTemplate, args.Input)
 	val = outputRegex.ReplaceAllString(val, args.OutputPrefix)
+	val = inputPrefixRegex.ReplaceAllString(val, args.InputPrefix)
 	groupMatches := inputVarRegex.FindAllStringSubmatchIndex(val, -1)
 	if len(groupMatches) == 0 {
 		return val, nil

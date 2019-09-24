@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/coocood/freecache"
-	"github.com/lyft/flytedynamicjoboperator/pkg/aws"
 )
 
 type JobDefinitionArn = string
@@ -61,8 +60,8 @@ func NewCacheKey(role, image string) CacheKey {
 }
 
 // Creates a new cache using cache size from aws config.
-func NewCache() Cache {
+func NewCache(jobDefinitionCacheSize int) Cache {
 	return cache{
-		raw: freecache.NewCache(aws.GetConfig().JobDefCacheSize),
+		raw: freecache.NewCache(jobDefinitionCacheSize),
 	}
 }

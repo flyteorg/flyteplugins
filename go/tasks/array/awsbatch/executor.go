@@ -2,6 +2,13 @@ package awsbatch
 
 import (
 	"context"
+	"time"
+
+	"github.com/lyft/flytestdlib/logger"
+
+	"github.com/lyft/flyteplugins/go/tasks/aws"
+	"github.com/lyft/flytestdlib/promutils"
+	"github.com/lyft/flytestdlib/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/array/awsbatch/config"
@@ -13,21 +20,22 @@ import (
 const (
 	executorName              = "aws-array"
 	defaultPluginStateVersion = 0
+	arrayTaskType             = "container_array"
 )
 
-type Executor2 struct {
-	batchClient Client
+type Executor struct {
+	jobStore *JobStore
 }
 
-func (e Executor2) GetID() string {
+func (e Executor) GetID() string {
 	return executorName
 }
 
-func (e Executor2) GetProperties() core.PluginProperties {
+func (e Executor) GetProperties() core.PluginProperties {
 	return core.PluginProperties{}
 }
 
-func (e Executor2) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
+func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	pluginConfig := config.GetConfig()
 
 	pluginState := &array.State{}
@@ -43,10 +51,10 @@ func (e Executor2) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
 	case array.PhaseLaunch:
-		nextState, err = LaunchSubTasks(ctx, tCtx, e.batchClient, pluginConfig, pluginState)
+		nextState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
 	case array.PhaseCheckingSubTaskExecutions:
-		nextState, err = CheckSubTasksState(ctx, tCtx, e.batchClient, pluginConfig, pluginState)
+		nextState, err = CheckSubTasksState(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
 	case array.PhaseWriteToDiscovery:
 		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
@@ -68,10 +76,38 @@ func (e Executor2) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 
-func (e Executor2) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	panic("implement me")
+func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
+	//TODO: implement
+	return nil
 }
 
-func (e Executor2) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	panic("implement me")
+func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
+	//TODO: implement
+	return nil
+}
+
+func NewExecutor(ctx context.Context, awsClient aws.Client, resyncPeriod time.Duration, cfg *config.Config,
+	enqueueOwner core.EnqueueOwner, scope promutils.Scope) (Executor, error) {
+
+	getRateLimiter := utils.NewRateLimiter("getRateLimiter", float64(cfg.GetRateLimiter.Rate),
+		cfg.GetRateLimiter.Burst)
+	defaultRateLimiter := utils.NewRateLimiter("defaultRateLimiter", float64(cfg.DefaultRateLimiter.Rate),
+		cfg.DefaultRateLimiter.Burst)
+	batchClient := NewBatchClient(awsClient, getRateLimiter, defaultRateLimiter)
+	jobStore, err := NewJobStore(ctx, batchClient, cfg.JobStoreCacheSize, resyncPeriod, cfg.BatchChunkSize, EventHandler{
+		Updated: func(ctx context.Context, event Event) {
+			err := enqueueOwner(event.NewJob.OwnerReference)
+			if err != nil {
+				logger.Warnf(ctx, "Failed to enqueue owner [%v] of job [%v]. Error: %v", event.NewJob.OwnerReference, event.NewJob.Id)
+			}
+		},
+	}, scope)
+
+	if err != nil {
+		return Executor{}, err
+	}
+
+	return Executor{
+		jobStore: &jobStore,
+	}, nil
 }

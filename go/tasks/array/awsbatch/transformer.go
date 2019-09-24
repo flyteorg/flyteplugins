@@ -1,39 +1,111 @@
-/*
- * Copyright (c) 2018 Lyft. All rights reserved.
- */
-
 package awsbatch
 
 import (
 	"context"
-	"fmt"
 	"sort"
-	"time"
 
-	"github.com/lyft/flytedynamicjoboperator/pkg/aws"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
-
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flyteplugins/go/tasks/array/awsbatch/config"
 
 	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	v1 "k8s.io/api/core/v1"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
-	"github.com/lyft/flytedynamicjoboperator/errors"
-	ctrlConfig "github.com/lyft/flytedynamicjoboperator/pkg/controller/config"
-	"github.com/lyft/flytedynamicjoboperator/pkg/internal"
-	"github.com/lyft/flytedynamicjoboperator/pkg/resource/env"
+	"github.com/lyft/flyteplugins/go/tasks/errors"
+	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	v1 "k8s.io/api/core/v1"
 )
 
 const (
-	MinRetryAttempts   = 1
-	MaxRetryAttempts   = 10
+	ArrayJobIndex      = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	LogStreamFormatter = "https://console.aws.amazon.com/cloudwatch/home?region=%v#logEventViewer:group=/aws/batch/job;stream=%v"
+	JobFormatter       = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/%v/child/%v:%v"
 )
+
+// Note that Name is not set on the result object.
+// It's up to the caller to set the Name before creating the object in K8s.
+func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionContext, jobDefinition string, cfg *config.Config) (
+	batchInput *batch.SubmitJobInput, err error) {
+
+	// Check that the taskTemplate is valid
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return nil, err
+	} else if taskTemplate == nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
+	}
+
+	if taskTemplate.GetContainer() == nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification,
+			"Required value not set, taskTemplate Container")
+	}
+
+	jobConfig := JobConfig{}.MergeFromConfigMap(tCtx.TaskExecutionMetadata().GetOverrides().GetConfig())
+	if len(jobConfig.DynamicTaskQueue) == 0 {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "config[%v] is missing", DynamicTaskQueueKey)
+	}
+
+	// Replace cmd line args
+	templateArgs := utils.CommandLineTemplateArgs{
+		Input:        tCtx.InputReader().GetInputPath().String(),
+		InputPrefix:  tCtx.InputReader().GetInputPrefixPath().String(),
+		OutputPrefix: tCtx.OutputWriter().GetOutputPrefixPath().String(),
+	}
+
+	cmd, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetCommand(), templateArgs)
+	if err != nil {
+		return nil, err
+	}
+
+	args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(), templateArgs)
+	taskTemplate.GetContainer().GetEnv()
+
+	envVars := getEnvVarsForTask(ctx, tCtx, taskTemplate.GetContainer().GetEnv(), cfg.DefaultEnvVars)
+	resources := newContainerResourcesFromContainerTask(ctx, taskTemplate.GetContainer())
+	return &batch.SubmitJobInput{
+		JobName:            refStr(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
+		JobDefinition:      refStr(jobDefinition),
+		JobQueue:           refStr(jobConfig.DynamicTaskQueue),
+		RetryStrategy:      toRetryStrategy(ctx, toBackoffLimit(taskTemplate.Metadata), cfg.MinRetries, cfg.MaxRetries),
+		ContainerOverrides: toContainerOverrides(ctx, append(cmd, args...), resources, envVars),
+	}, nil
+}
+
+func UpdateBatchInputForArray(ctx context.Context, batchInput *batch.SubmitJobInput, arraySize int64) *batch.SubmitJobInput {
+	var arrayProps *batch.ArrayProperties
+	envVars := batchInput.ContainerOverrides.Environment
+	if arraySize > 1 {
+		envVars = append(envVars, &batch.KeyValuePair{Name: refStr(ArrayJobIndex), Value: refStr("AWS_BATCH_JOB_ARRAY_INDEX")})
+		arrayProps = &batch.ArrayProperties{
+			Size: refInt(arraySize),
+		}
+	} else {
+		// AWS Batch doesn't allow arrays of size 1. Since the task template defines the job as an array, we substitute
+		// these env vars to make it look like one.
+		envVars = append(envVars, &batch.KeyValuePair{Name: refStr(ArrayJobIndex), Value: refStr("FAKE_JOB_ARRAY_INDEX")},
+			&batch.KeyValuePair{Name: refStr("FAKE_JOB_ARRAY_INDEX"), Value: refStr("0")})
+	}
+
+	batchInput.ArrayProperties = arrayProps
+	batchInput.ContainerOverrides.Environment = envVars
+
+	return batchInput
+}
+
+func getEnvVarsForTask(ctx context.Context, tCtx pluginCore.TaskExecutionContext, containerEnvVars []*core.KeyValuePair,
+	defaultEnvVars map[string]string) []v1.EnvVar {
+	envVars := flytek8s.DecorateEnvVars(ctx, flytek8s.ToK8sEnvVar(containerEnvVars), tCtx.TaskExecutionMetadata().GetTaskExecutionID())
+
+	for key, value := range defaultEnvVars {
+		envVars = append(envVars, v1.EnvVar{
+			Name:  key,
+			Value: value,
+		})
+	}
+
+	return envVars
+}
 
 func toEnvironmentVariables(_ context.Context, envVars []v1.EnvVar) []*batch.KeyValuePair {
 	res := make([]*batch.KeyValuePair, 0, len(envVars))
@@ -55,8 +127,8 @@ func toContainerOverrides(ctx context.Context, command []string, overrides resou
 	envVars []v1.EnvVar) *batch.ContainerOverrides {
 
 	return &batch.ContainerOverrides{
-		Memory:      refInt(MemoryMB),
-		Vcpus:       refInt(Cpus),
+		Memory:      refInt(overrides.MemoryMB),
+		Vcpus:       refInt(overrides.Cpus),
 		Environment: toEnvironmentVariables(ctx, envVars),
 		Command:     refStrSlice(command),
 	}
@@ -80,12 +152,20 @@ func refInt(i int64) *int64 {
 	return &i
 }
 
-func toRetryStrategy(_ context.Context, backoffLimit *int32) *batch.RetryStrategy {
+func toRetryStrategy(_ context.Context, backoffLimit *int32, minRetryAttempts, maxRetryAttempts int32) *batch.RetryStrategy {
 	if backoffLimit == nil || *backoffLimit < 0 {
 		return nil
 	}
 
-	retries := internal.JailValueUint32(uint32(*backoffLimit), MinRetryAttempts, MaxRetryAttempts)
+	retries := *backoffLimit
+	if retries > maxRetryAttempts {
+		retries = maxRetryAttempts
+	}
+
+	if retries < minRetryAttempts {
+		retries = minRetryAttempts
+	}
+
 	return &batch.RetryStrategy{
 		Attempts: refInt(int64(retries)),
 	}
@@ -109,185 +189,24 @@ func toBackoffLimit(metadata *core.TaskMetadata) *int32 {
 	return &i
 }
 
-func toArrayJob(structObj *structpb.Struct) (*plugins.ArrayJob, error) {
-	arrayJob := &plugins.ArrayJob{}
-	err := internal.UnmarshalStruct(structObj, arrayJob)
-	return arrayJob, err
-}
-
-// Builds batch.SubmitJobInput from an ArrayJob
-func ArrayJobToBatchInput(ctx context.Context, taskCtx types.TaskContext, jobDefinition string,
-	task *core.TaskTemplate, numCachedJobs int64) (*plugins.ArrayJob, *batch.SubmitJobInput, error) {
-
-	if task.GetContainer() == nil {
-		return nil, nil, errors.NewRequiredValueNotSet("container")
+func jobPhaseToPluginsPhase(jobStatus string) pluginCore.Phase {
+	switch jobStatus {
+	case batch.JobStatusSubmitted:
+		fallthrough
+	case batch.JobStatusPending:
+		fallthrough
+	case batch.JobStatusRunnable:
+		fallthrough
+	case batch.JobStatusStarting:
+		return pluginCore.PhaseQueued
+	case batch.JobStatusRunning:
+		return pluginCore.PhaseRunning
+	case batch.JobStatusSucceeded:
+		return pluginCore.PhaseSuccess
+	case batch.JobStatusFailed:
+		// Retryable failure vs Permanent can be overriden if the task writes an errors.pb in the output prefix.
+		return pluginCore.PhaseRetryableFailure
 	}
 
-	var arrayJob *plugins.ArrayJob
-	var err error
-
-	if task.GetCustom() != nil {
-		arrayJob, err = toArrayJob(task.GetCustom())
-		if err != nil {
-			return nil, nil, errors.NewInvalidFormat("custom")
-		}
-	}
-
-	cfg := MergeFromConfigMap(taskCtx.GetOverrides().GetConfig())
-	resources := newContainerResourcesFromContainerTask(ctx, task.GetContainer())
-
-	if len(DynamicTaskQueue) == 0 {
-		return nil, nil, errors.NewRequiredValueNotSet(fmt.Sprintf("configs.config[%v]", ChildTaskQueueKey))
-	}
-
-	var envVars []v1.EnvVar
-	if task.GetContainer().GetEnv() != nil {
-		envVars = toK8sEnvVars(task.GetContainer().GetEnv())
-	} else {
-		envVars = make([]v1.EnvVar, 0)
-	}
-
-	envVars = env.FinalizeEnvironmentVariables(ctx, taskCtx, envVars)
-
-	// There is no statsagent configured as a service in AWS Batch. override this env var so that the SDK (and other SDK)
-	// can know where the statsd will be:
-	envVars = append(envVars, v1.EnvVar{Name: env.StatsdHost, Value: "localhost"})
-
-	// TODO: divide completions by slots...
-	size := int64(1)
-	if arrayJob != nil && arrayJob.Size > 0 {
-		arrayJob.Size -= numCachedJobs
-		if arrayJob.MinSuccesses <= numCachedJobs {
-			arrayJob.MinSuccesses = 0
-		} else {
-			arrayJob.MinSuccesses -= numCachedJobs
-		}
-		size = arrayJob.Size
-	}
-
-	var arrayProps *batch.ArrayProperties
-	if size > 1 {
-		envVars = append(envVars, v1.EnvVar{Name: env.ArrayJobIndex, Value: "AWS_BATCH_JOB_ARRAY_INDEX"})
-		arrayProps = &batch.ArrayProperties{
-			Size: refInt(size),
-		}
-	} else {
-		// This is done so that the SDK shouldn't special-handle whether it's running as an array job or not.
-		envVars = append(envVars, v1.EnvVar{Name: env.ArrayJobIndex, Value: "FAKE_JOB_ARRAY_INDEX"},
-			v1.EnvVar{Name: "FAKE_JOB_ARRAY_INDEX", Value: "0"})
-	}
-
-	command := task.GetContainer().Command
-	if len(task.GetContainer().Args) > 0 {
-		command = append(command, task.GetContainer().Args...)
-	}
-
-	args := utils.CommandLineTemplateArgs{
-		Input:        taskCtx.GetDataDir().String(),
-		OutputPrefix: taskCtx.GetDataDir().String(),
-	}
-
-	command, err = utils.ReplaceTemplateCommandArgs(ctx, command, args)
-	if err != nil {
-		return nil, nil, errors.WrapError(err, errors.NewInvalidFormat("Command"))
-	}
-
-	return arrayJob, &batch.SubmitJobInput{
-		JobName:            refStr(taskCtx.GetTaskExecutionID().GetGeneratedName()),
-		JobDefinition:      refStr(jobDefinition),
-		JobQueue:           refStr(DynamicTaskQueue),
-		RetryStrategy:      toRetryStrategy(ctx, toBackoffLimit(task.Metadata)),
-		ContainerOverrides: toContainerOverrides(ctx, command, resources, envVars),
-		ArrayProperties:    arrayProps,
-	}, nil
-}
-
-func int64OrDefault(i *int64) int64 {
-	if i == nil {
-		return 0
-	}
-
-	return *i
-}
-
-func jobDetailToJob(ctx context.Context, j *batch.JobDetail) *Job {
-	res := &Job{}
-	//if j != nil {
-	//	// If a job isn't returned from the Batch GetJobDetailsBatch call, then we skip updating it, but only if
-	//	// it's been more than day. This logic is here to keep track of jobs that get reaped by Batch, but we
-	//	// don't want to trigger it if the job was recently submitted, in case of consistency issues we think we've
-	//	// run into. Sometimes, when we submit a job, and check right after, the job we just submitted doesn't come back
-	//	// TODO: Implement this logic as a retry counter instead eventually. Relying on wall clock time is a hack.
-	//	if j.StartedAt != nil && *j.StartedAt > (time.Duration(24)*time.Hour).Nanoseconds() {
-	//		logger.Errorf(ctx, "Empty Batch JobDetail received, failing job %s", ID)
-	//		Phase = batch.JobStatusFailed
-	//		Message = "JobID missing in AWS BATCH"
-	//	} else {
-	//		logger.Infof(ctx, "Job details not found for JobID within a day [%s]. Skipping update...", j)
-	//	}
-	//	return crdJob
-	//}
-
-	if j == nil {
-		return nil
-	}
-
-	if j.Status == nil {
-		logger.Warnf(ctx, "No status received for job [%v]", *j.JobId)
-		res.Status.Message = "JobID in AWS BATCH has no Status"
-		return res
-	}
-
-	res.Status.Phase = *j.Status
-	if j.StatusReason != nil {
-		res.Status.Message = *j.StatusReason
-	}
-
-	if j.ArrayProperties != nil {
-		arrayJob := ArrayJobSummary{}
-		for jobStatus, count := range j.ArrayProperties.StatusSummary {
-			arrayJob[jobStatus] = int64OrDefault(count)
-		}
-
-		res.
-	}
-
-	if len(j.Attempts) > 0 {
-		lastAttempt := j.Attempts[len(j.Attempts)-1]
-		if lastAttempt.StartedAt != nil {
-			StartedAt = time.Unix(*lastAttempt.StartedAt, 0)
-		}
-
-		if lastAttempt.StoppedAt != nil {
-			StoppedAt = time.Unix(*lastAttempt.StoppedAt, 0)
-		}
-
-		if lastAttempt.Container != nil {
-			if lastAttempt.Container.LogStreamName != nil {
-				LogStream = formatLogStream(*lastAttempt.Container.LogStreamName)
-			}
-		}
-	}
-	return crdJob
-
-}
-
-func formatLogStream(logStreamName string) string {
-	return fmt.Sprintf(LogStreamFormatter, aws.GetConfig().Region, logStreamName)
-}
-
-func getRole(_ context.Context, annotations map[string]string) string {
-	if key := ctrlConfig.GetConfig().RoleAnnotationKey; len(key) > 0 {
-		return annotations[key]
-	}
-
-	return ""
-}
-
-func getContainerImage(_ context.Context, task *core.TaskTemplate) string {
-	if task.GetContainer() != nil && len(task.GetContainer().Image) > 0 {
-		return task.GetContainer().Image
-	}
-
-	return ""
+	return pluginCore.PhaseUndefined
 }

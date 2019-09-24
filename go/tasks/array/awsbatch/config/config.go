@@ -10,6 +10,12 @@ type Config struct {
 	GetRateLimiter     aws.RateLimiterConfig `json:"getRateLimiter" pflag:",Rate limiter config for batch get API."`
 	DefaultRateLimiter aws.RateLimiterConfig `json:"defaultRateLimiter" pflag:",Rate limiter config for all batch APIs except get."`
 	MaxArrayJobSize    int64                 `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
+	MinRetries         int32                 `json:"minRetries" pflag:",Minimum number of retries"`
+	MaxRetries         int32                 `json:"maxRetries" pflag:",Maximum number of retries"`
+	// Provide additional environment variable pairs that plugin authors will provide to containers
+	DefaultEnvVars       map[string]string `json:"defaultEnvVars" pflag:",Additional environment variable that should be injected into every resource"`
+	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
+	BatchChunkSize       int               `json:"batchChunkSize" pflag:",Determines the size of each batch sent to GetJobDetails api."`
 }
 
 var (
@@ -25,6 +31,10 @@ var (
 			Rate:  15,
 			Burst: 20,
 		},
+		MinRetries:           1,
+		MaxRetries:           10,
+		MaxErrorStringLength: 500,
+		BatchChunkSize:       1000,
 	}
 
 	configSection = aws.MustRegisterSubsection("batch", defaultConfig)

@@ -71,7 +71,8 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 	}
 
 	args := utils.CommandLineTemplateArgs{
-		Input:        tCtx.InputReader().GetInputPrefixPath().String(),
+		Input:        tCtx.InputReader().GetInputPath().String(),
+		InputPrefix:  tCtx.InputReader().GetInputPrefixPath().String(),
 		OutputPrefix: tCtx.OutputWriter().GetOutputPrefixPath().String(),
 	}
 
