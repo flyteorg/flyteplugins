@@ -9,6 +9,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
 
+//go:generate mockery -all -case=underscore
+
 type Metadata struct {
 	WorkflowExecutionIdentifier *core.WorkflowExecutionIdentifier
 	NodeExecutionIdentifier     *core.NodeExecutionIdentifier
