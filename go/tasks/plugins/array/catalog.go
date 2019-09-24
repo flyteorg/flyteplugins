@@ -2,9 +2,9 @@ package array
 
 import (
 	"context"
+	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 	"strconv"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -41,6 +41,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 	// Save this in the state
 	state.OriginalArraySize = arrayJob.Size
+	state.OriginalMinSuccesses = arrayJob.MinSuccesses
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
@@ -164,7 +165,7 @@ func WriteToCatalog(ctx context.Context, catalogClient catalog.Client,
 }
 
 func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
-	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
+	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray2.BitSet,
 	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]catalog.UploadRequest, error) {
 
 	writerWorkItems := make([]catalog.UploadRequest, 0, len(inputReaders))
@@ -214,7 +215,7 @@ func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
 	}
 }
 
-func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet) *idlCore.LiteralCollection {
+func CatalogBitsetToLiteralCollection(catalogResults *bitarray2.BitSet) *idlCore.LiteralCollection {
 	literals := make([]*idlCore.Literal, 0, catalogResults.Len())
 	for i := 0; i < catalogResults.Len(); i++ {
 		if !catalogResults.IsSet(uint(i)) {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
+	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -29,17 +29,17 @@ const (
 )
 
 type State struct {
-	CurrentPhase         Phase                   `json:"phase"`
-	PhaseVersion         uint32                  `json:"phaseVersion"`
-	Reason               string                  `json:"reason"`
-	ExecutionErr         *idlCore.ExecutionError `json:"err"`
-	ExecutionArraySize   int                     `json:"arraySize"`
-	OriginalArraySize    int64                   `json:"originalArraySize"`
-	ArrayStatus          arraystatus.ArrayStatus `json:"arrayStatus"`
-	OriginalMinSuccesses int64                     `json:"minSuccess"`
+	CurrentPhase         Phase                    `json:"phase"`
+	PhaseVersion         uint32                   `json:"phaseVersion"`
+	Reason               string                   `json:"reason"`
+	ExecutionErr         *idlCore.ExecutionError  `json:"err"`
+	ExecutionArraySize   int                      `json:"arraySize"`
+	OriginalArraySize    int64                    `json:"originalArraySize"`
+	ArrayStatus          arraystatus2.ArrayStatus `json:"arrayStatus"`
+	OriginalMinSuccesses int64                    `json:"minSuccess"`
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
-	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
+	IndexesToCache *bitarray2.BitSet `json:"indexesToCache"`
 
 	// Optional. For plugins that
 	ExternalJobID *string `json:"externalJobID"`
@@ -61,7 +61,7 @@ func (s State) GetPhase() (phase Phase, version uint32) {
 	return s.CurrentPhase, s.PhaseVersion
 }
 
-func (s State) GetArrayStatus() arraystatus.ArrayStatus {
+func (s State) GetArrayStatus() arraystatus2.ArrayStatus {
 	return s.ArrayStatus
 }
 
@@ -86,7 +86,7 @@ func (s *State) SetPhase(phase Phase, phaseVersion uint32) *State {
 	return s
 }
 
-func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
+func (s *State) SetArrayStatus(state arraystatus2.ArrayStatus) *State {
 	s.ArrayStatus = state
 	return s
 }
@@ -160,7 +160,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 	return phaseInfo
 }
 
-func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {
+func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus2.ArraySummary) Phase {
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
 	totalFailures := int64(0)

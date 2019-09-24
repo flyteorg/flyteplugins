@@ -8,8 +8,7 @@ package awsbatch
 import (
 	"context"
 	"fmt"
-
-	"github.com/lyft/flyteplugins/go/tasks/array/awsbatch/definition"
+	definition2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 
 	"github.com/lyft/flyteplugins/go/tasks/aws"
 	"github.com/lyft/flytestdlib/utils"
@@ -59,7 +58,7 @@ func (b client) GetRegion() string {
 }
 
 // Registers a new job definition. There is no deduping on AWS side (even for the same name).
-func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role string) (arn definition.JobDefinitionArn, err error) {
+func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role string) (arn definition2.JobDefinitionArn, err error) {
 	logger.Infof(ctx, "Registering job definition with name [%v], image [%v], role [%v]", name, image, role)
 
 	res, err := b.Batch.RegisterJobDefinitionWithContext(ctx, &batch.RegisterJobDefinitionInput{

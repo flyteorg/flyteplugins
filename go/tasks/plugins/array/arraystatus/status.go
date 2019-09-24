@@ -5,8 +5,8 @@
 package arraystatus
 
 import (
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 )
 
 type JobID = string
@@ -17,13 +17,13 @@ type ArrayStatus struct {
 	Summary ArraySummary `json:"summary"`
 
 	// Status of every job in the array.
-	Detailed bitarray.CompactArray `json:"details"`
+	Detailed bitarray2.CompactArray `json:"details"`
 }
 
 // This is a status object that is returned after we make Catalog calls to see if subtasks are Cached
 type ArrayCachedStatus struct {
-	CachedJobs *bitarray.BitSet `json:"cachedJobs"`
-	NumCached  uint             `json:"numCached"`
+	CachedJobs *bitarray2.BitSet `json:"cachedJobs"`
+	NumCached  uint              `json:"numCached"`
 }
 
 func deleteOrSet(summary ArraySummary, key core.Phase, value int64) {

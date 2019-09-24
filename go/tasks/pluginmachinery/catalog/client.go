@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/errors"

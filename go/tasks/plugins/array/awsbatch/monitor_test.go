@@ -1,14 +1,13 @@
 package awsbatch
 
 import (
+	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 	"testing"
-
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 )
 
 func Test_calculateOriginalIndex(t *testing.T) {
 
-	inputArr := bitarray.NewBitSet(8)
+	inputArr := bitarray2.NewBitSet(8)
 	inputArr.Set(1)
 	inputArr.Set(2)
 	inputArr.Set(3)

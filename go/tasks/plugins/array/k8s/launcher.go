@@ -3,13 +3,12 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 	"strconv"
 	"strings"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
-
-	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
 	errors2 "github.com/lyft/flytestdlib/errors"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -39,10 +38,10 @@ func formatSubTaskName(_ context.Context, parentName, suffix string) (subTaskNam
 	return fmt.Sprintf("%v-%v", parentName, suffix)
 }
 
-func newStatusCompactArray(count uint) bitarray.CompactArray {
-	a, err := bitarray.NewCompactArray(count, bitarray.Item(len(core.Phases)-1))
+func newStatusCompactArray(count uint) bitarray2.CompactArray {
+	a, err := bitarray2.NewCompactArray(count, bitarray2.Item(len(core.Phases)-1))
 	if err != nil {
-		return bitarray.CompactArray{}
+		return bitarray2.CompactArray{}
 	}
 
 	return a
@@ -58,7 +57,7 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, currentState *k8sarray.State) (newState *k8sarray.State, err error) {
+	config *Config, currentState *array.State) (newState *array.State, err error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
@@ -105,7 +104,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 					return currentState, nil
 				}
 
-				currentState = currentState.SetPhase(k8sarray.PhaseRetryableFailure, 0)
+				currentState = currentState.SetPhase(array.PhaseRetryableFailure, 0)
 				currentState = currentState.SetReason(err.Error())
 				return currentState, nil
 			}
@@ -116,12 +115,12 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 	logger.Infof(ctx, "Successfully submitted Job(s) with Prefix:[%v], Count:[%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), size)
 
-	arrayStatus := arraystatus.ArrayStatus{
-		Summary:  arraystatus.ArraySummary{},
+	arrayStatus := arraystatus2.ArrayStatus{
+		Summary:  arraystatus2.ArraySummary{},
 		Detailed: newStatusCompactArray(uint(size)),
 	}
 
-	currentState.SetPhase(k8sarray.PhaseCheckingSubTaskExecutions, 0)
+	currentState.SetPhase(array.PhaseCheckingSubTaskExecutions, 0)
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil

@@ -6,7 +6,7 @@ import (
 
 	"github.com/lyft/flytestdlib/errors"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 

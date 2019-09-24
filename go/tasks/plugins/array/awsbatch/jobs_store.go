@@ -131,7 +131,7 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 			}
 		}
 
-		response, err := client.GetJobDetailsBatch(ctx, jobIds)
+		response, err := GetJobDetailsBatch(ctx, jobIds)
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +229,7 @@ func (s JobStore) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (J
 		return *item.(*Job), nil
 	}
 
-	return s.Client.SubmitJob(ctx, input)
+	return SubmitJob(ctx, input)
 }
 
 func (s JobStore) Start(ctx context.Context) error {

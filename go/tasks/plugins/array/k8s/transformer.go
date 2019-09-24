@@ -2,8 +2,7 @@ package k8s
 
 import (
 	"context"
-
-	"github.com/lyft/flyteplugins/go/tasks/array"
+	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
 
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +36,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = array.ToArrayJob(taskTemplate.GetCustom())
+		arrayJob, err = array2.ToArrayJob(taskTemplate.GetCustom())
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}

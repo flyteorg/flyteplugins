@@ -1,7 +1,7 @@
 package catalog
 
 import (
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 	"github.com/lyft/flytestdlib/errors"
 )
 

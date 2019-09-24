@@ -2,6 +2,8 @@ package awsbatch
 
 import (
 	"context"
+	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 	"time"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -10,10 +12,7 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
 
-	"github.com/lyft/flyteplugins/go/tasks/array"
-	"github.com/lyft/flyteplugins/go/tasks/array/awsbatch/config"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
@@ -36,28 +35,28 @@ func (e Executor) GetProperties() core.PluginProperties {
 }
 
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
-	pluginConfig := config.GetConfig()
+	pluginConfig := config2.GetConfig()
 
-	pluginState := &array.State{}
+	pluginState := &array2.State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextState *array.State
+	var nextState *array2.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
-	case array.PhaseStart:
-		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
+	case array2.PhaseStart:
+		nextState, err = array2.DetermineDiscoverability(ctx, tCtx, pluginState)
 
-	case array.PhaseLaunch:
+	case array2.PhaseLaunch:
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
-	case array.PhaseCheckingSubTaskExecutions:
+	case array2.PhaseCheckingSubTaskExecutions:
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
-	case array.PhaseWriteToDiscovery:
-		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
+	case array2.PhaseWriteToDiscovery:
+		nextState, err = array2.WriteToDiscovery(ctx, tCtx, pluginState)
 
 	default:
 		nextState = pluginState
@@ -72,7 +71,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := array.MapArrayStateToPluginPhase(ctx, *nextState)
+	phaseInfo := array2.MapArrayStateToPluginPhase(ctx, *nextState)
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 
@@ -86,7 +85,7 @@ func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) 
 	return nil
 }
 
-func NewExecutor(ctx context.Context, awsClient aws.Client, resyncPeriod time.Duration, cfg *config.Config,
+func NewExecutor(ctx context.Context, awsClient aws.Client, resyncPeriod time.Duration, cfg *config2.Config,
 	enqueueOwner core.EnqueueOwner, scope promutils.Scope) (Executor, error) {
 
 	getRateLimiter := utils.NewRateLimiter("getRateLimiter", float64(cfg.GetRateLimiter.Rate),

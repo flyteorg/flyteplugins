@@ -2,11 +2,10 @@ package awsbatch
 
 import (
 	"context"
+	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 	"sort"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-
-	"github.com/lyft/flyteplugins/go/tasks/array/awsbatch/config"
 
 	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -25,7 +24,7 @@ const (
 
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
-func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionContext, jobDefinition string, cfg *config.Config) (
+func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionContext, jobDefinition string, cfg *config2.Config) (
 	batchInput *batch.SubmitJobInput, err error) {
 
 	// Check that the taskTemplate is valid
