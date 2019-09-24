@@ -164,22 +164,6 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:f7d1e67be3c9588c2eb4d978049af69e8a7b8d00a5307edee76070d52faa04fc"
-  name = "github.com/go-redis/redis"
-  packages = [
-    ".",
-    "internal",
-    "internal/consistenthash",
-    "internal/hashtag",
-    "internal/pool",
-    "internal/proto",
-    "internal/util",
-  ]
-  pruneopts = ""
-  revision = "c5c4ad6a4cae24f3867af1a0513709fc944a87f3"
-  version = "v6.15.4"
-
-[[projects]]
   digest = "1:fd53b471edb4c28c7d297f617f4da0d33402755f58d6301e7ca1197ef0a90937"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -1036,7 +1020,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta1",
-    "github.com/go-redis/redis",
     "github.com/golang/protobuf/jsonpb",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/ptypes",
@@ -1060,7 +1043,6 @@
     "github.com/magiconair/properties/assert",
     "github.com/mitchellh/mapstructure",
     "github.com/pkg/errors",
-    "github.com/prometheus/client_golang/prometheus",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
