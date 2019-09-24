@@ -2,47 +2,12 @@ package catalog
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/lyft/flytestdlib/errors"
 
 	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
-
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
-
-var _ Client = ClientImpl{}
-
-type ResponseStatus uint8
-
-const (
-	ResponseStatusNotReady ResponseStatus = iota
-	ResponseStatusReady
-)
-
-const (
-	ErrResponseNotReady errors.ErrorCode = "RESPONSE_NOT_READY"
-	ErrSystemError errors.ErrorCode = "SYSTEM_ERROR"
-)
-
-type Metadata struct {
-	WorkflowExecutionIdentifier *core.WorkflowExecutionIdentifier
-	NodeExecutionIdentifier     *core.NodeExecutionIdentifier
-	TaskExecutionIdentifier     *core.TaskExecutionIdentifier
-}
-
-type Key struct {
-	Identifier     core.Identifier
-	CacheVersion   string
-	TypedInterface core.TypedInterface
-	InputReader    io.InputReader
-}
-
-func (k Key) String() string {
-	return fmt.Sprintf("%v:%v", k.Identifier, k.CacheVersion)
-}
 
 type UploadRequest struct {
 	Key              Key
@@ -74,7 +39,7 @@ type DownloadResponse interface {
 }
 
 // An interface to interest with the catalog service
-type Client interface {
+type AsyncClient interface {
 	// Returns if an entry exists for the given task and input. It returns the data as a LiteralMap
 	Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error)
 
@@ -82,8 +47,17 @@ type Client interface {
 	Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error)
 }
 
-// TODO: Match the actual catalog service interface
-type RawClient interface {
-	Get(ctx context.Context) (*core.LiteralMap, error)
-	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) error
-}
+var _ AsyncClient = asyncClient{}
+
+type ResponseStatus uint8
+
+const (
+	ResponseStatusNotReady ResponseStatus = iota
+	ResponseStatusReady
+)
+
+const (
+	ErrResponseNotReady errors.ErrorCode = "RESPONSE_NOT_READY"
+	ErrSystemError      errors.ErrorCode = "SYSTEM_ERROR"
+)
+
