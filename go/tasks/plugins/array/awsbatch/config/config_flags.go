@@ -48,5 +48,9 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "defaultRateLimiter.rate"), defaultConfig.DefaultRateLimiter.Rate, "Allowed rate of calls per second.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "defaultRateLimiter.burst"), defaultConfig.DefaultRateLimiter.Burst, "Allowed burst rate of calls.")
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "maxArrayJobSize"), defaultConfig.MaxArrayJobSize, "Maximum size of array job.")
+	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "minRetries"), defaultConfig.MinRetries, "Minimum number of retries")
+	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "maxRetries"), defaultConfig.MaxRetries, "Maximum number of retries")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), defaultConfig.MaxErrorStringLength, "Determines the maximum length of the error string returned for the array.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "batchChunkSize"), defaultConfig.BatchChunkSize, "Determines the size of each batch sent to GetJobDetails api.")
 	return cmdFlags
 }

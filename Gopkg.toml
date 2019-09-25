@@ -12,11 +12,14 @@ ignored = ["k8s.io/spark-on-k8s-operator",
   source = "https://github.com/lyft/flyteidl"
   version = "^0.14.x"
 
+[[override]]
+  name = "github.com/dgrijalva/jwt-go"
+  version = "v3.2.0"
+
 [[constraint]]
   name = "github.com/lyft/flytestdlib"
   source = "https://github.com/lyft/flytestdlib"
-  #version = "^0.2.x"
-  revision = "4dfaf8c68319c46e2bea1673e3ee55fade998ed3"
+  version = "^0.2.x"
 
 [[constraint]]
   name = "sigs.k8s.io/controller-runtime"

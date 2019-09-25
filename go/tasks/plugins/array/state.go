@@ -105,7 +105,7 @@ func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
 
 func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 	// NB: Make sure this is the last/highest value of the Phase!
-	return uint32(length * int64(core.PhasePermanentFailure) * int64(currentPhase))
+	return uint32(length * (int64(core.PhasePermanentFailure) + 1) * int64(currentPhase))
 }
 
 // Any state of the plugin needs to map to a core.PhaseInfo (which in turn will map to Admin events) so that the rest

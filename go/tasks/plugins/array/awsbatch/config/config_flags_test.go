@@ -253,4 +253,92 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_minRetries", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt32, err := cmdFlags.GetInt32("minRetries"); err == nil {
+				assert.Equal(t, int32(defaultConfig.MinRetries), vInt32)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("minRetries", testValue)
+			if vInt32, err := cmdFlags.GetInt32("minRetries"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt32), &actual.MinRetries)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_maxRetries", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt32, err := cmdFlags.GetInt32("maxRetries"); err == nil {
+				assert.Equal(t, int32(defaultConfig.MaxRetries), vInt32)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("maxRetries", testValue)
+			if vInt32, err := cmdFlags.GetInt32("maxRetries"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt32), &actual.MaxRetries)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_maxErrLength", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("maxErrLength"); err == nil {
+				assert.Equal(t, int(defaultConfig.MaxErrorStringLength), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("maxErrLength", testValue)
+			if vInt, err := cmdFlags.GetInt("maxErrLength"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.MaxErrorStringLength)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_batchChunkSize", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("batchChunkSize"); err == nil {
+				assert.Equal(t, int(defaultConfig.BatchChunkSize), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("batchChunkSize", testValue)
+			if vInt, err := cmdFlags.GetInt("batchChunkSize"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.BatchChunkSize)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 )
 
-//go:generate mockery -name ResourceManager -case=underscore
+//go:generate mockery -all -case=underscore
 
 type AllocationStatus string
 

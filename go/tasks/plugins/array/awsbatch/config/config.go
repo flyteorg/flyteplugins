@@ -13,7 +13,7 @@ type Config struct {
 	MinRetries         int32                 `json:"minRetries" pflag:",Minimum number of retries"`
 	MaxRetries         int32                 `json:"maxRetries" pflag:",Maximum number of retries"`
 	// Provide additional environment variable pairs that plugin authors will provide to containers
-	DefaultEnvVars       map[string]string `json:"defaultEnvVars" pflag:",Additional environment variable that should be injected into every resource"`
+	DefaultEnvVars       map[string]string `json:"defaultEnvVars" pflag:"-,Additional environment variable that should be injected into every resource"`
 	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	BatchChunkSize       int               `json:"batchChunkSize" pflag:",Determines the size of each batch sent to GetJobDetails api."`
 }

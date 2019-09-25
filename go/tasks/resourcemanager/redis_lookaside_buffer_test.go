@@ -1,8 +1,9 @@
 package resourcemanager
 
 import (
-	"github.com/magiconair/properties/assert"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 )
 
 func TestCreateKey(t *testing.T) {
