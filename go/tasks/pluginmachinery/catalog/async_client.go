@@ -38,7 +38,7 @@ type DownloadResponse interface {
 	GetCachedCount() int
 }
 
-// An interface to interest with the catalog service
+// An interface that helps async interaction with catalog service
 type AsyncClient interface {
 	// Returns if an entry exists for the given task and input. It returns the data as a LiteralMap
 	Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error)
