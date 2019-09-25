@@ -61,6 +61,22 @@ func (_m *TaskExecutionContext) EventsRecorder() core.EventsRecorder {
 	return r0
 }
 
+// GetTaskRefreshIndicator provides a mock function with given fields:
+func (_m *TaskExecutionContext) GetTaskRefreshIndicator() func() {
+	ret := _m.Called()
+
+	var r0 func()
+	if rf, ok := ret.Get(0).(func() func()); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(func())
+		}
+	}
+
+	return r0
+}
+
 // InputReader provides a mock function with given fields:
 func (_m *TaskExecutionContext) InputReader() io.InputReader {
 	ret := _m.Called()
