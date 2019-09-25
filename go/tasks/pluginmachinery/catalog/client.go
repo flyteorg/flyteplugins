@@ -11,12 +11,14 @@ import (
 
 //go:generate mockery -all -case=underscore
 
+// Metadata to be associated with the catalog object
 type Metadata struct {
 	WorkflowExecutionIdentifier *core.WorkflowExecutionIdentifier
 	NodeExecutionIdentifier     *core.NodeExecutionIdentifier
 	TaskExecutionIdentifier     *core.TaskExecutionIdentifier
 }
 
+// An identifier for a catalog object.
 type Key struct {
 	Identifier     core.Identifier
 	CacheVersion   string
@@ -28,7 +30,7 @@ func (k Key) String() string {
 	return fmt.Sprintf("%v:%v", k.Identifier, k.CacheVersion)
 }
 
-// TODO: Match the actual catalog service interface
+// Default Catalog client that allows memoization and indexing of intermediate data in Flyte
 type Client interface {
 	Get(ctx context.Context, key Key) (io.OutputReader, error)
 	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) error
