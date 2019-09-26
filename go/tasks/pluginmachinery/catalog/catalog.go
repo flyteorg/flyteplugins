@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lyft/flytestdlib/errors"
+	"github.com/lyft/flytestdlib/bitarray"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
+	"github.com/lyft/flytestdlib/errors"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
@@ -24,7 +24,7 @@ const (
 
 const (
 	ErrResponseNotReady errors.ErrorCode = "RESPONSE_NOT_READY"
-	ErrSystemError errors.ErrorCode = "SYSTEM_ERROR"
+	ErrSystemError      errors.ErrorCode = "SYSTEM_ERROR"
 )
 
 type Metadata struct {
@@ -70,6 +70,7 @@ type DownloadFuture interface {
 
 type DownloadResponse interface {
 	GetCachedResults() *bitarray.BitSet
+	GetResultsSize() int
 	GetCachedCount() int
 }
 

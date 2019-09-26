@@ -2,8 +2,9 @@ package awsbatch
 
 import (
 	"context"
-	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 	"sort"
+
+	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
@@ -17,9 +18,10 @@ import (
 )
 
 const (
-	ArrayJobIndex      = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
-	LogStreamFormatter = "https://console.aws.amazon.com/cloudwatch/home?region=%v#logEventViewer:group=/aws/batch/job;stream=%v"
-	JobFormatter       = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/%v/child/%v:%v"
+	ArrayJobIndex       = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
+	LogStreamFormatter  = "https://console.aws.amazon.com/cloudwatch/home?region=%v#logEventViewer:group=/aws/batch/job;stream=%v"
+	JobFormatter        = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/%v/child/%v:%v"
+	arrayJobIDFormatter = "%v:%v"
 )
 
 // Note that Name is not set on the result object.
@@ -40,7 +42,7 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 			"Required value not set, taskTemplate Container")
 	}
 
-	jobConfig := JobConfig{}.MergeFromConfigMap(tCtx.TaskExecutionMetadata().GetOverrides().GetConfig())
+	jobConfig := newJobConfig().MergeFromConfigMap(tCtx.TaskExecutionMetadata().GetOverrides().GetConfig())
 	if len(jobConfig.DynamicTaskQueue) == 0 {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "config[%v] is missing", DynamicTaskQueueKey)
 	}

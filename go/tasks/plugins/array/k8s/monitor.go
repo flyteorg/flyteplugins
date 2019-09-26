@@ -3,20 +3,19 @@ package k8s
 import (
 	"context"
 	"fmt"
-	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
-	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
-	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
-	errorcollector2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 	"strconv"
 	"time"
+
+	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	errorcollector2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
+	bitarray "github.com/lyft/flytestdlib/bitarray"
 
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	errors2 "github.com/lyft/flytestdlib/errors"
@@ -69,7 +68,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 			msg.Collect(childIdx, phaseInfo.Err().String())
 		}
 
-		newArrayStatus.Detailed.SetItem(childIdx, bitarray2.Item(phaseInfo.Phase()))
+		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(phaseInfo.Phase()))
 		newArrayStatus.Summary.Inc(phaseInfo.Phase())
 	}
 
@@ -83,15 +82,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 		return currentState, fmt.Errorf("required value not set, taskTemplate is nil")
 	}
 
-	var arrayJob *plugins.ArrayJob
-	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = array2.ToArrayJob(taskTemplate.GetCustom())
-		if err != nil {
-			return currentState, err
-		}
-	}
-
-	phase := array2.SummaryToPhase(ctx, arrayJob, newArrayStatus.Summary)
+	phase := array2.SummaryToPhase(ctx, currentState.OriginalMinSuccesses-currentState.OriginalArraySize+int64(currentState.ExecutionArraySize), newArrayStatus.Summary)
 	if phase == array2.PhasePermanentFailure || phase == array2.PhaseRetryableFailure {
 		errorMsg := msg.Summary(GetConfig().MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg)

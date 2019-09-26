@@ -22,7 +22,7 @@ func TestNewContainerResources_Memory(t *testing.T) {
 			},
 		})
 
-		assert.Equal(t, expected, MemoryMB)
+		assert.Equal(t, expected, res.MemoryMB)
 	}
 
 	t.Run("Mb", func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestNewContainerResources_Override(t *testing.T) {
 		}
 
 		res := newContainerResources(context.TODO(), nil, overrideValues, defaultValues)
-		assert.Equal(t, int64(3), Cpus)
+		assert.Equal(t, int64(3), res.Cpus)
 	})
 
 	t.Run("Fallback", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestNewContainerResources_Override(t *testing.T) {
 		var overrideValues []*core.Resources_ResourceEntry
 
 		res := newContainerResources(context.TODO(), nil, overrideValues, defaultValues)
-		assert.Equal(t, int64(1), Cpus)
+		assert.Equal(t, int64(1), res.Cpus)
 	})
 }
 
@@ -89,7 +89,7 @@ func Example_newContainerResources() {
 	}
 
 	res := newContainerResources(context.TODO(), nil, overrideValues, defaultValues)
-	fmt.Printf("Computed Cpu: %v\n", Cpus)
+	fmt.Printf("Computed Cpu: %v\n", res.Cpus)
 
 	// Output:
 	// Computed Cpu: 3

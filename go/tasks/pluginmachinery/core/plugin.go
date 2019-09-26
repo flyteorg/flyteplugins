@@ -5,6 +5,11 @@ import (
 )
 
 //go:generate mockery -all -case=underscore
+////go:generate smock TaskExecutionContext
+////go:generate smock TaskExecutionMetadata
+////go:generate smock TaskReader
+////go:generate smock TaskOverrides
+////go:generate smock TaskExecutionID
 
 type TaskType = string
 

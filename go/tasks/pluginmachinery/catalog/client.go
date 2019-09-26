@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
+	"github.com/lyft/flytestdlib/bitarray"
 	"github.com/lyft/flytestdlib/errors"
 )
 
@@ -56,7 +55,7 @@ func (c ClientImpl) Download(ctx context.Context, requests ...DownloadRequest) (
 		}
 	}
 
-	return newDownloadFuture(status, cachedResults, cachedCount), nil
+	return newDownloadFuture(status, cachedResults, len(requests), cachedCount), nil
 }
 
 func (c ClientImpl) Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error) {

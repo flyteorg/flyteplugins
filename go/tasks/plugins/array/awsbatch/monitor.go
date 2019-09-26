@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flytestdlib/bitarray"
+
 	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
-	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 	errorcollector2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 
 	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -30,7 +31,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
 	if job == nil {
 		_, err = jobStore.GetOrCreate(jobName, &Job{
-			Id:             *currentState.ExternalJobID,
+			ID:             *currentState.ExternalJobID,
 			OwnerReference: tCtx.TaskExecutionMetadata().GetOwnerID(),
 			SubJobs:        make([]*Job, currentState.GetExecutionArraySize()),
 		})
@@ -57,7 +58,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 		originalIndex := calculateOriginalIndex(childIdx, currentState.IndexesToCache)
 		logLinks = append(logLinks, &core2.TaskLog{
 			Name: fmt.Sprintf("AWS Batch Job #%v", originalIndex),
-			Uri:  fmt.Sprintf(JobFormatter, jobStore.GetRegion(), job.Id, job.Id, childIdx),
+			Uri:  fmt.Sprintf(JobFormatter, jobStore.GetRegion(), job.ID, job.ID, childIdx),
 		})
 
 		for _, attempt := range subJob.Attempts {
@@ -73,7 +74,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 			}
 		}
 
-		newArrayStatus.Detailed.SetItem(childIdx, bitarray2.Item(subJob.Status.Phase))
+		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(subJob.Status.Phase))
 		newArrayStatus.Summary.Inc(subJob.Status.Phase)
 	}
 
@@ -102,16 +103,18 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 	return newState, nil
 }
 
-func calculateOriginalIndex(childIdx int, toCache *bitarray2.BitSet) int {
-	originalIdx := 0
-	targetIdx := -1
-	for i := uint(0); i < uint(toCache.Len()) && targetIdx < childIdx; i++ {
+// Compute the original index of a sub-task.
+func calculateOriginalIndex(childIdx int, toCache *bitarray.BitSet) int {
+	var sum = 0
+	for i := uint(0); i < toCache.Cap(); i++ {
 		if !toCache.IsSet(i) {
-			originalIdx++
-		} else {
-			targetIdx++
+			if sum == childIdx {
+				return int(i)
+			}
+
+			sum++
 		}
 	}
 
-	return originalIdx
+	return -1
 }

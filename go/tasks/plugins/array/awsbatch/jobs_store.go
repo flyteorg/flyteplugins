@@ -10,6 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
+
+	"k8s.io/client-go/util/workqueue"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
 
@@ -17,10 +21,8 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 
-	"github.com/lyft/flytestdlib/cache"
-	"github.com/lyft/flytestdlib/utils"
-
 	"github.com/aws/aws-sdk-go/service/batch"
+	"github.com/lyft/flytestdlib/cache"
 
 	"github.com/lyft/flytestdlib/promutils"
 )
@@ -44,7 +46,7 @@ type EventHandler struct {
 }
 
 type Job struct {
-	Id             JobID                `json:"id,omitempty"`
+	ID             JobID                `json:"id,omitempty"`
 	OwnerReference types.NamespacedName `json:"owner.omitempty"`
 	Attempts       []Attempt            `json:"attempts,omitempty"`
 	Status         JobStatus            `json:"status,omitempty"`
@@ -62,12 +64,8 @@ type JobStatus struct {
 	Message string       `json:"msg,omitempty"`
 }
 
-func (j *Job) ID() cache.ItemID {
-	return j.Id
-}
-
 func (j Job) String() string {
-	return fmt.Sprintf("(ID: %v)", j.Id)
+	return fmt.Sprintf("(ID: %v)", j.ID)
 }
 
 func GetJobID(id JobID, index int) JobID {
@@ -118,20 +116,20 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 				continue
 			}
 
-			jobIds = append(jobIds, j.Id)
-			jobIDsMap[j.Id] = j
-			jobNames[j.Id] = item.GetID()
+			jobIds = append(jobIds, j.ID)
+			jobIDsMap[j.ID] = j
+			jobNames[j.ID] = item.GetID()
 
 			for idx, subJob := range j.SubJobs {
 				if !subJob.Status.Phase.IsTerminal() {
-					fullJobID := GetJobID(j.Id, idx)
+					fullJobID := GetJobID(j.ID, idx)
 					jobIds = append(jobIds, fullJobID)
 					jobIDsMap[fullJobID] = subJob
 				}
 			}
 		}
 
-		response, err := GetJobDetailsBatch(ctx, jobIds)
+		response, err := client.GetJobDetailsBatch(ctx, jobIds)
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +205,7 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 			}
 
 			res = append(res, cache.ItemSyncResponse{
-				ID:     jobNames[job.Id],
+				ID:     jobNames[job.ID],
 				Item:   job,
 				Action: action,
 			})
@@ -223,18 +221,17 @@ type JobStore struct {
 }
 
 // Submits a new job to AWS Batch and retrieves job info. Note that submitted jobs will not have status populated.
-func (s JobStore) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (Job, error) {
+func (s JobStore) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (jobID string, err error) {
 	name := *input.JobName
-	if item := s.AutoRefresh.Get(name); item != nil {
-		return *item.(*Job), nil
+	if item, err := s.AutoRefresh.Get(name); err == nil {
+		return item.(*Job).ID, nil
 	}
 
-	return SubmitJob(ctx, input)
+	return s.Client.SubmitJob(ctx, input)
 }
 
 func (s JobStore) Start(ctx context.Context) error {
-	s.AutoRefresh.Start(ctx)
-	return nil
+	return s.AutoRefresh.Start(ctx)
 }
 
 func (s JobStore) GetOrCreate(jobName string, job *Job) (*Job, error) {
@@ -247,8 +244,8 @@ func (s JobStore) GetOrCreate(jobName string, job *Job) (*Job, error) {
 }
 
 func (s JobStore) Get(jobName string) *Job {
-	j := s.AutoRefresh.Get(jobName)
-	if j == nil {
+	j, err := s.AutoRefresh.Get(jobName)
+	if err != nil {
 		return nil
 	}
 
@@ -256,15 +253,15 @@ func (s JobStore) Get(jobName string) *Job {
 }
 
 // Constructs a new in-memory store.
-func NewJobStore(ctx context.Context, batchClient Client, cacheSize int, resyncPeriod time.Duration, batchChunkSize int,
+func NewJobStore(ctx context.Context, batchClient Client, resyncPeriod time.Duration, cfg config.JobStoreConfig,
 	handler EventHandler, scope promutils.Scope) (JobStore, error) {
+
 	store := JobStore{
 		Client: batchClient,
 	}
 
-	autoCache, err := cache.NewAutoRefreshBatchedCache(batchJobsForSync(ctx, batchChunkSize), syncBatches(ctx, store, handler),
-		utils.NewRateLimiter("aws_batch", 100, 100),
-		resyncPeriod, cacheSize, scope)
+	autoCache, err := cache.NewAutoRefreshBatchedCache(batchJobsForSync(ctx, cfg.BatchChunkSize), syncBatches(ctx, store, handler),
+		workqueue.DefaultControllerRateLimiter(), resyncPeriod, cfg.Parallelizm, cfg.CacheSize, scope)
 
 	store.AutoRefresh = autoCache
 	return store, err

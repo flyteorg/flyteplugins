@@ -37,26 +37,8 @@ func TestSetKeyIfKnown(t *testing.T) {
 			},
 		},
 		{
-			name:  "parent queue key",
-			key:   "parent_queue",
-			value: "foo",
-			set:   true,
-			expected: JobConfig{
-				PrimaryTaskQueue: "foo",
-			},
-		},
-		{
 			name:  "dynamic queue key",
 			key:   "dynamic_queue",
-			value: "bar",
-			set:   true,
-			expected: JobConfig{
-				DynamicTaskQueue: "bar",
-			},
-		},
-		{
-			name:  "child queue key",
-			key:   "child_queue",
 			value: "bar",
 			set:   true,
 			expected: JobConfig{
@@ -67,7 +49,7 @@ func TestSetKeyIfKnown(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			jobConfig := JobConfig{}
-			set := setKeyIfKnown(testCase.key, testCase.value)
+			set := jobConfig.setKeyIfKnown(testCase.key, testCase.value)
 			assert.Equal(t, testCase.set, set)
 			assert.Equal(t, testCase.expected, jobConfig)
 		})

@@ -2,19 +2,20 @@ package awsbatch
 
 import (
 	"context"
+
 	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
-	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
+	"github.com/lyft/flytestdlib/bitarray"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-func newStatusCompactArray(count uint) bitarray2.CompactArray {
+func newStatusCompactArray(count uint) bitarray.CompactArray {
 	// TODO: This is fragile, we should introduce a TaskPhaseCount as the last element in the enum
-	a, err := bitarray2.NewCompactArray(count, bitarray2.Item(core.PhasePermanentFailure))
+	a, err := bitarray.NewCompactArray(count, bitarray.Item(core.PhasePermanentFailure))
 	if err != nil {
-		return bitarray2.CompactArray{}
+		return bitarray.CompactArray{}
 	}
 
 	return a
@@ -35,12 +36,12 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		batchInput = UpdateBatchInputForArray(ctx, batchInput, int64(size))
 	}
 
-	j, err := SubmitJob(ctx, batchInput)
+	j, err := batchClient.SubmitJob(ctx, batchInput)
 	if err != nil {
 		return nil, err
 	}
 
-	nextState = currentState.SetExternalJobID(j.Id)
+	nextState = currentState.SetExternalJobID(j)
 	nextState = nextState.SetPhase(array2.PhaseCheckingSubTaskExecutions, 0)
 	nextState = nextState.SetArrayStatus(arraystatus2.ArrayStatus{
 		Summary:  arraystatus2.ArraySummary{},

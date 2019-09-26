@@ -41,8 +41,10 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "jobStoreConfig.jacheSize"), defaultConfig.JobStoreConfig.CacheSize, "Maximum informer cache size as number of items. Caches are used as an optimization to lessen the load on AWS Services.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "jobStoreConfig.parallelizm"), defaultConfig.JobStoreConfig.Parallelizm, "")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "jobStoreConfig.batchChunkSize"), defaultConfig.JobStoreConfig.BatchChunkSize, "Determines the size of each batch sent to GetJobDetails api.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "defCacheSize"), defaultConfig.JobDefCacheSize, "Maximum job definition cache size as number of items. Caches are used as an optimization to lessen the load on AWS Services.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "jobCacheSize"), defaultConfig.JobStoreCacheSize, "Maximum informer cache size as number of items. Caches are used as an optimization to lessen the load on AWS Services.")
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "getRateLimiter.rate"), defaultConfig.GetRateLimiter.Rate, "Allowed rate of calls per second.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "getRateLimiter.burst"), defaultConfig.GetRateLimiter.Burst, "Allowed burst rate of calls.")
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "defaultRateLimiter.rate"), defaultConfig.DefaultRateLimiter.Rate, "Allowed rate of calls per second.")
@@ -51,6 +53,5 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "minRetries"), defaultConfig.MinRetries, "Minimum number of retries")
 	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "maxRetries"), defaultConfig.MaxRetries, "Maximum number of retries")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), defaultConfig.MaxErrorStringLength, "Determines the maximum length of the error string returned for the array.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "batchChunkSize"), defaultConfig.BatchChunkSize, "Determines the size of each batch sent to GetJobDetails api.")
 	return cmdFlags
 }

@@ -45,7 +45,7 @@
   version = "v0.1.3"
 
 [[projects]]
-  digest = "1:67577d57c309261e831d331fda1cdce4f48368d77711ebdb87e0f52d1f54135c"
+  digest = "1:9243f91721c42c6f2a5448d36bceafd3e2b517238457fee525742151a066e040"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -92,8 +92,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "6e7b2b1d30f3c9d7dc6dcf48a60aac7d345c7ff7"
-  version = "v1.24.6"
+  revision = "f3c0262d0d7fcb67869af3bd73909e0d030f7288"
+  version = "v1.25.0"
 
 [[projects]]
   digest = "1:ac2a05be7167c495fe8aaf8aaf62ecf81e78d2180ecb04e16778dc6c185c96a5"
@@ -110,14 +110,6 @@
   pruneopts = ""
   revision = "de209a9ffae3256185a6bb135d1a0ada7b2b5f09"
   version = "v2.1.0"
-
-[[projects]]
-  digest = "1:108a84d9d6addb51cf57029b0376b07544b9bab21f176d75f310188f6c474ffb"
-  name = "github.com/cheekybits/genny"
-  packages = ["generic"]
-  pruneopts = ""
-  revision = "d2cf3cdd35ce0d789056c4bc02a4d6349c947caf"
-  version = "v1.0.0"
 
 [[projects]]
   digest = "1:193f6d32d751f26540aa8eeedc114ce0a51f9e77b6c22dda3a4db4e5f65aec66"
@@ -358,24 +350,6 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:17cb03d7d2d32200e41e147b51826ffe3c1bfb2a9f30f01a6630751b8dd22b2a"
-  name = "github.com/lyft/flytedynamicjoboperator"
-  packages = [
-    "errors",
-    "internal/mocks",
-    "pkg/apis/futures/v1alpha1",
-    "pkg/controller",
-    "pkg/internal",
-    "pkg/internal/bitarray",
-    "pkg/internal/queue",
-    "pkg/resource/env",
-    "pkg/resource/flowcontrol",
-  ]
-  pruneopts = ""
-  revision = "272537d4dc8701f7831efbc1cd6d32b36c82d6e4"
-  version = "v0.0.3"
-
-[[projects]]
   digest = "1:dec8d616f023c717c476cad2b30d5afebb4b6ed2f23d215bf309b9889c2a377b"
   name = "github.com/lyft/flyteidl"
   packages = [
@@ -391,10 +365,11 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:9e84f68341679879b3e8467edadc49700e4ff1cf9c283eecde989f8d87d021b9"
+  digest = "1:5104368cc09cd0fc24fe067ee2ec9f7865986f16a5329efca26f5176cf81ea95"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
+    "bitarray",
     "cache",
     "config",
     "config/files",
@@ -410,9 +385,9 @@
     "utils/mocks",
   ]
   pruneopts = ""
-  revision = "1f0d15f328644a52627fd27f8205217c7aded298"
+  revision = "37645a07c87771dcede50976460c5e5c76d0d99d"
   source = "https://github.com/lyft/flytestdlib"
-  version = "v0.2.18"
+  version = "v0.2.19"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -482,19 +457,6 @@
   revision = "a24ef33bc9b7e59ae4bed9e87a51d7bc76122731"
 
 [[projects]]
-  digest = "1:c1a07a723fa656d4ba5ac489fcb4dfa3aef0fec6b34e415f0002dfc5ee2ba872"
-  name = "github.com/operator-framework/operator-sdk"
-  packages = [
-    "pkg/k8sclient",
-    "pkg/sdk",
-    "pkg/sdk/internal/metrics",
-    "pkg/util/k8sutil",
-  ]
-  pruneopts = ""
-  revision = "e5a0ab096e1a7c0e6b937d2b41707eccb82c3c77"
-  version = "v0.0.7"
-
-[[projects]]
   digest = "1:3d2c33720d4255686b9f4a7e4d3b94938ee36063f14705c5eb0f73347ed4c496"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
@@ -540,7 +502,6 @@
   packages = [
     "prometheus",
     "prometheus/internal",
-    "prometheus/promhttp",
   ]
   pruneopts = ""
   revision = "2641b987480bca71fb39738eb8c8b0d577cb1d76"
@@ -697,12 +658,12 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:22c7effcb4da0eacb2bb1940ee173fac010e9ef3c691f5de4b524d538bd980f5"
+  digest = "1:8fe76ce70e4077341d222a8a1040ac4d5ca66b23d5f58b446ba845a0c4c5884a"
   name = "go.uber.org/multierr"
   packages = ["."]
   pruneopts = ""
-  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
-  version = "v1.1.0"
+  revision = "71e610a0e48dbda460d9c18adca8b5f2de04a7c1"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:984e93aca9088b440b894df41f2043b6a3db8f9cf30767032770bfc4796993b0"
@@ -721,15 +682,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dfb5b39cdf15fedcf18211253981cd7d4d881fcb3c9fa63140b02ec71aead457"
+  digest = "1:1a937ce2f8ce558eec577285319790df6215a6c05c907a41df1ecb528bceab28"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = ""
-  revision = "9ee001bba392397c76f100a2d5b13afc86f167f1"
+  revision = "cea2066c64117dea9cba47afc7c35e4d2299107d"
 
 [[projects]]
   branch = "master"
-  digest = "1:b123a95f458db7b93e65276282e352cbf195095bc2ea2ec81601949de04f7365"
+  digest = "1:60eb80cc714e54c1179fca3454bd450ca5c1f9e1a0773266b9e0e6f3e7853a07"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -742,7 +703,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "aa69164e4478b84860dc6769c710c699c67058a3"
+  revision = "c00fd9afed17cfdca9b3e1e3b8de7ef2b3f0347b"
 
 [[projects]]
   branch = "master"
@@ -760,14 +721,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0c3b4c65ce4849683ca607bc62d4156b3a63437627736a59b32c83ccb989cc28"
+  digest = "1:f3102cfbdf731ec9193cc5359ff37a7437af2a993a178c41c0486b91c561e46c"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "2837fb4f24fee082b8c39b1a6dc9e0ed9f3fbd4f"
+  revision = "855e68c8590b0d6a9d08863d2982eb8aeddd98d3"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -804,7 +765,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:045285064c2a66c30a780961dfe0955b89388df12f90f2d880bb5875f7b35f65"
+  digest = "1:11f07acead549d01db69e908858d9e7706ce69dbf5e0936484384bc3f830fde9"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -818,10 +779,10 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "99d61c9f5f95c5dcbb08242b071a810d541c1c1f"
+  revision = "6a149848833881cf9a0f77f7595c64550f285d87"
 
 [[projects]]
-  digest = "1:d431fe261d516e259536a34770d1e6fd7cdac85d17b11f9e65aff2f1a7eec66f"
+  digest = "1:702a3d272e930e37f4978392f69473eede3f5eea31a345c129085f899580c2cb"
   name = "google.golang.org/appengine"
   packages = [
     ".",
@@ -836,16 +797,16 @@
     "urlfetch",
   ]
   pruneopts = ""
-  revision = "c71d63e301d75423acb410203c747cad31e9a5e7"
-  version = "v1.6.3"
+  revision = "bddb1f54ecfd64b1350fd2dd897fa11d426632bc"
+  version = "v1.6.4"
 
 [[projects]]
   branch = "master"
-  digest = "1:5ef560bc87aafb94c1dd5517037ef69b5da2ef19a324f5d842a5b48b9e8311de"
+  digest = "1:24493cb6ab834bca99d174636a8c5c463d25cfbd6a51514f9ed9c77d2d1b7bbf"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = ""
-  revision = "b8fbc687dcfb8a4f653770e1ea13fc3d0c5085f0"
+  revision = "7ee9db18f195a533914d703fa8b21f3518ffd7f2"
 
 [[projects]]
   digest = "1:30d215704e78c21ffff90aa8e86ca1a438fec2837bad082116510fe5a862af5e"
@@ -1003,42 +964,8 @@
   name = "k8s.io/client-go"
   packages = [
     "discovery",
-    "discovery/cached",
     "dynamic",
-    "kubernetes",
     "kubernetes/scheme",
-    "kubernetes/typed/admissionregistration/v1alpha1",
-    "kubernetes/typed/admissionregistration/v1beta1",
-    "kubernetes/typed/apps/v1",
-    "kubernetes/typed/apps/v1beta1",
-    "kubernetes/typed/apps/v1beta2",
-    "kubernetes/typed/auditregistration/v1alpha1",
-    "kubernetes/typed/authentication/v1",
-    "kubernetes/typed/authentication/v1beta1",
-    "kubernetes/typed/authorization/v1",
-    "kubernetes/typed/authorization/v1beta1",
-    "kubernetes/typed/autoscaling/v1",
-    "kubernetes/typed/autoscaling/v2beta1",
-    "kubernetes/typed/autoscaling/v2beta2",
-    "kubernetes/typed/batch/v1",
-    "kubernetes/typed/batch/v1beta1",
-    "kubernetes/typed/batch/v2alpha1",
-    "kubernetes/typed/certificates/v1beta1",
-    "kubernetes/typed/coordination/v1beta1",
-    "kubernetes/typed/core/v1",
-    "kubernetes/typed/events/v1beta1",
-    "kubernetes/typed/extensions/v1beta1",
-    "kubernetes/typed/networking/v1",
-    "kubernetes/typed/policy/v1beta1",
-    "kubernetes/typed/rbac/v1",
-    "kubernetes/typed/rbac/v1alpha1",
-    "kubernetes/typed/rbac/v1beta1",
-    "kubernetes/typed/scheduling/v1alpha1",
-    "kubernetes/typed/scheduling/v1beta1",
-    "kubernetes/typed/settings/v1alpha1",
-    "kubernetes/typed/storage/v1",
-    "kubernetes/typed/storage/v1alpha1",
-    "kubernetes/typed/storage/v1beta1",
     "pkg/apis/clientauthentication",
     "pkg/apis/clientauthentication/v1alpha1",
     "pkg/apis/clientauthentication/v1beta1",
@@ -1128,15 +1055,12 @@
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/struct",
     "github.com/hashicorp/golang-lru",
-    "github.com/lyft/flytedynamicjoboperator/internal/mocks",
-    "github.com/lyft/flytedynamicjoboperator/pkg/internal",
-    "github.com/lyft/flytedynamicjoboperator/pkg/resource/env",
-    "github.com/lyft/flytedynamicjoboperator/pkg/resource/flowcontrol",
     "github.com/lyft/flyteidl/clients/go/coreutils",
     "github.com/lyft/flyteidl/clients/go/coreutils/logs",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins",
+    "github.com/lyft/flytestdlib/bitarray",
     "github.com/lyft/flytestdlib/cache",
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",

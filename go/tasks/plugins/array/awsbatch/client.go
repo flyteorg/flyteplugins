@@ -8,6 +8,7 @@ package awsbatch
 import (
 	"context"
 	"fmt"
+
 	definition2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 
 	"github.com/lyft/flyteplugins/go/tasks/aws"
@@ -20,10 +21,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/batch"
 )
 
+//go:generate mockery -all -case=underscore
+
 // AWS Batch Client interface.
 type Client interface {
 	// Submits a new job to AWS Batch and retrieves job info. Note that submitted jobs will not have status populated.
-	SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (Job, error)
+	SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (jobID string, err error)
 
 	// Attempts to terminate a job. If the job hasn't started yet, it'll just get deleted.
 	TerminateJob(ctx context.Context, jobID JobID, reason string) error
@@ -82,29 +85,26 @@ func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role st
 }
 
 // Submits a new job to a desired queue
-func (b *client) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (Job, error) {
+func (b *client) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (jobID string, err error) {
 	if input == nil {
-		return Job{}, nil
+		return "", nil
 	}
 
 	if err := b.defaultRateLimiter.Wait(ctx); err != nil {
-		return Job{}, err
+		return "", err
 	}
 
 	output, err := b.Batch.SubmitJobWithContext(ctx, input)
 	if err != nil {
-		return Job{}, err
+		return "", err
 	}
 
 	if output.JobId == nil {
 		logger.Errorf(ctx, "Job submitted has no ID and no error is returned. This is an AWS-issue. Input [%v]", input.JobName)
-		return Job{}, fmt.Errorf("job submitted has no ID and no error is returned. This is an AWS-issue. Input [%v]", input.JobName)
+		return "", fmt.Errorf("job submitted has no ID and no error is returned. This is an AWS-issue. Input [%v]", input.JobName)
 	}
 
-	return Job{
-		Id:     *output.JobId,
-		Status: JobStatus{},
-	}, nil
+	return *output.JobId, nil
 }
 
 // Terminates an in progress job

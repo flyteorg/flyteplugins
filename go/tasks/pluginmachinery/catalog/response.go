@@ -1,7 +1,7 @@
 package catalog
 
 import (
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
+	"github.com/lyft/flytestdlib/bitarray"
 	"github.com/lyft/flytestdlib/errors"
 )
 
@@ -22,6 +22,7 @@ type downloadFuture struct {
 
 	cachedResults *bitarray.BitSet
 	cachedCount   int
+	resultsSize   int
 }
 
 func (r downloadFuture) GetResponse() (DownloadResponse, error) {
@@ -32,6 +33,10 @@ func (r downloadFuture) GetResponse() (DownloadResponse, error) {
 	return r, nil
 }
 
+func (r downloadFuture) GetResultsSize() int {
+	return r.resultsSize
+}
+
 func (r downloadFuture) GetCachedResults() *bitarray.BitSet {
 	return r.cachedResults
 }
@@ -40,13 +45,16 @@ func (r downloadFuture) GetCachedCount() int {
 	return r.cachedCount
 }
 
-func newDownloadFuture(status ResponseStatus, cachedResults *bitarray.BitSet, cachedCount int) downloadFuture {
+func newDownloadFuture(status ResponseStatus, cachedResults *bitarray.BitSet, resultsSize int,
+	cachedCount int) downloadFuture {
+
 	return downloadFuture{
 		future: &future{
 			responseStatus: status,
 		},
 		cachedCount:   cachedCount,
 		cachedResults: cachedResults,
+		resultsSize:   resultsSize,
 	}
 }
 

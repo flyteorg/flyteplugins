@@ -99,6 +99,72 @@ func TestConfig_SetFlags(t *testing.T) {
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
+	t.Run("Test_jobStoreConfig.jacheSize", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("jobStoreConfig.jacheSize"); err == nil {
+				assert.Equal(t, int(defaultConfig.JobStoreConfig.CacheSize), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("jobStoreConfig.jacheSize", testValue)
+			if vInt, err := cmdFlags.GetInt("jobStoreConfig.jacheSize"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.JobStoreConfig.CacheSize)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_jobStoreConfig.parallelizm", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("jobStoreConfig.parallelizm"); err == nil {
+				assert.Equal(t, int(defaultConfig.JobStoreConfig.Parallelizm), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("jobStoreConfig.parallelizm", testValue)
+			if vInt, err := cmdFlags.GetInt("jobStoreConfig.parallelizm"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.JobStoreConfig.Parallelizm)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_jobStoreConfig.batchChunkSize", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("jobStoreConfig.batchChunkSize"); err == nil {
+				assert.Equal(t, int(defaultConfig.JobStoreConfig.BatchChunkSize), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("jobStoreConfig.batchChunkSize", testValue)
+			if vInt, err := cmdFlags.GetInt("jobStoreConfig.batchChunkSize"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.JobStoreConfig.BatchChunkSize)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_defCacheSize", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
@@ -115,28 +181,6 @@ func TestConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("defCacheSize", testValue)
 			if vInt, err := cmdFlags.GetInt("defCacheSize"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.JobDefCacheSize)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_jobCacheSize", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("jobCacheSize"); err == nil {
-				assert.Equal(t, int(defaultConfig.JobStoreCacheSize), vInt)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("jobCacheSize", testValue)
-			if vInt, err := cmdFlags.GetInt("jobCacheSize"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.JobStoreCacheSize)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -313,28 +357,6 @@ func TestConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("maxErrLength", testValue)
 			if vInt, err := cmdFlags.GetInt("maxErrLength"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.MaxErrorStringLength)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_batchChunkSize", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("batchChunkSize"); err == nil {
-				assert.Equal(t, int(defaultConfig.BatchChunkSize), vInt)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("batchChunkSize", testValue)
-			if vInt, err := cmdFlags.GetInt("batchChunkSize"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.BatchChunkSize)
 
 			} else {
 				assert.FailNow(t, err.Error())

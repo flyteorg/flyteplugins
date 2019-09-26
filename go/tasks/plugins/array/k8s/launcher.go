@@ -3,11 +3,12 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
-	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
-	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 	"strconv"
 	"strings"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	"github.com/lyft/flytestdlib/bitarray"
 
 	errors2 "github.com/lyft/flytestdlib/errors"
 
@@ -38,10 +39,10 @@ func formatSubTaskName(_ context.Context, parentName, suffix string) (subTaskNam
 	return fmt.Sprintf("%v-%v", parentName, suffix)
 }
 
-func newStatusCompactArray(count uint) bitarray2.CompactArray {
-	a, err := bitarray2.NewCompactArray(count, bitarray2.Item(len(core.Phases)-1))
+func newStatusCompactArray(count uint) bitarray.CompactArray {
+	a, err := bitarray.NewCompactArray(count, bitarray.Item(len(core.Phases)-1))
 	if err != nil {
-		return bitarray2.CompactArray{}
+		return bitarray.CompactArray{}
 	}
 
 	return a

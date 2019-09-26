@@ -2,7 +2,6 @@ package array
 
 import (
 	"context"
-	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
 	"strconv"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -10,6 +9,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/lyft/flytestdlib/bitarray"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -88,7 +88,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, nil
 		}
 
-		indexLookup := CatalogBitsetToLiteralCollection(resp.GetCachedResults())
+		indexLookup := CatalogBitsetToLiteralCollection(resp.GetCachedResults(), resp.GetResultsSize())
 		// TODO: Is the right thing to use?  Haytham please take a look
 		indexLookupPath, err := ioutils.GetIndexLookupPath(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath())
 		if err != nil {
@@ -165,7 +165,7 @@ func WriteToCatalog(ctx context.Context, catalogClient catalog.Client,
 }
 
 func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
-	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray2.BitSet,
+	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
 	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]catalog.UploadRequest, error) {
 
 	writerWorkItems := make([]catalog.UploadRequest, 0, len(inputReaders))
@@ -215,9 +215,9 @@ func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
 	}
 }
 
-func CatalogBitsetToLiteralCollection(catalogResults *bitarray2.BitSet) *idlCore.LiteralCollection {
-	literals := make([]*idlCore.Literal, 0, catalogResults.Len())
-	for i := 0; i < catalogResults.Len(); i++ {
+func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet, size int) *idlCore.LiteralCollection {
+	literals := make([]*idlCore.Literal, 0, size)
+	for i := 0; i < size; i++ {
 		if !catalogResults.IsSet(uint(i)) {
 			literals = append(literals, NewLiteralScalarOfInteger(int64(i)))
 		}

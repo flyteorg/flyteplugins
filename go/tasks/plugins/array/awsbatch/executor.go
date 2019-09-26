@@ -2,9 +2,10 @@ package awsbatch
 
 import (
 	"context"
+	"time"
+
 	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
-	"time"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -93,11 +94,11 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, resyncPeriod time.Du
 	defaultRateLimiter := utils.NewRateLimiter("defaultRateLimiter", float64(cfg.DefaultRateLimiter.Rate),
 		cfg.DefaultRateLimiter.Burst)
 	batchClient := NewBatchClient(awsClient, getRateLimiter, defaultRateLimiter)
-	jobStore, err := NewJobStore(ctx, batchClient, cfg.JobStoreCacheSize, resyncPeriod, cfg.BatchChunkSize, EventHandler{
+	jobStore, err := NewJobStore(ctx, batchClient, resyncPeriod, cfg.JobStoreConfig, EventHandler{
 		Updated: func(ctx context.Context, event Event) {
 			err := enqueueOwner(event.NewJob.OwnerReference)
 			if err != nil {
-				logger.Warnf(ctx, "Failed to enqueue owner [%v] of job [%v]. Error: %v", event.NewJob.OwnerReference, event.NewJob.Id)
+				logger.Warnf(ctx, "Failed to enqueue owner [%v] of job [%v]. Error: %v", event.NewJob.OwnerReference, event.NewJob.ID)
 			}
 		},
 	}, scope)

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
-	bitarray2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/bitarray"
+	"github.com/lyft/flytestdlib/bitarray"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -39,7 +39,7 @@ type State struct {
 	OriginalMinSuccesses int64                    `json:"minSuccess"`
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
-	IndexesToCache *bitarray2.BitSet `json:"indexesToCache"`
+	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
 
 	// Optional. For plugins that
 	ExternalJobID *string `json:"externalJobID"`
