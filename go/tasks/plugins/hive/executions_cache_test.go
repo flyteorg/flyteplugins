@@ -2,6 +2,7 @@ package hive
 
 import (
 	"context"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
 	"github.com/lyft/flytestdlib/promutils"
@@ -19,12 +20,10 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		mockCache := &stdlibMocks.AutoRefreshCache{}
 		mockQubole := &quboleMocks.QuboleClient{}
 		testScope := promutils.NewTestScope()
-		secrets := &secretsManager{quboleKey: "test key"}
 
 		q := QuboleHiveExecutionsCache{
 			AutoRefreshCache: mockCache,
 			quboleClient:     mockQubole,
-			secretsManager:   secrets,
 			scope:            testScope,
 		}
 
@@ -33,7 +32,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		}
 		cacheItem := ExecutionStateCacheItem{
 			ExecutionState: state,
-			Id: "some-id",
+			Id:             "some-id",
 		}
 		newCacheItem, action, err := q.SyncQuboleQuery(ctx, cacheItem)
 		assert.NoError(t, err)
@@ -44,14 +43,16 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 	t.Run("move to success", func(t *testing.T) {
 		mockCache := &stdlibMocks.AutoRefreshCache{}
 		mockQubole := &quboleMocks.QuboleClient{}
+		mockSecretManager := &mocks.SecretManager{}
+		mockSecretManager.On("Get", mock.Anything, mock.Anything).Return("fake key", nil)
+
 		testScope := promutils.NewTestScope()
-		secrets := &secretsManager{quboleKey: "test key"}
 
 		q := QuboleHiveExecutionsCache{
 			AutoRefreshCache: mockCache,
 			quboleClient:     mockQubole,
-			secretsManager:   secrets,
 			scope:            testScope,
+			secretManager:    mockSecretManager,
 		}
 
 		state := ExecutionState{
@@ -60,7 +61,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		}
 		cacheItem := ExecutionStateCacheItem{
 			ExecutionState: state,
-			Id: "some-id",
+			Id:             "some-id",
 		}
 		mockQubole.On("GetCommandStatus", mock.Anything, mock.MatchedBy(func(commandId string) bool {
 			return commandId == state.CommandId
