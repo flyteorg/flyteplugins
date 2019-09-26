@@ -7,27 +7,14 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
 	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 
-	"strconv"
-
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
-
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/storage"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-const K8sPodKind = "pod"
 
 type Phase uint8
 
@@ -42,60 +29,59 @@ const (
 )
 
 type State struct {
-	currentPhase       Phase
-	phaseVersion       uint32
-	reason             string
-	executionErr       *idlCore.ExecutionError
-	executionArraySize int
-	originalArraySize  int64
-	arrayStatus        arraystatus.ArrayStatus
+	CurrentPhase       Phase                   `json:"phase"`
+	PhaseVersion       uint32                  `json:"phaseVersion"`
+	Reason             string                  `json:"reason"`
+	ExecutionErr       *idlCore.ExecutionError `json:"err"`
+	ExecutionArraySize int                     `json:"arraySize"`
+	OriginalArraySize  int64                   `json:"originalArraySize"`
+	ArrayStatus        arraystatus.ArrayStatus `json:"arrayStatus"`
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
-	writeToCatalog *bitarray.BitSet
+	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
 }
 
 func (s State) GetReason() string {
-	return s.reason
+	return s.Reason
 }
 
 func (s State) GetExecutionArraySize() int {
-	return s.executionArraySize
+	return s.ExecutionArraySize
 }
 
 func (s State) GetPhase() (phase Phase, version uint32) {
-	return s.currentPhase, s.phaseVersion
+	return s.CurrentPhase, s.PhaseVersion
 }
 
 func (s State) GetArrayStatus() arraystatus.ArrayStatus {
-	return s.arrayStatus
+	return s.ArrayStatus
 }
 
 func (s *State) SetReason(reason string) *State {
-	s.reason = reason
+	s.Reason = reason
 	return s
 }
 
 func (s *State) SetActualArraySize(size int) *State {
-	s.executionArraySize = size
+	s.ExecutionArraySize = size
 	return s
 }
 
 func (s *State) SetPhase(phase Phase, phaseVersion uint32) *State {
-	s.currentPhase = phase
-	s.phaseVersion = phaseVersion
+	s.CurrentPhase = phase
+	s.PhaseVersion = phaseVersion
 	return s
 }
 
 func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
-	s.arrayStatus = state
+	s.ArrayStatus = state
 	return s
 }
 
 const (
-	ErrorWorkQueue          errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
-	ErrorReaderWorkItemCast                  = "READER_WORK_ITEM_CAST_FAILED"
-	ErrorInternalMismatch                    = "ARRAY_MISMATCH"
-	ErrorK8sArrayGeneric                     = "ARRAY_JOB_GENERIC_FAILURE"
+	ErrorWorkQueue        errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
+	ErrorInternalMismatch                  = "ARRAY_MISMATCH"
+	ErrorK8sArrayGeneric                   = "ARRAY_JOB_GENERIC_FAILURE"
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
@@ -121,40 +107,40 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 	t := time.Now()
 	nowTaskInfo := &core.TaskInfo{OccurredAt: &t}
 
-	switch state.currentPhase {
+	switch state.CurrentPhase {
 	case PhaseStart:
 		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason())
 
 	case PhaseLaunch:
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
-		version := state.phaseVersion
+		version := state.PhaseVersion
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseCheckingSubTaskExecutions:
 		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
 		// which means we need to offset things.
-		version := GetPhaseVersionOffset(state.currentPhase, state.originalArraySize) + state.phaseVersion
+		version := GetPhaseVersionOffset(state.CurrentPhase, state.OriginalArraySize) + state.PhaseVersion
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseWriteToDiscovery:
-		version := GetPhaseVersionOffset(state.currentPhase, state.originalArraySize) + state.phaseVersion
+		version := GetPhaseVersionOffset(state.CurrentPhase, state.OriginalArraySize) + state.PhaseVersion
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseSuccess:
 		phaseInfo = core.PhaseInfoSuccess(nowTaskInfo)
 
 	case PhaseRetryableFailure:
-		if state.executionErr != nil {
-			phaseInfo = core.PhaseInfoFailed(core.PhaseRetryableFailure, state.executionErr, nowTaskInfo)
+		if state.ExecutionErr != nil {
+			phaseInfo = core.PhaseInfoFailed(core.PhaseRetryableFailure, state.ExecutionErr, nowTaskInfo)
 		} else {
-			phaseInfo = core.PhaseInfoRetryableFailure(ErrorK8sArrayGeneric, state.reason, nowTaskInfo)
+			phaseInfo = core.PhaseInfoRetryableFailure(ErrorK8sArrayGeneric, state.Reason, nowTaskInfo)
 		}
 
 	case PhasePermanentFailure:
-		if state.executionErr != nil {
-			phaseInfo = core.PhaseInfoFailed(core.PhasePermanentFailure, state.executionErr, nowTaskInfo)
+		if state.ExecutionErr != nil {
+			phaseInfo = core.PhaseInfoFailed(core.PhasePermanentFailure, state.ExecutionErr, nowTaskInfo)
 		} else {
-			phaseInfo = core.PhaseInfoFailure(ErrorK8sArrayGeneric, state.reason, nowTaskInfo)
+			phaseInfo = core.PhaseInfoFailure(ErrorK8sArrayGeneric, state.Reason, nowTaskInfo)
 		}
 	}
 
@@ -208,57 +194,4 @@ func SummaryToPhase(ctx context.Context, arrayJobProps *idlPlugins.ArrayJob, sum
 	logger.Debugf(ctx, "Array is still running [Successes: %v, Failures: %v, Total: %v, MinSuccesses: %v]",
 		totalSuccesses, totalFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
-}
-
-
-// Note that Name is not set on the result object.
-// It's up to the caller to set the Name before creating the object in K8s.
-func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionContext) (
-	podTemplate v1.Pod, job *idlPlugins.ArrayJob, err error) {
-
-	// Check that the taskTemplate is valid
-	taskTemplate, err := tCtx.TaskReader().Read(ctx)
-	if err != nil {
-		return v1.Pod{}, nil, err
-	} else if taskTemplate == nil {
-		return v1.Pod{}, nil, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
-	}
-
-	if taskTemplate.GetContainer() == nil {
-		return v1.Pod{}, nil, errors.Errorf(errors.BadTaskSpecification,
-			"Required value not set, taskTemplate Container")
-	}
-
-	var arrayJob *idlPlugins.ArrayJob
-	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = ToArrayJob(taskTemplate.GetCustom())
-		if err != nil {
-			return v1.Pod{}, nil, err
-		}
-	}
-
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, tCtx.TaskExecutionMetadata(), tCtx.TaskReader(), tCtx.InputReader(),
-		tCtx.OutputWriter().GetOutputPrefixPath().String())
-	if err != nil {
-		return v1.Pod{}, nil, err
-	}
-
-	// TODO: confirm whether this can be done when creating the pod spec directly above
-	podSpec.Containers[0].Command = taskTemplate.GetContainer().Command
-	podSpec.Containers[0].Args = taskTemplate.GetContainer().Args
-
-	return v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       K8sPodKind,
-			APIVersion: v1.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			// Note that name is missing here
-			Namespace:       tCtx.TaskExecutionMetadata().GetNamespace(),
-			Labels:          tCtx.TaskExecutionMetadata().GetLabels(),
-			Annotations:     tCtx.TaskExecutionMetadata().GetAnnotations(),
-			OwnerReferences: []metav1.OwnerReference{tCtx.TaskExecutionMetadata().GetOwnerReference()},
-		},
-		Spec: *podSpec,
-	}, arrayJob, nil
 }

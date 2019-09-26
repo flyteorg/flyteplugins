@@ -90,13 +90,13 @@ func testDecodeSlice_Config(t *testing.T, vStringSlice, result interface{}) {
 
 func TestConfig_GetPFlagSet(t *testing.T) {
 	val := Config{}
-	cmdFlags := GetPFlagSet("")
+	cmdFlags := val.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 }
 
 func TestConfig_SetFlags(t *testing.T) {
 	actual := Config{}
-	cmdFlags := GetPFlagSet("")
+	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
 	t.Run("Test_enabled-plugins", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("enabled-plugins", testValue)
 			if vStringSlice, err := cmdFlags.GetStringSlice("enabled-plugins"); err == nil {
-				testDecodeSlice_Config(t, join_Config(vStringSlice, ","), &EnabledPlugins)
+				testDecodeSlice_Config(t, join_Config(vStringSlice, ","), &actual.EnabledPlugins)
 
 			} else {
 				assert.FailNow(t, err.Error())

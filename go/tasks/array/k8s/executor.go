@@ -2,14 +2,12 @@ package k8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 
 	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 )
 
 const executorName = "k8s-array-executor"
@@ -17,26 +15,12 @@ const arrayTaskType = "container_array"
 const pluginStateVersion = 0
 
 type Executor struct {
-	catalogReader workqueue.IndexedWorkQueue
-	catalogWriter workqueue.IndexedWorkQueue
-	kubeClient    core.KubeClient
+	kubeClient core.KubeClient
 }
 
-func NewExecutor(catalogClient catalog.Client, kubeClient core.KubeClient) (Executor, error) {
-	catalogReader, err := workqueue.NewIndexedWorkQueue(catalog.NewReaderProcessor(catalogClient), workqueue.Config{})
-	if err != nil {
-		return Executor{}, err
-	}
-
-	catalogWriter, err := workqueue.NewIndexedWorkQueue(catalog.NewWriterProcessor(catalogClient), workqueue.Config{})
-	if err != nil {
-		return Executor{}, err
-	}
-
+func NewExecutor(kubeClient core.KubeClient) (Executor, error) {
 	return Executor{
-		catalogReader: catalogReader,
-		catalogWriter: catalogWriter,
-		kubeClient:    kubeClient,
+		kubeClient: kubeClient,
 	}, nil
 }
 
@@ -59,9 +43,9 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var nextState *k8sarray.State
 	var err error
 
-	switch pluginState.GetPhase() {
+	switch p, _ := pluginState.GetPhase(); p {
 	case k8sarray.PhaseStart:
-		nextState, err = k8sarray.DetermineDiscoverability(ctx, tCtx, pluginState, e.catalogReader)
+		nextState, err = k8sarray.DetermineDiscoverability(ctx, tCtx, pluginState)
 
 	case k8sarray.PhaseLaunch:
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
@@ -70,7 +54,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
 	case k8sarray.PhaseWriteToDiscovery:
-		nextState, err = k8sarray.WriteToDiscovery(ctx, tCtx, e.catalogWriter, pluginState)
+		nextState, err = k8sarray.WriteToDiscovery(ctx, tCtx, pluginState)
 
 	default:
 		nextState = pluginState
@@ -90,11 +74,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 }
 
 func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	panic("implement me")
+	return nil
 }
 
 func (Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	panic("implement me")
+	return nil
 }
 
 func init() {
@@ -107,6 +91,6 @@ func init() {
 		})
 }
 
-func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
+func GetNewExecutorPlugin(_ context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	return NewExecutor(iCtx.KubeClient())
 }

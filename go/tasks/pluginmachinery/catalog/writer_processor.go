@@ -40,7 +40,7 @@ func NewWriterWorkItem(id workqueue.WorkItemID, key Key, data io.OutputReader, m
 }
 
 type writerProcessor struct {
-	catalogClient RawClient
+	catalogClient Client
 }
 
 func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
@@ -60,7 +60,7 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewWriterProcessor(catalogClient RawClient) workqueue.Processor {
+func NewWriterProcessor(catalogClient Client) workqueue.Processor {
 	return writerProcessor{
 		catalogClient: catalogClient,
 	}

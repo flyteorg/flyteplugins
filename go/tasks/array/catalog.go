@@ -10,7 +10,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -41,12 +40,12 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Save this in the state
-	state.originalArraySize = arrayJob.Size
+	state.OriginalArraySize = arrayJob.Size
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
-		state.currentPhase = PhaseLaunch
+		state.CurrentPhase = PhaseLaunch
 		return state, nil
 	}
 
@@ -75,7 +74,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, err
 	}
 
-	if future.GetResponseStatus() == workqueue.WorkStatusDone {
+	if future.GetResponseStatus() == catalog.ResponseStatusReady {
 		resp, err := future.GetResponse()
 		if err != nil {
 			return state, err
@@ -84,7 +83,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
 			// TODO: This is not correct?  We still need to write parent level results?
-			state.currentPhase = PhaseSuccess
+			state.CurrentPhase = PhaseSuccess
 			return state, nil
 		}
 
@@ -136,21 +135,21 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		*taskTemplate.Interface, state.writeToCatalog, inputReaders, outputReaders)
+		*taskTemplate.Interface, state.IndexesToCache, inputReaders, outputReaders)
 
 	if len(catalogWriterItems) == 0 {
-		state.currentPhase = PhaseSuccess
+		state.CurrentPhase = PhaseSuccess
 	}
 
 	allWritten, err := WriteToCatalog(ctx, tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
-		state.currentPhase = PhaseSuccess
+		state.CurrentPhase = PhaseSuccess
 	}
 
 	return state, nil
 }
 
-func WriteToCatalog(ctx context.Context, catalogClient catalog.Client,
+func WriteToCatalog(ctx context.Context, catalogClient catalog.AsyncClient,
 	workItems []catalog.UploadRequest) (bool, error) {
 
 	// Enqueue work items
@@ -161,7 +160,7 @@ func WriteToCatalog(ctx context.Context, catalogClient catalog.Client,
 	}
 
 	// Immediately read back from the work queue, and see if it's done.
-	return future.GetResponseStatus() == workqueue.WorkStatusDone, nil
+	return future.GetResponseStatus() == catalog.ResponseStatusReady, nil
 }
 
 func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
@@ -280,7 +279,7 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return outputWriters, err
 		}
-		writer := ioutils.NewSimpleOutputWriter(ctx, dataStore, ioutils.NewSimpleOutputFilePaths(ctx, dataStore, dataReference))
+		writer := ioutils.NewRemoteFileOutputWriter(ctx, dataStore, ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference))
 		outputWriters = append(outputWriters, writer)
 	}
 
@@ -297,7 +296,7 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return outputReaders, err
 		}
-		outputPath := ioutils.NewSimpleOutputFilePaths(ctx, dataStore, dataReference)
+		outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference)
 		reader := ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999))
 		outputReaders = append(outputReaders, reader)
 	}

@@ -19,7 +19,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 
 	t.Run("start", func(t *testing.T) {
 		s := State{
-			currentPhase: PhaseStart,
+			CurrentPhase: PhaseStart,
 		}
 		phaseInfo := MapArrayStateToPluginPhase(ctx, s)
 		assert.Equal(t, core.PhaseInitializing, phaseInfo.Phase())

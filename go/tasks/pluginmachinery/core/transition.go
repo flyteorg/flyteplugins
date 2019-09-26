@@ -1,5 +1,7 @@
 package core
 
+import "fmt"
+
 // Type of Transition, refer to Transition to understand what transition means
 type TransitionType int
 
@@ -13,6 +15,16 @@ const (
 	// This maintains read after write consistency. But, it is still possible that the write fails and the same transition may re-occur.
 	TransitionTypeBarrier
 )
+
+func (t TransitionType) String() string {
+	switch t {
+	case TransitionTypeBarrier:
+		return "Barrier"
+	case TransitionTypeBestEffort:
+		return "BestEffort"
+	}
+	return "Ephemeral"
+}
 
 // A Plugin Handle method returns a Transition. This transition indicates to the Flyte framework that if the plugin wants to continue "Handle"ing this task,
 // or if wants to move the task to success, attempt a retry or fail. The transition automatically sends an event to Admin service which shows the plugin
@@ -31,6 +43,10 @@ func (t Transition) Type() TransitionType {
 
 func (t Transition) Info() PhaseInfo {
 	return t.info
+}
+
+func (t Transition) String() string {
+	return fmt.Sprintf("%s,%s", t.ttype, t.info)
 }
 
 // Unknown/Undefined transition. To be returned when an error is observed

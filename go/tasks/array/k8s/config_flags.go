@@ -42,5 +42,6 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "scheduler"), *new(string), "Decides the scheduler to use when launching array-pods.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), *new(int), "Determines the maximum length of the error string returned for the array.")
 	return cmdFlags
 }
