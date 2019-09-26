@@ -51,7 +51,7 @@ func TestContainerTaskExecutor_BuildResource(t *testing.T) {
 	assert.Equal(t, int64(0), (&storageRes).Value())
 
 	assert.Equal(t, command, j.Spec.Containers[0].Command)
-	assert.Equal(t, []string{"test-data-reference"}, j.Spec.Containers[0].Args)
+	assert.Equal(t, []string{"command"}, j.Spec.Containers[0].Args)
 
 	assert.Equal(t, "service-account", j.Spec.ServiceAccountName)
 }

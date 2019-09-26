@@ -2,10 +2,8 @@ package flytek8s
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/flytek8s/config"
 	"github.com/lyft/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -15,7 +13,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
 
@@ -108,31 +105,22 @@ func mergeResourceLists(a, b v1.ResourceList) v1.ResourceList {
 // and updating env vars.
 func AddFlyteModificationsForContainer(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext,
 	container *v1.Container) error {
-	inputs, err := taskCtx.InputReader().Get(ctx)
-	if err != nil {
-		return err
-	}
-
-	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx,
+	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(
+		ctx,
 		container.Command,
-		utils.CommandLineTemplateArgs{
-			Input:        taskCtx.InputReader().GetInputPath().String(),
-			OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
-			Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
-		})
+		taskCtx.InputReader(),
+		taskCtx.OutputWriter())
 
 	if err != nil {
 		return err
 	}
 	container.Command = modifiedCommand
 
-	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx,
-		container.Args,
-		utils.CommandLineTemplateArgs{
-			Input:        taskCtx.InputReader().GetInputPath().String(),
-			OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
-			Inputs:       utils.LiteralMapToTemplateArgs(ctx, inputs),
-		})
+	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(
+		ctx,
+		container.Command,
+		taskCtx.InputReader(),
+		taskCtx.OutputWriter())
 
 	if err != nil {
 		return err
