@@ -3,9 +3,10 @@ package k8s
 import (
 	"context"
 
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+
 	"github.com/lyft/flytestdlib/storage"
 
-	"github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -18,7 +19,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-const K8sPodKind = "pod"
+const PodKind = "pod"
 
 // A proxy inputreader that overrides the inputpath to be the inputpathprefix for array jobs
 type arrayJobInputReader struct {
@@ -62,13 +63,14 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		return v1.Pod{}, nil, err
 	}
 
+	// TODO: WHY ARE WE DOING THIS???
 	// TODO: confirm whether this can be done when creating the pod spec directly above
 	podSpec.Containers[0].Command = taskTemplate.GetContainer().Command
 	podSpec.Containers[0].Args = taskTemplate.GetContainer().Args
 
 	return v1.Pod{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       K8sPodKind,
+			Kind:       PodKind,
 			APIVersion: v1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{

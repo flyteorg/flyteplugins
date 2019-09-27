@@ -212,9 +212,10 @@ func dummySparkTaskTemplate(id string) *core.TaskTemplate {
 func dummySparkTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
-	inputReader.On("GetInputPath").Return(storage.DataReference("/input"))
-	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
-	taskCtx.On("InputReader").Return(inputReader)
+	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("/input/prefix"))
+	inputReader.OnGetInputPath().Return(storage.DataReference("/input"))
+	inputReader.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
+	taskCtx.OnInputReader().Return(inputReader)
 
 	outputReader := &pluginIOMocks.OutputWriter{}
 	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
