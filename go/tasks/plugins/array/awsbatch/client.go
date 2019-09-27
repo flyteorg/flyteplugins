@@ -39,6 +39,8 @@ type Client interface {
 
 	// Gets the single region this client interacts with.
 	GetRegion() string
+
+	GetAccountID() string
 }
 
 // BatchServiceClient is an interface on top of the native AWS Batch client to allow for mocking and alternative implementations.
@@ -54,10 +56,15 @@ type client struct {
 	getRateLimiter     utils.RateLimiter
 	defaultRateLimiter utils.RateLimiter
 	region             string
+	accountId          string
 }
 
 func (b client) GetRegion() string {
 	return b.region
+}
+
+func (b client) GetAccountID() string {
+	return b.accountId
 }
 
 // Registers a new job definition. There is no deduping on AWS side (even for the same name).
@@ -152,15 +159,17 @@ func NewBatchClient(awsClient aws.Client,
 	getRateLimiter utils.RateLimiter,
 	defaultRateLimiter utils.RateLimiter) Client {
 
-	batchClient := batch.New(awsClient.GetSession(), awsClient.GetConfig())
-	return NewCustomBatchClient(batchClient, batchClient.SigningRegion, getRateLimiter, defaultRateLimiter)
+	batchClient := batch.New(awsClient.GetSession(), awsClient.GetSdkConfig())
+	return NewCustomBatchClient(batchClient, awsClient.GetConfig().AccountID, batchClient.SigningRegion,
+		getRateLimiter, defaultRateLimiter)
 }
 
-func NewCustomBatchClient(batchClient BatchServiceClient, region string,
+func NewCustomBatchClient(batchClient BatchServiceClient, accountId, region string,
 	getRateLimiter utils.RateLimiter,
 	defaultRateLimiter utils.RateLimiter) Client {
 	return &client{
 		Batch:              batchClient,
+		accountId:          accountId,
 		region:             region,
 		getRateLimiter:     getRateLimiter,
 		defaultRateLimiter: defaultRateLimiter,
