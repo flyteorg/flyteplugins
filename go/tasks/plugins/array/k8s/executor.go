@@ -2,7 +2,8 @@ package k8s
 
 import (
 	"context"
-	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 
@@ -35,26 +36,30 @@ func (Executor) GetProperties() core.PluginProperties {
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	pluginConfig := GetConfig()
 
-	pluginState := &array2.State{}
+	pluginState := &array.StateImpl{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextState *array2.State
+	var nextState array.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
-	case array2.PhaseStart:
-		nextState, err = array2.DetermineDiscoverability(ctx, tCtx, pluginState)
+	case array.PhaseStart:
+		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
-	case array2.PhaseLaunch:
+	case array.PhasePreLaunch:
+		nextState = pluginState.SetPhase(array.PhaseLaunch, core.DefaultPhaseVersion)
+		err = nil
+
+	case array.PhaseLaunch:
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case array2.PhaseCheckingSubTaskExecutions:
+	case array.PhaseCheckingSubTaskExecutions:
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case array2.PhaseWriteToDiscovery:
-		nextState, err = array2.WriteToDiscovery(ctx, tCtx, pluginState)
+	case array.PhaseWriteToDiscovery:
+		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
 
 	default:
 		nextState = pluginState
@@ -69,7 +74,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := array2.MapArrayStateToPluginPhase(ctx, *nextState)
+	phaseInfo := array.MapArrayStateToPluginPhase(ctx, nextState)
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 

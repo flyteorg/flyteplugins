@@ -15,8 +15,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, jobStore *JobStore, cfg *config2.Config, currentState *array2.State) (
-	newState *array2.State, err error) {
+func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, jobStore *JobStore, cfg *config2.Config, currentState *State) (
+	newState *State, err error) {
 	logLinks := make([]*core2.TaskLog, 0, 4)
 	newState = currentState
 
@@ -55,7 +55,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 		}
 
 		subJob := job.SubJobs[childIdx]
-		originalIndex := calculateOriginalIndex(childIdx, currentState.IndexesToCache)
+		originalIndex := calculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 		logLinks = append(logLinks, &core2.TaskLog{
 			Name: fmt.Sprintf("AWS Batch Job #%v", originalIndex),
 			Uri:  fmt.Sprintf(JobFormatter, jobStore.GetRegion(), job.ID, job.ID, childIdx),
@@ -78,12 +78,12 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 		newArrayStatus.Summary.Inc(subJob.Status.Phase)
 	}
 
-	newState = newState.SetArrayStatus(newArrayStatus)
+	newState = newState.SetArrayStatus(newArrayStatus).(*State)
 
-	phase := array2.SummaryToPhase(ctx, currentState.OriginalMinSuccesses-currentState.OriginalArraySize-int64(currentState.ExecutionArraySize), newArrayStatus.Summary)
+	phase := array2.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()-int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
 	if phase == array2.PhasePermanentFailure || phase == array2.PhaseRetryableFailure {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)
-		newState = newState.SetReason(errorMsg)
+		newState = newState.SetReason(errorMsg).(*State)
 	}
 
 	if phase == array2.PhaseCheckingSubTaskExecutions {
@@ -95,9 +95,9 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 			}
 		}
 
-		newState = newState.SetPhase(phase, newPhaseVersion)
+		newState = newState.SetPhase(phase, newPhaseVersion).(*State)
 	} else {
-		newState = newState.SetPhase(phase, core.DefaultPhaseVersion)
+		newState = newState.SetPhase(phase, core.DefaultPhaseVersion).(*State)
 	}
 
 	return newState, nil

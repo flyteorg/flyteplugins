@@ -13,10 +13,8 @@ import (
 
 func TestClient_GetConfig(t *testing.T) {
 	assert.NoError(t, Init(context.TODO(), &Config{
-		Retries:           2,
-		JobDefCacheSize:   10,
-		JobStoreCacheSize: 10,
-		Region:            "us-east-1",
+		Retries: 2,
+		Region:  "us-east-1",
 	}))
 
 	c, err := GetClient()

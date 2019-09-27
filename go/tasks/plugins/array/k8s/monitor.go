@@ -9,7 +9,7 @@ import (
 	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	errorcollector2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
-	bitarray "github.com/lyft/flytestdlib/bitarray"
+	"github.com/lyft/flytestdlib/bitarray"
 
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,8 +29,9 @@ const (
 	ErrCheckPodStatus errors2.ErrorCode = "CHECK_POD_FAILED"
 )
 
-func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, cfg *Config, currentState *array2.State) (
-	newState *array2.State, err error) {
+func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
+	cfg *Config, currentState array2.State) (newState array2.State, err error) {
+
 	logLinks := make([]*core2.TaskLog, 0, 4)
 	newState = currentState
 
@@ -82,7 +83,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 		return currentState, fmt.Errorf("required value not set, taskTemplate is nil")
 	}
 
-	phase := array2.SummaryToPhase(ctx, currentState.OriginalMinSuccesses-currentState.OriginalArraySize+int64(currentState.ExecutionArraySize), newArrayStatus.Summary)
+	phase := array2.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
 	if phase == array2.PhasePermanentFailure || phase == array2.PhaseRetryableFailure {
 		errorMsg := msg.Summary(GetConfig().MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg)

@@ -53,5 +53,6 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "minRetries"), defaultConfig.MinRetries, "Minimum number of retries")
 	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "maxRetries"), defaultConfig.MaxRetries, "Maximum number of retries")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), defaultConfig.MaxErrorStringLength, "Determines the maximum length of the error string returned for the array.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "roleAnnotationKey"), defaultConfig.RoleAnnotationKey, "Map key to use to lookup role from task annotations.")
 	return cmdFlags
 }

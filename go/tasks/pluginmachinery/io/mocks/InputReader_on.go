@@ -13,7 +13,7 @@ type GetCall struct {
 }
 
 func (c *GetCall) Return(
-	LiteralMapvalue core.LiteralMap,
+	LiteralMapvalue *core.LiteralMap,
 	errorvalue error,
 ) *GetCall {
 	return &GetCall{Call: c.Call.Return(

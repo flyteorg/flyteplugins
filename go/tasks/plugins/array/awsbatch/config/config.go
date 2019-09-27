@@ -1,6 +1,9 @@
 package config
 
-import "github.com/lyft/flyteplugins/go/tasks/aws"
+import (
+	"github.com/lyft/flyteplugins/go/tasks/aws"
+	"github.com/lyft/flytestdlib/config"
+)
 
 //go:generate pflags Config --default-var defaultConfig
 
@@ -15,6 +18,8 @@ type Config struct {
 	// Provide additional environment variable pairs that plugin authors will provide to containers
 	DefaultEnvVars       map[string]string `json:"defaultEnvVars" pflag:"-,Additional environment variable that should be injected into every resource"`
 	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
+	RoleAnnotationKey    string            `json:"roleAnnotationKey" pflag:",Map key to use to lookup role from task annotations."`
+	ResyncPeriod         config.Duration   `json:"resyncPeriod" pflag:",Defines the duration for syncing job details from AWS Batch."`
 }
 
 type JobStoreConfig struct {

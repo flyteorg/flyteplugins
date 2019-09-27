@@ -60,7 +60,7 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, currentState *array.State) (newState *array.State, err error) {
+	config *Config, currentState array.State) (newState array.State, err error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
