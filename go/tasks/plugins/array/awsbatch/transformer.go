@@ -2,6 +2,7 @@ package awsbatch
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
@@ -20,9 +21,18 @@ import (
 const (
 	ArrayJobIndex       = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	LogStreamFormatter  = "https://console.aws.amazon.com/cloudwatch/home?region=%v#logEventViewer:group=/aws/batch/job;stream=%v"
-	JobFormatter        = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/%v/child/%v:%v"
+	ArrayJobFormatter   = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/%v/child/%v:%v"
+	JobFormatter        = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/queue/arn:aws:batch:%v:%v:job-queue~2F%v/job/%v"
 	arrayJobIDFormatter = "%v:%v"
 )
+
+func GetJobUri(jobSize int, accountID, region, queue, jobID string, subTaskIndex int) string {
+	if jobSize > 1 {
+		return fmt.Sprintf(ArrayJobFormatter, region, jobID, jobID, subTaskIndex)
+	}
+
+	return fmt.Sprintf(JobFormatter, region, region, accountID, queue, jobID)
+}
 
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.

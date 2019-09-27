@@ -58,7 +58,9 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 		originalIndex := calculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 		logLinks = append(logLinks, &core2.TaskLog{
 			Name: fmt.Sprintf("AWS Batch Job #%v", originalIndex),
-			Uri:  fmt.Sprintf(JobFormatter, jobStore.GetRegion(), job.ID, job.ID, childIdx),
+			// TODO: Get job queue
+			Uri: GetJobUri(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
+				jobStore.Client.GetRegion(), "", job.ID, childIdx),
 		})
 
 		for _, attempt := range subJob.Attempts {
