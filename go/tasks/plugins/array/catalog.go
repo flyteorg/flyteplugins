@@ -150,7 +150,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	return state, nil
 }
 
-func WriteToCatalog(ctx context.Context, catalogClient catalog.Client,
+func WriteToCatalog(ctx context.Context, catalogClient catalog.AsyncClient,
 	workItems []catalog.UploadRequest) (bool, error) {
 
 	// Enqueue work items
@@ -280,7 +280,7 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return outputWriters, err
 		}
-		writer := ioutils.NewSimpleOutputWriter(ctx, dataStore, ioutils.NewSimpleOutputFilePaths(ctx, dataStore, dataReference))
+		writer := ioutils.NewRemoteFileOutputWriter(ctx, dataStore, ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference))
 		outputWriters = append(outputWriters, writer)
 	}
 
@@ -297,7 +297,7 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return outputReaders, err
 		}
-		outputPath := ioutils.NewSimpleOutputFilePaths(ctx, dataStore, dataReference)
+		outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference)
 		reader := ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999))
 		outputReaders = append(outputReaders, reader)
 	}

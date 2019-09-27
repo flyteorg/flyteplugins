@@ -47,19 +47,12 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 		return nil, errors.Errorf(errors.BadTaskSpecification, "config[%v] is missing", DynamicTaskQueueKey)
 	}
 
-	// Replace cmd line args
-	templateArgs := utils.CommandLineTemplateArgs{
-		Input:        tCtx.InputReader().GetInputPath().String(),
-		InputPrefix:  tCtx.InputReader().GetInputPrefixPath().String(),
-		OutputPrefix: tCtx.OutputWriter().GetOutputPrefixPath().String(),
-	}
-
-	cmd, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetCommand(), templateArgs)
+	cmd, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetCommand(), tCtx.InputReader(), tCtx.OutputWriter())
 	if err != nil {
 		return nil, err
 	}
 
-	args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(), templateArgs)
+	args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(), tCtx.InputReader(), tCtx.OutputWriter())
 	taskTemplate.GetContainer().GetEnv()
 
 	envVars := getEnvVarsForTask(ctx, tCtx, taskTemplate.GetContainer().GetEnv(), cfg.DefaultEnvVars)
@@ -73,7 +66,7 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 	}, nil
 }
 
-func UpdateBatchInputForArray(ctx context.Context, batchInput *batch.SubmitJobInput, arraySize int64) *batch.SubmitJobInput {
+func UpdateBatchInputForArray(_ context.Context, batchInput *batch.SubmitJobInput, arraySize int64) *batch.SubmitJobInput {
 	var arrayProps *batch.ArrayProperties
 	envVars := batchInput.ContainerOverrides.Environment
 	if arraySize > 1 {

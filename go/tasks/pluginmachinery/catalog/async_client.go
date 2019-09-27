@@ -13,8 +13,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
 
-var _ Client = ClientImpl{}
-
 type ResponseStatus uint8
 
 const (
@@ -74,8 +72,8 @@ type DownloadResponse interface {
 	GetCachedCount() int
 }
 
-// An interface to interest with the catalog service
-type Client interface {
+// An interface that helps async interaction with catalog service
+type AsyncClient interface {
 	// Returns if an entry exists for the given task and input. It returns the data as a LiteralMap
 	Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error)
 
@@ -83,8 +81,4 @@ type Client interface {
 	Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error)
 }
 
-// TODO: Match the actual catalog service interface
-type RawClient interface {
-	Get(ctx context.Context) (*core.LiteralMap, error)
-	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) error
-}
+var _ AsyncClient = asyncClient{}

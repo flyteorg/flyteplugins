@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/bitarray"
+
 	"github.com/lyft/flytestdlib/errors"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 )
 
-type ClientImpl struct {
+type asyncClient struct {
 	Reader workqueue.IndexedWorkQueue
 	Writer workqueue.IndexedWorkQueue
 }
 
-func (c ClientImpl) Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error) {
+func (c asyncClient) Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error) {
 	status := ResponseStatusReady
 	cachedResults := bitarray.NewBitSet(uint(len(requests)))
 	cachedCount := 0
@@ -58,7 +60,7 @@ func (c ClientImpl) Download(ctx context.Context, requests ...DownloadRequest) (
 	return newDownloadFuture(status, cachedResults, len(requests), cachedCount), nil
 }
 
-func (c ClientImpl) Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error) {
+func (c asyncClient) Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error) {
 	status := ResponseStatusReady
 	for idx, request := range requests {
 		workItemID := fmt.Sprintf("%v-%v", request.Key, idx)
@@ -90,14 +92,14 @@ func (c ClientImpl) Upload(ctx context.Context, requests ...UploadRequest) (putF
 	return newUploadFuture(status), nil
 }
 
-func NewClient(rawClient RawClient, cfg Config) (ClientImpl, error) {
-	readerWorkQueue, err := workqueue.NewIndexedWorkQueue(NewReaderProcessor(rawClient), cfg.ReaderWorkqueueConfig)
+func NewAsyncClient(client Client, cfg Config) (AsyncClient, error) {
+	readerWorkQueue, err := workqueue.NewIndexedWorkQueue(NewReaderProcessor(client), cfg.ReaderWorkqueueConfig)
 	if err != nil {
-		return ClientImpl{}, err
+		return asyncClient{}, err
 	}
 
-	writerWorkQueue, err := workqueue.NewIndexedWorkQueue(NewReaderProcessor(rawClient), cfg.WriterWorkqueueConfig)
-	return ClientImpl{
+	writerWorkQueue, err := workqueue.NewIndexedWorkQueue(NewReaderProcessor(client), cfg.WriterWorkqueueConfig)
+	return asyncClient{
 		Reader: readerWorkQueue,
 		Writer: writerWorkQueue,
 	}, nil

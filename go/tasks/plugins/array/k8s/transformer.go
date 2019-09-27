@@ -2,7 +2,15 @@ package k8s
 
 import (
 	"context"
+<<<<<<< HEAD:go/tasks/plugins/array/k8s/transformer.go
 	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
+=======
+
+	"github.com/lyft/flytestdlib/storage"
+
+	"github.com/lyft/flyteplugins/go/tasks/array"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+>>>>>>> ac80d7ffedee55f8c37b5bb6aeba25445ad3c798:go/tasks/array/k8s/transformer.go
 
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +23,16 @@ import (
 )
 
 const PodKind = "pod"
+
+// A proxy inputreader that overrides the inputpath to be the inputpathprefix for array jobs
+type arrayJobInputReader struct {
+	io.InputReader
+}
+
+// We override the inputpath to return the prefix path for array jobs
+func (i arrayJobInputReader) GetInputPath() storage.DataReference {
+	return i.GetInputPrefixPath()
+}
 
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
@@ -42,8 +60,8 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		}
 	}
 
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, tCtx.TaskExecutionMetadata(), tCtx.TaskReader(), tCtx.InputReader(),
-		tCtx.OutputWriter().GetOutputPrefixPath().String())
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, tCtx.TaskExecutionMetadata(), tCtx.TaskReader(), arrayJobInputReader{tCtx.InputReader()},
+		tCtx.OutputWriter())
 	if err != nil {
 		return v1.Pod{}, nil, err
 	}

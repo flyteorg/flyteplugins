@@ -22,7 +22,8 @@ type TaskExecutionContext interface {
 	ResourceManager() ResourceManager
 	// Returns a secret manager that can retrieve configured secrets for this plugin
 	SecretManager() SecretManager
-
+	// Returns a method that allows a plugin to indicate that the task has a new update and can be invoked again to check for updates
+	GetTaskRefreshIndicator() func()
 	// Returns the max allowed dataset size that the outputwriter will accept
 	MaxDatasetSizeBytes() int64
 	// Returns a handle to the currently configured storage backend that can be used to communicate with the tasks or write metadata
@@ -44,7 +45,7 @@ type TaskExecutionContext interface {
 	PluginStateWriter() PluginStateWriter
 
 	// Get a handle to catalog client
-	Catalog() catalog.Client
+	Catalog() catalog.AsyncClient
 
 	// Returns a handle to the Task events recorder, which get stored in the Admin.
 	EventsRecorder() EventsRecorder
