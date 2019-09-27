@@ -4,12 +4,12 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/lyft/flytestdlib/bitarray"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -21,7 +21,7 @@ import (
 // which is different than their original location. To find the original index we construct an indexLookup array.
 // The subtask can find it's original index value in indexLookup[JOB_ARRAY_INDEX] where JOB_ARRAY_INDEX is an
 // environment variable in the pod
-func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state *State) (*State, error) {
+func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state State) (State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -40,12 +40,13 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Save this in the state
-	state.OriginalArraySize = arrayJob.Size
+	state.SetOriginalArraySize(arrayJob.Size)
+	state.SetOriginalMinSuccesses(arrayJob.MinSuccesses)
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
-		state.CurrentPhase = PhaseLaunch
+		state.SetPhase(PhaseLaunch, core.DefaultPhaseVersion)
 		return state, nil
 	}
 
@@ -83,11 +84,11 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
 			// TODO: This is not correct?  We still need to write parent level results?
-			state.CurrentPhase = PhaseSuccess
+			state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
 			return state, nil
 		}
 
-		indexLookup := CatalogBitsetToLiteralCollection(resp.GetCachedResults())
+		indexLookup := CatalogBitsetToLiteralCollection(resp.GetCachedResults(), resp.GetResultsSize())
 		// TODO: Is the right thing to use?  Haytham please take a look
 		indexLookupPath, err := ioutils.GetIndexLookupPath(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath())
 		if err != nil {
@@ -108,7 +109,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	return state, nil
 }
 
-func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state *State) (*State, error) {
+func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state State) (State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -135,15 +136,15 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		*taskTemplate.Interface, state.IndexesToCache, inputReaders, outputReaders)
+		*taskTemplate.Interface, state.GetIndexesToCache(), inputReaders, outputReaders)
 
 	if len(catalogWriterItems) == 0 {
-		state.CurrentPhase = PhaseSuccess
+		state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
 	}
 
 	allWritten, err := WriteToCatalog(ctx, tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
-		state.CurrentPhase = PhaseSuccess
+		state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
 	}
 
 	return state, nil
@@ -214,9 +215,9 @@ func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
 	}
 }
 
-func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet) *idlCore.LiteralCollection {
-	literals := make([]*idlCore.Literal, 0, catalogResults.Len())
-	for i := 0; i < catalogResults.Len(); i++ {
+func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet, size int) *idlCore.LiteralCollection {
+	literals := make([]*idlCore.Literal, 0, size)
+	for i := 0; i < size; i++ {
 		if !catalogResults.IsSet(uint(i)) {
 			literals = append(literals, NewLiteralScalarOfInteger(int64(i)))
 		}

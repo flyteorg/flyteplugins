@@ -54,7 +54,7 @@ type RequestBody struct {
 	Files        string   `json:"files,omitempty"`
 }
 
-//go:generate mockery -name QuboleClient
+//go:generate mockery -all
 
 // Interface to interact with QuboleClient for hive tasks
 type QuboleClient interface {

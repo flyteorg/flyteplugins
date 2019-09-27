@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
-	"github.com/lyft/flyteplugins/go/tasks/array/errorcollector"
+	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	errorcollector2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
+	"github.com/lyft/flytestdlib/bitarray"
 
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,13 +17,10 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-
 	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	errors2 "github.com/lyft/flytestdlib/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
@@ -31,14 +29,15 @@ const (
 	ErrCheckPodStatus errors2.ErrorCode = "CHECK_POD_FAILED"
 )
 
-func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, cfg *Config, currentState *array.State) (
-	newState *array.State, err error) {
+func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
+	cfg *Config, currentState array2.State) (newState array2.State, err error) {
+
 	logLinks := make([]*core2.TaskLog, 0, 4)
 	newState = currentState
 
-	msg := errorcollector.NewErrorMessageCollector()
-	newArrayStatus := arraystatus.ArrayStatus{
-		Summary:  arraystatus.ArraySummary{},
+	msg := errorcollector2.NewErrorMessageCollector()
+	newArrayStatus := arraystatus2.ArrayStatus{
+		Summary:  arraystatus2.ArraySummary{},
 		Detailed: newStatusCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
@@ -84,23 +83,15 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 		return currentState, fmt.Errorf("required value not set, taskTemplate is nil")
 	}
 
-	var arrayJob *plugins.ArrayJob
-	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = array.ToArrayJob(taskTemplate.GetCustom())
-		if err != nil {
-			return currentState, err
-		}
-	}
-
-	phase := array.SummaryToPhase(ctx, arrayJob, newArrayStatus.Summary)
-	if phase == array.PhasePermanentFailure || phase == array.PhaseRetryableFailure {
+	phase := array2.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
+	if phase == array2.PhasePermanentFailure || phase == array2.PhaseRetryableFailure {
 		errorMsg := msg.Summary(GetConfig().MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg)
 	}
 
-	if phase == array.PhaseCheckingSubTaskExecutions {
+	if phase == array2.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
-		if phase == array.PhaseCheckingSubTaskExecutions {
+		if phase == array2.PhaseCheckingSubTaskExecutions {
 			// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
 			for phase, count := range newState.GetArrayStatus().Summary {
 				newPhaseVersion += uint32(phase) * uint32(count)
@@ -120,7 +111,7 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name types2.Nam
 
 	pod := &v1.Pod{
 		TypeMeta: v12.TypeMeta{
-			Kind:       K8sPodKind,
+			Kind:       PodKind,
 			APIVersion: v1.SchemeGroupVersion.String(),
 		},
 	}

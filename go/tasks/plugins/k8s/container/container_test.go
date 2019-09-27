@@ -8,7 +8,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,9 +80,10 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, command []str
 	dummyTaskMetadata := dummyContainerTaskMetadata(resources)
 	taskCtx := &pluginsCoreMock.TaskExecutionContext{}
 	inputReader := &pluginsIOMock.InputReader{}
-	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
-	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
-	taskCtx.On("InputReader").Return(inputReader)
+	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("test-data-reference"))
+	inputReader.OnGetInputPath().Return(storage.DataReference("test-data-reference"))
+	inputReader.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
+	taskCtx.OnInputReader().Return(inputReader)
 
 	outputReader := &pluginsIOMock.OutputWriter{}
 	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
