@@ -2,15 +2,12 @@ package k8s
 
 import (
 	"context"
-<<<<<<< HEAD:go/tasks/plugins/array/k8s/transformer.go
-	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
-=======
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 
 	"github.com/lyft/flytestdlib/storage"
 
-	"github.com/lyft/flyteplugins/go/tasks/array"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
->>>>>>> ac80d7ffedee55f8c37b5bb6aeba25445ad3c798:go/tasks/array/k8s/transformer.go
 
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,7 +51,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = array2.ToArrayJob(taskTemplate.GetCustom())
+		arrayJob, err = array.ToArrayJob(taskTemplate.GetCustom())
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}

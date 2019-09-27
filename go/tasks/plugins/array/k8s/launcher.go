@@ -12,8 +12,6 @@ import (
 
 	errors2 "github.com/lyft/flytestdlib/errors"
 
-	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
-
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"

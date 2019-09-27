@@ -2,13 +2,10 @@ package catalog
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/lyft/flytestdlib/bitarray"
 
 	"github.com/lyft/flytestdlib/errors"
-
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
@@ -24,23 +21,6 @@ const (
 	ErrResponseNotReady errors.ErrorCode = "RESPONSE_NOT_READY"
 	ErrSystemError      errors.ErrorCode = "SYSTEM_ERROR"
 )
-
-type Metadata struct {
-	WorkflowExecutionIdentifier *core.WorkflowExecutionIdentifier
-	NodeExecutionIdentifier     *core.NodeExecutionIdentifier
-	TaskExecutionIdentifier     *core.TaskExecutionIdentifier
-}
-
-type Key struct {
-	Identifier     core.Identifier
-	CacheVersion   string
-	TypedInterface core.TypedInterface
-	InputReader    io.InputReader
-}
-
-func (k Key) String() string {
-	return fmt.Sprintf("%v:%v", k.Identifier, k.CacheVersion)
-}
 
 type UploadRequest struct {
 	Key              Key
