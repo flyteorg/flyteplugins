@@ -40,14 +40,16 @@ var single = singleton{
 // A generic AWS Client that can be used for all AWS Client libraries.
 type Client interface {
 	GetSession() *session.Session
-	GetConfig() *aws.Config
+	GetSdkConfig() *aws.Config
+	GetConfig() *Config
 	GetHostName() string
 }
 
 type client struct {
-	Session  *session.Session
-	Config   *aws.Config
-	HostName string
+	config    *Config
+	Session   *session.Session
+	SdkConfig *aws.Config
+	HostName  string
 }
 
 // Gets the initialized session.
@@ -56,13 +58,17 @@ func (c client) GetSession() *session.Session {
 }
 
 // Gets the final config that was used to initialize AWS Session.
-func (c client) GetConfig() *aws.Config {
-	return c.Config
+func (c client) GetSdkConfig() *aws.Config {
+	return c.SdkConfig
 }
 
 // Gets client's Hostname
 func (c client) GetHostName() string {
 	return c.HostName
+}
+
+func (c client) GetConfig() *Config {
+	return c.config
 }
 
 func newClient(ctx context.Context, cfg *Config) (Client, error) {
@@ -92,9 +98,10 @@ func newClient(ctx context.Context, cfg *Config) (Client, error) {
 	}
 
 	return &client{
-		Config:   awsConfig,
-		Session:  sess,
-		HostName: hostname,
+		config:    cfg,
+		SdkConfig: awsConfig,
+		Session:   sess,
+		HostName:  hostname,
 	}, nil
 }
 
