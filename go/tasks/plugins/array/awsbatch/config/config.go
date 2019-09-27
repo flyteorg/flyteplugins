@@ -50,7 +50,7 @@ var (
 		MaxErrorStringLength: 500,
 	}
 
-	configSection = aws.MustRegisterSubsection("batch", defaultConfig)
+	configSection = aws.MustRegisterSubSection("batch", defaultConfig)
 )
 
 func GetConfig() *Config {

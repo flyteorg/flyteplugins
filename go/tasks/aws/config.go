@@ -7,6 +7,7 @@ package aws
 import (
 	"time"
 
+	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/config"
 	"github.com/lyft/flytestdlib/config"
 )
 
@@ -19,18 +20,18 @@ var (
 		Region:               "us-east-1",
 		MaxErrorStringLength: 150,
 		Retries:              3,
-		CatalogCacheTimeout: config.Duration{Duration: time.Second * 5},
+		CatalogCacheTimeout:  config.Duration{Duration: time.Second * 5},
 	}
 
-	configSection = config.MustRegisterSection(ConfigSectionKey, defaultConfig)
+	configSection = pluginsConfig.MustRegisterSubSection(ConfigSectionKey, defaultConfig)
 )
 
 // Config section for AWS Package
 type Config struct {
-	Region               string            `json:"region" pflag:",AWS Region to connect to."`
-	Retries              int               `json:"retries" pflag:",Number of retries."`
-	MaxErrorStringLength int               `json:"maxErrorLength" pflag:",Maximum size of error messages."`
-	CatalogCacheTimeout  config.Duration   `json:"catalog-timeout" pflag:"\"5s\",Timeout duration for checking catalog for all batch tasks"`
+	Region               string          `json:"region" pflag:",AWS Region to connect to."`
+	Retries              int             `json:"retries" pflag:",Number of retries."`
+	MaxErrorStringLength int             `json:"maxErrorLength" pflag:",Maximum size of error messages."`
+	CatalogCacheTimeout  config.Duration `json:"catalog-timeout" pflag:"\"5s\",Timeout duration for checking catalog for all batch tasks"`
 }
 
 type RateLimiterConfig struct {
@@ -43,6 +44,6 @@ func GetConfig() *Config {
 	return configSection.GetConfig().(*Config)
 }
 
-func MustRegisterSubsection(key config.SectionKey, cfg config.Config) config.Section {
+func MustRegisterSubSection(key config.SectionKey, cfg config.Config) config.Section {
 	return configSection.MustRegisterSection(key, cfg)
 }
