@@ -6,12 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/arraystatus"
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	"github.com/lyft/flytestdlib/bitarray"
 
 	errors2 "github.com/lyft/flytestdlib/errors"
-
-	k8sarray "github.com/lyft/flyteplugins/go/tasks/array"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -61,7 +60,7 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, currentState *k8sarray.State) (newState *k8sarray.State, err error) {
+	config *Config, currentState array.State) (newState array.State, err error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
@@ -102,7 +101,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 					return currentState, nil
 				}
 
-				currentState = currentState.SetPhase(k8sarray.PhaseRetryableFailure, 0)
+				currentState = currentState.SetPhase(array.PhaseRetryableFailure, 0)
 				currentState = currentState.SetReason(err.Error())
 				return currentState, nil
 			}
@@ -113,12 +112,12 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 	logger.Infof(ctx, "Successfully submitted Job(s) with Prefix:[%v], Count:[%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), size)
 
-	arrayStatus := arraystatus.ArrayStatus{
-		Summary:  arraystatus.ArraySummary{},
+	arrayStatus := arraystatus2.ArrayStatus{
+		Summary:  arraystatus2.ArraySummary{},
 		Detailed: newStatusCompactArray(uint(size)),
 	}
 
-	currentState.SetPhase(k8sarray.PhaseCheckingSubTaskExecutions, 0)
+	currentState.SetPhase(array.PhaseCheckingSubTaskExecutions, 0)
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil

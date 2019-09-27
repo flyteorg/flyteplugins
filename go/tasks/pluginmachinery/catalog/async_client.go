@@ -3,10 +3,23 @@ package catalog
 import (
 	"context"
 
+	"github.com/lyft/flytestdlib/bitarray"
+
 	"github.com/lyft/flytestdlib/errors"
 
-	"github.com/lyft/flyteplugins/go/tasks/array/bitarray"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+)
+
+type ResponseStatus uint8
+
+const (
+	ResponseStatusNotReady ResponseStatus = iota
+	ResponseStatusReady
+)
+
+const (
+	ErrResponseNotReady errors.ErrorCode = "RESPONSE_NOT_READY"
+	ErrSystemError      errors.ErrorCode = "SYSTEM_ERROR"
 )
 
 type UploadRequest struct {
@@ -35,6 +48,7 @@ type DownloadFuture interface {
 
 type DownloadResponse interface {
 	GetCachedResults() *bitarray.BitSet
+	GetResultsSize() int
 	GetCachedCount() int
 }
 
@@ -48,16 +62,3 @@ type AsyncClient interface {
 }
 
 var _ AsyncClient = asyncClient{}
-
-type ResponseStatus uint8
-
-const (
-	ResponseStatusNotReady ResponseStatus = iota
-	ResponseStatusReady
-)
-
-const (
-	ErrResponseNotReady errors.ErrorCode = "RESPONSE_NOT_READY"
-	ErrSystemError      errors.ErrorCode = "SYSTEM_ERROR"
-)
-

@@ -15,6 +15,7 @@ import (
 )
 
 var inputFileRegex = regexp.MustCompile(`(?i){{\s*[\.$]Input\s*}}`)
+var inputPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]InputPrefix\s*}}`)
 var outputRegex = regexp.MustCompile(`(?i){{\s*[\.$]OutputPrefix\s*}}`)
 var inputVarRegex = regexp.MustCompile(`(?i){{\s*[\.$]Inputs\.(?P<input_name>[^}\s]+)\s*}}`)
 
@@ -52,6 +53,7 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.Inp
 func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in io.InputReader, out io.OutputFilePaths) (string, error) {
 	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
 	val = outputRegex.ReplaceAllString(val, out.GetOutputPrefixPath().String())
+	val = inputPrefixRegex.ReplaceAllString(val, in.GetInputPrefixPath().String())
 	groupMatches := inputVarRegex.FindAllStringSubmatchIndex(val, -1)
 	if len(groupMatches) == 0 {
 		return val, nil
