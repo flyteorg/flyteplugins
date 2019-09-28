@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
 
@@ -14,7 +15,7 @@ type cachedInputReader struct {
 
 func (c *cachedInputReader) Get(ctx context.Context) (*core.LiteralMap, error) {
 	if c.cachedInputs == nil {
-		in, err := c.Get(ctx)
+		in, err := c.InputReader.Get(ctx)
 		if err != nil {
 			return nil, err
 		}
