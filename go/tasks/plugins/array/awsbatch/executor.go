@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	executorName              = "aws-array"
+	executorName              = "aws_array"
 	defaultPluginStateVersion = 0
 	arrayTaskType             = "container_array"
 )
