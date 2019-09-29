@@ -18,4 +18,6 @@ type SetupContext interface {
 	MetricsScope() promutils.Scope
 	// A kubernetes client to the bound cluster
 	KubeClient() KubeClient
+	// Returns a secret manager that can retrieve configured secrets for this plugin
+	SecretManager() SecretManager
 }
