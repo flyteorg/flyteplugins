@@ -170,9 +170,6 @@ func TestGetAllocationToken(t *testing.T) {
 func TestAbort(t *testing.T) {
 	ctx := context.Background()
 
-	// TODO: This will need to be replaced with the mock when we switch to using the mock
-	dummySecrets := &secretsManager{quboleKey: "fake key"}
-
 	t.Run("Terminate called when not in terminal state", func(t *testing.T) {
 		var x = false
 		mockQubole := &quboleMocks.QuboleClient{}
@@ -182,7 +179,7 @@ func TestAbort(t *testing.T) {
 			x = true
 		}).Return(nil)
 
-		err := Abort(ctx, nil, ExecutionState{Phase: PhaseSubmitted, CommandId: "123456"}, mockQubole, dummySecrets)
+		err := Abort(ctx, GetMockTaskExecutionContext(), ExecutionState{Phase: PhaseSubmitted, CommandId: "123456"}, mockQubole)
 		assert.NoError(t, err)
 		assert.True(t, x)
 	})
@@ -194,7 +191,10 @@ func TestAbort(t *testing.T) {
 			x = true
 		}).Return(nil)
 
-		err := Abort(ctx, nil, ExecutionState{Phase: PhaseQuerySucceeded, CommandId: "123456"}, mockQubole, dummySecrets)
+		err := Abort(ctx, GetMockTaskExecutionContext(), ExecutionState{
+			Phase:     PhaseQuerySucceeded,
+			CommandId: "123456",
+		}, mockQubole)
 		assert.NoError(t, err)
 		assert.False(t, x)
 	})
@@ -242,9 +242,6 @@ func TestKickOffQuery(t *testing.T) {
 	ctx := context.Background()
 	tCtx := GetMockTaskExecutionContext()
 
-	// TODO: This will need to be replaced with the mock when we switch to using the mock
-	dummySecrets := &secretsManager{quboleKey: "fake key"}
-
 	var quboleCalled = false
 	quboleCommandDetails := &client.QuboleCommandDetails{
 		ID:     int64(453298043),
@@ -263,7 +260,7 @@ func TestKickOffQuery(t *testing.T) {
 	}).Return(ExecutionStateCacheItem{}, nil)
 
 	state := ExecutionState{}
-	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, dummySecrets, mockCache)
+	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, mockCache)
 	assert.NoError(t, err)
 	assert.Equal(t, PhaseSubmitted, newState.Phase)
 	assert.Equal(t, "453298043", newState.CommandId)

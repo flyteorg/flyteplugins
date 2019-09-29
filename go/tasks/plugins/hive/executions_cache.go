@@ -3,6 +3,7 @@ package hive
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/errors"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
@@ -18,19 +19,19 @@ const (
 
 type QuboleHiveExecutionsCache struct {
 	utils.AutoRefreshCache
-	quboleClient   client.QuboleClient
-	secretsManager SecretsManager
-	scope          promutils.Scope
+	quboleClient  client.QuboleClient
+	secretManager core.SecretManager
+	scope         promutils.Scope
 }
 
 func NewQuboleHiveExecutionsCache(ctx context.Context, quboleClient client.QuboleClient,
-	secretsManager SecretsManager, size int, scope promutils.Scope) (QuboleHiveExecutionsCache, error) {
+	secretManager core.SecretManager, size int, scope promutils.Scope) (QuboleHiveExecutionsCache, error) {
 
 	rateLimiter := utils.NewRateLimiter("qubole-api-updater", 5, 15)
 	q := QuboleHiveExecutionsCache{
-		quboleClient:     quboleClient,
-		secretsManager:   secretsManager,
-		scope:            scope,
+		quboleClient:  quboleClient,
+		secretManager: secretManager,
+		scope:         scope,
 	}
 	autoRefreshCache, err := utils.NewAutoRefreshCache(q.SyncQuboleQuery, rateLimiter, ResyncDuration, size, scope)
 	if err != nil {
@@ -74,7 +75,7 @@ func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj uti
 	logger.Debugf(ctx, "Sync loop - processing Hive job [%s] - cache key [%s]",
 		executionStateCacheItem.CommandId, executionStateCacheItem.Id)
 
-	quboleApiKey, err := q.secretsManager.GetToken()
+	quboleApiKey, err := q.secretManager.Get(ctx, client.QuboleSecretKey)
 	if err != nil {
 		return executionStateCacheItem, utils.Unchanged, err
 	}

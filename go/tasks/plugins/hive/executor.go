@@ -22,7 +22,6 @@ const hiveTaskType = "hive" // This needs to match the type defined in Flytekit 
 
 type QuboleHiveExecutor struct {
 	id              string
-	secretsManager  SecretsManager
 	metrics         QuboleHiveExecutorMetrics
 	quboleClient    client.QuboleClient
 	executionsCache utils2.AutoRefreshCache
@@ -46,7 +45,7 @@ func (q QuboleHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionC
 
 	// Do what needs to be done, and give this function everything it needs to do its job properly
 	// TODO: Play around with making this return a transition directly. How will that pattern affect the multi-Qubole plugin
-	outgoingState, transformError := HandleExecutionState(ctx, tCtx, incomingState, q.quboleClient, q.secretsManager, q.executionsCache)
+	outgoingState, transformError := HandleExecutionState(ctx, tCtx, incomingState, q.quboleClient, q.executionsCache)
 
 	// Return if there was an error
 	if transformError != nil {
@@ -71,7 +70,7 @@ func (q QuboleHiveExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionCo
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
 	}
 
-	return Abort(ctx, tCtx, incomingState, q.quboleClient, q.secretsManager)
+	return Abort(ctx, tCtx, incomingState, q.quboleClient)
 }
 
 func (q QuboleHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
@@ -92,15 +91,9 @@ func (q QuboleHiveExecutor) GetProperties() core.PluginProperties {
 func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	q := NewQuboleHiveExecutor()
 	q.quboleClient = client.NewQuboleClient()
-	q.secretsManager = NewSecretsManager()
-	_, err := q.secretsManager.GetToken()
-	if err != nil {
-		logger.Errorf(ctx, "Failed to read secret in QuboleHiveExecutor Setup")
-		return q, err
-	}
 	q.metrics = getQuboleHiveExecutorMetrics(iCtx.MetricsScope())
 
-	executionsAutoRefreshCache, err := NewQuboleHiveExecutionsCache(ctx, q.quboleClient, q.secretsManager,
+	executionsAutoRefreshCache, err := NewQuboleHiveExecutionsCache(ctx, q.quboleClient, iCtx.SecretManager(),
 		config.GetQuboleConfig().LruCacheSize, iCtx.MetricsScope().NewSubScope(hiveTaskType))
 	if err != nil {
 		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleHiveExecutor Setup")

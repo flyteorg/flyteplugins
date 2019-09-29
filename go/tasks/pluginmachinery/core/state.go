@@ -3,7 +3,7 @@ package core
 // Write new plugin state for a plugin
 type PluginStateWriter interface {
 	// Only the last call to this method is recorded. All previous calls are overwritten
-	// Thie data is also not accessible until the next round.
+	// This data is also not accessible until the next round.
 	Put(stateVersion uint8, v interface{}) error
 	// Resets the state to empty or zero value
 	Reset() error
