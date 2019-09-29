@@ -117,5 +117,9 @@ func GetMockTaskExecutionContext() core.TaskExecutionContext {
 	taskCtx.On("ResourceManager").Return(resourceManager)
 
 	taskCtx.On("TaskExecutionMetadata").Return(dummyTaskMetadata)
+	mockSecretManager := &coreMock.SecretManager{}
+	mockSecretManager.On("Get", mock.Anything, mock.Anything).Return("fake key", nil)
+	taskCtx.On("SecretManager").Return(mockSecretManager)
+
 	return taskCtx
 }
