@@ -40,13 +40,16 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Save this in the state
-	state.SetOriginalArraySize(arrayJob.Size)
-	state.SetOriginalMinSuccesses(arrayJob.MinSuccesses)
+	state = state.SetOriginalArraySize(arrayJob.Size)
+	state = state.SetOriginalMinSuccesses(arrayJob.MinSuccesses)
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
-		state.SetPhase(PhaseLaunch, core.DefaultPhaseVersion)
+		// Set an empty indexes to cache. This task won't try to write to catalog anyway.
+		state = state.SetIndexesToCache(bitarray.NewBitSet(uint(arrayJob.Size)))
+		state = state.SetActualArraySize(int(arrayJob.Size))
+		state = state.SetPhase(PhaseLaunch, core.DefaultPhaseVersion)
 		return state, nil
 	}
 
@@ -102,6 +105,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, err
 		}
 
+		state = state.SetIndexesToCache(invertBitSet(resp.GetCachedResults()))
 		state = state.SetPhase(PhaseLaunch, 0)
 		state = state.SetActualArraySize(int(arrayJob.Size) - resp.GetCachedCount())
 	}

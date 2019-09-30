@@ -247,3 +247,14 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 		totalSuccesses, totalFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
 }
+
+func invertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
+	output := bitarray.NewBitSet(input.Cap())
+	for i := uint(0); i < input.Cap(); i++ {
+		if !input.IsSet(i) {
+			output.Set(i)
+		}
+	}
+
+	return output
+}
