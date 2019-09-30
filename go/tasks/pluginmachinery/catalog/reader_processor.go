@@ -8,8 +8,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
@@ -50,7 +48,7 @@ func NewReaderWorkItem(id workqueue.WorkItemID, key Key, outputsWriter io.Output
 }
 
 type ReaderProcessor struct {
-	catalogClient RawClient
+	catalogClient Client
 }
 
 func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
@@ -59,7 +57,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
 	}
 
-	literalMap, err := p.catalogClient.Get(ctx)
+	op, err := p.catalogClient.Get(ctx, wi.key)
 	if err != nil {
 		if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
 			logger.Infof(ctx, "Artifact not found in Catalog.")
@@ -74,7 +72,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	}
 
 	// TODO: Check task interface, if it has outputs but literalmap is empty (or not matching output), error.
-	err = wi.outputsWriter.Put(ctx, ioutils.NewInMemoryOutputReader(literalMap, nil))
+	err = wi.outputsWriter.Put(ctx, op)
 	if err != nil {
 		// TODO: wrap error
 		return workqueue.WorkStatusNotDone, err
@@ -85,7 +83,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	return workqueue.WorkStatusDone, nil
 }
 
-func NewReaderProcessor(catalogClient RawClient) ReaderProcessor {
+func NewReaderProcessor(catalogClient Client) ReaderProcessor {
 	return ReaderProcessor{
 		catalogClient: catalogClient,
 	}
