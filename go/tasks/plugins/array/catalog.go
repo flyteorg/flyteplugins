@@ -261,7 +261,7 @@ func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, in
 	size int) ([]io.InputReader, error) {
 
 	inputReaders := make([]io.InputReader, size)
-	for i := 0; i < int(size); i++ {
+	for i := 0; i < size; i++ {
 		indexedInputLocation, err := dataStore.ConstructReference(ctx, inputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return inputReaders, err
@@ -279,7 +279,7 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 
 	outputWriters := make([]io.OutputWriter, size)
 
-	for i := 0; i < int(size); i++ {
+	for i := 0; i < size; i++ {
 		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return outputWriters, err
@@ -296,7 +296,7 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 
 	outputReaders := make([]io.OutputReader, size)
 
-	for i := 0; i < int(size); i++ {
+	for i := 0; i < size; i++ {
 		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return outputReaders, err
@@ -305,5 +305,6 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 		reader := ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999))
 		outputReaders = append(outputReaders, reader)
 	}
+
 	return outputReaders, nil
 }

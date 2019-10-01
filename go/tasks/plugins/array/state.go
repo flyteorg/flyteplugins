@@ -23,8 +23,10 @@ const (
 	PhasePreLaunch
 	PhaseLaunch
 	PhaseCheckingSubTaskExecutions
+	PhaseAssembleFinalOutput
 	PhaseWriteToDiscovery
 	PhaseSuccess
+	PhaseAssembleFinalError
 	PhaseRetryableFailure
 	PhasePermanentFailure
 )
@@ -176,8 +178,10 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 	case PhaseCheckingSubTaskExecutions:
 		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
 		// which means we need to offset things.
-		version := GetPhaseVersionOffset(p, state.GetOriginalArraySize()) + version
-		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+		fallthrough
+
+	case PhaseAssembleFinalOutput:
+		fallthrough
 
 	case PhaseWriteToDiscovery:
 		version := GetPhaseVersionOffset(p, state.GetOriginalArraySize()) + version
@@ -228,19 +232,19 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 
 	if totalCount < minSuccesses {
 		logger.Infof(ctx, "Array failed because totalCount[%v] < minSuccesses[%v]", totalCount, minSuccesses)
-		return PhasePermanentFailure
+		return PhaseRetryableFailure
 	}
 
 	// No chance to reach the required success numbers.
 	if totalRunning+totalSuccesses < minSuccesses {
 		logger.Infof(ctx, "Array failed early because totalRunning[%v] + totalSuccesses[%v] < minSuccesses[%v]",
 			totalRunning, totalSuccesses, minSuccesses)
-		return PhasePermanentFailure
+		return PhaseRetryableFailure
 	}
 
 	if totalSuccesses >= minSuccesses && totalRunning == 0 {
 		logger.Infof(ctx, "Array succeeded because totalSuccesses[%v] >= minSuccesses[%v]", totalSuccesses, minSuccesses)
-		return PhaseSuccess
+		return PhaseAssembleFinalOutput
 	}
 
 	logger.Debugf(ctx, "Array is still running [Successes: %v, Failures: %v, Total: %v, MinSuccesses: %v]",

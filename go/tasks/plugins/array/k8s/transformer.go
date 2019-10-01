@@ -63,11 +63,6 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		return v1.Pod{}, nil, err
 	}
 
-	// TODO: WHY ARE WE DOING THIS???
-	// TODO: confirm whether this can be done when creating the pod spec directly above
-	podSpec.Containers[0].Command = taskTemplate.GetContainer().Command
-	podSpec.Containers[0].Args = taskTemplate.GetContainer().Args
-
 	return v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       PodKind,
