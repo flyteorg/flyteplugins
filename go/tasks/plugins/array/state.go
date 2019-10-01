@@ -232,14 +232,14 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 
 	if totalCount < minSuccesses {
 		logger.Infof(ctx, "Array failed because totalCount[%v] < minSuccesses[%v]", totalCount, minSuccesses)
-		return PhaseRetryableFailure
+		return PhaseAssembleFinalError
 	}
 
 	// No chance to reach the required success numbers.
 	if totalRunning+totalSuccesses < minSuccesses {
 		logger.Infof(ctx, "Array failed early because totalRunning[%v] + totalSuccesses[%v] < minSuccesses[%v]",
 			totalRunning, totalSuccesses, minSuccesses)
-		return PhaseRetryableFailure
+		return PhaseAssembleFinalError
 	}
 
 	if totalSuccesses >= minSuccesses && totalRunning == 0 {
