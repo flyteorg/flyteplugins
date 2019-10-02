@@ -20,17 +20,17 @@ func appendSubTaskOutput(outputs map[string]interface{}, subTaskOutput *core.Lit
 	for key, val := range subTaskOutput.GetLiterals() {
 		arr, exists := outputs[key]
 		if !exists {
-			arr = make([]*core.Literal, 0, expectedSize)
+			arr = make([]interface{}, 0, expectedSize)
 		}
 
-		arr = append(arr.([]*core.Literal), val)
+		arr = append(arr.([]interface{}), val)
 		outputs[key] = arr
 	}
 }
 
 func appendEmptyOutputs(outputs map[string]interface{}) {
 	for key, val := range outputs {
-		outputs[key] = append(val.([]*core.Literal), &core.Literal{})
+		outputs[key] = append(val.([]interface{}), &core.Literal{})
 	}
 }
 
