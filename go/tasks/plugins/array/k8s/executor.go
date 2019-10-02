@@ -58,8 +58,14 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case array.PhaseCheckingSubTaskExecutions:
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
+	case array.PhaseAssembleFinalOutput:
+		nextState, err = array.AssembleFinalOutputs(ctx, tCtx, pluginState)
+
 	case array.PhaseWriteToDiscovery:
 		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
+
+	case array.PhaseAssembleFinalError:
+		nextState, err = array.AssembleFinalErrors(ctx, tCtx, pluginConfig.MaxErrorStringLength, pluginState)
 
 	default:
 		nextState = pluginState
