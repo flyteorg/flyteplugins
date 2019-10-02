@@ -51,6 +51,10 @@ func (c ErrorMessageCollector) Summary(charLimit int) string {
 	return res
 }
 
+func (c ErrorMessageCollector) Length() int {
+	return len(c.messages)
+}
+
 // Creates a new efficient ErrorMessageCollector that can dedupe errors for array sub-tasks for storage efficiency.
 func NewErrorMessageCollector() ErrorMessageCollector {
 	return ErrorMessageCollector{
