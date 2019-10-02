@@ -183,6 +183,9 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 	case PhaseAssembleFinalOutput:
 		fallthrough
 
+	case PhaseAssembleFinalError:
+		fallthrough
+
 	case PhaseWriteToDiscovery:
 		version := GetPhaseVersionOffset(p, state.GetOriginalArraySize()) + version
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
