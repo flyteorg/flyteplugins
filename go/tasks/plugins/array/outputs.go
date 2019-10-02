@@ -76,7 +76,7 @@ func AssembleFinalOutputs(ctx context.Context, tCtx pluginCore.TaskExecutionCont
 		return nil, err
 	}
 
-	state = state.SetPhase(PhaseAssembleFinalOutput, 0)
+	state = state.SetPhase(PhaseSuccess, 0)
 	return state, nil
 }
 
