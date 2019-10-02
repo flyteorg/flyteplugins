@@ -163,7 +163,7 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // all the log links takes up a lot of space).
 func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 
-	var phaseInfo core.PhaseInfo
+	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
 	nowTaskInfo := &core.TaskInfo{OccurredAt: &t}
 
