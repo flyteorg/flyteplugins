@@ -260,8 +260,8 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
 	size int) ([]io.InputReader, error) {
 
-	inputReaders := make([]io.InputReader, size)
-	for i := 0; i < int(size); i++ {
+	inputReaders := make([]io.InputReader, 0, size)
+	for i := 0; i < size; i++ {
 		indexedInputLocation, err := dataStore.ConstructReference(ctx, inputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return inputReaders, err
@@ -277,9 +277,9 @@ func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, in
 func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
 	size int) ([]io.OutputWriter, error) {
 
-	outputWriters := make([]io.OutputWriter, size)
+	outputWriters := make([]io.OutputWriter, 0, size)
 
-	for i := 0; i < int(size); i++ {
+	for i := 0; i < size; i++ {
 		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return outputWriters, err
@@ -294,9 +294,9 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
 	size int) ([]io.OutputReader, error) {
 
-	outputReaders := make([]io.OutputReader, size)
+	outputReaders := make([]io.OutputReader, 0, size)
 
-	for i := 0; i < int(size); i++ {
+	for i := 0; i < size; i++ {
 		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
 		if err != nil {
 			return outputReaders, err
@@ -305,5 +305,6 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 		reader := ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999))
 		outputReaders = append(outputReaders, reader)
 	}
+
 	return outputReaders, nil
 }

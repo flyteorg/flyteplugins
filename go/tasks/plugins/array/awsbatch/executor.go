@@ -63,8 +63,16 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case array.PhaseCheckingSubTaskExecutions:
 		pluginState, err = CheckSubTasksState(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
+	case array.PhaseAssembleFinalOutput:
+		nextParentState, err = array.AssembleFinalOutputs(ctx, tCtx, pluginState)
+		pluginState.State = nextParentState
+
 	case array.PhaseWriteToDiscovery:
 		nextParentState, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State)
+		pluginState.State = nextParentState
+
+	case array.PhaseAssembleFinalError:
+		nextParentState, err = array.AssembleFinalErrors(ctx, tCtx, pluginConfig.MaxErrorStringLength, pluginState)
 		pluginState.State = nextParentState
 
 	default:
