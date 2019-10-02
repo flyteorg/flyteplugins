@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flytestdlib/storage"
+
 	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -25,6 +28,16 @@ const (
 	JobFormatter        = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/queue/arn:aws:batch:%v:%v:job-queue~2F%v/job/%v"
 	arrayJobIDFormatter = "%v:%v"
 )
+
+// A proxy inputreader that overrides the inputpath to be the inputpathprefix for array jobs
+type arrayJobInputReader struct {
+	io.InputReader
+}
+
+// We override the inputpath to return the prefix path for array jobs
+func (i arrayJobInputReader) GetInputPath() storage.DataReference {
+	return i.GetInputPrefixPath()
+}
 
 func GetJobUri(jobSize int, accountID, region, queue, jobID string, subTaskIndex int) string {
 	if jobSize > 1 {
@@ -62,7 +75,8 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 		return nil, err
 	}
 
-	args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(), tCtx.InputReader(), tCtx.OutputWriter())
+	args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(),
+		arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
 	taskTemplate.GetContainer().GetEnv()
 
 	envVars := getEnvVarsForTask(ctx, tCtx, taskTemplate.GetContainer().GetEnv(), cfg.DefaultEnvVars)
