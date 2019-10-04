@@ -47,6 +47,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
 			newArrayStatus.Summary.Inc(existingPhase)
+			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 
 			// TODO: collect log links before doing this
 			continue
