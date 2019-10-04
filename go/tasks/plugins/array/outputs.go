@@ -28,9 +28,15 @@ func appendSubTaskOutput(outputs map[string]interface{}, subTaskOutput *core.Lit
 	}
 }
 
-func appendEmptyOutputs(outputs map[string]interface{}) {
-	for key, val := range outputs {
-		outputs[key] = append(val.([]interface{}), &core.Literal{})
+func appendEmptyOutputs(vars map[string]*core.Variable, outputs map[string]interface{}) {
+	for key := range vars {
+		existingVal, found := outputs[key]
+		if !found {
+			existingVal = make([]interface{}, 0, 1)
+		}
+
+		existingVal = append(existingVal.([]interface{}), &core.Literal{})
+		outputs[key] = existingVal
 	}
 }
 
@@ -45,8 +51,19 @@ func AssembleFinalOutputs(ctx context.Context, tCtx pluginCore.TaskExecutionCont
 		return state, err
 	}
 
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	outputVariables := taskTemplate.GetInterface().GetOutputs()
+	if outputVariables == nil || outputVariables.GetVariables() == nil {
+		// If the task has no outputs, bail early.
+		state = state.SetPhase(PhaseSuccess, 0)
+		return state, nil
+	}
+
 	finalOutputs := map[string]interface{}{}
-	//finalOutputs := make([]*core.Literal, 0, state.GetOriginalArraySize())
 	for idx, subTaskPhaseIdx := range state.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := pluginCore.Phases[subTaskPhaseIdx]
 		if existingPhase.IsSuccess() {
@@ -62,7 +79,7 @@ func AssembleFinalOutputs(ctx context.Context, tCtx pluginCore.TaskExecutionCont
 		}
 
 		// TODO: Do we need the names of the outputs in the literalMap here?
-		appendEmptyOutputs(finalOutputs)
+		appendEmptyOutputs(outputVariables.GetVariables(), finalOutputs)
 	}
 
 	outputs, err := coreutils.MakeLiteralForMap(finalOutputs)
