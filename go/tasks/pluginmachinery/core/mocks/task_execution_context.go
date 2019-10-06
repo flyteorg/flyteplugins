@@ -79,6 +79,39 @@ func (_m *TaskExecutionContext) DataStore() *storage.DataStore {
 	return r0
 }
 
+type TaskExecutionContext_EnqueueOwner struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionContext_EnqueueOwner) Return(_a0 core.SignalOwner) *TaskExecutionContext_EnqueueOwner {
+	return &TaskExecutionContext_EnqueueOwner{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionContext) OnEnqueueOwner() *TaskExecutionContext_EnqueueOwner {
+	c := _m.On("EnqueueOwner")
+	return &TaskExecutionContext_EnqueueOwner{Call: c}
+}
+func (_m *TaskExecutionContext) OnEnqueueOwnerMatch(matchers ...interface{}) *TaskExecutionContext_EnqueueOwner {
+	c := _m.On("EnqueueOwner", matchers...)
+	return &TaskExecutionContext_EnqueueOwner{Call: c}
+}
+
+// EnqueueOwner provides a mock function with given fields:
+func (_m *TaskExecutionContext) EnqueueOwner() core.SignalOwner {
+	ret := _m.Called()
+
+	var r0 core.SignalOwner
+	if rf, ok := ret.Get(0).(func() core.SignalOwner); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.SignalOwner)
+		}
+	}
+
+	return r0
+}
+
 type TaskExecutionContext_EventsRecorder struct {
 	*mock.Call
 }

@@ -40,3 +40,8 @@ func (_m *UploadFuture) GetResponseStatus() catalog.ResponseStatus {
 
 	return r0
 }
+
+// OnReady provides a mock function with given fields: handler
+func (_m *UploadFuture) OnReady(handler catalog.ReadyHandler) {
+	_m.Called(handler)
+}
