@@ -108,6 +108,11 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		state = state.SetIndexesToCache(invertBitSet(resp.GetCachedResults()))
 		state = state.SetPhase(PhaseLaunch, 0)
 		state = state.SetActualArraySize(int(arrayJob.Size) - resp.GetCachedCount())
+	} else {
+		ownerSignal := tCtx.EnqueueOwner()
+		future.OnReady(func(ctx context.Context, _ catalog.Future) {
+			ownerSignal(ctx)
+		})
 	}
 
 	return state, nil
@@ -146,7 +151,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
 	}
 
-	allWritten, err := WriteToCatalog(ctx, tCtx.Catalog(), catalogWriterItems)
+	allWritten, err := WriteToCatalog(ctx, tCtx.EnqueueOwner(), tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
 		state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
 	}
@@ -154,7 +159,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	return state, nil
 }
 
-func WriteToCatalog(ctx context.Context, catalogClient catalog.AsyncClient,
+func WriteToCatalog(ctx context.Context, ownerSignal core.SignalOwner, catalogClient catalog.AsyncClient,
 	workItems []catalog.UploadRequest) (bool, error) {
 
 	// Enqueue work items
@@ -165,7 +170,15 @@ func WriteToCatalog(ctx context.Context, catalogClient catalog.AsyncClient,
 	}
 
 	// Immediately read back from the work queue, and see if it's done.
-	return future.GetResponseStatus() == catalog.ResponseStatusReady, nil
+	if future.GetResponseStatus() == catalog.ResponseStatusReady {
+		return true, nil
+	}
+
+	future.OnReady(func(ctx context.Context, _ catalog.Future) {
+		ownerSignal(ctx)
+	})
+
+	return false, nil
 }
 
 func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
@@ -284,6 +297,7 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return outputWriters, err
 		}
+
 		writer := ioutils.NewRemoteFileOutputWriter(ctx, dataStore, ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference))
 		outputWriters = append(outputWriters, writer)
 	}
