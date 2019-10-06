@@ -7,6 +7,7 @@ import (
 
 type future struct {
 	responseStatus ResponseStatus
+	readyHandler   ReadyHandler
 }
 
 func (f future) GetResponseStatus() ResponseStatus {
@@ -15,6 +16,10 @@ func (f future) GetResponseStatus() ResponseStatus {
 
 func (f *future) SetResponseStatus(status ResponseStatus) {
 	f.responseStatus = status
+}
+
+func (f *future) OnReady(handler ReadyHandler) {
+	f.readyHandler = handler
 }
 
 type downloadFuture struct {

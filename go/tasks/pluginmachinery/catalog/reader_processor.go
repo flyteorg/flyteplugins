@@ -39,7 +39,6 @@ func (item ReaderWorkItem) IsCached() bool {
 }
 
 func NewReaderWorkItem(id workqueue.WorkItemID, key Key, outputsWriter io.OutputWriter) *ReaderWorkItem {
-
 	return &ReaderWorkItem{
 		id:            id,
 		key:           key,
