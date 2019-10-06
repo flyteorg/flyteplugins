@@ -10,6 +10,23 @@ type Cache struct {
 	mock.Mock
 }
 
+type Cache_Get struct {
+	*mock.Call
+}
+
+func (_m Cache_Get) Return(jobDefinition string, found bool) *Cache_Get {
+	return &Cache_Get{Call: _m.Call.Return(jobDefinition, found)}
+}
+
+func (_m *Cache) OnGet(key definition.CacheKey) *Cache_Get {
+	c := _m.On("Get")
+	return &Cache_Get{Call: c}
+}
+func (_m *Cache) OnGetMatch(matchers ...interface{}) *Cache_Get {
+	c := _m.On("Get", matchers...)
+	return &Cache_Get{Call: c}
+}
+
 // Get provides a mock function with given fields: key
 func (_m *Cache) Get(key definition.CacheKey) (string, bool) {
 	ret := _m.Called(key)
@@ -29,6 +46,23 @@ func (_m *Cache) Get(key definition.CacheKey) (string, bool) {
 	}
 
 	return r0, r1
+}
+
+type Cache_Put struct {
+	*mock.Call
+}
+
+func (_m Cache_Put) Return(_a0 error) *Cache_Put {
+	return &Cache_Put{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Cache) OnPut(key definition.CacheKey, _a1 string) *Cache_Put {
+	c := _m.On("Put")
+	return &Cache_Put{Call: c}
+}
+func (_m *Cache) OnPutMatch(matchers ...interface{}) *Cache_Put {
+	c := _m.On("Put", matchers...)
+	return &Cache_Put{Call: c}
 }
 
 // Put provides a mock function with given fields: key, _a1

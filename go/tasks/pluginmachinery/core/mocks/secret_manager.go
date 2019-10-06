@@ -11,6 +11,23 @@ type SecretManager struct {
 	mock.Mock
 }
 
+type SecretManager_Get struct {
+	*mock.Call
+}
+
+func (_m SecretManager_Get) Return(_a0 string, _a1 error) *SecretManager_Get {
+	return &SecretManager_Get{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *SecretManager) OnGet(ctx context.Context, key string) *SecretManager_Get {
+	c := _m.On("Get")
+	return &SecretManager_Get{Call: c}
+}
+func (_m *SecretManager) OnGetMatch(matchers ...interface{}) *SecretManager_Get {
+	c := _m.On("Get", matchers...)
+	return &SecretManager_Get{Call: c}
+}
+
 // Get provides a mock function with given fields: ctx, key
 func (_m *SecretManager) Get(ctx context.Context, key string) (string, error) {
 	ret := _m.Called(ctx, key)

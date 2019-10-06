@@ -68,8 +68,9 @@ func dummyTaskReader() pluginsCore.TaskReader {
 
 func dummyInputReader() io.InputReader {
 	inputReader := &pluginsIOMock.InputReader{}
-	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
-	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
+	inputReader.OnGetInputPath().Return(storage.DataReference("test-data-reference"))
+	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("test-data-reference-prefix"))
+	inputReader.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 	return inputReader
 }
 

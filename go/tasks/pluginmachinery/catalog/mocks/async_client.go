@@ -11,6 +11,23 @@ type AsyncClient struct {
 	mock.Mock
 }
 
+type AsyncClient_Download struct {
+	*mock.Call
+}
+
+func (_m AsyncClient_Download) Return(outputFuture catalog.DownloadFuture, err error) *AsyncClient_Download {
+	return &AsyncClient_Download{Call: _m.Call.Return(outputFuture, err)}
+}
+
+func (_m *AsyncClient) OnDownload(ctx context.Context, requests ...catalog.DownloadRequest) *AsyncClient_Download {
+	c := _m.On("Download")
+	return &AsyncClient_Download{Call: c}
+}
+func (_m *AsyncClient) OnDownloadMatch(matchers ...interface{}) *AsyncClient_Download {
+	c := _m.On("Download", matchers...)
+	return &AsyncClient_Download{Call: c}
+}
+
 // Download provides a mock function with given fields: ctx, requests
 func (_m *AsyncClient) Download(ctx context.Context, requests ...catalog.DownloadRequest) (catalog.DownloadFuture, error) {
 	_va := make([]interface{}, len(requests))
@@ -39,6 +56,23 @@ func (_m *AsyncClient) Download(ctx context.Context, requests ...catalog.Downloa
 	}
 
 	return r0, r1
+}
+
+type AsyncClient_Upload struct {
+	*mock.Call
+}
+
+func (_m AsyncClient_Upload) Return(putFuture catalog.UploadFuture, err error) *AsyncClient_Upload {
+	return &AsyncClient_Upload{Call: _m.Call.Return(putFuture, err)}
+}
+
+func (_m *AsyncClient) OnUpload(ctx context.Context, requests ...catalog.UploadRequest) *AsyncClient_Upload {
+	c := _m.On("Upload")
+	return &AsyncClient_Upload{Call: c}
+}
+func (_m *AsyncClient) OnUploadMatch(matchers ...interface{}) *AsyncClient_Upload {
+	c := _m.On("Upload", matchers...)
+	return &AsyncClient_Upload{Call: c}
 }
 
 // Upload provides a mock function with given fields: ctx, requests
