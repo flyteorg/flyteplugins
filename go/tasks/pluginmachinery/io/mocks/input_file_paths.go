@@ -10,6 +10,23 @@ type InputFilePaths struct {
 	mock.Mock
 }
 
+type InputFilePaths_GetInputPath struct {
+	*mock.Call
+}
+
+func (_m InputFilePaths_GetInputPath) Return(_a0 storage.DataReference) *InputFilePaths_GetInputPath {
+	return &InputFilePaths_GetInputPath{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *InputFilePaths) OnGetInputPath() *InputFilePaths_GetInputPath {
+	c := _m.On("GetInputPath")
+	return &InputFilePaths_GetInputPath{Call: c}
+}
+func (_m *InputFilePaths) OnGetInputPathMatch(matchers ...interface{}) *InputFilePaths_GetInputPath {
+	c := _m.On("GetInputPath", matchers...)
+	return &InputFilePaths_GetInputPath{Call: c}
+}
+
 // GetInputPath provides a mock function with given fields:
 func (_m *InputFilePaths) GetInputPath() storage.DataReference {
 	ret := _m.Called()
@@ -22,6 +39,23 @@ func (_m *InputFilePaths) GetInputPath() storage.DataReference {
 	}
 
 	return r0
+}
+
+type InputFilePaths_GetInputPrefixPath struct {
+	*mock.Call
+}
+
+func (_m InputFilePaths_GetInputPrefixPath) Return(_a0 storage.DataReference) *InputFilePaths_GetInputPrefixPath {
+	return &InputFilePaths_GetInputPrefixPath{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *InputFilePaths) OnGetInputPrefixPath() *InputFilePaths_GetInputPrefixPath {
+	c := _m.On("GetInputPrefixPath")
+	return &InputFilePaths_GetInputPrefixPath{Call: c}
+}
+func (_m *InputFilePaths) OnGetInputPrefixPathMatch(matchers ...interface{}) *InputFilePaths_GetInputPrefixPath {
+	c := _m.On("GetInputPrefixPath", matchers...)
+	return &InputFilePaths_GetInputPrefixPath{Call: c}
 }
 
 // GetInputPrefixPath provides a mock function with given fields:

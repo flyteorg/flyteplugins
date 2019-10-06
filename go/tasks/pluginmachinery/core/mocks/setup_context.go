@@ -11,6 +11,23 @@ type SetupContext struct {
 	mock.Mock
 }
 
+type SetupContext_EnqueueOwner struct {
+	*mock.Call
+}
+
+func (_m SetupContext_EnqueueOwner) Return(_a0 core.EnqueueOwner) *SetupContext_EnqueueOwner {
+	return &SetupContext_EnqueueOwner{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *SetupContext) OnEnqueueOwner() *SetupContext_EnqueueOwner {
+	c := _m.On("EnqueueOwner")
+	return &SetupContext_EnqueueOwner{Call: c}
+}
+func (_m *SetupContext) OnEnqueueOwnerMatch(matchers ...interface{}) *SetupContext_EnqueueOwner {
+	c := _m.On("EnqueueOwner", matchers...)
+	return &SetupContext_EnqueueOwner{Call: c}
+}
+
 // EnqueueOwner provides a mock function with given fields:
 func (_m *SetupContext) EnqueueOwner() core.EnqueueOwner {
 	ret := _m.Called()
@@ -25,6 +42,23 @@ func (_m *SetupContext) EnqueueOwner() core.EnqueueOwner {
 	}
 
 	return r0
+}
+
+type SetupContext_KubeClient struct {
+	*mock.Call
+}
+
+func (_m SetupContext_KubeClient) Return(_a0 core.KubeClient) *SetupContext_KubeClient {
+	return &SetupContext_KubeClient{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *SetupContext) OnKubeClient() *SetupContext_KubeClient {
+	c := _m.On("KubeClient")
+	return &SetupContext_KubeClient{Call: c}
+}
+func (_m *SetupContext) OnKubeClientMatch(matchers ...interface{}) *SetupContext_KubeClient {
+	c := _m.On("KubeClient", matchers...)
+	return &SetupContext_KubeClient{Call: c}
 }
 
 // KubeClient provides a mock function with given fields:
@@ -43,6 +77,23 @@ func (_m *SetupContext) KubeClient() core.KubeClient {
 	return r0
 }
 
+type SetupContext_MetricsScope struct {
+	*mock.Call
+}
+
+func (_m SetupContext_MetricsScope) Return(_a0 promutils.Scope) *SetupContext_MetricsScope {
+	return &SetupContext_MetricsScope{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *SetupContext) OnMetricsScope() *SetupContext_MetricsScope {
+	c := _m.On("MetricsScope")
+	return &SetupContext_MetricsScope{Call: c}
+}
+func (_m *SetupContext) OnMetricsScopeMatch(matchers ...interface{}) *SetupContext_MetricsScope {
+	c := _m.On("MetricsScope", matchers...)
+	return &SetupContext_MetricsScope{Call: c}
+}
+
 // MetricsScope provides a mock function with given fields:
 func (_m *SetupContext) MetricsScope() promutils.Scope {
 	ret := _m.Called()
@@ -59,6 +110,23 @@ func (_m *SetupContext) MetricsScope() promutils.Scope {
 	return r0
 }
 
+type SetupContext_OwnerKind struct {
+	*mock.Call
+}
+
+func (_m SetupContext_OwnerKind) Return(_a0 string) *SetupContext_OwnerKind {
+	return &SetupContext_OwnerKind{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *SetupContext) OnOwnerKind() *SetupContext_OwnerKind {
+	c := _m.On("OwnerKind")
+	return &SetupContext_OwnerKind{Call: c}
+}
+func (_m *SetupContext) OnOwnerKindMatch(matchers ...interface{}) *SetupContext_OwnerKind {
+	c := _m.On("OwnerKind", matchers...)
+	return &SetupContext_OwnerKind{Call: c}
+}
+
 // OwnerKind provides a mock function with given fields:
 func (_m *SetupContext) OwnerKind() string {
 	ret := _m.Called()
@@ -71,6 +139,23 @@ func (_m *SetupContext) OwnerKind() string {
 	}
 
 	return r0
+}
+
+type SetupContext_SecretManager struct {
+	*mock.Call
+}
+
+func (_m SetupContext_SecretManager) Return(_a0 core.SecretManager) *SetupContext_SecretManager {
+	return &SetupContext_SecretManager{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *SetupContext) OnSecretManager() *SetupContext_SecretManager {
+	c := _m.On("SecretManager")
+	return &SetupContext_SecretManager{Call: c}
+}
+func (_m *SetupContext) OnSecretManagerMatch(matchers ...interface{}) *SetupContext_SecretManager {
+	c := _m.On("SecretManager", matchers...)
+	return &SetupContext_SecretManager{Call: c}
 }
 
 // SecretManager provides a mock function with given fields:

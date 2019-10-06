@@ -9,6 +9,23 @@ type CacheKey struct {
 	mock.Mock
 }
 
+type CacheKey_String struct {
+	*mock.Call
+}
+
+func (_m CacheKey_String) Return(_a0 string) *CacheKey_String {
+	return &CacheKey_String{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *CacheKey) OnString() *CacheKey_String {
+	c := _m.On("String")
+	return &CacheKey_String{Call: c}
+}
+func (_m *CacheKey) OnStringMatch(matchers ...interface{}) *CacheKey_String {
+	c := _m.On("String", matchers...)
+	return &CacheKey_String{Call: c}
+}
+
 // String provides a mock function with given fields:
 func (_m *CacheKey) String() string {
 	ret := _m.Called()

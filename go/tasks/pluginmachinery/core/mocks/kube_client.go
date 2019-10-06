@@ -12,6 +12,23 @@ type KubeClient struct {
 	mock.Mock
 }
 
+type KubeClient_GetCache struct {
+	*mock.Call
+}
+
+func (_m KubeClient_GetCache) Return(_a0 cache.Cache) *KubeClient_GetCache {
+	return &KubeClient_GetCache{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *KubeClient) OnGetCache() *KubeClient_GetCache {
+	c := _m.On("GetCache")
+	return &KubeClient_GetCache{Call: c}
+}
+func (_m *KubeClient) OnGetCacheMatch(matchers ...interface{}) *KubeClient_GetCache {
+	c := _m.On("GetCache", matchers...)
+	return &KubeClient_GetCache{Call: c}
+}
+
 // GetCache provides a mock function with given fields:
 func (_m *KubeClient) GetCache() cache.Cache {
 	ret := _m.Called()
@@ -26,6 +43,23 @@ func (_m *KubeClient) GetCache() cache.Cache {
 	}
 
 	return r0
+}
+
+type KubeClient_GetClient struct {
+	*mock.Call
+}
+
+func (_m KubeClient_GetClient) Return(_a0 client.Client) *KubeClient_GetClient {
+	return &KubeClient_GetClient{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *KubeClient) OnGetClient() *KubeClient_GetClient {
+	c := _m.On("GetClient")
+	return &KubeClient_GetClient{Call: c}
+}
+func (_m *KubeClient) OnGetClientMatch(matchers ...interface{}) *KubeClient_GetClient {
+	c := _m.On("GetClient", matchers...)
+	return &KubeClient_GetClient{Call: c}
 }
 
 // GetClient provides a mock function with given fields:

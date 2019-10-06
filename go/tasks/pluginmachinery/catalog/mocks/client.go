@@ -12,6 +12,23 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Get struct {
+	*mock.Call
+}
+
+func (_m Client_Get) Return(_a0 io.OutputReader, _a1 error) *Client_Get {
+	return &Client_Get{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *Client) OnGet(ctx context.Context, key catalog.Key) *Client_Get {
+	c := _m.On("Get")
+	return &Client_Get{Call: c}
+}
+func (_m *Client) OnGetMatch(matchers ...interface{}) *Client_Get {
+	c := _m.On("Get", matchers...)
+	return &Client_Get{Call: c}
+}
+
 // Get provides a mock function with given fields: ctx, key
 func (_m *Client) Get(ctx context.Context, key catalog.Key) (io.OutputReader, error) {
 	ret := _m.Called(ctx, key)
@@ -33,6 +50,23 @@ func (_m *Client) Get(ctx context.Context, key catalog.Key) (io.OutputReader, er
 	}
 
 	return r0, r1
+}
+
+type Client_Put struct {
+	*mock.Call
+}
+
+func (_m Client_Put) Return(_a0 error) *Client_Put {
+	return &Client_Put{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Client) OnPut(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata) *Client_Put {
+	c := _m.On("Put")
+	return &Client_Put{Call: c}
+}
+func (_m *Client) OnPutMatch(matchers ...interface{}) *Client_Put {
+	c := _m.On("Put", matchers...)
+	return &Client_Put{Call: c}
 }
 
 // Put provides a mock function with given fields: ctx, key, reader, metadata
