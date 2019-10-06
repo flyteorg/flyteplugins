@@ -11,6 +11,23 @@ type QuboleClient struct {
 	mock.Mock
 }
 
+type QuboleClient_ExecuteHiveCommand struct {
+	*mock.Call
+}
+
+func (_m QuboleClient_ExecuteHiveCommand) Return(_a0 *client.QuboleCommandDetails, _a1 error) *QuboleClient_ExecuteHiveCommand {
+	return &QuboleClient_ExecuteHiveCommand{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *QuboleClient) OnExecuteHiveCommand(ctx context.Context, commandStr string, timeoutVal uint32, clusterLabel string, accountKey string, tags []string) *QuboleClient_ExecuteHiveCommand {
+	c := _m.On("ExecuteHiveCommand")
+	return &QuboleClient_ExecuteHiveCommand{Call: c}
+}
+func (_m *QuboleClient) OnExecuteHiveCommandMatch(matchers ...interface{}) *QuboleClient_ExecuteHiveCommand {
+	c := _m.On("ExecuteHiveCommand", matchers...)
+	return &QuboleClient_ExecuteHiveCommand{Call: c}
+}
+
 // ExecuteHiveCommand provides a mock function with given fields: ctx, commandStr, timeoutVal, clusterLabel, accountKey, tags
 func (_m *QuboleClient) ExecuteHiveCommand(ctx context.Context, commandStr string, timeoutVal uint32, clusterLabel string, accountKey string, tags []string) (*client.QuboleCommandDetails, error) {
 	ret := _m.Called(ctx, commandStr, timeoutVal, clusterLabel, accountKey, tags)
@@ -34,6 +51,23 @@ func (_m *QuboleClient) ExecuteHiveCommand(ctx context.Context, commandStr strin
 	return r0, r1
 }
 
+type QuboleClient_GetCommandStatus struct {
+	*mock.Call
+}
+
+func (_m QuboleClient_GetCommandStatus) Return(_a0 client.QuboleStatus, _a1 error) *QuboleClient_GetCommandStatus {
+	return &QuboleClient_GetCommandStatus{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *QuboleClient) OnGetCommandStatus(ctx context.Context, commandID string, accountKey string) *QuboleClient_GetCommandStatus {
+	c := _m.On("GetCommandStatus")
+	return &QuboleClient_GetCommandStatus{Call: c}
+}
+func (_m *QuboleClient) OnGetCommandStatusMatch(matchers ...interface{}) *QuboleClient_GetCommandStatus {
+	c := _m.On("GetCommandStatus", matchers...)
+	return &QuboleClient_GetCommandStatus{Call: c}
+}
+
 // GetCommandStatus provides a mock function with given fields: ctx, commandID, accountKey
 func (_m *QuboleClient) GetCommandStatus(ctx context.Context, commandID string, accountKey string) (client.QuboleStatus, error) {
 	ret := _m.Called(ctx, commandID, accountKey)
@@ -53,6 +87,23 @@ func (_m *QuboleClient) GetCommandStatus(ctx context.Context, commandID string, 
 	}
 
 	return r0, r1
+}
+
+type QuboleClient_KillCommand struct {
+	*mock.Call
+}
+
+func (_m QuboleClient_KillCommand) Return(_a0 error) *QuboleClient_KillCommand {
+	return &QuboleClient_KillCommand{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *QuboleClient) OnKillCommand(ctx context.Context, commandID string, accountKey string) *QuboleClient_KillCommand {
+	c := _m.On("KillCommand")
+	return &QuboleClient_KillCommand{Call: c}
+}
+func (_m *QuboleClient) OnKillCommandMatch(matchers ...interface{}) *QuboleClient_KillCommand {
+	c := _m.On("KillCommand", matchers...)
+	return &QuboleClient_KillCommand{Call: c}
 }
 
 // KillCommand provides a mock function with given fields: ctx, commandID, accountKey

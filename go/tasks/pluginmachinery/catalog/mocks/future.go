@@ -10,6 +10,23 @@ type Future struct {
 	mock.Mock
 }
 
+type Future_GetResponseStatus struct {
+	*mock.Call
+}
+
+func (_m Future_GetResponseStatus) Return(_a0 catalog.ResponseStatus) *Future_GetResponseStatus {
+	return &Future_GetResponseStatus{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Future) OnGetResponseStatus() *Future_GetResponseStatus {
+	c := _m.On("GetResponseStatus")
+	return &Future_GetResponseStatus{Call: c}
+}
+func (_m *Future) OnGetResponseStatusMatch(matchers ...interface{}) *Future_GetResponseStatus {
+	c := _m.On("GetResponseStatus", matchers...)
+	return &Future_GetResponseStatus{Call: c}
+}
+
 // GetResponseStatus provides a mock function with given fields:
 func (_m *Future) GetResponseStatus() catalog.ResponseStatus {
 	ret := _m.Called()

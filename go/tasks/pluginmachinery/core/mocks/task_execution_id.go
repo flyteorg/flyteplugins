@@ -10,6 +10,23 @@ type TaskExecutionID struct {
 	mock.Mock
 }
 
+type TaskExecutionID_GetGeneratedName struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionID_GetGeneratedName) Return(_a0 string) *TaskExecutionID_GetGeneratedName {
+	return &TaskExecutionID_GetGeneratedName{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionID) OnGetGeneratedName() *TaskExecutionID_GetGeneratedName {
+	c := _m.On("GetGeneratedName")
+	return &TaskExecutionID_GetGeneratedName{Call: c}
+}
+func (_m *TaskExecutionID) OnGetGeneratedNameMatch(matchers ...interface{}) *TaskExecutionID_GetGeneratedName {
+	c := _m.On("GetGeneratedName", matchers...)
+	return &TaskExecutionID_GetGeneratedName{Call: c}
+}
+
 // GetGeneratedName provides a mock function with given fields:
 func (_m *TaskExecutionID) GetGeneratedName() string {
 	ret := _m.Called()
@@ -22,6 +39,23 @@ func (_m *TaskExecutionID) GetGeneratedName() string {
 	}
 
 	return r0
+}
+
+type TaskExecutionID_GetID struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionID_GetID) Return(_a0 flyteidlcore.TaskExecutionIdentifier) *TaskExecutionID_GetID {
+	return &TaskExecutionID_GetID{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionID) OnGetID() *TaskExecutionID_GetID {
+	c := _m.On("GetID")
+	return &TaskExecutionID_GetID{Call: c}
+}
+func (_m *TaskExecutionID) OnGetIDMatch(matchers ...interface{}) *TaskExecutionID_GetID {
+	c := _m.On("GetID", matchers...)
+	return &TaskExecutionID_GetID{Call: c}
 }
 
 // GetID provides a mock function with given fields:

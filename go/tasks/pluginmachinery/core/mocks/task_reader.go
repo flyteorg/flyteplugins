@@ -11,6 +11,23 @@ type TaskReader struct {
 	mock.Mock
 }
 
+type TaskReader_Read struct {
+	*mock.Call
+}
+
+func (_m TaskReader_Read) Return(_a0 *core.TaskTemplate, _a1 error) *TaskReader_Read {
+	return &TaskReader_Read{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *TaskReader) OnRead(ctx context.Context) *TaskReader_Read {
+	c := _m.On("Read")
+	return &TaskReader_Read{Call: c}
+}
+func (_m *TaskReader) OnReadMatch(matchers ...interface{}) *TaskReader_Read {
+	c := _m.On("Read", matchers...)
+	return &TaskReader_Read{Call: c}
+}
+
 // Read provides a mock function with given fields: ctx
 func (_m *TaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) {
 	ret := _m.Called(ctx)

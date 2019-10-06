@@ -11,6 +11,23 @@ type ResourceManager struct {
 	mock.Mock
 }
 
+type ResourceManager_AllocateResource struct {
+	*mock.Call
+}
+
+func (_m ResourceManager_AllocateResource) Return(_a0 core.AllocationStatus, _a1 error) *ResourceManager_AllocateResource {
+	return &ResourceManager_AllocateResource{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *ResourceManager) OnAllocateResource(ctx context.Context, namespace string, allocationToken string) *ResourceManager_AllocateResource {
+	c := _m.On("AllocateResource")
+	return &ResourceManager_AllocateResource{Call: c}
+}
+func (_m *ResourceManager) OnAllocateResourceMatch(matchers ...interface{}) *ResourceManager_AllocateResource {
+	c := _m.On("AllocateResource", matchers...)
+	return &ResourceManager_AllocateResource{Call: c}
+}
+
 // AllocateResource provides a mock function with given fields: ctx, namespace, allocationToken
 func (_m *ResourceManager) AllocateResource(ctx context.Context, namespace string, allocationToken string) (core.AllocationStatus, error) {
 	ret := _m.Called(ctx, namespace, allocationToken)
@@ -30,6 +47,23 @@ func (_m *ResourceManager) AllocateResource(ctx context.Context, namespace strin
 	}
 
 	return r0, r1
+}
+
+type ResourceManager_ReleaseResource struct {
+	*mock.Call
+}
+
+func (_m ResourceManager_ReleaseResource) Return(_a0 error) *ResourceManager_ReleaseResource {
+	return &ResourceManager_ReleaseResource{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *ResourceManager) OnReleaseResource(ctx context.Context, namespace string, allocationToken string) *ResourceManager_ReleaseResource {
+	c := _m.On("ReleaseResource")
+	return &ResourceManager_ReleaseResource{Call: c}
+}
+func (_m *ResourceManager) OnReleaseResourceMatch(matchers ...interface{}) *ResourceManager_ReleaseResource {
+	c := _m.On("ReleaseResource", matchers...)
+	return &ResourceManager_ReleaseResource{Call: c}
 }
 
 // ReleaseResource provides a mock function with given fields: ctx, namespace, allocationToken
