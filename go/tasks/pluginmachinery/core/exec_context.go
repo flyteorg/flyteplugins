@@ -49,7 +49,13 @@ type TaskExecutionContext interface {
 
 	// Returns a handle to the Task events recorder, which get stored in the Admin.
 	EventsRecorder() EventsRecorder
+
+	// Gets a handler to invoke for async operations this task spawns. This ensures that the owner object gets traversed
+	// as soon as possible without necessarily waiting for the typical resync period.
+	EnqueueOwner() SignalOwner
 }
+
+type SignalOwner func(ctx context.Context)
 
 // Task events recorder, which get stored in the Admin. If this is invoked multiple times,
 // multiple events will be sent to Admin. It is not recommended that one uses this interface, a transition will trigger an auto event to admin

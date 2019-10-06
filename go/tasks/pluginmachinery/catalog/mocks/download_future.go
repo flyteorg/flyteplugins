@@ -80,3 +80,8 @@ func (_m *DownloadFuture) GetResponseStatus() catalog.ResponseStatus {
 
 	return r0
 }
+
+// OnReady provides a mock function with given fields: handler
+func (_m *DownloadFuture) OnReady(handler catalog.ReadyHandler) {
+	_m.Called(handler)
+}

@@ -28,27 +28,46 @@ type UploadRequest struct {
 	ArtifactMetadata Metadata
 }
 
+type ReadyHandler func(ctx context.Context, future Future)
+
+// A generic Future interface to represent async operations results
 type Future interface {
+	// Gets the response status for the future. If the future represents multiple operations, the status will only be
+	// ready if all of them are.
 	GetResponseStatus() ResponseStatus
+
+	// Sets a callback handler to be called when the future status changes to ready.
+	OnReady(handler ReadyHandler)
 }
 
+// Catalog Upload future to represent async process of uploading catalog artifacts.
 type UploadFuture interface {
 	Future
 }
 
+// Catalog Download Request to represent async operation download request.
 type DownloadRequest struct {
 	Key    Key
 	Target io.OutputWriter
 }
 
+// Catalog download future to represent async process of downloading catalog artifacts.
 type DownloadFuture interface {
 	Future
+
+	// Gets the actual response from the future. This will return an error if the future isn't ready yet.
 	GetResponse() (DownloadResponse, error)
 }
 
+// Catalog download response.
 type DownloadResponse interface {
+	// Gets a bit set representing which items from the request were cached.
 	GetCachedResults() *bitarray.BitSet
+
+	// Gets the total size of the cached result.
 	GetResultsSize() int
+
+	// A convenience method to retrieve the number of cached items.
 	GetCachedCount() int
 }
 
