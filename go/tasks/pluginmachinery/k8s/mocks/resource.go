@@ -13,6 +13,23 @@ type Resource struct {
 	mock.Mock
 }
 
+type Resource_DeepCopyObject struct {
+	*mock.Call
+}
+
+func (_m Resource_DeepCopyObject) Return(_a0 runtime.Object) *Resource_DeepCopyObject {
+	return &Resource_DeepCopyObject{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnDeepCopyObject() *Resource_DeepCopyObject {
+	c := _m.On("DeepCopyObject")
+	return &Resource_DeepCopyObject{Call: c}
+}
+func (_m *Resource) OnDeepCopyObjectMatch(matchers ...interface{}) *Resource_DeepCopyObject {
+	c := _m.On("DeepCopyObject", matchers...)
+	return &Resource_DeepCopyObject{Call: c}
+}
+
 // DeepCopyObject provides a mock function with given fields:
 func (_m *Resource) DeepCopyObject() runtime.Object {
 	ret := _m.Called()
@@ -27,6 +44,23 @@ func (_m *Resource) DeepCopyObject() runtime.Object {
 	}
 
 	return r0
+}
+
+type Resource_GetAnnotations struct {
+	*mock.Call
+}
+
+func (_m Resource_GetAnnotations) Return(_a0 map[string]string) *Resource_GetAnnotations {
+	return &Resource_GetAnnotations{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetAnnotations() *Resource_GetAnnotations {
+	c := _m.On("GetAnnotations")
+	return &Resource_GetAnnotations{Call: c}
+}
+func (_m *Resource) OnGetAnnotationsMatch(matchers ...interface{}) *Resource_GetAnnotations {
+	c := _m.On("GetAnnotations", matchers...)
+	return &Resource_GetAnnotations{Call: c}
 }
 
 // GetAnnotations provides a mock function with given fields:
@@ -45,6 +79,23 @@ func (_m *Resource) GetAnnotations() map[string]string {
 	return r0
 }
 
+type Resource_GetClusterName struct {
+	*mock.Call
+}
+
+func (_m Resource_GetClusterName) Return(_a0 string) *Resource_GetClusterName {
+	return &Resource_GetClusterName{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetClusterName() *Resource_GetClusterName {
+	c := _m.On("GetClusterName")
+	return &Resource_GetClusterName{Call: c}
+}
+func (_m *Resource) OnGetClusterNameMatch(matchers ...interface{}) *Resource_GetClusterName {
+	c := _m.On("GetClusterName", matchers...)
+	return &Resource_GetClusterName{Call: c}
+}
+
 // GetClusterName provides a mock function with given fields:
 func (_m *Resource) GetClusterName() string {
 	ret := _m.Called()
@@ -59,6 +110,23 @@ func (_m *Resource) GetClusterName() string {
 	return r0
 }
 
+type Resource_GetCreationTimestamp struct {
+	*mock.Call
+}
+
+func (_m Resource_GetCreationTimestamp) Return(_a0 v1.Time) *Resource_GetCreationTimestamp {
+	return &Resource_GetCreationTimestamp{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetCreationTimestamp() *Resource_GetCreationTimestamp {
+	c := _m.On("GetCreationTimestamp")
+	return &Resource_GetCreationTimestamp{Call: c}
+}
+func (_m *Resource) OnGetCreationTimestampMatch(matchers ...interface{}) *Resource_GetCreationTimestamp {
+	c := _m.On("GetCreationTimestamp", matchers...)
+	return &Resource_GetCreationTimestamp{Call: c}
+}
+
 // GetCreationTimestamp provides a mock function with given fields:
 func (_m *Resource) GetCreationTimestamp() v1.Time {
 	ret := _m.Called()
@@ -71,6 +139,23 @@ func (_m *Resource) GetCreationTimestamp() v1.Time {
 	}
 
 	return r0
+}
+
+type Resource_GetDeletionGracePeriodSeconds struct {
+	*mock.Call
+}
+
+func (_m Resource_GetDeletionGracePeriodSeconds) Return(_a0 *int64) *Resource_GetDeletionGracePeriodSeconds {
+	return &Resource_GetDeletionGracePeriodSeconds{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetDeletionGracePeriodSeconds() *Resource_GetDeletionGracePeriodSeconds {
+	c := _m.On("GetDeletionGracePeriodSeconds")
+	return &Resource_GetDeletionGracePeriodSeconds{Call: c}
+}
+func (_m *Resource) OnGetDeletionGracePeriodSecondsMatch(matchers ...interface{}) *Resource_GetDeletionGracePeriodSeconds {
+	c := _m.On("GetDeletionGracePeriodSeconds", matchers...)
+	return &Resource_GetDeletionGracePeriodSeconds{Call: c}
 }
 
 // GetDeletionGracePeriodSeconds provides a mock function with given fields:
@@ -89,6 +174,23 @@ func (_m *Resource) GetDeletionGracePeriodSeconds() *int64 {
 	return r0
 }
 
+type Resource_GetDeletionTimestamp struct {
+	*mock.Call
+}
+
+func (_m Resource_GetDeletionTimestamp) Return(_a0 *v1.Time) *Resource_GetDeletionTimestamp {
+	return &Resource_GetDeletionTimestamp{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetDeletionTimestamp() *Resource_GetDeletionTimestamp {
+	c := _m.On("GetDeletionTimestamp")
+	return &Resource_GetDeletionTimestamp{Call: c}
+}
+func (_m *Resource) OnGetDeletionTimestampMatch(matchers ...interface{}) *Resource_GetDeletionTimestamp {
+	c := _m.On("GetDeletionTimestamp", matchers...)
+	return &Resource_GetDeletionTimestamp{Call: c}
+}
+
 // GetDeletionTimestamp provides a mock function with given fields:
 func (_m *Resource) GetDeletionTimestamp() *v1.Time {
 	ret := _m.Called()
@@ -103,6 +205,23 @@ func (_m *Resource) GetDeletionTimestamp() *v1.Time {
 	}
 
 	return r0
+}
+
+type Resource_GetFinalizers struct {
+	*mock.Call
+}
+
+func (_m Resource_GetFinalizers) Return(_a0 []string) *Resource_GetFinalizers {
+	return &Resource_GetFinalizers{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetFinalizers() *Resource_GetFinalizers {
+	c := _m.On("GetFinalizers")
+	return &Resource_GetFinalizers{Call: c}
+}
+func (_m *Resource) OnGetFinalizersMatch(matchers ...interface{}) *Resource_GetFinalizers {
+	c := _m.On("GetFinalizers", matchers...)
+	return &Resource_GetFinalizers{Call: c}
 }
 
 // GetFinalizers provides a mock function with given fields:
@@ -121,6 +240,23 @@ func (_m *Resource) GetFinalizers() []string {
 	return r0
 }
 
+type Resource_GetGenerateName struct {
+	*mock.Call
+}
+
+func (_m Resource_GetGenerateName) Return(_a0 string) *Resource_GetGenerateName {
+	return &Resource_GetGenerateName{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetGenerateName() *Resource_GetGenerateName {
+	c := _m.On("GetGenerateName")
+	return &Resource_GetGenerateName{Call: c}
+}
+func (_m *Resource) OnGetGenerateNameMatch(matchers ...interface{}) *Resource_GetGenerateName {
+	c := _m.On("GetGenerateName", matchers...)
+	return &Resource_GetGenerateName{Call: c}
+}
+
 // GetGenerateName provides a mock function with given fields:
 func (_m *Resource) GetGenerateName() string {
 	ret := _m.Called()
@@ -135,6 +271,23 @@ func (_m *Resource) GetGenerateName() string {
 	return r0
 }
 
+type Resource_GetGeneration struct {
+	*mock.Call
+}
+
+func (_m Resource_GetGeneration) Return(_a0 int64) *Resource_GetGeneration {
+	return &Resource_GetGeneration{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetGeneration() *Resource_GetGeneration {
+	c := _m.On("GetGeneration")
+	return &Resource_GetGeneration{Call: c}
+}
+func (_m *Resource) OnGetGenerationMatch(matchers ...interface{}) *Resource_GetGeneration {
+	c := _m.On("GetGeneration", matchers...)
+	return &Resource_GetGeneration{Call: c}
+}
+
 // GetGeneration provides a mock function with given fields:
 func (_m *Resource) GetGeneration() int64 {
 	ret := _m.Called()
@@ -147,6 +300,23 @@ func (_m *Resource) GetGeneration() int64 {
 	}
 
 	return r0
+}
+
+type Resource_GetInitializers struct {
+	*mock.Call
+}
+
+func (_m Resource_GetInitializers) Return(_a0 *v1.Initializers) *Resource_GetInitializers {
+	return &Resource_GetInitializers{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetInitializers() *Resource_GetInitializers {
+	c := _m.On("GetInitializers")
+	return &Resource_GetInitializers{Call: c}
+}
+func (_m *Resource) OnGetInitializersMatch(matchers ...interface{}) *Resource_GetInitializers {
+	c := _m.On("GetInitializers", matchers...)
+	return &Resource_GetInitializers{Call: c}
 }
 
 // GetInitializers provides a mock function with given fields:
@@ -165,6 +335,23 @@ func (_m *Resource) GetInitializers() *v1.Initializers {
 	return r0
 }
 
+type Resource_GetLabels struct {
+	*mock.Call
+}
+
+func (_m Resource_GetLabels) Return(_a0 map[string]string) *Resource_GetLabels {
+	return &Resource_GetLabels{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetLabels() *Resource_GetLabels {
+	c := _m.On("GetLabels")
+	return &Resource_GetLabels{Call: c}
+}
+func (_m *Resource) OnGetLabelsMatch(matchers ...interface{}) *Resource_GetLabels {
+	c := _m.On("GetLabels", matchers...)
+	return &Resource_GetLabels{Call: c}
+}
+
 // GetLabels provides a mock function with given fields:
 func (_m *Resource) GetLabels() map[string]string {
 	ret := _m.Called()
@@ -181,6 +368,23 @@ func (_m *Resource) GetLabels() map[string]string {
 	return r0
 }
 
+type Resource_GetName struct {
+	*mock.Call
+}
+
+func (_m Resource_GetName) Return(_a0 string) *Resource_GetName {
+	return &Resource_GetName{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetName() *Resource_GetName {
+	c := _m.On("GetName")
+	return &Resource_GetName{Call: c}
+}
+func (_m *Resource) OnGetNameMatch(matchers ...interface{}) *Resource_GetName {
+	c := _m.On("GetName", matchers...)
+	return &Resource_GetName{Call: c}
+}
+
 // GetName provides a mock function with given fields:
 func (_m *Resource) GetName() string {
 	ret := _m.Called()
@@ -195,6 +399,23 @@ func (_m *Resource) GetName() string {
 	return r0
 }
 
+type Resource_GetNamespace struct {
+	*mock.Call
+}
+
+func (_m Resource_GetNamespace) Return(_a0 string) *Resource_GetNamespace {
+	return &Resource_GetNamespace{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetNamespace() *Resource_GetNamespace {
+	c := _m.On("GetNamespace")
+	return &Resource_GetNamespace{Call: c}
+}
+func (_m *Resource) OnGetNamespaceMatch(matchers ...interface{}) *Resource_GetNamespace {
+	c := _m.On("GetNamespace", matchers...)
+	return &Resource_GetNamespace{Call: c}
+}
+
 // GetNamespace provides a mock function with given fields:
 func (_m *Resource) GetNamespace() string {
 	ret := _m.Called()
@@ -207,6 +428,23 @@ func (_m *Resource) GetNamespace() string {
 	}
 
 	return r0
+}
+
+type Resource_GetObjectKind struct {
+	*mock.Call
+}
+
+func (_m Resource_GetObjectKind) Return(_a0 schema.ObjectKind) *Resource_GetObjectKind {
+	return &Resource_GetObjectKind{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetObjectKind() *Resource_GetObjectKind {
+	c := _m.On("GetObjectKind")
+	return &Resource_GetObjectKind{Call: c}
+}
+func (_m *Resource) OnGetObjectKindMatch(matchers ...interface{}) *Resource_GetObjectKind {
+	c := _m.On("GetObjectKind", matchers...)
+	return &Resource_GetObjectKind{Call: c}
 }
 
 // GetObjectKind provides a mock function with given fields:
@@ -225,6 +463,23 @@ func (_m *Resource) GetObjectKind() schema.ObjectKind {
 	return r0
 }
 
+type Resource_GetOwnerReferences struct {
+	*mock.Call
+}
+
+func (_m Resource_GetOwnerReferences) Return(_a0 []v1.OwnerReference) *Resource_GetOwnerReferences {
+	return &Resource_GetOwnerReferences{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetOwnerReferences() *Resource_GetOwnerReferences {
+	c := _m.On("GetOwnerReferences")
+	return &Resource_GetOwnerReferences{Call: c}
+}
+func (_m *Resource) OnGetOwnerReferencesMatch(matchers ...interface{}) *Resource_GetOwnerReferences {
+	c := _m.On("GetOwnerReferences", matchers...)
+	return &Resource_GetOwnerReferences{Call: c}
+}
+
 // GetOwnerReferences provides a mock function with given fields:
 func (_m *Resource) GetOwnerReferences() []v1.OwnerReference {
 	ret := _m.Called()
@@ -241,6 +496,23 @@ func (_m *Resource) GetOwnerReferences() []v1.OwnerReference {
 	return r0
 }
 
+type Resource_GetResourceVersion struct {
+	*mock.Call
+}
+
+func (_m Resource_GetResourceVersion) Return(_a0 string) *Resource_GetResourceVersion {
+	return &Resource_GetResourceVersion{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetResourceVersion() *Resource_GetResourceVersion {
+	c := _m.On("GetResourceVersion")
+	return &Resource_GetResourceVersion{Call: c}
+}
+func (_m *Resource) OnGetResourceVersionMatch(matchers ...interface{}) *Resource_GetResourceVersion {
+	c := _m.On("GetResourceVersion", matchers...)
+	return &Resource_GetResourceVersion{Call: c}
+}
+
 // GetResourceVersion provides a mock function with given fields:
 func (_m *Resource) GetResourceVersion() string {
 	ret := _m.Called()
@@ -253,6 +525,23 @@ func (_m *Resource) GetResourceVersion() string {
 	}
 
 	return r0
+}
+
+type Resource_GetSelfLink struct {
+	*mock.Call
+}
+
+func (_m Resource_GetSelfLink) Return(_a0 string) *Resource_GetSelfLink {
+	return &Resource_GetSelfLink{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetSelfLink() *Resource_GetSelfLink {
+	c := _m.On("GetSelfLink")
+	return &Resource_GetSelfLink{Call: c}
+}
+func (_m *Resource) OnGetSelfLinkMatch(matchers ...interface{}) *Resource_GetSelfLink {
+	c := _m.On("GetSelfLink", matchers...)
+	return &Resource_GetSelfLink{Call: c}
 }
 
 // GetSelfLink provides a mock function with given fields:
@@ -269,6 +558,23 @@ func (_m *Resource) GetSelfLink() string {
 	return r0
 }
 
+type Resource_GetUID struct {
+	*mock.Call
+}
+
+func (_m Resource_GetUID) Return(_a0 types.UID) *Resource_GetUID {
+	return &Resource_GetUID{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGetUID() *Resource_GetUID {
+	c := _m.On("GetUID")
+	return &Resource_GetUID{Call: c}
+}
+func (_m *Resource) OnGetUIDMatch(matchers ...interface{}) *Resource_GetUID {
+	c := _m.On("GetUID", matchers...)
+	return &Resource_GetUID{Call: c}
+}
+
 // GetUID provides a mock function with given fields:
 func (_m *Resource) GetUID() types.UID {
 	ret := _m.Called()
@@ -281,6 +587,23 @@ func (_m *Resource) GetUID() types.UID {
 	}
 
 	return r0
+}
+
+type Resource_GroupVersionKind struct {
+	*mock.Call
+}
+
+func (_m Resource_GroupVersionKind) Return(_a0 schema.GroupVersionKind) *Resource_GroupVersionKind {
+	return &Resource_GroupVersionKind{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Resource) OnGroupVersionKind() *Resource_GroupVersionKind {
+	c := _m.On("GroupVersionKind")
+	return &Resource_GroupVersionKind{Call: c}
+}
+func (_m *Resource) OnGroupVersionKindMatch(matchers ...interface{}) *Resource_GroupVersionKind {
+	c := _m.On("GroupVersionKind", matchers...)
+	return &Resource_GroupVersionKind{Call: c}
 }
 
 // GroupVersionKind provides a mock function with given fields:

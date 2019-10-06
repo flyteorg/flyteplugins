@@ -11,6 +11,54 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_GetAccountID struct {
+	*mock.Call
+}
+
+func (_m Client_GetAccountID) Return(_a0 string) *Client_GetAccountID {
+	return &Client_GetAccountID{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Client) OnGetAccountID() *Client_GetAccountID {
+	c := _m.On("GetAccountID")
+	return &Client_GetAccountID{Call: c}
+}
+func (_m *Client) OnGetAccountIDMatch(matchers ...interface{}) *Client_GetAccountID {
+	c := _m.On("GetAccountID", matchers...)
+	return &Client_GetAccountID{Call: c}
+}
+
+// GetAccountID provides a mock function with given fields:
+func (_m *Client) GetAccountID() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+type Client_GetJobDetailsBatch struct {
+	*mock.Call
+}
+
+func (_m Client_GetJobDetailsBatch) Return(_a0 []*batch.JobDetail, _a1 error) *Client_GetJobDetailsBatch {
+	return &Client_GetJobDetailsBatch{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *Client) OnGetJobDetailsBatch(ctx context.Context, ids []string) *Client_GetJobDetailsBatch {
+	c := _m.On("GetJobDetailsBatch")
+	return &Client_GetJobDetailsBatch{Call: c}
+}
+func (_m *Client) OnGetJobDetailsBatchMatch(matchers ...interface{}) *Client_GetJobDetailsBatch {
+	c := _m.On("GetJobDetailsBatch", matchers...)
+	return &Client_GetJobDetailsBatch{Call: c}
+}
+
 // GetJobDetailsBatch provides a mock function with given fields: ctx, ids
 func (_m *Client) GetJobDetailsBatch(ctx context.Context, ids []string) ([]*batch.JobDetail, error) {
 	ret := _m.Called(ctx, ids)
@@ -34,6 +82,23 @@ func (_m *Client) GetJobDetailsBatch(ctx context.Context, ids []string) ([]*batc
 	return r0, r1
 }
 
+type Client_GetRegion struct {
+	*mock.Call
+}
+
+func (_m Client_GetRegion) Return(_a0 string) *Client_GetRegion {
+	return &Client_GetRegion{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Client) OnGetRegion() *Client_GetRegion {
+	c := _m.On("GetRegion")
+	return &Client_GetRegion{Call: c}
+}
+func (_m *Client) OnGetRegionMatch(matchers ...interface{}) *Client_GetRegion {
+	c := _m.On("GetRegion", matchers...)
+	return &Client_GetRegion{Call: c}
+}
+
 // GetRegion provides a mock function with given fields:
 func (_m *Client) GetRegion() string {
 	ret := _m.Called()
@@ -46,6 +111,23 @@ func (_m *Client) GetRegion() string {
 	}
 
 	return r0
+}
+
+type Client_RegisterJobDefinition struct {
+	*mock.Call
+}
+
+func (_m Client_RegisterJobDefinition) Return(arn string, err error) *Client_RegisterJobDefinition {
+	return &Client_RegisterJobDefinition{Call: _m.Call.Return(arn, err)}
+}
+
+func (_m *Client) OnRegisterJobDefinition(ctx context.Context, name string, image string, role string) *Client_RegisterJobDefinition {
+	c := _m.On("RegisterJobDefinition")
+	return &Client_RegisterJobDefinition{Call: c}
+}
+func (_m *Client) OnRegisterJobDefinitionMatch(matchers ...interface{}) *Client_RegisterJobDefinition {
+	c := _m.On("RegisterJobDefinition", matchers...)
+	return &Client_RegisterJobDefinition{Call: c}
 }
 
 // RegisterJobDefinition provides a mock function with given fields: ctx, name, image, role
@@ -69,6 +151,23 @@ func (_m *Client) RegisterJobDefinition(ctx context.Context, name string, image 
 	return r0, r1
 }
 
+type Client_SubmitJob struct {
+	*mock.Call
+}
+
+func (_m Client_SubmitJob) Return(jobID string, err error) *Client_SubmitJob {
+	return &Client_SubmitJob{Call: _m.Call.Return(jobID, err)}
+}
+
+func (_m *Client) OnSubmitJob(ctx context.Context, input *batch.SubmitJobInput) *Client_SubmitJob {
+	c := _m.On("SubmitJob")
+	return &Client_SubmitJob{Call: c}
+}
+func (_m *Client) OnSubmitJobMatch(matchers ...interface{}) *Client_SubmitJob {
+	c := _m.On("SubmitJob", matchers...)
+	return &Client_SubmitJob{Call: c}
+}
+
 // SubmitJob provides a mock function with given fields: ctx, input
 func (_m *Client) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (string, error) {
 	ret := _m.Called(ctx, input)
@@ -88,6 +187,23 @@ func (_m *Client) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (s
 	}
 
 	return r0, r1
+}
+
+type Client_TerminateJob struct {
+	*mock.Call
+}
+
+func (_m Client_TerminateJob) Return(_a0 error) *Client_TerminateJob {
+	return &Client_TerminateJob{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Client) OnTerminateJob(ctx context.Context, jobID string, reason string) *Client_TerminateJob {
+	c := _m.On("TerminateJob")
+	return &Client_TerminateJob{Call: c}
+}
+func (_m *Client) OnTerminateJobMatch(matchers ...interface{}) *Client_TerminateJob {
+	c := _m.On("TerminateJob", matchers...)
+	return &Client_TerminateJob{Call: c}
 }
 
 // TerminateJob provides a mock function with given fields: ctx, jobID, reason

@@ -10,6 +10,23 @@ type UploadFuture struct {
 	mock.Mock
 }
 
+type UploadFuture_GetResponseStatus struct {
+	*mock.Call
+}
+
+func (_m UploadFuture_GetResponseStatus) Return(_a0 catalog.ResponseStatus) *UploadFuture_GetResponseStatus {
+	return &UploadFuture_GetResponseStatus{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *UploadFuture) OnGetResponseStatus() *UploadFuture_GetResponseStatus {
+	c := _m.On("GetResponseStatus")
+	return &UploadFuture_GetResponseStatus{Call: c}
+}
+func (_m *UploadFuture) OnGetResponseStatusMatch(matchers ...interface{}) *UploadFuture_GetResponseStatus {
+	c := _m.On("GetResponseStatus", matchers...)
+	return &UploadFuture_GetResponseStatus{Call: c}
+}
+
 // GetResponseStatus provides a mock function with given fields:
 func (_m *UploadFuture) GetResponseStatus() catalog.ResponseStatus {
 	ret := _m.Called()

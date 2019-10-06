@@ -10,6 +10,23 @@ type OutputFilePaths struct {
 	mock.Mock
 }
 
+type OutputFilePaths_GetErrorPath struct {
+	*mock.Call
+}
+
+func (_m OutputFilePaths_GetErrorPath) Return(_a0 storage.DataReference) *OutputFilePaths_GetErrorPath {
+	return &OutputFilePaths_GetErrorPath{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *OutputFilePaths) OnGetErrorPath() *OutputFilePaths_GetErrorPath {
+	c := _m.On("GetErrorPath")
+	return &OutputFilePaths_GetErrorPath{Call: c}
+}
+func (_m *OutputFilePaths) OnGetErrorPathMatch(matchers ...interface{}) *OutputFilePaths_GetErrorPath {
+	c := _m.On("GetErrorPath", matchers...)
+	return &OutputFilePaths_GetErrorPath{Call: c}
+}
+
 // GetErrorPath provides a mock function with given fields:
 func (_m *OutputFilePaths) GetErrorPath() storage.DataReference {
 	ret := _m.Called()
@@ -24,6 +41,23 @@ func (_m *OutputFilePaths) GetErrorPath() storage.DataReference {
 	return r0
 }
 
+type OutputFilePaths_GetOutputPath struct {
+	*mock.Call
+}
+
+func (_m OutputFilePaths_GetOutputPath) Return(_a0 storage.DataReference) *OutputFilePaths_GetOutputPath {
+	return &OutputFilePaths_GetOutputPath{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *OutputFilePaths) OnGetOutputPath() *OutputFilePaths_GetOutputPath {
+	c := _m.On("GetOutputPath")
+	return &OutputFilePaths_GetOutputPath{Call: c}
+}
+func (_m *OutputFilePaths) OnGetOutputPathMatch(matchers ...interface{}) *OutputFilePaths_GetOutputPath {
+	c := _m.On("GetOutputPath", matchers...)
+	return &OutputFilePaths_GetOutputPath{Call: c}
+}
+
 // GetOutputPath provides a mock function with given fields:
 func (_m *OutputFilePaths) GetOutputPath() storage.DataReference {
 	ret := _m.Called()
@@ -36,6 +70,23 @@ func (_m *OutputFilePaths) GetOutputPath() storage.DataReference {
 	}
 
 	return r0
+}
+
+type OutputFilePaths_GetOutputPrefixPath struct {
+	*mock.Call
+}
+
+func (_m OutputFilePaths_GetOutputPrefixPath) Return(_a0 storage.DataReference) *OutputFilePaths_GetOutputPrefixPath {
+	return &OutputFilePaths_GetOutputPrefixPath{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *OutputFilePaths) OnGetOutputPrefixPath() *OutputFilePaths_GetOutputPrefixPath {
+	c := _m.On("GetOutputPrefixPath")
+	return &OutputFilePaths_GetOutputPrefixPath{Call: c}
+}
+func (_m *OutputFilePaths) OnGetOutputPrefixPathMatch(matchers ...interface{}) *OutputFilePaths_GetOutputPrefixPath {
+	c := _m.On("GetOutputPrefixPath", matchers...)
+	return &OutputFilePaths_GetOutputPrefixPath{Call: c}
 }
 
 // GetOutputPrefixPath provides a mock function with given fields:

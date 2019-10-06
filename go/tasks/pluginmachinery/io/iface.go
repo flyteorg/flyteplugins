@@ -8,8 +8,6 @@ import (
 )
 
 //go:generate mockery -all -case=underscore
-//go:generate smock InputReader
-//go:generate smock OutputWriter
 
 // If using Files for IO with tasks, then the input will be written to this path
 // All the files are always created in a sandbox per execution

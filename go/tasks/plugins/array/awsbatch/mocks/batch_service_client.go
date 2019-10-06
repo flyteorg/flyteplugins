@@ -12,6 +12,23 @@ type BatchServiceClient struct {
 	mock.Mock
 }
 
+type BatchServiceClient_DescribeJobsWithContext struct {
+	*mock.Call
+}
+
+func (_m BatchServiceClient_DescribeJobsWithContext) Return(_a0 *batch.DescribeJobsOutput, _a1 error) *BatchServiceClient_DescribeJobsWithContext {
+	return &BatchServiceClient_DescribeJobsWithContext{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *BatchServiceClient) OnDescribeJobsWithContext(ctx context.Context, input *batch.DescribeJobsInput, opts ...request.Option) *BatchServiceClient_DescribeJobsWithContext {
+	c := _m.On("DescribeJobsWithContext")
+	return &BatchServiceClient_DescribeJobsWithContext{Call: c}
+}
+func (_m *BatchServiceClient) OnDescribeJobsWithContextMatch(matchers ...interface{}) *BatchServiceClient_DescribeJobsWithContext {
+	c := _m.On("DescribeJobsWithContext", matchers...)
+	return &BatchServiceClient_DescribeJobsWithContext{Call: c}
+}
+
 // DescribeJobsWithContext provides a mock function with given fields: ctx, input, opts
 func (_m *BatchServiceClient) DescribeJobsWithContext(ctx context.Context, input *batch.DescribeJobsInput, opts ...request.Option) (*batch.DescribeJobsOutput, error) {
 	_va := make([]interface{}, len(opts))
@@ -40,6 +57,23 @@ func (_m *BatchServiceClient) DescribeJobsWithContext(ctx context.Context, input
 	}
 
 	return r0, r1
+}
+
+type BatchServiceClient_RegisterJobDefinitionWithContext struct {
+	*mock.Call
+}
+
+func (_m BatchServiceClient_RegisterJobDefinitionWithContext) Return(_a0 *batch.RegisterJobDefinitionOutput, _a1 error) *BatchServiceClient_RegisterJobDefinitionWithContext {
+	return &BatchServiceClient_RegisterJobDefinitionWithContext{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *BatchServiceClient) OnRegisterJobDefinitionWithContext(ctx context.Context, input *batch.RegisterJobDefinitionInput, opts ...request.Option) *BatchServiceClient_RegisterJobDefinitionWithContext {
+	c := _m.On("RegisterJobDefinitionWithContext")
+	return &BatchServiceClient_RegisterJobDefinitionWithContext{Call: c}
+}
+func (_m *BatchServiceClient) OnRegisterJobDefinitionWithContextMatch(matchers ...interface{}) *BatchServiceClient_RegisterJobDefinitionWithContext {
+	c := _m.On("RegisterJobDefinitionWithContext", matchers...)
+	return &BatchServiceClient_RegisterJobDefinitionWithContext{Call: c}
 }
 
 // RegisterJobDefinitionWithContext provides a mock function with given fields: ctx, input, opts
@@ -72,6 +106,23 @@ func (_m *BatchServiceClient) RegisterJobDefinitionWithContext(ctx context.Conte
 	return r0, r1
 }
 
+type BatchServiceClient_SubmitJobWithContext struct {
+	*mock.Call
+}
+
+func (_m BatchServiceClient_SubmitJobWithContext) Return(_a0 *batch.SubmitJobOutput, _a1 error) *BatchServiceClient_SubmitJobWithContext {
+	return &BatchServiceClient_SubmitJobWithContext{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *BatchServiceClient) OnSubmitJobWithContext(ctx context.Context, input *batch.SubmitJobInput, opts ...request.Option) *BatchServiceClient_SubmitJobWithContext {
+	c := _m.On("SubmitJobWithContext")
+	return &BatchServiceClient_SubmitJobWithContext{Call: c}
+}
+func (_m *BatchServiceClient) OnSubmitJobWithContextMatch(matchers ...interface{}) *BatchServiceClient_SubmitJobWithContext {
+	c := _m.On("SubmitJobWithContext", matchers...)
+	return &BatchServiceClient_SubmitJobWithContext{Call: c}
+}
+
 // SubmitJobWithContext provides a mock function with given fields: ctx, input, opts
 func (_m *BatchServiceClient) SubmitJobWithContext(ctx context.Context, input *batch.SubmitJobInput, opts ...request.Option) (*batch.SubmitJobOutput, error) {
 	_va := make([]interface{}, len(opts))
@@ -100,6 +151,23 @@ func (_m *BatchServiceClient) SubmitJobWithContext(ctx context.Context, input *b
 	}
 
 	return r0, r1
+}
+
+type BatchServiceClient_TerminateJobWithContext struct {
+	*mock.Call
+}
+
+func (_m BatchServiceClient_TerminateJobWithContext) Return(_a0 *batch.TerminateJobOutput, _a1 error) *BatchServiceClient_TerminateJobWithContext {
+	return &BatchServiceClient_TerminateJobWithContext{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *BatchServiceClient) OnTerminateJobWithContext(ctx context.Context, input *batch.TerminateJobInput, opts ...request.Option) *BatchServiceClient_TerminateJobWithContext {
+	c := _m.On("TerminateJobWithContext")
+	return &BatchServiceClient_TerminateJobWithContext{Call: c}
+}
+func (_m *BatchServiceClient) OnTerminateJobWithContextMatch(matchers ...interface{}) *BatchServiceClient_TerminateJobWithContext {
+	c := _m.On("TerminateJobWithContext", matchers...)
+	return &BatchServiceClient_TerminateJobWithContext{Call: c}
 }
 
 // TerminateJobWithContext provides a mock function with given fields: ctx, input, opts

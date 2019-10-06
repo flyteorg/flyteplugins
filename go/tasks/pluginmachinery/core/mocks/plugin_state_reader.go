@@ -9,6 +9,23 @@ type PluginStateReader struct {
 	mock.Mock
 }
 
+type PluginStateReader_Get struct {
+	*mock.Call
+}
+
+func (_m PluginStateReader_Get) Return(stateVersion uint8, err error) *PluginStateReader_Get {
+	return &PluginStateReader_Get{Call: _m.Call.Return(stateVersion, err)}
+}
+
+func (_m *PluginStateReader) OnGet(t interface{}) *PluginStateReader_Get {
+	c := _m.On("Get")
+	return &PluginStateReader_Get{Call: c}
+}
+func (_m *PluginStateReader) OnGetMatch(matchers ...interface{}) *PluginStateReader_Get {
+	c := _m.On("Get", matchers...)
+	return &PluginStateReader_Get{Call: c}
+}
+
 // Get provides a mock function with given fields: t
 func (_m *PluginStateReader) Get(t interface{}) (uint8, error) {
 	ret := _m.Called(t)
@@ -28,6 +45,23 @@ func (_m *PluginStateReader) Get(t interface{}) (uint8, error) {
 	}
 
 	return r0, r1
+}
+
+type PluginStateReader_GetStateVersion struct {
+	*mock.Call
+}
+
+func (_m PluginStateReader_GetStateVersion) Return(_a0 uint8) *PluginStateReader_GetStateVersion {
+	return &PluginStateReader_GetStateVersion{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *PluginStateReader) OnGetStateVersion() *PluginStateReader_GetStateVersion {
+	c := _m.On("GetStateVersion")
+	return &PluginStateReader_GetStateVersion{Call: c}
+}
+func (_m *PluginStateReader) OnGetStateVersionMatch(matchers ...interface{}) *PluginStateReader_GetStateVersion {
+	c := _m.On("GetStateVersion", matchers...)
+	return &PluginStateReader_GetStateVersion{Call: c}
 }
 
 // GetStateVersion provides a mock function with given fields:
