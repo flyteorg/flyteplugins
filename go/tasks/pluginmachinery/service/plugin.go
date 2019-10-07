@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/lyft/flytestdlib/promutils"
 
@@ -52,15 +53,56 @@ type RemoteResourceKey struct {
 	Name string // Optional resourceName, ideally this name is generated using the TaskExecutionMetadata
 }
 
+// The resource to be sycned from the remote
 type RemoteResource interface{}
+
+// The plugin manager automatically queries the remote API
+type RateLimiterProperties struct {
+	// Queries per second from one process to the remote service
+	QPS int
+	// Maximum burst size
+	Burst int
+}
+
+type CachingProperties struct {
+	// Max number of RemoteResource's to be stored in the local cache
+	Size int
+	// How often to query for objects in remote service.
+	ResyncInterval time.Duration
+}
+
+type MissingResourceSemantics uint8
+
+const (
+	MissingResourceFailIfMissing MissingResourceSemantics = iota
+	MissingResourceRetryIfMissing
+)
+
+// Properties that indicate if the Batch API can be invoked. This indicates that GetBatch() can be used instead of Get
+type BatchingProperties struct {
+	BatchAPISupported        bool
+	MaxBatchSize             int
+	MissingResourceSemantics MissingResourceSemantics
+}
+
+// Properties that help the system optimize itself to handle the specific plugin
+type PluginProperties struct {
+	RateLimiterProperties RateLimiterProperties
+	CachingProperties     CachingProperties
+	BatchingProperties    BatchingProperties
+}
 
 // Defines a simplified interface to author plugins for k8s resources.
 type Plugin interface {
+	GetPluginProperties() PluginProperties
 	// Create a new resource using the PluginContext provided. Ideally, the remote service uses the name in the TaskExecutionMetadata
 	// to launch the resource idempotently
 	Create(ctx context.Context, tCtx PluginContext) (RemoteResourceKey, error)
 	// Get the entire object including the status from the remote api
 	Get(ctx context.Context, key RemoteResourceKey) (RemoteResource, error)
+	// Get multiple resources that match all the keys. This method is optional and should be provided in case the
+	// PluginProperties.BatchingProperties.BatchAPISupported = true
+	GetBatch(ctx context.Context, key ...RemoteResourceKey) (RemoteResource, error)
 	// Delete the object in the remote API using the resource key
 	Delete(ctx context.Context, key RemoteResourceKey) error
 	// Give the resource as interface{} (as Golang has no support for generics) we return a type unsafe interface, which should be typecasted
