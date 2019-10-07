@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/lyft/flyteplugins/go/tasks/aws"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/config"
 )
 
@@ -20,6 +21,8 @@ type Config struct {
 	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	RoleAnnotationKey    string            `json:"roleAnnotationKey" pflag:",Map key to use to lookup role from task annotations."`
 	ResyncPeriod         config.Duration   `json:"resyncPeriod" pflag:",Defines the duration for syncing job details from AWS Batch."`
+	OutputAssembler      workqueue.Config
+	ErrorAssembler       workqueue.Config
 }
 
 type JobStoreConfig struct {
@@ -48,6 +51,16 @@ var (
 		MinRetries:           1,
 		MaxRetries:           10,
 		MaxErrorStringLength: 500,
+		OutputAssembler: workqueue.Config{
+			IndexCacheMaxItems: 100000,
+			MaxRetries:         5,
+			Workers:            10,
+		},
+		ErrorAssembler: workqueue.Config{
+			IndexCacheMaxItems: 100000,
+			MaxRetries:         5,
+			Workers:            10,
+		},
 	}
 
 	configSection = aws.MustRegisterSubSection("batch", defaultConfig)

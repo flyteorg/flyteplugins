@@ -14,11 +14,8 @@ import (
 )
 
 type ReaderWorkItem struct {
-	id workqueue.WorkItemID
-
 	// ReaderWorkItem outputs:
 	cached     bool
-	workStatus workqueue.WorkStatus
 
 	// ReaderWorkItem Inputs:
 	outputsWriter io.OutputWriter
@@ -26,21 +23,12 @@ type ReaderWorkItem struct {
 	key Key
 }
 
-func (item ReaderWorkItem) GetId() workqueue.WorkItemID {
-	return item.id
-}
-
-func (item ReaderWorkItem) GetWorkStatus() workqueue.WorkStatus {
-	return item.workStatus
-}
-
 func (item ReaderWorkItem) IsCached() bool {
 	return item.cached
 }
 
-func NewReaderWorkItem(id workqueue.WorkItemID, key Key, outputsWriter io.OutputWriter) *ReaderWorkItem {
+func NewReaderWorkItem(key Key, outputsWriter io.OutputWriter) *ReaderWorkItem {
 	return &ReaderWorkItem{
-		id:            id,
 		key:           key,
 		outputsWriter: outputsWriter,
 	}
@@ -62,8 +50,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 			logger.Infof(ctx, "Artifact not found in Catalog.")
 
 			wi.cached = false
-			wi.workStatus = workqueue.WorkStatusDone
-			return workqueue.WorkStatusDone, nil
+			return workqueue.WorkStatusSucceeded, nil
 		}
 
 		// TODO: wrap & log error
@@ -78,8 +65,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	}
 
 	wi.cached = true
-	wi.workStatus = workqueue.WorkStatusDone
-	return workqueue.WorkStatusDone, nil
+	return workqueue.WorkStatusSucceeded, nil
 }
 
 func NewReaderProcessor(catalogClient Client) ReaderProcessor {
