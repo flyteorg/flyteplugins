@@ -38,6 +38,8 @@ type Future interface {
 
 	// Sets a callback handler to be called when the future status changes to ready.
 	OnReady(handler ReadyHandler)
+
+	GetResponseError() error
 }
 
 // Catalog Upload future to represent async process of uploading catalog artifacts.
@@ -80,4 +82,4 @@ type AsyncClient interface {
 	Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error)
 }
 
-var _ AsyncClient = asyncClient{}
+var _ AsyncClient = AsyncClientImpl{}

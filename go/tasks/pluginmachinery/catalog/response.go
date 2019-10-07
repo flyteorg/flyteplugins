@@ -8,10 +8,15 @@ import (
 type future struct {
 	responseStatus ResponseStatus
 	readyHandler   ReadyHandler
+	err            error
 }
 
 func (f future) GetResponseStatus() ResponseStatus {
 	return f.responseStatus
+}
+
+func (f future) GetResponseError() error {
+	return f.err
 }
 
 func (f *future) SetResponseStatus(status ResponseStatus) {
@@ -50,12 +55,13 @@ func (r downloadFuture) GetCachedCount() int {
 	return r.cachedCount
 }
 
-func newDownloadFuture(status ResponseStatus, cachedResults *bitarray.BitSet, resultsSize int,
+func newDownloadFuture(status ResponseStatus, err error, cachedResults *bitarray.BitSet, resultsSize int,
 	cachedCount int) downloadFuture {
 
 	return downloadFuture{
 		future: &future{
 			responseStatus: status,
+			err:            err,
 		},
 		cachedCount:   cachedCount,
 		cachedResults: cachedResults,
@@ -67,10 +73,11 @@ type uploadFuture struct {
 	*future
 }
 
-func newUploadFuture(status ResponseStatus) uploadFuture {
+func newUploadFuture(status ResponseStatus, err error) uploadFuture {
 	return uploadFuture{
 		future: &future{
 			responseStatus: status,
+			err:            err,
 		},
 	}
 }
