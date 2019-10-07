@@ -10,6 +10,37 @@ type Future struct {
 	mock.Mock
 }
 
+type Future_GetResponseError struct {
+	*mock.Call
+}
+
+func (_m Future_GetResponseError) Return(_a0 error) *Future_GetResponseError {
+	return &Future_GetResponseError{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Future) OnGetResponseError() *Future_GetResponseError {
+	c := _m.On("GetResponseError")
+	return &Future_GetResponseError{Call: c}
+}
+func (_m *Future) OnGetResponseErrorMatch(matchers ...interface{}) *Future_GetResponseError {
+	c := _m.On("GetResponseError", matchers...)
+	return &Future_GetResponseError{Call: c}
+}
+
+// GetResponseError provides a mock function with given fields:
+func (_m *Future) GetResponseError() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 type Future_GetResponseStatus struct {
 	*mock.Call
 }

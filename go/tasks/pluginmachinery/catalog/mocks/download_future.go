@@ -50,6 +50,37 @@ func (_m *DownloadFuture) GetResponse() (catalog.DownloadResponse, error) {
 	return r0, r1
 }
 
+type DownloadFuture_GetResponseError struct {
+	*mock.Call
+}
+
+func (_m DownloadFuture_GetResponseError) Return(_a0 error) *DownloadFuture_GetResponseError {
+	return &DownloadFuture_GetResponseError{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *DownloadFuture) OnGetResponseError() *DownloadFuture_GetResponseError {
+	c := _m.On("GetResponseError")
+	return &DownloadFuture_GetResponseError{Call: c}
+}
+func (_m *DownloadFuture) OnGetResponseErrorMatch(matchers ...interface{}) *DownloadFuture_GetResponseError {
+	c := _m.On("GetResponseError", matchers...)
+	return &DownloadFuture_GetResponseError{Call: c}
+}
+
+// GetResponseError provides a mock function with given fields:
+func (_m *DownloadFuture) GetResponseError() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 type DownloadFuture_GetResponseStatus struct {
 	*mock.Call
 }

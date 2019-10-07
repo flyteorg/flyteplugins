@@ -28,6 +28,9 @@ const (
 type Executor struct {
 	jobStore           *JobStore
 	jobDefinitionCache definition.Cache
+
+	outputAssembler array.OutputAssembler
+	errorAssembler  array.OutputAssembler
 }
 
 func (e Executor) GetID() string {
@@ -64,7 +67,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState, err = CheckSubTasksState(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
 	case array.PhaseAssembleFinalOutput:
-		nextParentState, err = array.AssembleFinalOutputs(ctx, tCtx, pluginState)
+		nextParentState, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState)
 		pluginState.State = nextParentState
 
 	case array.PhaseWriteToDiscovery:
@@ -72,7 +75,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState.State = nextParentState
 
 	case array.PhaseAssembleFinalError:
-		nextParentState, err = array.AssembleFinalErrors(ctx, tCtx, pluginConfig.MaxErrorStringLength, pluginState)
+		nextParentState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
 		pluginState.State = nextParentState
 
 	default:
@@ -123,8 +126,20 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *config2.Config,
 		return Executor{}, err
 	}
 
+	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler)
+	if err != nil {
+		return Executor{}, err
+	}
+
+	errorAssembler, err := array.NewErrorAssembler(cfg.MaxErrorStringLength, cfg.ErrorAssembler)
+	if err != nil {
+		return Executor{}, err
+	}
+
 	return Executor{
-		jobStore: &jobStore,
+		jobStore:        &jobStore,
+		outputAssembler: outputAssembler,
+		errorAssembler:  errorAssembler,
 	}, nil
 }
 
