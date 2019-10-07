@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -16,12 +15,26 @@ const arrayTaskType = "container_array"
 const pluginStateVersion = 0
 
 type Executor struct {
-	kubeClient core.KubeClient
+	kubeClient       core.KubeClient
+	outputsAssembler array.OutputAssembler
+	errorAssembler   array.OutputAssembler
 }
 
-func NewExecutor(kubeClient core.KubeClient) (Executor, error) {
+func NewExecutor(kubeClient core.KubeClient, cfg *Config) (Executor, error) {
+	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler)
+	if err != nil {
+		return Executor{}, err
+	}
+
+	errorAssembler, err := array.NewErrorAssembler(cfg.MaxErrorStringLength, cfg.ErrorAssembler)
+	if err != nil {
+		return Executor{}, err
+	}
+
 	return Executor{
-		kubeClient: kubeClient,
+		kubeClient:       kubeClient,
+		outputsAssembler: outputAssembler,
+		errorAssembler:   errorAssembler,
 	}, nil
 }
 
@@ -59,13 +72,13 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
 	case array.PhaseAssembleFinalOutput:
-		nextState, err = array.AssembleFinalOutputs(ctx, tCtx, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, pluginState)
 
 	case array.PhaseWriteToDiscovery:
 		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
 
 	case array.PhaseAssembleFinalError:
-		nextState, err = array.AssembleFinalErrors(ctx, tCtx, pluginConfig.MaxErrorStringLength, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
 
 	default:
 		nextState = pluginState
@@ -103,5 +116,5 @@ func init() {
 }
 
 func GetNewExecutorPlugin(_ context.Context, iCtx core.SetupContext) (core.Plugin, error) {
-	return NewExecutor(iCtx.KubeClient())
+	return NewExecutor(iCtx.KubeClient(), GetConfig())
 }

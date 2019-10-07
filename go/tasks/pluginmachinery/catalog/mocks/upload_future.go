@@ -10,6 +10,37 @@ type UploadFuture struct {
 	mock.Mock
 }
 
+type UploadFuture_GetResponseError struct {
+	*mock.Call
+}
+
+func (_m UploadFuture_GetResponseError) Return(_a0 error) *UploadFuture_GetResponseError {
+	return &UploadFuture_GetResponseError{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *UploadFuture) OnGetResponseError() *UploadFuture_GetResponseError {
+	c := _m.On("GetResponseError")
+	return &UploadFuture_GetResponseError{Call: c}
+}
+func (_m *UploadFuture) OnGetResponseErrorMatch(matchers ...interface{}) *UploadFuture_GetResponseError {
+	c := _m.On("GetResponseError", matchers...)
+	return &UploadFuture_GetResponseError{Call: c}
+}
+
+// GetResponseError provides a mock function with given fields:
+func (_m *UploadFuture) GetResponseError() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 type UploadFuture_GetResponseStatus struct {
 	*mock.Call
 }
