@@ -288,6 +288,14 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 		if err != nil {
 			return types.TaskStatusUndefined, err
 		}
+
+		//
+		if e.handler.GetProperties().DeleteResourceOnAbort {
+			err = instance.kubeClient.Delete(ctx, o)
+			if err != nil && !k8serrors.IsNotFound(err) {
+				return types.TaskStatusUndefined, err
+			}
+		}
 	}
 
 	// If the object has been deleted, that is, it has a deletion timestamp, but is not in a terminal state, we should
