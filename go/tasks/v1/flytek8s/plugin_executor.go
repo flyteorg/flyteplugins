@@ -283,10 +283,12 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 	// This must happen after sending admin event. It's safe against partial failures because if the event failed, we will
 	// simply retry in the next round. If the event succeeded but this failed, we will try again the next round to send
 	// the same event (idempotent) and then come here again...
-	if finalStatus.Phase.IsTerminal() && len(o.GetFinalizers()) > 0 {
-		err = e.ClearFinalizers(ctx, o)
-		if err != nil {
-			return types.TaskStatusUndefined, err
+	if finalStatus.Phase.IsTerminal() {
+		if en(o.GetFinalizers()) > 0 {
+			err = e.ClearFinalizers(ctx, o)
+			if err != nil {
+				return types.TaskStatusUndefined, err
+			}
 		}
 
 		// kill the object execution if still live
