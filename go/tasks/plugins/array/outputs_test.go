@@ -2,6 +2,8 @@ package array
 
 import (
 	"context"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue/mocks"
+	"github.com/stretchr/testify/mock"
 	"reflect"
 	"testing"
 
@@ -12,16 +14,12 @@ import (
 )
 
 func TestOutputAssembler_Queue(t *testing.T) {
-	type fields struct {
-		IndexedWorkQueue workqueue.IndexedWorkQueue
-	}
 	type args struct {
 		id   workqueue.WorkItemID
 		item *outputAssembleItem
 	}
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
 		wantErr bool
 	}{
@@ -29,8 +27,11 @@ func TestOutputAssembler_Queue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			q := mocks.IndexedWorkQueue{}
+			q.OnQueue(mock.Anything, mock.Anything).Return(nil)
+
 			o := OutputAssembler{
-				IndexedWorkQueue: tt.fields.IndexedWorkQueue,
+				IndexedWorkQueue: tt.queue,
 			}
 			if err := o.Queue(tt.args.id, tt.args.item); (err != nil) != tt.wantErr {
 				t.Errorf("OutputAssembler.Queue() error = %v, wantErr %v", err, tt.wantErr)
