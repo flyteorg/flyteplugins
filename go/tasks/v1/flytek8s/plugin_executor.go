@@ -289,7 +289,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			return types.TaskStatusUndefined, err
 		}
 
-		//
+		// kill the object execution if still live
 		if e.handler.GetProperties().DeleteResourceOnAbort {
 			err = instance.kubeClient.Delete(ctx, o)
 			if err != nil && !k8serrors.IsNotFound(err) {
