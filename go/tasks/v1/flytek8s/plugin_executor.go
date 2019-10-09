@@ -284,7 +284,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 	// simply retry in the next round. If the event succeeded but this failed, we will try again the next round to send
 	// the same event (idempotent) and then come here again...
 	if finalStatus.Phase.IsTerminal() {
-		if en(o.GetFinalizers()) > 0 {
+		if len(o.GetFinalizers()) > 0 {
 			err = e.ClearFinalizers(ctx, o)
 			if err != nil {
 				return types.TaskStatusUndefined, err
