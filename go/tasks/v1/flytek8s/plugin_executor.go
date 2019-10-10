@@ -24,8 +24,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
-	"github.com/lyft/flyteplugins/go/tasks/v1/k8splugins"
 )
 
 // A generic task executor for k8s-resource reliant tasks.
@@ -249,26 +247,24 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 	// state machine. Once the object reaches its terminal state, we commit the completion in two steps:
 	// Round1: mark the object as deleted in state store (object's custom state)
 	// Round2: instead of regular retrieval (which may fail in this case), just delete the object
-	{
-		objStatus, terminalPhase, err := k8splugins.RetrieveK8sObjectStatus(taskCtx.GetCustomState())
-		if err != nil {
-			logger.Warningf(ctx, "Failed to retrieve object status: %v. Error: %v",
-				taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
-			return types.TaskStatusUndefined, err
-		}
+	objStatus, terminalPhase, err := retrieveK8sObjectStatus(taskCtx.GetCustomState())
+	if err != nil {
+		logger.Warningf(ctx, "Failed to retrieve object status: %v. Error: %v",
+			taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
+		return types.TaskStatusUndefined, err
+	}
 
-		if objStatus == k8splugins.K8sObjectDeleted {
-			// kill the object execution if still live
-			if e.handler.GetProperties().DeleteResourceOnAbort {
-				err = instance.kubeClient.Delete(ctx, o)
+	if objStatus == k8sObjectDeleted {
+		// kill the object execution if still live
+		if e.handler.GetProperties().DeleteResourceOnAbort {
+			err = instance.kubeClient.Delete(ctx, o)
 
-				if err != nil && !IsK8sObjectNotExists(err) {
-					return types.TaskStatusUndefined, err
-				}
+			if err != nil && !IsK8sObjectNotExists(err) {
+				return types.TaskStatusUndefined, err
 			}
-			finalStatus.Phase = terminalPhase
-			return finalStatus, nil
 		}
+		finalStatus.Phase = terminalPhase
+		return finalStatus, nil
 	}
 
 	var info *events.TaskEventInfo
@@ -322,7 +318,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 		finalStatus = types.TaskStatus{
 			Phase:        taskCtx.GetPhase(),
 			PhaseVersion: taskCtx.GetPhaseVersion(),
-			State:        k8splugins.StoreK8sObjectStatus(k8splugins.K8sObjectDeleted, finalStatus.Phase),
+			State:        storeK8sObjectStatus(k8sObjectDeleted, finalStatus.Phase),
 		}
 	}
 

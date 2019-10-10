@@ -1,4 +1,4 @@
-package k8splugins
+package flytek8s
 
 import (
 	"fmt"
@@ -6,36 +6,36 @@ import (
 	"bytes"
 )
 
-const statusKey = "ObjectStatus"
-const terminalTaskPhaseKey = "TerminalTaskPhase"
+const statusKey = "os"
+const terminalTaskPhaseKey = "tp"
 
 // This status internal state of the object not read/updated by upstream components (eg. Node manager)
 type K8sObjectStatus int
 
 const (
-	K8sObjectUnknown K8sObjectStatus = iota
-	K8sObjectExists
-	K8sObjectDeleted
+	k8sObjectUnknown K8sObjectStatus = iota
+	k8sObjectExists
+	k8sObjectDeleted
 )
 
 func (q K8sObjectStatus) String() string {
 	switch q {
-	case K8sObjectUnknown:
+	case k8sObjectUnknown:
 		return "NotStarted"
-	case K8sObjectExists:
+	case k8sObjectExists:
 		return "Running"
-	case K8sObjectDeleted:
+	case k8sObjectDeleted:
 		return "Deleted"
 	}
 	return "IllegalK8sObjectStatus"
 }
 
-func RetrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatus, types.TaskPhase, error) {
+func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatus, types.TaskPhase, error) {
 	if customState == nil {
-		return K8sObjectUnknown, types.TaskPhaseUnknown, nil
+		return k8sObjectUnknown, types.TaskPhaseUnknown, nil
 	}
 
-	status := K8sObjectUnknown
+	status := k8sObjectUnknown
 	terminalTaskPhase := types.TaskPhaseUnknown
 	foundStatus := false
 	foundPhase := false
@@ -48,13 +48,13 @@ func RetrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatu
 	}
 
 	if !(foundPhase && foundStatus) {
-		return K8sObjectUnknown, types.TaskPhaseUnknown, fmt.Errorf("invalid custom state %v", mapToString(customState))
+		return k8sObjectUnknown, types.TaskPhaseUnknown, fmt.Errorf("invalid custom state %v", mapToString(customState))
 	}
 
 	return status, terminalTaskPhase, nil
 }
 
-func StoreK8sObjectStatus(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
+func storeK8sObjectStatus(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
 	customState := make(map[string]interface{})
 	customState[statusKey] = status
 	customState[terminalTaskPhaseKey] = phase
