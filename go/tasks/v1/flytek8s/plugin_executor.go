@@ -250,7 +250,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 	// Round1: mark the object as deleted in state store (object's custom state)
 	// Round2: instead of regular retrieval (which may fail in this case), just delete the object
 	{
-		objStatus, err := k8splugins.RetrieveK8sObjectStatus(taskCtx.GetCustomState())
+		objStatus, terminalPhase, err := k8splugins.RetrieveK8sObjectStatus(taskCtx.GetCustomState())
 		if err != nil {
 			logger.Warningf(ctx, "Failed to retrieve object status: %v. Error: %v",
 				taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
@@ -261,10 +261,12 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			// kill the object execution if still live
 			if e.handler.GetProperties().DeleteResourceOnAbort {
 				err = instance.kubeClient.Delete(ctx, o)
-				if err != nil && !k8serrors.IsNotFound(err) {
+
+				if err != nil && !IsK8sObjectNotExists(err) {
 					return types.TaskStatusUndefined, err
 				}
 			}
+			finalStatus.Phase = terminalPhase
 			return finalStatus, nil
 		}
 	}
@@ -317,7 +319,11 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			}
 		}
 
-		finalStatus.State = k8splugins.StoreK8sObjectStatus(k8splugins.K8sObjectDeleted)
+		finalStatus = types.TaskStatus{
+			Phase:        taskCtx.GetPhase(),
+			PhaseVersion: taskCtx.GetPhaseVersion(),
+			State:        k8splugins.StoreK8sObjectStatus(k8splugins.K8sObjectDeleted, finalStatus.Phase),
+		}
 	}
 
 	// If the object has been deleted, that is, it has a deletion timestamp, but is not in a terminal state, we should
