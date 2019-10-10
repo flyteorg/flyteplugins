@@ -245,10 +245,12 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 		PhaseVersion: taskCtx.GetPhaseVersion(),
 	}
 
-	// NOTE: To ensure objects are cleaned up, the plugins needs a persistent step in addition to upstream plugin executor
+	// NOTE: To ensure objects are cleaned up, the plugins need a persistent step in addition to upstream plugin executor
 	// state machine. Once the object reaches its terminal state, we commit the completion in two steps:
-	// Round1: mark the object as deleted in state store (object's custom state)
-	// Round2: instead of regular retrieval (which may fail in this case), just delete the object
+	// Round1: mark the object as deleted in state store and also store the terminal phase becasue we will not be returning that 
+	// phase upstream in this round.
+	// Round2: instead of regular retrieval (which may fail in this case), just delete the object and return the phase stored in previous
+	// iteration
 	{
 		objStatus, terminalPhase, err := k8splugins.RetrieveK8sObjectStatus(taskCtx.GetCustomState())
 		if err != nil {
