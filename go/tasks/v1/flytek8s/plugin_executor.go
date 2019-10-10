@@ -24,6 +24,8 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/lyft/flyteplugins/go/tasks/v1/utils"
+	"github.com/lyft/flyteplugins/go/tasks/v1/k8splugins"
 )
 
 // A generic task executor for k8s-resource reliant tasks.
@@ -243,6 +245,30 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 		PhaseVersion: taskCtx.GetPhaseVersion(),
 	}
 
+	// NOTE: To ensure objects are cleaned up, the plugins needs a persistent step in addition to upstream plugin executor
+	// state machine. Once the object reaches its terminal state, we commit the completion in two steps:
+	// Round1: mark the object as deleted in state store (object's custom state)
+	// Round2: instead of regular retrieval (which may fail in this case), just delete the object
+	{
+		objStatus, err := k8splugins.RetrieveK8sObjectStatus(taskCtx.GetCustomState())
+		if err != nil {
+			logger.Warningf(ctx, "Failed to retrieve object status: %v. Error: %v",
+				taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
+			return types.TaskStatusUndefined, err
+		}
+
+		if objStatus == k8splugins.K8sObjectDeleted {
+			// kill the object execution if still live
+			if e.handler.GetProperties().DeleteResourceOnAbort {
+				err = instance.kubeClient.Delete(ctx, o)
+				if err != nil && !k8serrors.IsNotFound(err) {
+					return types.TaskStatusUndefined, err
+				}
+			}
+			return finalStatus, nil
+		}
+	}
+
 	var info *events.TaskEventInfo
 
 	if err != nil {
@@ -291,13 +317,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			}
 		}
 
-		// kill the object execution if still live
-		if e.handler.GetProperties().DeleteResourceOnAbort {
-			err = instance.kubeClient.Delete(ctx, o)
-			if err != nil && !k8serrors.IsNotFound(err) {
-				return types.TaskStatusUndefined, err
-			}
-		}
+		finalStatus.State = k8splugins.StoreK8sObjectStatus(k8splugins.K8sObjectDeleted)
 	}
 
 	// If the object has been deleted, that is, it has a deletion timestamp, but is not in a terminal state, we should
