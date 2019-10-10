@@ -243,7 +243,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 		PhaseVersion: taskCtx.GetPhaseVersion(),
 	}
 
-	// NOTE: To ensure objects are cleaned up, the plugins needs a persistent step in addition to upstream plugin executor
+	// NOTE: To ensure objects are cleaned up, the plugins need a persistent step in addition to upstream plugin executor
 	// state machine. Once the object reaches its terminal state, we commit the completion in two steps:
 	// Round1: mark the object as deleted in state store (object's custom state)
 	// Round2: instead of regular retrieval (which may fail in this case), just delete the object
@@ -253,7 +253,6 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
 		return types.TaskStatusUndefined, err
 	}
-
 	if objStatus == k8sObjectDeleted {
 		// kill the object execution if still live
 		if e.handler.GetProperties().DeleteResourceOnAbort {
