@@ -4,35 +4,38 @@ import (
 	"context"
 	"fmt"
 
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+
 	"github.com/lyft/flytestdlib/bitarray"
 
-	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
-	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
-	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
-	errorcollector2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 
-	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, jobStore *JobStore, cfg *config2.Config, currentState *State) (
-	newState *State, err error) {
-	logLinks := make([]*core2.TaskLog, 0, 4)
-	newState = currentState
+func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, jobStore *JobStore,
+	cfg *config.Config, currentState *State) (newState *State, err error) {
 
-	msg := errorcollector2.NewErrorMessageCollector()
-	newArrayStatus := arraystatus2.ArrayStatus{
-		Summary:  arraystatus2.ArraySummary{},
-		Detailed: newStatusCompactArray(uint(currentState.GetExecutionArraySize())),
+	logLinks := make([]*idlCore.TaskLog, 0, 4)
+	newState = currentState
+	parentState := currentState.State
+
+	msg := errorcollector.NewErrorMessageCollector()
+	newArrayStatus := arraystatus.ArrayStatus{
+		Summary:  arraystatus.ArraySummary{},
+		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
-	jobName := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
 	job := jobStore.Get(jobName)
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
 	if job == nil {
 		_, err = jobStore.GetOrCreate(jobName, &Job{
 			ID:             *currentState.ExternalJobID,
-			OwnerReference: tCtx.TaskExecutionMetadata().GetOwnerID(),
+			OwnerReference: taskMeta.GetOwnerID(),
 			SubJobs:        make([]*Job, currentState.GetExecutionArraySize()),
 		})
 
@@ -57,7 +60,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 
 		subJob := job.SubJobs[childIdx]
 		originalIndex := calculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		logLinks = append(logLinks, &core2.TaskLog{
+		logLinks = append(logLinks, &idlCore.TaskLog{
 			Name: fmt.Sprintf("AWS Batch Job #%v", originalIndex),
 			// TODO: Get job queue
 			Uri: GetJobUri(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
@@ -65,7 +68,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 		})
 
 		for _, attempt := range subJob.Attempts {
-			logLinks = append(logLinks, &core2.TaskLog{
+			logLinks = append(logLinks, &idlCore.TaskLog{
 				Name: fmt.Sprintf("AWS Batch #%v (%v)", originalIndex, subJob.Status.Phase),
 				Uri:  fmt.Sprintf(LogStreamFormatter, jobStore.GetRegion(), attempt.LogStream),
 			})
@@ -81,28 +84,29 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 		newArrayStatus.Summary.Inc(subJob.Status.Phase)
 	}
 
-	newState = newState.SetArrayStatus(newArrayStatus).(*State)
+	parentState = parentState.SetArrayStatus(newArrayStatus)
 
-	phase := array2.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()-int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
-	if phase == array2.PhasePermanentFailure || phase == array2.PhaseRetryableFailure {
+	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()-int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
+	if phase == arrayCore.PhasePermanentFailure || phase == arrayCore.PhaseRetryableFailure {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)
-		newState = newState.SetReason(errorMsg).(*State)
+		parentState = parentState.SetReason(errorMsg)
 	}
 
-	if phase == array2.PhaseCheckingSubTaskExecutions {
+	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
-		if phase == array2.PhaseCheckingSubTaskExecutions {
+		if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 			// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
-			for phase, count := range newState.GetArrayStatus().Summary {
+			for phase, count := range parentState.GetArrayStatus().Summary {
 				newPhaseVersion += uint32(phase) * uint32(count)
 			}
 		}
 
-		newState = newState.SetPhase(phase, newPhaseVersion).(*State)
+		parentState = parentState.SetPhase(phase, newPhaseVersion)
 	} else {
-		newState = newState.SetPhase(phase, core.DefaultPhaseVersion).(*State)
+		parentState = parentState.SetPhase(phase, core.DefaultPhaseVersion)
 	}
 
+	newState.State = parentState
 	return newState, nil
 }
 

@@ -407,4 +407,136 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_outputAssembler.workers", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("outputAssembler.workers"); err == nil {
+				assert.Equal(t, int(defaultConfig.OutputAssembler.Workers), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("outputAssembler.workers", testValue)
+			if vInt, err := cmdFlags.GetInt("outputAssembler.workers"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.OutputAssembler.Workers)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_outputAssembler.maxRetries", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("outputAssembler.maxRetries"); err == nil {
+				assert.Equal(t, int(defaultConfig.OutputAssembler.MaxRetries), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("outputAssembler.maxRetries", testValue)
+			if vInt, err := cmdFlags.GetInt("outputAssembler.maxRetries"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.OutputAssembler.MaxRetries)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_outputAssembler.maxItems", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("outputAssembler.maxItems"); err == nil {
+				assert.Equal(t, int(defaultConfig.OutputAssembler.IndexCacheMaxItems), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("outputAssembler.maxItems", testValue)
+			if vInt, err := cmdFlags.GetInt("outputAssembler.maxItems"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.OutputAssembler.IndexCacheMaxItems)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_errorAssembler.workers", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("errorAssembler.workers"); err == nil {
+				assert.Equal(t, int(defaultConfig.ErrorAssembler.Workers), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("errorAssembler.workers", testValue)
+			if vInt, err := cmdFlags.GetInt("errorAssembler.workers"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ErrorAssembler.Workers)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_errorAssembler.maxRetries", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("errorAssembler.maxRetries"); err == nil {
+				assert.Equal(t, int(defaultConfig.ErrorAssembler.MaxRetries), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("errorAssembler.maxRetries", testValue)
+			if vInt, err := cmdFlags.GetInt("errorAssembler.maxRetries"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ErrorAssembler.MaxRetries)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_errorAssembler.maxItems", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("errorAssembler.maxItems"); err == nil {
+				assert.Equal(t, int(defaultConfig.ErrorAssembler.IndexCacheMaxItems), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("errorAssembler.maxItems", testValue)
+			if vInt, err := cmdFlags.GetInt("errorAssembler.maxItems"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ErrorAssembler.IndexCacheMaxItems)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

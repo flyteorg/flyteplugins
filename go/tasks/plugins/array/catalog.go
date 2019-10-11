@@ -2,6 +2,7 @@ package array
 
 import (
 	"context"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"strconv"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -21,7 +22,7 @@ import (
 // which is different than their original location. To find the original index we construct an indexLookup array.
 // The subtask can find it's original index value in indexLookup[JOB_ARRAY_INDEX] where JOB_ARRAY_INDEX is an
 // environment variable in the pod
-func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state State) (State, error) {
+func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state arrayCore.State) (arrayCore.State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -32,7 +33,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Extract the custom plugin pb
-	arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
+	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom())
 	if err != nil {
 		return state, err
 	} else if arrayJob == nil {
@@ -49,7 +50,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// Set an empty indexes to cache. This task won't try to write to catalog anyway.
 		state = state.SetIndexesToCache(bitarray.NewBitSet(uint(arrayJob.Size)))
 		state = state.SetActualArraySize(int(arrayJob.Size))
-		state = state.SetPhase(PhaseLaunch, core.DefaultPhaseVersion)
+		state = state.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion)
 		return state, nil
 	}
 
@@ -87,7 +88,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
 			// TODO: This is not correct?  We still need to write parent level results?
-			state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
+			state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
 			return state, nil
 		}
 
@@ -105,8 +106,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, err
 		}
 
-		state = state.SetIndexesToCache(invertBitSet(resp.GetCachedResults()))
-		state = state.SetPhase(PhaseLaunch, 0)
+		state = state.SetIndexesToCache(arrayCore.InvertBitSet(resp.GetCachedResults()))
+		state = state.SetPhase(arrayCore.PhaseLaunch, 0)
 		state = state.SetActualArraySize(int(arrayJob.Size) - resp.GetCachedCount())
 	} else {
 		ownerSignal := tCtx.EnqueueOwner()
@@ -118,7 +119,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	return state, nil
 }
 
-func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state State) (State, error) {
+func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state arrayCore.State) (arrayCore.State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -129,7 +130,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	// Extract the custom plugin pb
-	arrayJob, err := ToArrayJob(taskTemplate.GetCustom())
+	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom())
 	if err != nil {
 		return state, err
 	} else if arrayJob == nil {
@@ -148,12 +149,12 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		*taskTemplate.Interface, state.GetIndexesToCache(), inputReaders, outputReaders)
 
 	if len(catalogWriterItems) == 0 {
-		state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
 	}
 
 	allWritten, err := WriteToCatalog(ctx, tCtx.EnqueueOwner(), tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
-		state.SetPhase(PhaseSuccess, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
 	}
 
 	return state, nil
@@ -165,7 +166,7 @@ func WriteToCatalog(ctx context.Context, ownerSignal core.SignalOwner, catalogCl
 	// Enqueue work items
 	future, err := catalogClient.Upload(ctx, workItems...)
 	if err != nil {
-		return false, errors.Wrapf(ErrorWorkQueue, err,
+		return false, errors.Wrapf(arrayCore.ErrorWorkQueue, err,
 			"Error enqueuing work items")
 	}
 
@@ -188,7 +189,7 @@ func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore
 	writerWorkItems := make([]catalog.UploadRequest, 0, len(inputReaders))
 
 	if len(inputReaders) != len(outputReaders) {
-		return nil, errors.Errorf(ErrorInternalMismatch, "Length different building catalog writer items %d %d",
+		return nil, errors.Errorf(arrayCore.ErrorInternalMismatch, "Length different building catalog writer items %d %d",
 			len(inputReaders), len(outputReaders))
 	}
 
@@ -315,6 +316,7 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return outputReaders, err
 		}
+
 		outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference)
 		reader := ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999))
 		outputReaders = append(outputReaders, reader)

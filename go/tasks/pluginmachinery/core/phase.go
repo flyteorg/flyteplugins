@@ -10,6 +10,8 @@ import (
 
 const DefaultPhaseVersion = uint32(0)
 
+//go:generate enumer -type=Phase
+
 type Phase int8
 
 const (
@@ -42,29 +44,6 @@ var Phases = []Phase{
 	PhaseSuccess,
 	PhaseRetryableFailure,
 	PhasePermanentFailure,
-}
-
-func (p Phase) String() string {
-	switch p {
-	case PhaseNotReady:
-		return "not-ready"
-	case PhaseQueued:
-		return "queued"
-	case PhaseInitializing:
-		return "init"
-	case PhaseSuccess:
-		return "success"
-	case PhasePermanentFailure:
-		return "perma-fail"
-	case PhaseRetryableFailure:
-		return "retryable-failure"
-	case PhaseRunning:
-		return "running"
-	case PhaseUndefined:
-		fallthrough
-	default:
-		return "undefined"
-	}
 }
 
 // Returns true if the given phase is failure, retryable failure or success

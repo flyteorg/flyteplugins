@@ -16,7 +16,7 @@ func TestTransitionType_String(t *testing.T) {
 func ExampleTransition_String() {
 	trns := DoTransitionType(TransitionTypeBestEffort, PhaseInfoUndefined)
 	fmt.Println(trns.String())
-	// Output: BestEffort,Phase<undefined:0 <nil> Reason:>
+	// Output: BestEffort,Phase<PhaseUndefined:0 <nil> Reason:>
 }
 
 func TestDoTransition(t *testing.T) {
