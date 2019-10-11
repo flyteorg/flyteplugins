@@ -8,6 +8,7 @@ update_boilerplate:
 generate:
 	which pflags || (go get github.com/lyft/flytestdlib/cli/pflags)
 	which mockery || (go get github.com/enghabu/mockery/cmd/mockery)
+	which enumer || (go get github.com/alvaroloes/enumer)
 	@go generate ./...
 
 clean:
