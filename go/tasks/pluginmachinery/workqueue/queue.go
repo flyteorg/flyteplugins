@@ -3,17 +3,19 @@ package workqueue
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
-	"sync"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 
 	"k8s.io/client-go/util/workqueue"
 )
 
 //go:generate mockery -all -case=underscore
+//go:generate enumer --type=WorkStatus
 
 type WorkItemID = string
 type WorkStatus uint8
@@ -86,6 +88,10 @@ func (w workItemWrapper) Error() error {
 	return w.err
 }
 
+func (w workItemWrapper) Clone() workItemWrapper {
+	return w
+}
+
 type queue struct {
 	wlock      sync.Mutex
 	rlock      sync.RWMutex
@@ -145,7 +151,8 @@ func (q queue) Get(id WorkItemID) (info WorkItemInfo, found bool, err error) {
 		return nil, found, nil
 	}
 
-	return wrapper, true, nil
+	v := wrapper.Clone()
+	return &v, true, nil
 }
 
 func (q *queue) Start(ctx context.Context) error {
@@ -170,7 +177,8 @@ func (q *queue) Start(ctx context.Context) error {
 						return
 					}
 
-					wrapper := item.(*workItemWrapper)
+					wrapperV := item.(*workItemWrapper).Clone()
+					wrapper := &wrapperV
 					ws, err := q.processor.Process(ctx, wrapper.payload)
 					if err != nil {
 						wrapper.retryCount++
@@ -180,11 +188,13 @@ func (q *queue) Start(ctx context.Context) error {
 								wrapper.ID(), err)
 							wrapper.status = WorkStatusFailed
 							ws = WorkStatusFailed
+							q.index.Add(wrapper)
 							continue
 						}
 					}
 
 					wrapper.status = ws
+					q.index.Add(wrapper)
 					if !ws.IsTerminal() {
 						q.queue.Add(wrapper)
 					}

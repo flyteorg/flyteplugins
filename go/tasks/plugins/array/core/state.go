@@ -17,6 +17,7 @@ import (
 )
 
 //go:generate mockery -all -case=underscore
+//go:generate enumer -type=Phase
 
 type Phase uint8
 

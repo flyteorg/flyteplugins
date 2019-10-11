@@ -2,6 +2,7 @@ package awsbatch
 
 import (
 	"context"
+
 	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -65,7 +66,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
 	case core2.PhaseCheckingSubTaskExecutions:
-		pluginState, err = CheckSubTasksState(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
+		pluginState, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginConfig, pluginState)
 
 	case core2.PhaseAssembleFinalOutput:
 		nextParentState, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState)

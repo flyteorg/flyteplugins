@@ -55,5 +55,11 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), defaultConfig.MaxErrorStringLength, "Determines the maximum length of the error string returned for the array.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "roleAnnotationKey"), defaultConfig.RoleAnnotationKey, "Map key to use to lookup role from task annotations.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "resyncPeriod"), defaultConfig.ResyncPeriod.String(), "Defines the duration for syncing job details from AWS Batch.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.workers"), defaultConfig.OutputAssembler.Workers, "")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.maxRetries"), defaultConfig.OutputAssembler.MaxRetries, "")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.maxItems"), defaultConfig.OutputAssembler.IndexCacheMaxItems, "")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.workers"), defaultConfig.ErrorAssembler.Workers, "")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxRetries"), defaultConfig.ErrorAssembler.MaxRetries, "")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxItems"), defaultConfig.ErrorAssembler.IndexCacheMaxItems, "")
 	return cmdFlags
 }

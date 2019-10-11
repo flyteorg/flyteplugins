@@ -23,6 +23,7 @@ func (_m *Processor) OnProcess(ctx context.Context, workItem workqueue.WorkItem)
 	c := _m.On("Process", ctx, workItem)
 	return &Processor_Process{Call: c}
 }
+
 func (_m *Processor) OnProcessMatch(matchers ...interface{}) *Processor_Process {
 	c := _m.On("Process", matchers...)
 	return &Processor_Process{Call: c}

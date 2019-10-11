@@ -22,6 +22,7 @@ func (_m *WorkItemInfo) OnError() *WorkItemInfo_Error {
 	c := _m.On("Error")
 	return &WorkItemInfo_Error{Call: c}
 }
+
 func (_m *WorkItemInfo) OnErrorMatch(matchers ...interface{}) *WorkItemInfo_Error {
 	c := _m.On("Error", matchers...)
 	return &WorkItemInfo_Error{Call: c}
@@ -53,6 +54,7 @@ func (_m *WorkItemInfo) OnID() *WorkItemInfo_ID {
 	c := _m.On("ID")
 	return &WorkItemInfo_ID{Call: c}
 }
+
 func (_m *WorkItemInfo) OnIDMatch(matchers ...interface{}) *WorkItemInfo_ID {
 	c := _m.On("ID", matchers...)
 	return &WorkItemInfo_ID{Call: c}
@@ -84,6 +86,7 @@ func (_m *WorkItemInfo) OnItem() *WorkItemInfo_Item {
 	c := _m.On("Item")
 	return &WorkItemInfo_Item{Call: c}
 }
+
 func (_m *WorkItemInfo) OnItemMatch(matchers ...interface{}) *WorkItemInfo_Item {
 	c := _m.On("Item", matchers...)
 	return &WorkItemInfo_Item{Call: c}
@@ -117,6 +120,7 @@ func (_m *WorkItemInfo) OnStatus() *WorkItemInfo_Status {
 	c := _m.On("Status")
 	return &WorkItemInfo_Status{Call: c}
 }
+
 func (_m *WorkItemInfo) OnStatusMatch(matchers ...interface{}) *WorkItemInfo_Status {
 	c := _m.On("Status", matchers...)
 	return &WorkItemInfo_Status{Call: c}
