@@ -24,6 +24,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	errors2 "github.com/lyft/flytedynamicjoboperator/errors"
 )
 
 // A generic task executor for k8s-resource reliant tasks.
@@ -247,7 +248,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 	// state machine. Once the object reaches its terminal state, we commit the completion in two steps:
 	// Round1: mark the object as deleted in state store (object's custom state)
 	// Round2: instead of regular retrieval (which may fail in this case), just delete the object
-	objStatus, terminalPhase, err := retrieveK8sObjectStatus(taskCtx.GetCustomState())
+	objStatus, terminalPhase, err := retrieveK8sObjectState(taskCtx.GetCustomState())
 	if err != nil {
 		logger.Warningf(ctx, "Failed to retrieve object status: %v. Error: %v",
 			taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
@@ -269,6 +270,9 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			}
 		}
 		finalStatus.Phase = terminalPhase
+		if terminalPhase.IsPermanentFailure() {
+			finalStatus.Err = errors2.NewUnknownError("k8s task failed, error info not available")
+		}
 		return finalStatus, nil
 	}
 
@@ -320,10 +324,12 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			}
 		}
 
-		finalStatus = types.TaskStatus{
-			Phase:        taskCtx.GetPhase(),
-			PhaseVersion: taskCtx.GetPhaseVersion(),
-			State:        storeK8sObjectStatus(k8sObjectDeleted, finalStatus.Phase),
+		if e.handler.GetProperties().DeleteResourceOnAbort {
+			finalStatus = types.TaskStatus{
+				Phase:        taskCtx.GetPhase(),
+				PhaseVersion: taskCtx.GetPhaseVersion(),
+				State:        storeK8sObjectState(k8sObjectDeleted, finalStatus.Phase),
+			}
 		}
 	}
 

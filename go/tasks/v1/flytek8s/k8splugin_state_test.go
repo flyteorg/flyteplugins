@@ -10,7 +10,7 @@ import (
 func TestRetrieveK8sObjectStatus(t *testing.T) {
 	status := k8sObjectExists
 	phase := types.TaskPhaseRunning
-	customState := storeK8sObjectStatus(status, phase)
+	customState := storeK8sObjectState(status, phase)
 
 	raw, err := json.Marshal(customState)
 	assert.NoError(t, err)
@@ -19,7 +19,7 @@ func TestRetrieveK8sObjectStatus(t *testing.T) {
 	err = json.Unmarshal(raw, &unmarshalledCustomState)
 	assert.NoError(t, err)
 
-	retrievedStatus, retrievedPhase, err := retrieveK8sObjectStatus(unmarshalledCustomState)
+	retrievedStatus, retrievedPhase, err := retrieveK8sObjectState(unmarshalledCustomState)
 	assert.NoError(t, err)
 	assert.Equal(t, status, retrievedStatus)
 	assert.Equal(t, phase, retrievedPhase)

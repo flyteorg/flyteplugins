@@ -35,7 +35,7 @@ type K8sObjectState struct {
 	TerminalPhase types.TaskPhase `json:"tp"`
 }
 
-func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatus, types.TaskPhase, error) {
+func retrieveK8sObjectState(customState map[string]interface{}) (K8sObjectStatus, types.TaskPhase, error) {
 	v, found := customState[stateKey]
 	if !found {
 		return k8sObjectUnknown, types.TaskPhaseUnknown, nil
@@ -48,7 +48,7 @@ func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatu
 	return state.Status, state.TerminalPhase, nil
 }
 
-func storeK8sObjectStatus(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
+func storeK8sObjectState(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
 	customState := make(map[string]interface{})
 	customState[stateKey] = K8sObjectState{Status:status, TerminalPhase:phase}
 	return customState
