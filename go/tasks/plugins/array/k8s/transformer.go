@@ -2,8 +2,7 @@ package k8s
 
 import (
 	"context"
-
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flytestdlib/storage"
 
@@ -51,7 +50,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = array.ToArrayJob(taskTemplate.GetCustom())
+		arrayJob, err = core2.ToArrayJob(taskTemplate.GetCustom())
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}

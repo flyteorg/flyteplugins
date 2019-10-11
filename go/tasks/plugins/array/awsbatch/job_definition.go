@@ -42,8 +42,8 @@ func containerImageRepository(containerImage string) string {
 	return ""
 }
 
-func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionContext, cfg *config.Config, client Client, definitionCache definition.Cache,
-	currentState *State) (nextState *State, err error) {
+func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionContext, cfg *config.Config, client Client,
+	definitionCache definition.Cache, currentState *State) (nextState *State, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
