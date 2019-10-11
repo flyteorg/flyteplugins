@@ -35,15 +35,15 @@ func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatu
 		return k8sObjectUnknown, types.TaskPhaseUnknown, nil
 	}
 
-	status := k8sObjectUnknown
-	terminalTaskPhase := types.TaskPhaseUnknown
+	status := int(k8sObjectUnknown)
+	terminalTaskPhase := int(types.TaskPhaseUnknown)
 	foundStatus := false
 	foundPhase := false
 	for k, v := range customState {
 		if k == statusKey {
-			status, foundStatus = v.(K8sObjectStatus)
+			status, foundStatus = v.(int)
 		} else if k == terminalTaskPhaseKey {
-			terminalTaskPhase, foundPhase = v.(types.TaskPhase)
+			terminalTaskPhase, foundPhase = v.(int)
 		}
 	}
 
@@ -51,16 +51,17 @@ func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatu
 		return k8sObjectUnknown, types.TaskPhaseUnknown, fmt.Errorf("invalid custom state %v", mapToString(customState))
 	}
 
-	return status, terminalTaskPhase, nil
+	return K8sObjectStatus(status), types.TaskPhase(terminalTaskPhase), nil
 }
 
 func storeK8sObjectStatus(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
 	customState := make(map[string]interface{})
-	customState[statusKey] = status
-	customState[terminalTaskPhaseKey] = phase
+	customState[statusKey] = int(status)
+	customState[terminalTaskPhaseKey] = int(phase)
 	return customState
 }
 
+//invalid custom state os=\"2\"\ntp=\"4\"\n","ts":"2019-10-11T00:29:24Z"}
 func mapToString(m map[string]interface{}) string {
 	b := new(bytes.Buffer)
 	for key, value := range m {
