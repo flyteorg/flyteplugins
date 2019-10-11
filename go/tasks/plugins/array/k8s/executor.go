@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	"github.com/lyft/flytestdlib/promutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 
@@ -20,13 +21,13 @@ type Executor struct {
 	errorAssembler   array.OutputAssembler
 }
 
-func NewExecutor(kubeClient core.KubeClient, cfg *Config) (Executor, error) {
-	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler)
+func NewExecutor(kubeClient core.KubeClient, cfg *Config, scope promutils.Scope) (Executor, error) {
+	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler, scope.NewSubScope("output_assembler"))
 	if err != nil {
 		return Executor{}, err
 	}
 
-	errorAssembler, err := array.NewErrorAssembler(cfg.MaxErrorStringLength, cfg.ErrorAssembler)
+	errorAssembler, err := array.NewErrorAssembler(cfg.MaxErrorStringLength, cfg.ErrorAssembler, scope.NewSubScope("error_assembler"))
 	if err != nil {
 		return Executor{}, err
 	}
@@ -116,5 +117,5 @@ func init() {
 }
 
 func GetNewExecutorPlugin(_ context.Context, iCtx core.SetupContext) (core.Plugin, error) {
-	return NewExecutor(iCtx.KubeClient(), GetConfig())
+	return NewExecutor(iCtx.KubeClient(), GetConfig(), iCtx.MetricsScope())
 }
