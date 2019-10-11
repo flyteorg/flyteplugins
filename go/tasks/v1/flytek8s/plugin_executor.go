@@ -258,8 +258,14 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 		if e.handler.GetProperties().DeleteResourceOnAbort {
 			err = instance.kubeClient.Delete(ctx, o)
 
-			if err != nil && !IsK8sObjectNotExists(err) {
-				return types.TaskStatusUndefined, err
+			if err != nil {
+				if IsK8sObjectNotExists(err) {
+					logger.Debugf(ctx, "the k8s object %v was found to have successfully exited after completion", taskCtx.GetTaskExecutionID().GetGeneratedName())
+				} else {
+					return types.TaskStatusUndefined, err
+				}
+			} else {
+				logger.Debugf(ctx, "deleted the k8s object %v in terminal phase", taskCtx.GetTaskExecutionID().GetGeneratedName())
 			}
 		}
 		finalStatus.Phase = terminalPhase
