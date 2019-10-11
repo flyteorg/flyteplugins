@@ -5,6 +5,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
+
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
 	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
@@ -25,6 +27,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 			AutoRefreshCache: mockCache,
 			quboleClient:     mockQubole,
 			scope:            testScope,
+			cfg:              config.GetQuboleConfig(),
 		}
 
 		state := ExecutionState{
