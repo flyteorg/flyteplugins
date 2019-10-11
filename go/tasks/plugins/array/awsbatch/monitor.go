@@ -3,10 +3,10 @@ package awsbatch
 import (
 	"context"
 	"fmt"
+	core3 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flytestdlib/bitarray"
 
-	array2 "github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 	errorcollector2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
@@ -23,7 +23,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 	msg := errorcollector2.NewErrorMessageCollector()
 	newArrayStatus := arraystatus2.ArrayStatus{
 		Summary:  arraystatus2.ArraySummary{},
-		Detailed: newStatusCompactArray(uint(currentState.GetExecutionArraySize())),
+		Detailed: core3.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
 	jobName := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
@@ -83,15 +83,15 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 
 	newState = newState.SetArrayStatus(newArrayStatus).(*State)
 
-	phase := array2.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()-int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
-	if phase == array2.PhasePermanentFailure || phase == array2.PhaseRetryableFailure {
+	phase := core3.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()-int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
+	if phase == core3.PhasePermanentFailure || phase == core3.PhaseRetryableFailure {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg).(*State)
 	}
 
-	if phase == array2.PhaseCheckingSubTaskExecutions {
+	if phase == core3.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
-		if phase == array2.PhaseCheckingSubTaskExecutions {
+		if phase == core3.PhaseCheckingSubTaskExecutions {
 			// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
 			for phase, count := range newState.GetArrayStatus().Summary {
 				newPhaseVersion += uint32(phase) * uint32(count)
