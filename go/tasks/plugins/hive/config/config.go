@@ -10,8 +10,9 @@ const quboleConfigSectionKey = "qubole"
 
 var (
 	defaultConfig = Config{
-		QuboleLimit:  100,
-		LruCacheSize: 2000,
+		QuboleTokenKey: "FLYTE_QUBOLE_CLIENT_TOKEN",
+		QuboleLimit:    100,
+		LruCacheSize:   2000,
 	}
 
 	quboleConfigSection = pluginsConfig.MustRegisterSubSection(quboleConfigSectionKey, &defaultConfig)
@@ -19,9 +20,9 @@ var (
 
 // Qubole plugin configs
 type Config struct {
-	QuboleTokenPath string `json:"quboleTokenPath" pflag:",Where to find the Qubole secret"`
-	QuboleLimit     int    `json:"quboleLimit" pflag:",Global limit for concurrent Qubole queries"`
-	LruCacheSize    int    `json:"lruCacheSize" pflag:",Size of the AutoRefreshCache"`
+	QuboleTokenKey string `json:"quboleTokenKey" pflag:",Name of the key where to find Qubole token in the secret manager."`
+	QuboleLimit    int    `json:"quboleLimit" pflag:",Global limit for concurrent Qubole queries"`
+	LruCacheSize   int    `json:"lruCacheSize" pflag:",Size of the AutoRefreshCache"`
 }
 
 // Retrieves the current config value or default.

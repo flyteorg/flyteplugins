@@ -94,7 +94,7 @@ func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core
 	q.metrics = getQuboleHiveExecutorMetrics(iCtx.MetricsScope())
 
 	executionsAutoRefreshCache, err := NewQuboleHiveExecutionsCache(ctx, q.quboleClient, iCtx.SecretManager(),
-		config.GetQuboleConfig().LruCacheSize, iCtx.MetricsScope().NewSubScope(hiveTaskType))
+		config.GetQuboleConfig(), iCtx.MetricsScope().NewSubScope(hiveTaskType))
 	if err != nil {
 		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleHiveExecutor Setup")
 		return q, err
