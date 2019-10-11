@@ -3,25 +3,28 @@ package hive
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"strconv"
+
+	"github.com/lyft/flytestdlib/logger"
+	utils2 "github.com/lyft/flytestdlib/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
-	"github.com/lyft/flytestdlib/logger"
-	utils2 "github.com/lyft/flytestdlib/utils"
-	"time"
 )
 
 type ExecutionPhase int
 
 const (
 	PhaseNotStarted ExecutionPhase = iota
-	PhaseQueued      // resource manager token gotten
-	PhaseSubmitted   // Sent off to Qubole
+	PhaseQueued                    // resource manager token gotten
+	PhaseSubmitted                 // Sent off to Qubole
 
 	PhaseQuerySucceeded
 	PhaseQueryFailed
