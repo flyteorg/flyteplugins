@@ -21,8 +21,8 @@ type Config struct {
 	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	RoleAnnotationKey    string            `json:"roleAnnotationKey" pflag:",Map key to use to lookup role from task annotations."`
 	ResyncPeriod         config.Duration   `json:"resyncPeriod" pflag:",Defines the duration for syncing job details from AWS Batch."`
-	OutputAssembler      workqueue.Config
-	ErrorAssembler       workqueue.Config
+	OutputAssembler      workqueue.Config  `json:"outputAssembler"`
+	ErrorAssembler       workqueue.Config  `json:"errorAssembler"`
 }
 
 type JobStoreConfig struct {
