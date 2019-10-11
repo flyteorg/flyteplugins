@@ -1,4 +1,4 @@
-package array
+package core
 
 import (
 	"context"
@@ -15,6 +15,9 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/lyft/flytestdlib/logger"
 )
+
+//go:generate mockery -all -case=underscore
+//go:generate enumer -type=Phase
 
 type Phase uint8
 
@@ -255,7 +258,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	return PhaseCheckingSubTaskExecutions
 }
 
-func invertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
+func InvertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
 	output := bitarray.NewBitSet(input.Cap())
 	for i := uint(0); i < input.Cap(); i++ {
 		if !input.IsSet(i) {
@@ -264,4 +267,16 @@ func invertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
 	}
 
 	return output
+}
+
+func NewPhasesCompactArray(count uint) bitarray.CompactArray {
+	// TODO: This is fragile, we should introduce a TaskPhaseCount as the last element in the enum
+	a, err := bitarray.NewCompactArray(count, bitarray.Item(len(core.Phases)-1))
+	if err != nil {
+		logger.Warnf(context.Background(), "Failed to create compact array with provided parameters [count: %v]",
+			count)
+		return bitarray.CompactArray{}
+	}
+
+	return a
 }

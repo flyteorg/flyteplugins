@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/lyft/flytestdlib/promutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -50,35 +51,35 @@ func (Executor) GetProperties() core.PluginProperties {
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	pluginConfig := GetConfig()
 
-	pluginState := &array.StateImpl{}
+	pluginState := &core2.StateImpl{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextState array.State
+	var nextState core2.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
-	case array.PhaseStart:
+	case core2.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
-	case array.PhasePreLaunch:
-		nextState = pluginState.SetPhase(array.PhaseLaunch, core.DefaultPhaseVersion)
+	case core2.PhasePreLaunch:
+		nextState = pluginState.SetPhase(core2.PhaseLaunch, core.DefaultPhaseVersion)
 		err = nil
 
-	case array.PhaseLaunch:
+	case core2.PhaseLaunch:
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case array.PhaseCheckingSubTaskExecutions:
+	case core2.PhaseCheckingSubTaskExecutions:
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case array.PhaseAssembleFinalOutput:
+	case core2.PhaseAssembleFinalOutput:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, pluginState)
 
-	case array.PhaseWriteToDiscovery:
+	case core2.PhaseWriteToDiscovery:
 		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
 
-	case array.PhaseAssembleFinalError:
+	case core2.PhaseAssembleFinalError:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
 
 	default:
@@ -94,7 +95,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := array.MapArrayStateToPluginPhase(ctx, nextState)
+	phaseInfo := core2.MapArrayStateToPluginPhase(ctx, nextState)
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 
