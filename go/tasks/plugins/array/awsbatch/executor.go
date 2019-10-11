@@ -126,12 +126,17 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *config2.Config,
 		return Executor{}, err
 	}
 
+<<<<<<< HEAD
 	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler)
+=======
+	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler, scope.NewSubScope("output"))
+>>>>>>> d3977cd326354fd1929b271effb3c0c2ccdb69dd
 	if err != nil {
 		return Executor{}, err
 	}
 
-	errorAssembler, err := array.NewErrorAssembler(cfg.MaxErrorStringLength, cfg.ErrorAssembler)
+	errorAssembler, err := array.NewErrorAssembler(cfg.MaxErrorStringLength, cfg.ErrorAssembler,
+		scope.NewSubScope("error"))
 	if err != nil {
 		return Executor{}, err
 	}
