@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/lyft/flyteplugins/go/tasks/v1/types"
+	"encoding/json"
 )
 
 func TestRetrieveK8sObjectStatus(t *testing.T) {
@@ -11,21 +12,15 @@ func TestRetrieveK8sObjectStatus(t *testing.T) {
 	phase := types.TaskPhaseRunning
 	customState := storeK8sObjectStatus(status, phase)
 
-	retrievedStatus, retrievedPhase, err := retrieveK8sObjectStatus(customState)
+	raw, err := json.Marshal(customState)
+	assert.NoError(t, err)
+
+	unmarshalledCustomState := make(map[string]interface{})
+	err = json.Unmarshal(raw, &unmarshalledCustomState)
+	assert.NoError(t, err)
+
+	retrievedStatus, retrievedPhase, err := retrieveK8sObjectStatus(unmarshalledCustomState)
 	assert.NoError(t, err)
 	assert.Equal(t, status, retrievedStatus)
 	assert.Equal(t, phase, retrievedPhase)
-}
-
-func TestRetrieveK8sObjectStatus2(t *testing.T) {
-	status := 2
-	phase := 4
-	customState := make(map[string]interface{})
-	customState[statusKey] = status
-	customState[terminalTaskPhaseKey] = phase
-
-	retrievedStatus, retrievedPhase, err := retrieveK8sObjectStatus(customState)
-	assert.NoError(t, err)
-	assert.Equal(t, status, int(retrievedStatus))
-	assert.Equal(t, phase, int(retrievedPhase))
 }

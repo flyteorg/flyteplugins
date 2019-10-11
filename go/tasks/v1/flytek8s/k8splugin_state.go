@@ -3,11 +3,10 @@ package flytek8s
 import (
 	"fmt"
 	"github.com/lyft/flyteplugins/go/tasks/v1/types"
-	"bytes"
+	"encoding/json"
 )
 
-const statusKey = "os"
-const terminalTaskPhaseKey = "tp"
+const stateKey = "os"
 
 // This status internal state of the object not read/updated by upstream components (eg. Node manager)
 type K8sObjectStatus int
@@ -30,41 +29,42 @@ func (q K8sObjectStatus) String() string {
 	return "IllegalK8sObjectStatus"
 }
 
-func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatus, types.TaskPhase, error) {
-	if customState == nil {
-		return k8sObjectUnknown, types.TaskPhaseUnknown, nil
-	}
+// This status internal state of the object not read/updated by upstream components (eg. Node manager)
+type K8sObjectState struct {
+	Status        K8sObjectStatus `json:"s"`
+	TerminalPhase types.TaskPhase `json:"tp"`
+}
 
-	status := int(k8sObjectUnknown)
-	terminalTaskPhase := int(types.TaskPhaseUnknown)
-	foundStatus := false
-	foundPhase := false
+func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatus, types.TaskPhase, error) {
 	for k, v := range customState {
-		if k == statusKey {
-			status, foundStatus = v.(int)
-		} else if k == terminalTaskPhaseKey {
-			terminalTaskPhase, foundPhase = v.(int)
+		if k == stateKey {
+			state, err := convertToState(v)
+			if err != nil {
+				return k8sObjectUnknown, types.TaskPhaseUnknown, err
+			}
+			return state.Status, state.TerminalPhase, nil
 		}
 	}
-
-	if !(foundPhase && foundStatus) {
-		return k8sObjectUnknown, types.TaskPhaseUnknown, fmt.Errorf("invalid custom state %v", mapToString(customState))
-	}
-
-	return K8sObjectStatus(status), types.TaskPhase(terminalTaskPhase), nil
+	return k8sObjectUnknown, types.TaskPhaseUnknown, nil
 }
 
 func storeK8sObjectStatus(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
 	customState := make(map[string]interface{})
-	customState[statusKey] = int(status)
-	customState[terminalTaskPhaseKey] = int(phase)
+	customState[stateKey] = K8sObjectState{Status:status, TerminalPhase:phase}
 	return customState
 }
 
-func mapToString(m map[string]interface{}) string {
-	b := new(bytes.Buffer)
-	for key, value := range m {
-		fmt.Fprintf(b, "%s=\"%v\"\n", key, value)
+func convertToState(iface interface{}) (K8sObjectState, error) {
+	raw, err := json.Marshal(iface)
+	if err != nil {
+		return K8sObjectState{}, err
 	}
-	return b.String()
+
+	item := &K8sObjectState{}
+	err = json.Unmarshal(raw, item)
+	if err != nil {
+		return K8sObjectState{}, fmt.Errorf("failed to unmarshal state into K8sObjectState")
+	}
+
+	return *item, nil
 }

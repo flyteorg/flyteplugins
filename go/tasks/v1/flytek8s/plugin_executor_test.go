@@ -457,8 +457,8 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		s, err := k.CheckTaskStatus(ctx, tctx, nil)
 		// first time after termination, we expect phase to not change but have custom state populated
 		assert.NotNil(t, s.State)
-		assert.Equal(t, flytek8s.K8sObjectStatus(2), s.State["os"])
-		assert.Equal(t, types.TaskPhase(3), s.State["tp"])
+		assert.Equal(t, flytek8s.K8sObjectStatus(2), s.State["os"].(flytek8s.K8sObjectState).Status)
+		assert.Equal(t, types.TaskPhase(3), s.State["os"].(flytek8s.K8sObjectState).TerminalPhase)
 		assert.NoError(t, err)
 		assert.Equal(t, types.TaskPhaseQueued, s.Phase)
 
