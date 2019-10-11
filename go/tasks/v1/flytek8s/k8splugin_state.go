@@ -1,9 +1,10 @@
 package flytek8s
 
 import (
-	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 	"encoding/json"
+	"fmt"
+
+	"github.com/lyft/flyteplugins/go/tasks/v1/types"
 )
 
 const stateKey = "os"
@@ -50,7 +51,7 @@ func retrieveK8sObjectState(customState map[string]interface{}) (K8sObjectStatus
 
 func storeK8sObjectState(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
 	customState := make(map[string]interface{})
-	customState[stateKey] = K8sObjectState{Status:status, TerminalPhase:phase}
+	customState[stateKey] = K8sObjectState{Status: status, TerminalPhase: phase}
 	return customState
 }
 

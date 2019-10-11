@@ -15,6 +15,8 @@ import (
 
 	"strings"
 
+	"fmt"
+
 	eventErrors "github.com/lyft/flyteidl/clients/go/events/errors"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/v1/errors"
@@ -24,7 +26,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	errors2 "github.com/lyft/flytedynamicjoboperator/errors"
 )
 
 // A generic task executor for k8s-resource reliant tasks.
@@ -279,7 +280,7 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			}
 			finalStatus.Phase = terminalPhase
 			if terminalPhase.IsPermanentFailure() {
-				finalStatus.Err = errors2.NewUnknownError("k8s task failed, error info not available")
+				finalStatus.Err = fmt.Errorf("k8s task failed, error info not available")
 			}
 			return finalStatus, nil
 		}
