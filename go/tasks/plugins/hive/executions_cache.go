@@ -2,13 +2,16 @@ package hive
 
 import (
 	"context"
+	"time"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
+
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
-	"time"
 )
 
 const ResyncDuration = 30 * time.Second
@@ -22,21 +25,23 @@ type QuboleHiveExecutionsCache struct {
 	quboleClient  client.QuboleClient
 	secretManager core.SecretManager
 	scope         promutils.Scope
+	cfg           *config.Config
 }
 
 func NewQuboleHiveExecutionsCache(ctx context.Context, quboleClient client.QuboleClient,
-	secretManager core.SecretManager, size int, scope promutils.Scope) (QuboleHiveExecutionsCache, error) {
+	secretManager core.SecretManager, cfg *config.Config, scope promutils.Scope) (QuboleHiveExecutionsCache, error) {
 
 	rateLimiter := utils.NewRateLimiter("qubole-api-updater", 5, 15)
 	q := QuboleHiveExecutionsCache{
 		quboleClient:  quboleClient,
 		secretManager: secretManager,
 		scope:         scope,
+		cfg:           cfg,
 	}
-	autoRefreshCache, err := utils.NewAutoRefreshCache(q.SyncQuboleQuery, rateLimiter, ResyncDuration, size, scope)
+	autoRefreshCache, err := utils.NewAutoRefreshCache(q.SyncQuboleQuery, rateLimiter, ResyncDuration, cfg.LruCacheSize, scope)
 	if err != nil {
 		logger.Errorf(ctx, "Could not create AutoRefreshCache in QuboleHiveExecutor. [%s]", err)
-		return q, errors.Wrapf( errors.CacheFailed, err, "Error creating AutoRefreshCache")
+		return q, errors.Wrapf(errors.CacheFailed, err, "Error creating AutoRefreshCache")
 	}
 	q.AutoRefreshCache = autoRefreshCache
 	return q, nil
@@ -75,7 +80,7 @@ func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj uti
 	logger.Debugf(ctx, "Sync loop - processing Hive job [%s] - cache key [%s]",
 		executionStateCacheItem.CommandId, executionStateCacheItem.Id)
 
-	quboleApiKey, err := q.secretManager.Get(ctx, client.QuboleSecretKey)
+	quboleApiKey, err := q.secretManager.Get(ctx, q.cfg.QuboleTokenKey)
 	if err != nil {
 		return executionStateCacheItem, utils.Unchanged, err
 	}
