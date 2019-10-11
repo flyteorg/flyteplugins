@@ -14,22 +14,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dereferencableKindsConfig = map[reflect.Kind]struct{}{
+var dereferencableKindsK8sPluginConfig = map[reflect.Kind]struct{}{
 	reflect.Array: {}, reflect.Chan: {}, reflect.Map: {}, reflect.Ptr: {}, reflect.Slice: {},
 }
 
 // Checks if t is a kind that can be dereferenced to get its underlying type.
-func canGetElementConfig(t reflect.Kind) bool {
-	_, exists := dereferencableKindsConfig[t]
+func canGetElementK8sPluginConfig(t reflect.Kind) bool {
+	_, exists := dereferencableKindsK8sPluginConfig[t]
 	return exists
 }
 
 // This decoder hook tests types for json unmarshaling capability. If implemented, it uses json unmarshal to build the
 // object. Otherwise, it'll just pass on the original data.
-func jsonUnmarshalerHookConfig(_, to reflect.Type, data interface{}) (interface{}, error) {
+func jsonUnmarshalerHookK8sPluginConfig(_, to reflect.Type, data interface{}) (interface{}, error) {
 	unmarshalerType := reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
 	if to.Implements(unmarshalerType) || reflect.PtrTo(to).Implements(unmarshalerType) ||
-		(canGetElementConfig(to.Kind()) && to.Elem().Implements(unmarshalerType)) {
+		(canGetElementK8sPluginConfig(to.Kind()) && to.Elem().Implements(unmarshalerType)) {
 
 		raw, err := json.Marshal(data)
 		if err != nil {
@@ -50,7 +50,7 @@ func jsonUnmarshalerHookConfig(_, to reflect.Type, data interface{}) (interface{
 	return data, nil
 }
 
-func decode_Config(input, result interface{}) error {
+func decode_K8sPluginConfig(input, result interface{}) error {
 	config := &mapstructure.DecoderConfig{
 		TagName:          "json",
 		WeaklyTypedInput: true,
@@ -58,7 +58,7 @@ func decode_Config(input, result interface{}) error {
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
-			jsonUnmarshalerHookConfig,
+			jsonUnmarshalerHookK8sPluginConfig,
 		),
 	}
 
@@ -70,7 +70,7 @@ func decode_Config(input, result interface{}) error {
 	return decoder.Decode(input)
 }
 
-func join_Config(arr interface{}, sep string) string {
+func join_K8sPluginConfig(arr interface{}, sep string) string {
 	listValue := reflect.ValueOf(arr)
 	strs := make([]string, 0, listValue.Len())
 	for i := 0; i < listValue.Len(); i++ {
@@ -80,30 +80,30 @@ func join_Config(arr interface{}, sep string) string {
 	return strings.Join(strs, sep)
 }
 
-func testDecodeJson_Config(t *testing.T, val, result interface{}) {
-	assert.NoError(t, decode_Config(val, result))
+func testDecodeJson_K8sPluginConfig(t *testing.T, val, result interface{}) {
+	assert.NoError(t, decode_K8sPluginConfig(val, result))
 }
 
-func testDecodeSlice_Config(t *testing.T, vStringSlice, result interface{}) {
-	assert.NoError(t, decode_Config(vStringSlice, result))
+func testDecodeSlice_K8sPluginConfig(t *testing.T, vStringSlice, result interface{}) {
+	assert.NoError(t, decode_K8sPluginConfig(vStringSlice, result))
 }
 
-func TestConfig_GetPFlagSet(t *testing.T) {
-	val := Config{}
+func TestK8sPluginConfig_GetPFlagSet(t *testing.T) {
+	val := K8sPluginConfig{}
 	cmdFlags := val.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 }
 
-func TestConfig_SetFlags(t *testing.T) {
-	actual := Config{}
+func TestK8sPluginConfig_SetFlags(t *testing.T) {
+	actual := K8sPluginConfig{}
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
-	t.Run("Test_quboleTokenKey", func(t *testing.T) {
+	t.Run("Test_inject-finalizer", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("quboleTokenKey"); err == nil {
-				assert.Equal(t, string(defaultConfig.QuboleTokenKey), vString)
+			if vBool, err := cmdFlags.GetBool("inject-finalizer"); err == nil {
+				assert.Equal(t, bool(*new(bool)), vBool)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -112,20 +112,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("quboleTokenKey", testValue)
-			if vString, err := cmdFlags.GetString("quboleTokenKey"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.QuboleTokenKey)
+			cmdFlags.Set("inject-finalizer", testValue)
+			if vBool, err := cmdFlags.GetBool("inject-finalizer"); err == nil {
+				testDecodeJson_K8sPluginConfig(t, fmt.Sprintf("%v", vBool), &actual.InjectFinalizer)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_quboleLimit", func(t *testing.T) {
+	t.Run("Test_default-cpus", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("quboleLimit"); err == nil {
-				assert.Equal(t, int(defaultConfig.QuboleLimit), vInt)
+			if vString, err := cmdFlags.GetString("default-cpus"); err == nil {
+				assert.Equal(t, string(*new(string)), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -134,20 +134,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("quboleLimit", testValue)
-			if vInt, err := cmdFlags.GetInt("quboleLimit"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.QuboleLimit)
+			cmdFlags.Set("default-cpus", testValue)
+			if vString, err := cmdFlags.GetString("default-cpus"); err == nil {
+				testDecodeJson_K8sPluginConfig(t, fmt.Sprintf("%v", vString), &actual.DefaultCpuRequest)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_lruCacheSize", func(t *testing.T) {
+	t.Run("Test_default-memory", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("lruCacheSize"); err == nil {
-				assert.Equal(t, int(defaultConfig.LruCacheSize), vInt)
+			if vString, err := cmdFlags.GetString("default-memory"); err == nil {
+				assert.Equal(t, string(*new(string)), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -156,9 +156,9 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("lruCacheSize", testValue)
-			if vInt, err := cmdFlags.GetInt("lruCacheSize"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.LruCacheSize)
+			cmdFlags.Set("default-memory", testValue)
+			if vString, err := cmdFlags.GetString("default-memory"); err == nil {
+				testDecodeJson_K8sPluginConfig(t, fmt.Sprintf("%v", vString), &actual.DefaultMemoryRequest)
 
 			} else {
 				assert.FailNow(t, err.Error())
