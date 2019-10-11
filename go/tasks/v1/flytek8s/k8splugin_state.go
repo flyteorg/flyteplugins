@@ -61,7 +61,6 @@ func storeK8sObjectStatus(status K8sObjectStatus, phase types.TaskPhase) map[str
 	return customState
 }
 
-//invalid custom state os=\"2\"\ntp=\"4\"\n","ts":"2019-10-11T00:29:24Z"}
 func mapToString(m map[string]interface{}) string {
 	b := new(bytes.Buffer)
 	for key, value := range m {
