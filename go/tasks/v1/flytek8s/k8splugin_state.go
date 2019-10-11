@@ -36,16 +36,16 @@ type K8sObjectState struct {
 }
 
 func retrieveK8sObjectStatus(customState map[string]interface{}) (K8sObjectStatus, types.TaskPhase, error) {
-	for k, v := range customState {
-		if k == stateKey {
-			state, err := convertToState(v)
-			if err != nil {
-				return k8sObjectUnknown, types.TaskPhaseUnknown, err
-			}
-			return state.Status, state.TerminalPhase, nil
-		}
+	v, found := customState[stateKey]
+	if !found {
+		return k8sObjectUnknown, types.TaskPhaseUnknown, nil
 	}
-	return k8sObjectUnknown, types.TaskPhaseUnknown, nil
+
+	state, err := convertToState(v)
+	if err != nil {
+		return k8sObjectUnknown, types.TaskPhaseUnknown, err
+	}
+	return state.Status, state.TerminalPhase, nil
 }
 
 func storeK8sObjectStatus(status K8sObjectStatus, phase types.TaskPhase) map[string]interface{} {
