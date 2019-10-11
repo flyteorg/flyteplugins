@@ -431,9 +431,6 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		}
 
 		assert.NoError(t, c.Create(ctx, testPod))
-		defer func() {
-			assert.NoError(t, c.Delete(ctx, testPod))
-		}()
 
 		assert.NoError(t, store.WriteProtobuf(ctx, tctx.GetErrorFile(), storage.Options{}, &core.ErrorDocument{
 			Error: &core.ContainerError{
@@ -450,6 +447,7 @@ func TestK8sTaskExecutor_CheckTaskStatus(t *testing.T) {
 		tctx.On("GetPhaseVersion").Return(uint32(0))
 		tctx.On("GetCustomState").Return(nil)
 		mockResourceHandler.On("GetTaskStatus", mock.Anything, mock.Anything, mock.MatchedBy(func(o *v1.Pod) bool { return true })).Return(types.TaskStatusSucceeded, nil, nil)
+		mockResourceHandler.On("GetProperties").Return(types.ExecutorProperties{DeleteResourceOnAbort:true})
 
 		evRecorder.On("RecordTaskEvent", mock.MatchedBy(func(c context.Context) bool { return true }),
 			mock.MatchedBy(func(e *event.TaskExecutionEvent) bool { return true })).Return(nil)

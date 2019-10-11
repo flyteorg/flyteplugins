@@ -244,19 +244,28 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 		PhaseVersion: taskCtx.GetPhaseVersion(),
 	}
 
-	// NOTE: To ensure objects are cleaned up, the plugins need a persistent step in addition to upstream plugin executor
-	// state machine. Once the object reaches its terminal state, we commit the completion in two steps:
-	// Round1: mark the object as deleted in state store (object's custom state)
-	// Round2: instead of regular retrieval (which may fail in this case), just delete the object
-	objStatus, terminalPhase, err := retrieveK8sObjectState(taskCtx.GetCustomState())
+	var info *events.TaskEventInfo
+
 	if err != nil {
-		logger.Warningf(ctx, "Failed to retrieve object status: %v. Error: %v",
+		logger.Warningf(ctx, "Failed to build the Resource with name: %v. Error: %v",
 			taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
-		return types.TaskStatusUndefined, err
-	}
-	if objStatus == k8sObjectDeleted {
-		// kill the object execution if still live
-		if e.handler.GetProperties().DeleteResourceOnAbort {
+		finalStatus = types.TaskStatusPermanentFailure(err)
+	} else {
+		AddObjectMetadata(taskCtx, o)
+
+		// NOTE: To ensure objects are cleaned up, the plugins need a persistent step in addition to upstream plugin executor
+		// state machine. Once the object reaches its terminal state, we commit the completion in two steps:
+		// Round1: mark the object as deleted in state store (object's custom state)
+		// Round2: instead of regular retrieval (which may fail in this case), just delete the object
+		objStatus, terminalPhase, err := retrieveK8sObjectState(taskCtx.GetCustomState())
+		if err != nil {
+			logger.Warningf(ctx, "Failed to retrieve object status: %v. Error: %v",
+				taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
+			return types.TaskStatusUndefined, err
+		}
+
+		if objStatus == k8sObjectDeleted {
+			// kill the object execution if still alive
 			err = instance.kubeClient.Delete(ctx, o)
 
 			if err != nil {
@@ -268,22 +277,13 @@ func (e *K8sTaskExecutor) CheckTaskStatus(ctx context.Context, taskCtx types.Tas
 			} else {
 				logger.Debugf(ctx, "deleted the k8s object %v in terminal phase", taskCtx.GetTaskExecutionID().GetGeneratedName())
 			}
+			finalStatus.Phase = terminalPhase
+			if terminalPhase.IsPermanentFailure() {
+				finalStatus.Err = errors2.NewUnknownError("k8s task failed, error info not available")
+			}
+			return finalStatus, nil
 		}
-		finalStatus.Phase = terminalPhase
-		if terminalPhase.IsPermanentFailure() {
-			finalStatus.Err = errors2.NewUnknownError("k8s task failed, error info not available")
-		}
-		return finalStatus, nil
-	}
 
-	var info *events.TaskEventInfo
-
-	if err != nil {
-		logger.Warningf(ctx, "Failed to build the Resource with name: %v. Error: %v",
-			taskCtx.GetTaskExecutionID().GetGeneratedName(), err)
-		finalStatus = types.TaskStatusPermanentFailure(err)
-	} else {
-		AddObjectMetadata(taskCtx, o)
 		finalStatus, info, err = e.getResource(ctx, taskCtx, o)
 		if err != nil {
 			return types.TaskStatusUndefined, err
