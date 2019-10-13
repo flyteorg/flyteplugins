@@ -2,16 +2,17 @@ package hive
 
 import (
 	"context"
+	"testing"
+
+	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
-	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-
-	"testing"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 )
 
 func TestInTerminalState(t *testing.T) {
@@ -179,7 +180,7 @@ func TestAbort(t *testing.T) {
 			x = true
 		}).Return(nil)
 
-		err := Abort(ctx, GetMockTaskExecutionContext(), ExecutionState{Phase: PhaseSubmitted, CommandId: "123456"}, mockQubole)
+		err := Abort(ctx, GetMockTaskExecutionContext(), ExecutionState{Phase: PhaseSubmitted, CommandId: "123456"}, mockQubole, "fake-key")
 		assert.NoError(t, err)
 		assert.True(t, x)
 	})
@@ -194,7 +195,7 @@ func TestAbort(t *testing.T) {
 		err := Abort(ctx, GetMockTaskExecutionContext(), ExecutionState{
 			Phase:     PhaseQuerySucceeded,
 			CommandId: "123456",
-		}, mockQubole)
+		}, mockQubole, "fake-key")
 		assert.NoError(t, err)
 		assert.False(t, x)
 	})
@@ -260,7 +261,7 @@ func TestKickOffQuery(t *testing.T) {
 	}).Return(ExecutionStateCacheItem{}, nil)
 
 	state := ExecutionState{}
-	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, mockCache)
+	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, mockCache, config.GetQuboleConfig())
 	assert.NoError(t, err)
 	assert.Equal(t, PhaseSubmitted, newState.Phase)
 	assert.Equal(t, "453298043", newState.CommandId)
