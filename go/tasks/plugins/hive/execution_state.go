@@ -10,6 +10,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 
 	"github.com/lyft/flytestdlib/logger"
 	utils2 "github.com/lyft/flytestdlib/utils"
@@ -63,7 +64,7 @@ type ExecutionState struct {
 
 // This is the main state iteration
 func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
-	executionsCache utils2.AutoRefreshCache) (ExecutionState, error) {
+	executionsCache utils2.AutoRefreshCache, cfg *config.Config) (ExecutionState, error) {
 
 	var transformError error
 	var newState ExecutionState
@@ -73,7 +74,7 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 		newState, transformError = GetAllocationToken(ctx, tCtx)
 
 	case PhaseQueued:
-		newState, transformError = KickOffQuery(ctx, tCtx, currentState, quboleClient, executionsCache)
+		newState, transformError = KickOffQuery(ctx, tCtx, currentState, quboleClient, executionsCache, cfg)
 
 	case PhaseSubmitted:
 		newState, transformError = MonitorQuery(ctx, tCtx, currentState, executionsCache)
@@ -188,10 +189,10 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 }
 
 func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
-	cache utils2.AutoRefreshCache) (ExecutionState, error) {
+	cache utils2.AutoRefreshCache, cfg *config.Config) (ExecutionState, error) {
 
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	apiKey, err := tCtx.SecretManager().Get(ctx, client.QuboleSecretKey)
+	apiKey, err := tCtx.SecretManager().Get(ctx, cfg.QuboleTokenKey)
 	if err != nil {
 		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
 	}
@@ -262,15 +263,10 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	return cachedExecutionState.ExecutionState, nil
 }
 
-func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient) error {
+func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient, apiKey string) error {
 	// Cancel Qubole query if non-terminal state
 	if !InTerminalState(currentState) && currentState.CommandId != "" {
-		key, err := tCtx.SecretManager().Get(ctx, client.QuboleSecretKey)
-		if err != nil {
-			logger.Errorf(ctx, "Error reading token in Finalize [%s]", err)
-			return err
-		}
-		err = qubole.KillCommand(ctx, currentState.CommandId, key)
+		err := qubole.KillCommand(ctx, currentState.CommandId, apiKey)
 		if err != nil {
 			logger.Errorf(ctx, "Error terminating Qubole command in Finalize [%s]", err)
 			return err
