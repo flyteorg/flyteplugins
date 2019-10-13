@@ -25,6 +25,7 @@ type QuboleHiveExecutor struct {
 	metrics         QuboleHiveExecutorMetrics
 	quboleClient    client.QuboleClient
 	executionsCache utils2.AutoRefreshCache
+	cfg             *config.Config
 }
 
 func (q QuboleHiveExecutor) GetID() string {
@@ -45,7 +46,7 @@ func (q QuboleHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionC
 
 	// Do what needs to be done, and give this function everything it needs to do its job properly
 	// TODO: Play around with making this return a transition directly. How will that pattern affect the multi-Qubole plugin
-	outgoingState, transformError := HandleExecutionState(ctx, tCtx, incomingState, q.quboleClient, q.executionsCache)
+	outgoingState, transformError := HandleExecutionState(ctx, tCtx, incomingState, q.quboleClient, q.executionsCache, q.cfg)
 
 	// Return if there was an error
 	if transformError != nil {
@@ -70,7 +71,13 @@ func (q QuboleHiveExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionCo
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
 	}
 
-	return Abort(ctx, tCtx, incomingState, q.quboleClient)
+	key, err := tCtx.SecretManager().Get(ctx, q.cfg.QuboleTokenKey)
+	if err != nil {
+		logger.Errorf(ctx, "Error reading token in Finalize [%s]", err)
+		return err
+	}
+
+	return Abort(ctx, tCtx, incomingState, q.quboleClient, key)
 }
 
 func (q QuboleHiveExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
@@ -92,6 +99,7 @@ func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core
 	q := NewQuboleHiveExecutor()
 	q.quboleClient = client.NewQuboleClient()
 	q.metrics = getQuboleHiveExecutorMetrics(iCtx.MetricsScope())
+	q.cfg = config.GetQuboleConfig()
 
 	executionsAutoRefreshCache, err := NewQuboleHiveExecutionsCache(ctx, q.quboleClient, iCtx.SecretManager(),
 		config.GetQuboleConfig(), iCtx.MetricsScope().NewSubScope(hiveTaskType))
