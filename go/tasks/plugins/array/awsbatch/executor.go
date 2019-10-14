@@ -3,7 +3,7 @@ package awsbatch
 import (
 	"context"
 
-	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
@@ -51,32 +51,36 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextParentState core2.State
+	if pluginState.State == nil {
+		pluginState.State = &arrayCore.StateImpl{}
+	}
+
+	var nextParentState arrayCore.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
-	case core2.PhaseStart:
+	case arrayCore.PhaseStart:
 		nextParentState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState.State)
 		pluginState.State = nextParentState
 
-	case core2.PhasePreLaunch:
+	case arrayCore.PhasePreLaunch:
 		pluginState, err = EnsureJobDefinition(ctx, tCtx, pluginConfig, e.jobStore.Client, e.jobDefinitionCache, pluginState)
 
-	case core2.PhaseLaunch:
+	case arrayCore.PhaseLaunch:
 		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
-	case core2.PhaseCheckingSubTaskExecutions:
+	case arrayCore.PhaseCheckingSubTaskExecutions:
 		pluginState, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginConfig, pluginState)
 
-	case core2.PhaseAssembleFinalOutput:
+	case arrayCore.PhaseAssembleFinalOutput:
 		nextParentState, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState)
 		pluginState.State = nextParentState
 
-	case core2.PhaseWriteToDiscovery:
+	case arrayCore.PhaseWriteToDiscovery:
 		nextParentState, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State)
 		pluginState.State = nextParentState
 
-	case core2.PhaseAssembleFinalError:
+	case arrayCore.PhaseAssembleFinalError:
 		nextParentState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
 		pluginState.State = nextParentState
 
@@ -93,7 +97,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := core2.MapArrayStateToPluginPhase(ctx, pluginState.State)
+	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State)
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 
