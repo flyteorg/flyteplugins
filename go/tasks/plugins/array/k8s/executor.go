@@ -2,8 +2,9 @@ package k8s
 
 import (
 	"context"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
-	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/lyft/flytestdlib/promutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -51,35 +52,35 @@ func (Executor) GetProperties() core.PluginProperties {
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	pluginConfig := GetConfig()
 
-	pluginState := &core2.StateImpl{}
+	pluginState := &arrayCore.StateImpl{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextState core2.State
+	var nextState arrayCore.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
-	case core2.PhaseStart:
+	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
-	case core2.PhasePreLaunch:
-		nextState = pluginState.SetPhase(core2.PhaseLaunch, core.DefaultPhaseVersion)
+	case arrayCore.PhasePreLaunch:
+		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion)
 		err = nil
 
-	case core2.PhaseLaunch:
+	case arrayCore.PhaseLaunch:
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case core2.PhaseCheckingSubTaskExecutions:
+	case arrayCore.PhaseCheckingSubTaskExecutions:
 		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
-	case core2.PhaseAssembleFinalOutput:
+	case arrayCore.PhaseAssembleFinalOutput:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, pluginState)
 
-	case core2.PhaseWriteToDiscovery:
+	case arrayCore.PhaseWriteToDiscovery:
 		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
 
-	case core2.PhaseAssembleFinalError:
+	case arrayCore.PhaseAssembleFinalError:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
 
 	default:
@@ -95,7 +96,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := core2.MapArrayStateToPluginPhase(ctx, nextState)
+	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, nextState)
 	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
 }
 
