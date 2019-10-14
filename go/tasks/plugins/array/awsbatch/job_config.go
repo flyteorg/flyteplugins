@@ -10,14 +10,15 @@ import (
 
 const (
 	// Keep these in-sync with flyteAdmin @
-	// https://github.com/lyft/flyteadmin/commit/15dc00010d379c9240657326e0e95c60993ba30b#diff-fc047e54b9dd82ca7c89ac9b32cb07b3R37
+	// https://github.com/lyft/flyteadmin/blob/d1c61c34f62d8ee51964f47877802d070dfa9e98/pkg/manager/impl/execution_manager.go#L42-L43
 	PrimaryTaskQueueKey = "primary_queue"
 	DynamicTaskQueueKey = "dynamic_queue"
+	ChildTaskQueueKey   = "child_queue"
 )
 
 type JobConfig struct {
-	PrimaryTaskQueue string `json:"master_queue"`
-	DynamicTaskQueue string `json:"child_queue"`
+	PrimaryTaskQueue string `json:"primary_queue"`
+	DynamicTaskQueue string `json:"dynamic_queue"`
 }
 
 func (j *JobConfig) setKeyIfKnown(key, value string) bool {
@@ -25,6 +26,8 @@ func (j *JobConfig) setKeyIfKnown(key, value string) bool {
 	case PrimaryTaskQueueKey:
 		j.PrimaryTaskQueue = value
 		return true
+	case ChildTaskQueueKey:
+		fallthrough
 	case DynamicTaskQueueKey:
 		j.DynamicTaskQueue = value
 		return true
