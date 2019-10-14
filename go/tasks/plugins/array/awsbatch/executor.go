@@ -98,7 +98,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	// Determine transition information from the state
 	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State)
-	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
+	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
