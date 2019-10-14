@@ -68,7 +68,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		jobStore := newJobsStore(t, batchClient)
 		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
-			State: &arrayCore.StateImpl{
+			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   5,
 				OriginalArraySize:    10,
@@ -114,7 +114,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.NoError(t, err)
 
 		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
-			State: &arrayCore.StateImpl{
+			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   5,
 				OriginalArraySize:    10,
@@ -150,7 +150,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.NoError(t, err)
 
 		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
-			State: &arrayCore.StateImpl{
+			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   2,
 				OriginalArraySize:    2,
