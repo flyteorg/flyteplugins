@@ -2,8 +2,9 @@ package array
 
 import (
 	"context"
-	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"strconv"
+
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
@@ -22,7 +23,8 @@ import (
 // which is different than their original location. To find the original index we construct an indexLookup array.
 // The subtask can find it's original index value in indexLookup[JOB_ARRAY_INDEX] where JOB_ARRAY_INDEX is an
 // environment variable in the pod
-func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state arrayCore.State) (arrayCore.State, error) {
+func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContext, state *arrayCore.State) (
+	*arrayCore.State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -119,7 +121,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	return state, nil
 }
 
-func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state arrayCore.State) (arrayCore.State, error) {
+func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state *arrayCore.State) (*arrayCore.State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)

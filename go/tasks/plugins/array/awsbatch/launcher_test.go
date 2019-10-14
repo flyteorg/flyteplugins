@@ -78,7 +78,7 @@ func TestLaunchSubTasks(t *testing.T) {
 
 	t.Run("Simple", func(t *testing.T) {
 		currentState := &State{
-			State: &core2.StateImpl{
+			State: &core2.State{
 				CurrentPhase:         core2.PhaseLaunch,
 				ExecutionArraySize:   5,
 				OriginalArraySize:    10,

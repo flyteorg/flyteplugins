@@ -52,16 +52,14 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	if pluginState.State == nil {
-		pluginState.State = &arrayCore.StateImpl{}
+		pluginState.State = &arrayCore.State{}
 	}
 
-	var nextParentState arrayCore.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
-		nextParentState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState.State)
-		pluginState.State = nextParentState
+		pluginState.State, err = array.DetermineDiscoverability(ctx, tCtx, pluginState.State)
 
 	case arrayCore.PhasePreLaunch:
 		pluginState, err = EnsureJobDefinition(ctx, tCtx, pluginConfig, e.jobStore.Client, e.jobDefinitionCache, pluginState)
@@ -73,16 +71,13 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginConfig, pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
-		nextParentState, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState)
-		pluginState.State = nextParentState
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState.State)
 
 	case arrayCore.PhaseWriteToDiscovery:
-		nextParentState, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State)
-		pluginState.State = nextParentState
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State)
 
 	case arrayCore.PhaseAssembleFinalError:
-		nextParentState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
-		pluginState.State = nextParentState
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState.State)
 
 	default:
 		err = nil
