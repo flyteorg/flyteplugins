@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:fd319661e53f3607b8ddbded6121f8e4fe42978cb66968b20fdee68e10d10f9f"
+  digest = "1:9facd370d4b5aaf82bb6549c358eefc71c771458fc91d1afe724434aece9d886"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = ""
-  revision = "264def2dd949cdb8a803bb9f50fa29a67b798a6a"
-  version = "v0.46.3"
+  revision = "cfe8f6d1fe6976d03af790d7a8b9bf6aa73287bd"
+  version = "v0.47.0"
 
 [[projects]]
   digest = "1:9a11be778d5fcb8e4873e64a097dfd2862d8665d9e2d969b90810d5272e51acb"
@@ -18,7 +18,7 @@
   version = "v10.2.1-beta"
 
 [[projects]]
-  digest = "1:44ba6749a186182a2c5fee875848dc733dadf0492bd5b466c3dec103c427ab8d"
+  digest = "1:08ea2d08d4b4acb4b6b189cdb58bd6087c2d2b53d10863e8d4917ebf2728cac4"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -29,8 +29,8 @@
     "tracing",
   ]
   pruneopts = ""
-  revision = "fa2154f3dfe448bf22f4b4771ad37c0247517727"
-  version = "v13.1.0"
+  revision = "740293c019d8314ce3378d456b4327fa646297e6"
+  version = "v13.2.0"
 
 [[projects]]
   digest = "1:e1549ae10031ac55dd7d26ac4d480130ddbdf97f9a26ebbedff089aa0335798f"
@@ -45,7 +45,7 @@
   version = "v0.1.3"
 
 [[projects]]
-  digest = "1:527243c1a2b9bc3cac49334f924f1165fc592c8b57b7d0199408d7005eb455fb"
+  digest = "1:096b2450c9e022d4e1ae361ffa2ba36278fee3ac257d56c74d6b54a4084edc80"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -92,8 +92,8 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "7887c50469757b81cb4ce19343755fd7a8d0c808"
-  version = "v1.25.10"
+  revision = "e42fa244c725b2a423a8e9cf1c86828c0bf9400a"
+  version = "v1.25.12"
 
 [[projects]]
   digest = "1:ac2a05be7167c495fe8aaf8aaf62ecf81e78d2180ecb04e16778dc6c185c96a5"
@@ -145,11 +145,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c61a0798392f6188ec37004439b1e94deb33b388618a43a8cf1102c6d6b6ba0f"
+  digest = "1:c47fa36ae2c154748003f5d39c5ca94e86ec144b37e4975fad91a1c7ff5047fb"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   pruneopts = ""
-  revision = "dc27d9650c3ebefcf0418e4527f66a589e3f9bde"
+  revision = "4bf2d1fec78374803a39307bfb8d340688f4f28e"
 
 [[projects]]
   digest = "1:65587005c6fa4293c0b8a2e457e689df7fda48cc5e1f5449ea2c1e7784551558"
@@ -168,15 +168,15 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:8a7fe65e9ac2612c4df602cc9f014a92406776d993ff0f28335e5a8831d87c53"
+  digest = "1:d69d2ba23955582a64e367ff2b0808cdbd048458c178cea48f11ab8c40bd7aea"
   name = "github.com/gogo/protobuf"
   packages = [
     "proto",
     "sortkeys",
   ]
   pruneopts = ""
-  revision = "0ca988a254f991240804bf9821f3450d87ccbb1b"
-  version = "v1.3.0"
+  revision = "5628607bb4c51c3157aacc3a50f0ab707582b805"
+  version = "v1.3.1"
 
 [[projects]]
   branch = "master"
@@ -345,16 +345,16 @@
   ]
   pruneopts = ""
   revision = "fac461ff1d6926e98b48e2f3374419afdb69de18"
-  source = "https://github.com/lyft/flyteidl"
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:21c7b92781e01c02b0490b9548b65ee636639697f2e4a8c672239284f9dcfff0"
+  digest = "1:4f0506da275cf69c28a584bf8625e247c4684d617880af554a2bb0f09b979627"
   name = "github.com/lyft/flytestdlib"
   packages = [
     "atomic",
     "bitarray",
     "cache",
+    "cache/mocks",
     "config",
     "config/files",
     "config/viper",
@@ -369,9 +369,8 @@
     "utils/mocks",
   ]
   pruneopts = ""
-  revision = "dc2f95486e81e2e0ded4e83cfe6556634f5b148f"
-  source = "https://github.com/lyft/flytestdlib"
-  version = "v0.2.21"
+  revision = "2a121b0e3bc7fb85e36a5088e23ef59d401a78be"
+  version = "v0.2.22"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -666,15 +665,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9026a485cbd92c93566178e917d1c049b94b592ad98a6188557f941f5d9360e7"
+  digest = "1:d709f6b44dffe11337b3730ebf5ae6bb1bc9273a1c204266921205158a5a523f"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = ""
-  revision = "af544f31c8ac5794d2134b792e9eb714d9d8f9ce"
+  revision = "87dc89f01550277dc22b74ffcf4cd89fa2f40f4c"
 
 [[projects]]
   branch = "master"
-  digest = "1:f18ed86e2dc96177f15764afe4a31c900cf85c2a7b50a57ce1320836223c64f0"
+  digest = "1:9775f16f1557e5a16a0c2d6a130488ca4e595916e2d55dd7fe819e60e2fcc1a5"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -687,7 +686,7 @@
     "trace",
   ]
   pruneopts = ""
-  revision = "d66e71096ffb9f08f36d9aefcae80ce319de6d68"
+  revision = "491137f692577e390404f177a0515c9f86f79754"
 
 [[projects]]
   branch = "master"
@@ -749,7 +748,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0d1dc0b153f15cab649cbadd5ff2866b80ce13610187b820e6819c1f60b0affc"
+  digest = "1:38c87dce95abdacdf9fe12c94d02fa4dc79782b41105251ea147f9a3195e4d33"
   name = "google.golang.org/api"
   packages = [
     "googleapi",
@@ -763,7 +762,7 @@
     "transport/http/internal/propagation",
   ]
   pruneopts = ""
-  revision = "8c9ce7ef2609b99669b1f7823ae669885854da21"
+  revision = "5e0e3f4a3bb8f1c7d2bf1465670c5c0b3c45c277"
 
 [[projects]]
   digest = "1:c4404231035fad619a12f82ae3f0f8f9edc1cc7f34e7edad7a28ccac5336cc96"
@@ -1045,6 +1044,7 @@
     "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins",
     "github.com/lyft/flytestdlib/bitarray",
     "github.com/lyft/flytestdlib/cache",
+    "github.com/lyft/flytestdlib/cache/mocks",
     "github.com/lyft/flytestdlib/config",
     "github.com/lyft/flytestdlib/config/viper",
     "github.com/lyft/flytestdlib/contextutils",
@@ -1061,6 +1061,7 @@
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
+    "golang.org/x/net/context",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/status",
     "k8s.io/api/core/v1",
