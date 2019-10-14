@@ -52,12 +52,12 @@ func (Executor) GetProperties() core.PluginProperties {
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	pluginConfig := GetConfig()
 
-	pluginState := &arrayCore.StateImpl{}
+	pluginState := &arrayCore.State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextState arrayCore.State
+	var nextState *arrayCore.State
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
