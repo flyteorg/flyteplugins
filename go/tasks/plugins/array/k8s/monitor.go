@@ -3,7 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
-	core3 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"strconv"
 	"time"
 
@@ -30,7 +30,7 @@ const (
 )
 
 func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	cfg *Config, currentState core3.State) (newState core3.State, err error) {
+	cfg *Config, currentState *arrayCore.State) (newState *arrayCore.State, err error) {
 
 	logLinks := make([]*core2.TaskLog, 0, 4)
 	newState = currentState
@@ -38,7 +38,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 	msg := errorcollector2.NewErrorMessageCollector()
 	newArrayStatus := arraystatus2.ArrayStatus{
 		Summary:  arraystatus2.ArraySummary{},
-		Detailed: core3.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
+		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
@@ -84,15 +84,15 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 		return currentState, fmt.Errorf("required value not set, taskTemplate is nil")
 	}
 
-	phase := core3.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
-	if phase == core3.PhasePermanentFailure || phase == core3.PhaseRetryableFailure {
+	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
+	if phase == arrayCore.PhasePermanentFailure || phase == arrayCore.PhaseRetryableFailure {
 		errorMsg := msg.Summary(GetConfig().MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg)
 	}
 
-	if phase == core3.PhaseCheckingSubTaskExecutions {
+	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
-		if phase == core3.PhaseCheckingSubTaskExecutions {
+		if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 			// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
 			for phase, count := range newState.GetArrayStatus().Summary {
 				newPhaseVersion += uint32(phase) * uint32(count)

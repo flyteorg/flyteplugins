@@ -3,7 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
-	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"strconv"
 	"strings"
 
@@ -49,7 +49,7 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, currentState core2.State) (newState core2.State, err error) {
+	config *Config, currentState *arrayCore.State) (newState *arrayCore.State, err error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
@@ -90,7 +90,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 					return currentState, nil
 				}
 
-				currentState = currentState.SetPhase(core2.PhaseRetryableFailure, 0)
+				currentState = currentState.SetPhase(arrayCore.PhaseRetryableFailure, 0)
 				currentState = currentState.SetReason(err.Error())
 				return currentState, nil
 			}
@@ -103,10 +103,10 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 	arrayStatus := arraystatus2.ArrayStatus{
 		Summary:  arraystatus2.ArraySummary{},
-		Detailed: core2.NewPhasesCompactArray(uint(size)),
+		Detailed: arrayCore.NewPhasesCompactArray(uint(size)),
 	}
 
-	currentState.SetPhase(core2.PhaseCheckingSubTaskExecutions, 0)
+	currentState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0)
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil

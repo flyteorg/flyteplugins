@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue/mocks"
-	arrayMocks "github.com/lyft/flyteplugins/go/tasks/plugins/array/core/mocks"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -177,8 +176,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 		info.OnStatus().Return(workqueue.WorkStatusSucceeded)
 		q.OnGet("found").Return(info, true, nil)
 
-		s := &arrayMocks.State{}
-		s.OnSetPhase(arrayCore.PhaseSuccess, 0).Return(s).Once()
+		s := &arrayCore.State{}
 
 		tID := &mocks3.TaskExecutionID{}
 		tID.OnGetGeneratedName().Return("found")
@@ -191,6 +189,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 
 		_, err := AssembleFinalOutputs(ctx, assemblyQueue, tCtx, s)
 		assert.NoError(t, err)
+		assert.Equal(t, arrayCore.PhaseSuccess, s.CurrentPhase)
 	})
 
 	t.Run("Found failed", func(t *testing.T) {
@@ -200,9 +199,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 
 		q.OnGet("found_failed").Return(info, true, nil)
 
-		s := &arrayMocks.State{}
-		s.OnSetPhase(arrayCore.PhaseRetryableFailure, 0).Return(s).Once()
-		s.OnSetExecutionErrMatch(mock.Anything).Return(s).Once()
+		s := &arrayCore.State{}
 
 		tID := &mocks3.TaskExecutionID{}
 		tID.OnGetGeneratedName().Return("found_failed")
@@ -215,6 +212,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 
 		_, err := AssembleFinalOutputs(ctx, assemblyQueue, tCtx, s)
 		assert.NoError(t, err)
+		assert.Equal(t, arrayCore.PhaseRetryableFailure, s.CurrentPhase)
 	})
 
 	t.Run("Not Found Queued then Succeeded", func(t *testing.T) {
@@ -227,11 +225,11 @@ func TestAssembleFinalOutputs(t *testing.T) {
 		detailedStatus.SetItem(0, bitarray.Item(pluginCore.PhaseSuccess))
 		detailedStatus.SetItem(1, bitarray.Item(pluginCore.PhaseSuccess))
 
-		s := &arrayMocks.State{}
-		s.OnSetPhase(arrayCore.PhaseSuccess, 0).Return(s).Once()
-		s.OnGetArrayStatus().Return(arraystatus.ArrayStatus{
-			Detailed: detailedStatus,
-		})
+		s := &arrayCore.State{
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: detailedStatus,
+			},
+		}
 
 		tID := &mocks3.TaskExecutionID{}
 		tID.OnGetGeneratedName().Return("notfound")
@@ -268,6 +266,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 
 		_, err = AssembleFinalOutputs(ctx, assemblyQueue, tCtx, s)
 		assert.NoError(t, err)
+		assert.Equal(t, arrayCore.PhaseSuccess, s.CurrentPhase)
 	})
 }
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/bitarray"
@@ -110,7 +110,9 @@ func appendEmptyOutputs(vars []string, outputs map[string]interface{}) {
 
 // Assembles a single outputs.pb that contain all the outputs of the subtasks and write them to the final OutputWriter.
 // This step can potentially be expensive (hence the metrics) and why it's offloaded to a background process.
-func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tCtx pluginCore.TaskExecutionContext, state core2.State) (core2.State, error) {
+func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tCtx pluginCore.TaskExecutionContext,
+	state *arrayCore.State) (*arrayCore.State, error) {
+
 	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
 	// build input readers
 	workItemID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
@@ -130,7 +132,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 		outputVariables := taskTemplate.GetInterface().GetOutputs()
 		if outputVariables == nil || outputVariables.GetVariables() == nil {
 			// If the task has no outputs, bail early.
-			state = state.SetPhase(core2.PhaseSuccess, 0)
+			state = state.SetPhase(arrayCore.PhaseSuccess, 0)
 			return state, nil
 		}
 
@@ -160,13 +162,13 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 
 	switch w.Status() {
 	case workqueue.WorkStatusSucceeded:
-		state = state.SetPhase(core2.PhaseSuccess, 0)
+		state = state.SetPhase(arrayCore.PhaseSuccess, 0)
 	case workqueue.WorkStatusFailed:
 		state = state.SetExecutionErr(&core.ExecutionError{
 			Message: w.Error().Error(),
 		})
 
-		state = state.SetPhase(core2.PhaseRetryableFailure, 0)
+		state = state.SetPhase(arrayCore.PhaseRetryableFailure, 0)
 	}
 
 	return state, nil

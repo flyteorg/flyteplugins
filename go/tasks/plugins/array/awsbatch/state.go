@@ -6,7 +6,7 @@ import (
 )
 
 type State struct {
-	core.State
+	*core.State
 
 	ExternalJobID    *string `json:"externalJobID"`
 	JobDefinitionArn definition.JobDefinitionArn
