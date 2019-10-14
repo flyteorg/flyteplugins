@@ -148,6 +148,14 @@ const (
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
+	if structObj == nil {
+		return &idlPlugins.ArrayJob{
+			Parallelism:  1,
+			Size:         1,
+			MinSuccesses: 1,
+		}, nil
+	}
+
 	arrayJob := &idlPlugins.ArrayJob{}
 	err := utils.UnmarshalStruct(structObj, arrayJob)
 	return arrayJob, err
