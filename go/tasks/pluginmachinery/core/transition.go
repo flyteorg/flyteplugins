@@ -2,6 +2,8 @@ package core
 
 import "fmt"
 
+//go:generate enumer --type=TransitionType
+
 // Type of Transition, refer to Transition to understand what transition means
 type TransitionType int
 
@@ -9,22 +11,10 @@ const (
 	// The transition is eventually consistent. For all the state written may not be visible in the next call, but eventually will persist
 	// Best to use when the plugin logic is completely idempotent. This is also the most performant option.
 	TransitionTypeEphemeral TransitionType = iota
-	// This transition tries its best to make the latest state visible for every consecutive read. But, it is possible to go back in time,
-	// i.e. monotonic consistency is violated (in rare cases).
-	TransitionTypeBestEffort
-	// This maintains read after write consistency. But, it is still possible that the write fails and the same transition may re-occur.
+	// This transition tries its best to make the latest state visible for every consecutive read. But, it is possible
+	// to go back in time, i.e. monotonic consistency is violated (in rare cases).
 	TransitionTypeBarrier
 )
-
-func (t TransitionType) String() string {
-	switch t {
-	case TransitionTypeBarrier:
-		return "Barrier"
-	case TransitionTypeBestEffort:
-		return "BestEffort"
-	}
-	return "Ephemeral"
-}
 
 // A Plugin Handle method returns a Transition. This transition indicates to the Flyte framework that if the plugin wants to continue "Handle"ing this task,
 // or if wants to move the task to success, attempt a retry or fail. The transition automatically sends an event to Admin service which shows the plugin
@@ -33,8 +23,8 @@ func (t TransitionType) String() string {
 // the PhaseInfo structure is very important and is used to record events in Admin. Only if the Phase + PhaseVersion was not previously observed, will an event be published to Admin
 // there are only a configurable number of phase-versions usable. Usually it is preferred to be a monotonically increasing sequence
 type Transition struct {
-	ttype        TransitionType
-	info         PhaseInfo
+	ttype TransitionType
+	info  PhaseInfo
 }
 
 func (t Transition) Type() TransitionType {
