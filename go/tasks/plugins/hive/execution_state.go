@@ -144,8 +144,8 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext) (Ex
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), uniqueId)
 	if err != nil {
-		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId)
+		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId, err)
 		return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", uniqueId)
 	}
 	logger.Infof(ctx, "Allocation result for [%s] is [%s]", uniqueId, allocationStatus)
@@ -224,9 +224,9 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		_, err := cache.GetOrCreate(executionStateCacheItem)
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
-			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]",
+			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]. Error %s",
 				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
-				tCtx.TaskExecutionMetadata().GetOwnerReference())
+				tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 			return currentState, err
 		}
 	}
@@ -245,9 +245,9 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	cachedItem, err := cache.GetOrCreate(executionStateCacheItem)
 	if err != nil {
 		// This means that our cache has fundamentally broken... return a system error
-		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]",
+		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]. Error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
-			tCtx.TaskExecutionMetadata().GetOwnerReference())
+			tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 		return currentState, errors.Wrapf(errors.CacheFailed, err, "Error when GetOrCreate while monitoring")
 	}
 
