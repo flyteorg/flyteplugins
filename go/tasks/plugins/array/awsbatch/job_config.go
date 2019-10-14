@@ -5,6 +5,7 @@
 package awsbatch
 
 import (
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -34,6 +35,14 @@ func (j *JobConfig) setKeyIfKnown(key, value string) bool {
 	default:
 		return false
 	}
+}
+
+func (j *JobConfig) MergeFromKeyValuePairs(pairs []*core.KeyValuePair) *JobConfig {
+	for _, entry := range pairs {
+		j.setKeyIfKnown(entry.Key, entry.Value)
+	}
+
+	return j
 }
 
 func (j *JobConfig) MergeFromConfigMap(configMap *v1.ConfigMap) *JobConfig {
