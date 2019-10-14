@@ -206,8 +206,8 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		cluster, apiKey, tags)
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
-		logger.Warnf(ctx, "Error creating Qubole query for %s", uniqueId)
 		currentState.CreationFailureCount = currentState.CreationFailureCount + 1
+		logger.Warnf(ctx, "Error creating Qubole query for %s, failure counts %d. Error: %s", uniqueId, currentState.CreationFailureCount, err)
 	} else {
 		// If we succeed, then store the command id returned from Qubole, and update our state. Also, add to the
 		// AutoRefreshCache so we start getting updates.
