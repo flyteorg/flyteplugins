@@ -99,6 +99,72 @@ func TestConfig_SetFlags(t *testing.T) {
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
+	t.Run("Test_endpoint", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("endpoint"); err == nil {
+				assert.Equal(t, string(defaultConfig.Endpoint.String()), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultConfig.Endpoint.String()
+
+			cmdFlags.Set("endpoint", testValue)
+			if vString, err := cmdFlags.GetString("endpoint"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.Endpoint)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_commandApiPath", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("commandApiPath"); err == nil {
+				assert.Equal(t, string(defaultConfig.CommandAPIPath.String()), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultConfig.CommandAPIPath.String()
+
+			cmdFlags.Set("commandApiPath", testValue)
+			if vString, err := cmdFlags.GetString("commandApiPath"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.CommandAPIPath)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_analyzeLinkPath", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("analyzeLinkPath"); err == nil {
+				assert.Equal(t, string(defaultConfig.AnalyzeLinkPath.String()), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultConfig.AnalyzeLinkPath.String()
+
+			cmdFlags.Set("analyzeLinkPath", testValue)
+			if vString, err := cmdFlags.GetString("analyzeLinkPath"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.AnalyzeLinkPath)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_quboleTokenKey", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
