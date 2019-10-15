@@ -2,15 +2,18 @@ package hive
 
 import (
 	"context"
+	"testing"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
+
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
 	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
@@ -25,6 +28,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 			AutoRefreshCache: mockCache,
 			quboleClient:     mockQubole,
 			scope:            testScope,
+			cfg:              config.GetQuboleConfig(),
 		}
 
 		state := ExecutionState{
@@ -44,7 +48,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		mockCache := &stdlibMocks.AutoRefreshCache{}
 		mockQubole := &quboleMocks.QuboleClient{}
 		mockSecretManager := &mocks.SecretManager{}
-		mockSecretManager.On("Get", mock.Anything, mock.Anything).Return("fake key", nil)
+		mockSecretManager.OnGetMatch(mock.Anything, mock.Anything).Return("fake key", nil)
 
 		testScope := promutils.NewTestScope()
 
@@ -53,6 +57,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 			quboleClient:     mockQubole,
 			scope:            testScope,
 			secretManager:    mockSecretManager,
+			cfg:              config.GetQuboleConfig(),
 		}
 
 		state := ExecutionState{
@@ -63,7 +68,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 			ExecutionState: state,
 			Id:             "some-id",
 		}
-		mockQubole.On("GetCommandStatus", mock.Anything, mock.MatchedBy(func(commandId string) bool {
+		mockQubole.OnGetCommandStatusMatch(mock.Anything, mock.MatchedBy(func(commandId string) bool {
 			return commandId == state.CommandId
 		}), mock.Anything).Return(client.QuboleStatusDone, nil)
 

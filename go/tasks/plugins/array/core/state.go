@@ -1,4 +1,4 @@
-package array
+package core
 
 import (
 	"context"
@@ -16,6 +16,9 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 )
 
+//go:generate mockery -all -case=underscore
+//go:generate enumer -type=Phase
+
 type Phase uint8
 
 const (
@@ -31,27 +34,7 @@ const (
 	PhasePermanentFailure
 )
 
-type State interface {
-	GetReason() string
-	GetExecutionErr() *idlCore.ExecutionError
-	GetExecutionArraySize() int
-	GetPhase() (phase Phase, version uint32)
-	GetArrayStatus() arraystatus.ArrayStatus
-	GetOriginalArraySize() int64
-	GetOriginalMinSuccesses() int64
-	GetIndexesToCache() *bitarray.BitSet
-
-	SetReason(reason string) State
-	SetExecutionErr(err *idlCore.ExecutionError) State
-	SetActualArraySize(size int) State
-	SetPhase(phase Phase, phaseVersion uint32) State
-	SetArrayStatus(state arraystatus.ArrayStatus) State
-	SetOriginalArraySize(size int64) State
-	SetOriginalMinSuccesses(size int64) State
-	SetIndexesToCache(set *bitarray.BitSet) State
-}
-
-type StateImpl struct {
+type State struct {
 	CurrentPhase         Phase                   `json:"phase"`
 	PhaseVersion         uint32                  `json:"phaseVersion"`
 	Reason               string                  `json:"reason"`
@@ -65,75 +48,75 @@ type StateImpl struct {
 	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
 }
 
-func (s StateImpl) GetReason() string {
+func (s State) GetReason() string {
 	return s.Reason
 }
 
-func (s StateImpl) GetExecutionArraySize() int {
+func (s State) GetExecutionArraySize() int {
 	return s.ExecutionArraySize
 }
 
-func (s StateImpl) GetPhase() (phase Phase, version uint32) {
+func (s State) GetPhase() (phase Phase, version uint32) {
 	return s.CurrentPhase, s.PhaseVersion
 }
 
-func (s StateImpl) GetArrayStatus() arraystatus.ArrayStatus {
+func (s State) GetArrayStatus() arraystatus.ArrayStatus {
 	return s.ArrayStatus
 }
 
-func (s *StateImpl) GetOriginalArraySize() int64 {
+func (s *State) GetOriginalArraySize() int64 {
 	return s.OriginalArraySize
 }
 
-func (s *StateImpl) GetOriginalMinSuccesses() int64 {
+func (s *State) GetOriginalMinSuccesses() int64 {
 	return s.OriginalMinSuccesses
 }
 
-func (s *StateImpl) GetIndexesToCache() *bitarray.BitSet {
+func (s *State) GetIndexesToCache() *bitarray.BitSet {
 	return s.IndexesToCache
 }
 
-func (s *StateImpl) GetExecutionErr() *idlCore.ExecutionError {
+func (s *State) GetExecutionErr() *idlCore.ExecutionError {
 	return s.ExecutionErr
 }
 
-func (s *StateImpl) SetExecutionErr(err *idlCore.ExecutionError) State {
+func (s *State) SetExecutionErr(err *idlCore.ExecutionError) *State {
 	s.ExecutionErr = err
 	return s
 }
 
-func (s *StateImpl) SetIndexesToCache(set *bitarray.BitSet) State {
+func (s *State) SetIndexesToCache(set *bitarray.BitSet) *State {
 	s.IndexesToCache = set
 	return s
 }
 
-func (s *StateImpl) SetOriginalArraySize(size int64) State {
+func (s *State) SetOriginalArraySize(size int64) *State {
 	s.OriginalArraySize = size
 	return s
 }
 
-func (s *StateImpl) SetOriginalMinSuccesses(size int64) State {
+func (s *State) SetOriginalMinSuccesses(size int64) *State {
 	s.OriginalMinSuccesses = size
 	return s
 }
 
-func (s *StateImpl) SetReason(reason string) State {
+func (s *State) SetReason(reason string) *State {
 	s.Reason = reason
 	return s
 }
 
-func (s *StateImpl) SetActualArraySize(size int) State {
+func (s *State) SetActualArraySize(size int) *State {
 	s.ExecutionArraySize = size
 	return s
 }
 
-func (s *StateImpl) SetPhase(phase Phase, phaseVersion uint32) State {
+func (s *State) SetPhase(phase Phase, phaseVersion uint32) *State {
 	s.CurrentPhase = phase
 	s.PhaseVersion = phaseVersion
 	return s
 }
 
-func (s *StateImpl) SetArrayStatus(state arraystatus.ArrayStatus) State {
+func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
 	s.ArrayStatus = state
 	return s
 }
@@ -145,6 +128,14 @@ const (
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
+	if structObj == nil {
+		return &idlPlugins.ArrayJob{
+			Parallelism:  1,
+			Size:         1,
+			MinSuccesses: 1,
+		}, nil
+	}
+
 	arrayJob := &idlPlugins.ArrayJob{}
 	err := utils.UnmarshalStruct(structObj, arrayJob)
 	return arrayJob, err
@@ -161,7 +152,7 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
+func MapArrayStateToPluginPhase(_ context.Context, state *State) core.PhaseInfo {
 
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
@@ -173,6 +164,10 @@ func MapArrayStateToPluginPhase(_ context.Context, state State) core.PhaseInfo {
 
 	case PhaseLaunch:
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
+	case PhasePreLaunch:
+		version := GetPhaseVersionOffset(p, 1) + version
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseCheckingSubTaskExecutions:
@@ -255,7 +250,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	return PhaseCheckingSubTaskExecutions
 }
 
-func invertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
+func InvertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
 	output := bitarray.NewBitSet(input.Cap())
 	for i := uint(0); i < input.Cap(); i++ {
 		if !input.IsSet(i) {
@@ -264,4 +259,16 @@ func invertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
 	}
 
 	return output
+}
+
+func NewPhasesCompactArray(count uint) bitarray.CompactArray {
+	// TODO: This is fragile, we should introduce a TaskPhaseCount as the last element in the enum
+	a, err := bitarray.NewCompactArray(count, bitarray.Item(len(core.Phases)-1))
+	if err != nil {
+		logger.Warnf(context.Background(), "Failed to create compact array with provided parameters [count: %v]",
+			count)
+		return bitarray.CompactArray{}
+	}
+
+	return a
 }

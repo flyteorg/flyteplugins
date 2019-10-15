@@ -22,13 +22,13 @@ import (
 
 func newClientWithMockBatch() *client {
 	rateLimiter := utils.NewRateLimiter("Get", 1000, 1000)
-	return NewCustomBatchClient(mocks.NewMockAwsBatchClient(), "accountId", "test-region", rateLimiter, rateLimiter).(*client)
+	return NewCustomBatchClient(mocks.NewMockAwsBatchClient(), "account-id", "test-region", rateLimiter, rateLimiter).(*client)
 }
 
 func TestClient_SubmitJob(t *testing.T) {
 	ctx := context.Background()
 	rateLimiter := utils.NewRateLimiter("Get", 1000, 1000)
-	c := NewCustomBatchClient(mocks.NewMockAwsBatchClient(), "accountId", "test-region", rateLimiter, rateLimiter).(*client)
+	c := NewCustomBatchClient(mocks.NewMockAwsBatchClient(), "account-id", "test-region", rateLimiter, rateLimiter).(*client)
 	store, err := NewJobStore(ctx, c, 1000, config.JobStoreConfig{
 		CacheSize:      1,
 		Parallelizm:    1,
