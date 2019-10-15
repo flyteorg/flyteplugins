@@ -65,7 +65,9 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 			"Required value not set, taskTemplate Container")
 	}
 
-	jobConfig := newJobConfig().MergeFromConfigMap(tCtx.TaskExecutionMetadata().GetOverrides().GetConfig())
+	jobConfig := newJobConfig().
+		MergeFromKeyValuePairs(taskTemplate.GetContainer().GetConfig()).
+		MergeFromConfigMap(tCtx.TaskExecutionMetadata().GetOverrides().GetConfig())
 	if len(jobConfig.DynamicTaskQueue) == 0 {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "config[%v] is missing", DynamicTaskQueueKey)
 	}

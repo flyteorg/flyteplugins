@@ -3,12 +3,13 @@ package workqueue
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/lyft/flytestdlib/promutils"
 )
 
@@ -193,5 +194,5 @@ func Test_Failures(t *testing.T) {
 	info, found, err := q.Get("abc")
 	assert.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, WorkStatusFailed, info.Status())
+	assert.Equal(t, WorkStatusFailed.String(), info.Status().String())
 }

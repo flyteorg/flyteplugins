@@ -8,15 +8,14 @@ import (
 )
 
 func TestTransitionType_String(t *testing.T) {
-	assert.Equal(t, TransitionTypeBestEffort.String(), "BestEffort")
-	assert.Equal(t, TransitionTypeBarrier.String(), "Barrier")
-	assert.Equal(t, TransitionTypeEphemeral.String(), "Ephemeral")
+	assert.Equal(t, TransitionTypeBarrier.String(), "TransitionTypeBarrier")
+	assert.Equal(t, TransitionTypeEphemeral.String(), "TransitionTypeEphemeral")
 }
 
 func ExampleTransition_String() {
-	trns := DoTransitionType(TransitionTypeBestEffort, PhaseInfoUndefined)
+	trns := DoTransitionType(TransitionTypeBarrier, PhaseInfoUndefined)
 	fmt.Println(trns.String())
-	// Output: BestEffort,Phase<undefined:0 <nil> Reason:>
+	// Output: TransitionTypeBarrier,Phase<PhaseUndefined:0 <nil> Reason:>
 }
 
 func TestDoTransition(t *testing.T) {
@@ -46,8 +45,8 @@ func TestDoTransitionType(t *testing.T) {
 
 	t.Run("someInfo", func(t *testing.T) {
 		pInfo := PhaseInfoSuccess(nil)
-		trns := DoTransitionType(TransitionTypeBestEffort, pInfo)
-		assert.Equal(t, TransitionTypeBestEffort, trns.Type())
+		trns := DoTransitionType(TransitionTypeBarrier, pInfo)
+		assert.Equal(t, TransitionTypeBarrier, trns.Type())
 		assert.Equal(t, pInfo, trns.Info())
 		assert.Equal(t, PhaseSuccess, trns.Info().Phase())
 	})

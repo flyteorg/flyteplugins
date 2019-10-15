@@ -7,6 +7,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/logger"
 
@@ -42,8 +43,8 @@ func containerImageRepository(containerImage string) string {
 	return ""
 }
 
-func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionContext, cfg *config.Config, client Client, definitionCache definition.Cache,
-	currentState *State) (nextState *State, err error) {
+func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionContext, cfg *config.Config, client Client,
+	definitionCache definition.Cache, currentState *State) (nextState *State, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -79,6 +80,8 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 			arn, err)
 	}
 
-	return currentState.SetJobDefinitionArn(arn), nil
+	nextState = currentState.SetJobDefinitionArn(arn)
+	nextState.SetPhase(arrayCore.PhaseLaunch, 0)
 
+	return nextState, nil
 }

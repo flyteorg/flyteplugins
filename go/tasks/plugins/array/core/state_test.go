@@ -1,4 +1,4 @@
-package array
+package core
 
 import (
 	"context"
@@ -19,7 +19,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("start", func(t *testing.T) {
-		s := &StateImpl{
+		s := &State{
 			CurrentPhase: PhaseStart,
 		}
 		phaseInfo := MapArrayStateToPluginPhase(ctx, s)

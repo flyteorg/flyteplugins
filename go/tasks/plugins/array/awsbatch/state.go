@@ -1,12 +1,12 @@
 package awsbatch
 
 import (
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 )
 
 type State struct {
-	array.State
+	*core.State
 
 	ExternalJobID    *string `json:"externalJobID"`
 	JobDefinitionArn definition.JobDefinitionArn

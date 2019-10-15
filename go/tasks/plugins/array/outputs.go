@@ -3,6 +3,9 @@ package array
 import (
 	"context"
 	"fmt"
+
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/bitarray"
 	"github.com/lyft/flytestdlib/promutils"
@@ -100,14 +103,16 @@ func appendEmptyOutputs(vars []string, outputs map[string]interface{}) {
 			existingVal = make([]interface{}, 0, 1)
 		}
 
-		existingVal = append(existingVal.([]interface{}), &core.Literal{})
+		existingVal = append(existingVal.([]interface{}), coreutils.MustMakeLiteral(nil))
 		outputs[varName] = existingVal
 	}
 }
 
 // Assembles a single outputs.pb that contain all the outputs of the subtasks and write them to the final OutputWriter.
 // This step can potentially be expensive (hence the metrics) and why it's offloaded to a background process.
-func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tCtx pluginCore.TaskExecutionContext, state State) (State, error) {
+func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tCtx pluginCore.TaskExecutionContext,
+	state *arrayCore.State) (*arrayCore.State, error) {
+
 	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
 	// build input readers
 	workItemID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
@@ -127,7 +132,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 		outputVariables := taskTemplate.GetInterface().GetOutputs()
 		if outputVariables == nil || outputVariables.GetVariables() == nil {
 			// If the task has no outputs, bail early.
-			state = state.SetPhase(PhaseSuccess, 0)
+			state = state.SetPhase(arrayCore.PhaseSuccess, 0)
 			return state, nil
 		}
 
@@ -157,13 +162,13 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 
 	switch w.Status() {
 	case workqueue.WorkStatusSucceeded:
-		state = state.SetPhase(PhaseSuccess, 0)
+		state = state.SetPhase(arrayCore.PhaseSuccess, 0)
 	case workqueue.WorkStatusFailed:
 		state = state.SetExecutionErr(&core.ExecutionError{
 			Message: w.Error().Error(),
 		})
 
-		state = state.SetPhase(PhaseRetryableFailure, 0)
+		state = state.SetPhase(arrayCore.PhaseRetryableFailure, 0)
 	}
 
 	return state, nil
@@ -184,12 +189,18 @@ func (a assembleErrorsWorker) Process(ctx context.Context, workItem workqueue.Wo
 	for idx, subTaskPhaseIdx := range w.finalPhases.GetItems() {
 		existingPhase := pluginCore.Phases[subTaskPhaseIdx]
 		if existingPhase.IsFailure() {
-			_, executionError, err := outputReaders[idx].Read(ctx)
+			isError, err := outputReaders[idx].IsError(ctx)
+
 			if err != nil {
 				return workqueue.WorkStatusNotDone, err
 			}
 
-			if executionError != nil {
+			if isError {
+				executionError, err := outputReaders[idx].ReadError(ctx)
+				if err != nil {
+					return workqueue.WorkStatusNotDone, err
+				}
+
 				ec.Collect(idx, executionError.String())
 			}
 		}
