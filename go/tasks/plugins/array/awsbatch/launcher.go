@@ -2,6 +2,7 @@ package awsbatch
 
 import (
 	"context"
+	"fmt"
 
 	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
@@ -13,7 +14,11 @@ import (
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, pluginConfig *config.Config,
 	currentState *State) (nextState *State, err error) {
 
-	jobDefinition := ""
+	jobDefinition := currentState.GetJobDefinitionArn()
+	if len(jobDefinition) == 0 {
+		return nil, fmt.Errorf("system error; no job definition created")
+	}
+
 	batchInput, err := FlyteTaskToBatchInput(ctx, tCtx, jobDefinition, pluginConfig)
 	if err != nil {
 		return nil, err
