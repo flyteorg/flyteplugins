@@ -103,7 +103,7 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("quboleTokenKey"); err == nil {
-				assert.Equal(t, string(defaultConfig.QuboleTokenKey), vString)
+				assert.Equal(t, string(defaultConfig.TokenKey), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -114,7 +114,7 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("quboleTokenKey", testValue)
 			if vString, err := cmdFlags.GetString("quboleTokenKey"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.QuboleTokenKey)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.TokenKey)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -125,7 +125,7 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("quboleLimit"); err == nil {
-				assert.Equal(t, int(defaultConfig.QuboleLimit), vInt)
+				assert.Equal(t, int(defaultConfig.Limit), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -136,7 +136,7 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("quboleLimit", testValue)
 			if vInt, err := cmdFlags.GetInt("quboleLimit"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.QuboleLimit)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Limit)
 
 			} else {
 				assert.FailNow(t, err.Error())
