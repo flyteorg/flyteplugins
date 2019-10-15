@@ -59,6 +59,7 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 			quboleClient:     mockQubole,
 			scope:            testScope,
 			secretManager:    mockSecretManager,
+			cfg:              config.GetQuboleConfig(),
 		}
 
 		state := ExecutionState{
