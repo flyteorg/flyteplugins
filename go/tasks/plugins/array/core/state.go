@@ -166,6 +166,10 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State) core.PhaseInfo 
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
+	case PhasePreLaunch:
+		version := GetPhaseVersionOffset(p, 1) + version
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
 	case PhaseCheckingSubTaskExecutions:
 		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
 		// which means we need to offset things.
