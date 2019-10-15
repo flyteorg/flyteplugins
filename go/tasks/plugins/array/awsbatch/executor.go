@@ -3,11 +3,13 @@ package awsbatch
 import (
 	"context"
 
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
-	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
+	batchConfig "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -42,41 +44,40 @@ func (e Executor) GetProperties() core.PluginProperties {
 }
 
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
-	pluginConfig := config2.GetConfig()
+	pluginConfig := batchConfig.GetConfig()
 
 	pluginState := &State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	var nextParentState array.State
+	if pluginState.State == nil {
+		pluginState.State = &arrayCore.State{}
+	}
+
 	var err error
 
 	switch p, _ := pluginState.GetPhase(); p {
-	case array.PhaseStart:
-		nextParentState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState.State)
-		pluginState.State = nextParentState
+	case arrayCore.PhaseStart:
+		pluginState.State, err = array.DetermineDiscoverability(ctx, tCtx, pluginState.State)
 
-	case array.PhasePreLaunch:
+	case arrayCore.PhasePreLaunch:
 		pluginState, err = EnsureJobDefinition(ctx, tCtx, pluginConfig, e.jobStore.Client, e.jobDefinitionCache, pluginState)
 
-	case array.PhaseLaunch:
+	case arrayCore.PhaseLaunch:
 		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
-	case array.PhaseCheckingSubTaskExecutions:
-		pluginState, err = CheckSubTasksState(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
+	case arrayCore.PhaseCheckingSubTaskExecutions:
+		pluginState, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginConfig, pluginState)
 
-	case array.PhaseAssembleFinalOutput:
-		nextParentState, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState)
-		pluginState.State = nextParentState
+	case arrayCore.PhaseAssembleFinalOutput:
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState.State)
 
-	case array.PhaseWriteToDiscovery:
-		nextParentState, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State)
-		pluginState.State = nextParentState
+	case arrayCore.PhaseWriteToDiscovery:
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State)
 
-	case array.PhaseAssembleFinalError:
-		nextParentState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
-		pluginState.State = nextParentState
+	case arrayCore.PhaseAssembleFinalError:
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState.State)
 
 	default:
 		err = nil
@@ -91,8 +92,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := array.MapArrayStateToPluginPhase(ctx, pluginState.State)
-	return core.DoTransitionType(core.TransitionTypeBestEffort, phaseInfo), nil
+	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State)
+	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
@@ -105,7 +106,7 @@ func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) 
 	return nil
 }
 
-func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *config2.Config,
+func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *batchConfig.Config,
 	enqueueOwner core.EnqueueOwner, scope promutils.Scope) (Executor, error) {
 
 	getRateLimiter := utils.NewRateLimiter("getRateLimiter", float64(cfg.GetRateLimiter.Rate),
@@ -142,9 +143,10 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *config2.Config,
 	}
 
 	return Executor{
-		jobStore:        &jobStore,
-		outputAssembler: outputAssembler,
-		errorAssembler:  errorAssembler,
+		jobStore:           &jobStore,
+		jobDefinitionCache: definition.NewCache(cfg.JobDefCacheSize),
+		outputAssembler:    outputAssembler,
+		errorAssembler:     errorAssembler,
 	}, nil
 }
 
@@ -153,16 +155,16 @@ func init() {
 		core.PluginEntry{
 			ID:                  executorName,
 			RegisteredTaskTypes: []core.TaskType{arrayTaskType},
-			LoadPlugin:          GetNewExecutorPlugin,
+			LoadPlugin:          createNewExecutorPlugin,
 			IsDefault:           false,
 		})
 }
 
-func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
+func createNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	awsClient, err := aws.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewExecutor(ctx, awsClient, config2.GetConfig(), iCtx.EnqueueOwner(), iCtx.MetricsScope().NewSubScope(executorName))
+	return NewExecutor(ctx, awsClient, batchConfig.GetConfig(), iCtx.EnqueueOwner(), iCtx.MetricsScope().NewSubScope(executorName))
 }

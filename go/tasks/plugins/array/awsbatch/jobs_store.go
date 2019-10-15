@@ -218,20 +218,31 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 type JobStore struct {
 	Client
 	cache.AutoRefresh
+
+	started bool
 }
 
 // Submits a new job to AWS Batch and retrieves job info. Note that submitted jobs will not have status populated.
+//
 func (s JobStore) SubmitJob(ctx context.Context, input *batch.SubmitJobInput) (jobID string, err error) {
 	name := *input.JobName
 	if item, err := s.AutoRefresh.Get(name); err == nil {
+		logger.Infof(ctx, "Job already found in cache with the same name [%v]. Will not submit a new job.",
+			name)
 		return item.(*Job).ID, nil
 	}
 
 	return s.Client.SubmitJob(ctx, input)
 }
 
-func (s JobStore) Start(ctx context.Context) error {
-	return s.AutoRefresh.Start(ctx)
+func (s *JobStore) Start(ctx context.Context) error {
+	err := s.AutoRefresh.Start(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.started = true
+	return nil
 }
 
 func (s JobStore) GetOrCreate(jobName string, job *Job) (*Job, error) {
@@ -250,6 +261,10 @@ func (s JobStore) Get(jobName string) *Job {
 	}
 
 	return j.(*Job)
+}
+
+func (s JobStore) IsStarted() bool {
+	return s.started
 }
 
 // Constructs a new in-memory store.

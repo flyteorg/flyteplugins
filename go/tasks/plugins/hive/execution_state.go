@@ -3,17 +3,21 @@ package hive
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"strconv"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
+
+	"github.com/lyft/flytestdlib/logger"
+	utils2 "github.com/lyft/flytestdlib/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
-	"github.com/lyft/flytestdlib/logger"
-	utils2 "github.com/lyft/flytestdlib/utils"
-	"time"
 )
 
 type ExecutionPhase int
@@ -60,7 +64,7 @@ type ExecutionState struct {
 
 // This is the main state iteration
 func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
-	executionsCache utils2.AutoRefreshCache) (ExecutionState, error) {
+	executionsCache utils2.AutoRefreshCache, cfg *config.Config) (ExecutionState, error) {
 
 	var transformError error
 	var newState ExecutionState
@@ -70,7 +74,7 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 		newState, transformError = GetAllocationToken(ctx, tCtx)
 
 	case PhaseQueued:
-		newState, transformError = KickOffQuery(ctx, tCtx, currentState, quboleClient, executionsCache)
+		newState, transformError = KickOffQuery(ctx, tCtx, currentState, quboleClient, executionsCache, cfg)
 
 	case PhaseSubmitted:
 		newState, transformError = MonitorQuery(ctx, tCtx, currentState, executionsCache)
@@ -87,7 +91,7 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 	return newState, transformError
 }
 
-func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
+func MapExecutionStateToPhaseInfo(state ExecutionState, quboleClient client.QuboleClient) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 
@@ -102,31 +106,38 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Qubole launch")
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state, quboleClient))
 
 	case PhaseQuerySucceeded:
-		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state, quboleClient))
 
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state, quboleClient))
 	}
 
 	return phaseInfo
 }
 
-func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
+func ConstructTaskLog(e ExecutionState, quboleClient client.QuboleClient) *idlCore.TaskLog {
+	l, err := quboleClient.GetLogLinkPath(context.TODO(), e.CommandId)
+	uri := ""
+	if err == nil {
+		uri = l.String()
+	} else {
+		logger.Errorf(context.TODO(), "failed to create log link, error: %s", err)
+	}
 	return &idlCore.TaskLog{
 		Name:          fmt.Sprintf("Status: %s [%s]", e.Phase, e.CommandId),
 		MessageFormat: idlCore.TaskLog_UNKNOWN,
-		Uri:           fmt.Sprintf(client.QuboleLogLinkFormat, e.CommandId),
+		Uri:           uri,
 	}
 }
 
-func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
+func ConstructTaskInfo(e ExecutionState, quboleClient client.QuboleClient) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
 	if e.CommandId != "" {
-		logs = append(logs, ConstructTaskLog(e))
+		logs = append(logs, ConstructTaskLog(e, quboleClient))
 		return &core.TaskInfo{
 			Logs:       logs,
 			OccurredAt: &t,
@@ -140,8 +151,8 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext) (Ex
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), uniqueId)
 	if err != nil {
-		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId)
+		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId, err)
 		return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", uniqueId)
 	}
 	logger.Infof(ctx, "Allocation result for [%s] is [%s]", uniqueId, allocationStatus)
@@ -185,10 +196,10 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 }
 
 func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
-	cache utils2.AutoRefreshCache) (ExecutionState, error) {
+	cache utils2.AutoRefreshCache, cfg *config.Config) (ExecutionState, error) {
 
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	apiKey, err := tCtx.SecretManager().Get(ctx, client.QuboleSecretKey)
+	apiKey, err := tCtx.SecretManager().Get(ctx, cfg.TokenKey)
 	if err != nil {
 		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
 	}
@@ -202,8 +213,8 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		cluster, apiKey, tags)
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
-		logger.Warnf(ctx, "Error creating Qubole query for %s", uniqueId)
 		currentState.CreationFailureCount = currentState.CreationFailureCount + 1
+		logger.Warnf(ctx, "Error creating Qubole query for %s, failure counts %d. Error: %s", uniqueId, currentState.CreationFailureCount, err)
 	} else {
 		// If we succeed, then store the command id returned from Qubole, and update our state. Also, add to the
 		// AutoRefreshCache so we start getting updates.
@@ -220,9 +231,9 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		_, err := cache.GetOrCreate(executionStateCacheItem)
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
-			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]",
+			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]. Error %s",
 				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
-				tCtx.TaskExecutionMetadata().GetOwnerReference())
+				tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 			return currentState, err
 		}
 	}
@@ -241,9 +252,9 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	cachedItem, err := cache.GetOrCreate(executionStateCacheItem)
 	if err != nil {
 		// This means that our cache has fundamentally broken... return a system error
-		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]",
+		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]. Error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
-			tCtx.TaskExecutionMetadata().GetOwnerReference())
+			tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 		return currentState, errors.Wrapf(errors.CacheFailed, err, "Error when GetOrCreate while monitoring")
 	}
 
@@ -259,15 +270,10 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	return cachedExecutionState.ExecutionState, nil
 }
 
-func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient) error {
+func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, qubole client.QuboleClient, apiKey string) error {
 	// Cancel Qubole query if non-terminal state
 	if !InTerminalState(currentState) && currentState.CommandId != "" {
-		key, err := tCtx.SecretManager().Get(ctx, client.QuboleSecretKey)
-		if err != nil {
-			logger.Errorf(ctx, "Error reading token in Finalize [%s]", err)
-			return err
-		}
-		err = qubole.KillCommand(ctx, currentState.CommandId, key)
+		err := qubole.KillCommand(ctx, currentState.CommandId, apiKey)
 		if err != nil {
 			logger.Errorf(ctx, "Error terminating Qubole command in Finalize [%s]", err)
 			return err
