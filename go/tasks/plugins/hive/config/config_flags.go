@@ -41,8 +41,8 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "quboleTokenKey"), defaultConfig.QuboleTokenKey, "Name of the key where to find Qubole token in the secret manager.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "quboleLimit"), defaultConfig.QuboleLimit, "Global limit for concurrent Qubole queries")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "quboleTokenKey"), defaultConfig.TokenKey, "Name of the key where to find Qubole token in the secret manager.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "quboleLimit"), defaultConfig.Limit, "Global limit for concurrent Qubole queries")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "lruCacheSize"), defaultConfig.LruCacheSize, "Size of the AutoRefreshCache")
 	return cmdFlags
 }
