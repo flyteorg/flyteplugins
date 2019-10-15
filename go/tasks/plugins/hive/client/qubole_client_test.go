@@ -3,11 +3,14 @@ package client
 import (
 	"bytes"
 	"context"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 )
 
 var getCommandResponse = `{
@@ -119,7 +122,10 @@ func createQuboleClient(response string) quboleClient {
 
 	})}
 
-	return quboleClient{client: hc}
+	cfg := config.GetQuboleConfig()
+	cmd := cfg.Endpoint.ResolveReference(&cfg.CommandAPIPath.URL)
+	analyze := cfg.Endpoint.ResolveReference(&cfg.AnalyzeLinkPath.URL)
+	return quboleClient{client: hc, commandURL: cmd, analyzeURL: analyze}
 }
 
 func createQuboleErrorClient(errorMsg string) quboleClient {
@@ -134,7 +140,10 @@ func createQuboleErrorClient(errorMsg string) quboleClient {
 
 	})}
 
-	return quboleClient{client: hc}
+	cfg := config.GetQuboleConfig()
+	cmd := cfg.Endpoint.ResolveReference(&cfg.CommandAPIPath.URL)
+	analyze := cfg.Endpoint.ResolveReference(&cfg.AnalyzeLinkPath.URL)
+	return quboleClient{client: hc, commandURL: cmd, analyzeURL: analyze}
 }
 
 type RoundTripFunc func(*http.Request) (*http.Response, error)

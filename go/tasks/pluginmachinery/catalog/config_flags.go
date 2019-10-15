@@ -41,11 +41,11 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ReaderWorkqueueConfig.workers"), defaultConfig.ReaderWorkqueueConfig.Workers, "")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ReaderWorkqueueConfig.maxRetries"), defaultConfig.ReaderWorkqueueConfig.MaxRetries, "")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ReaderWorkqueueConfig.maxItems"), defaultConfig.ReaderWorkqueueConfig.IndexCacheMaxItems, "")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WriterWorkqueueConfig.workers"), defaultConfig.WriterWorkqueueConfig.Workers, "")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WriterWorkqueueConfig.maxRetries"), defaultConfig.WriterWorkqueueConfig.MaxRetries, "")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WriterWorkqueueConfig.maxItems"), defaultConfig.WriterWorkqueueConfig.IndexCacheMaxItems, "")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ReaderWorkqueueConfig.workers"), defaultConfig.ReaderWorkqueueConfig.Workers, "Number of concurrent workers to start processing the queue.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ReaderWorkqueueConfig.maxRetries"), defaultConfig.ReaderWorkqueueConfig.MaxRetries, "Maximum number of retries per item.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ReaderWorkqueueConfig.maxItems"), defaultConfig.ReaderWorkqueueConfig.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WriterWorkqueueConfig.workers"), defaultConfig.WriterWorkqueueConfig.Workers, "Number of concurrent workers to start processing the queue.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WriterWorkqueueConfig.maxRetries"), defaultConfig.WriterWorkqueueConfig.MaxRetries, "Maximum number of retries per item.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WriterWorkqueueConfig.maxItems"), defaultConfig.WriterWorkqueueConfig.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
 	return cmdFlags
 }

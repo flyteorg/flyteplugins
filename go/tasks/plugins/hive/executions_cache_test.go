@@ -2,13 +2,12 @@ package hive
 
 import (
 	"context"
+	"testing"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
-
-	"testing"
 
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/utils"
@@ -54,11 +53,11 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		testScope := promutils.NewTestScope()
 
 		q := QuboleHiveExecutionsCache{
-			cfg:              &config.Config{},
 			AutoRefreshCache: mockCache,
 			quboleClient:     mockQubole,
 			scope:            testScope,
 			secretManager:    mockSecretManager,
+			cfg:              config.GetQuboleConfig(),
 		}
 
 		state := ExecutionState{
