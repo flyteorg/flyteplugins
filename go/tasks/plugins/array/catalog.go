@@ -52,7 +52,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// Set an empty indexes to cache. This task won't try to write to catalog anyway.
 		state = state.SetIndexesToCache(bitarray.NewBitSet(uint(arrayJob.Size)))
 		state = state.SetActualArraySize(int(arrayJob.Size))
-		state = state.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion)
+		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion)
 		return state, nil
 	}
 
@@ -109,7 +109,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		}
 
 		state = state.SetIndexesToCache(arrayCore.InvertBitSet(resp.GetCachedResults()))
-		state = state.SetPhase(arrayCore.PhaseLaunch, 0)
+		state = state.SetPhase(arrayCore.PhasePreLaunch, 0)
 		state = state.SetActualArraySize(int(arrayJob.Size) - resp.GetCachedCount())
 	} else {
 		ownerSignal := tCtx.EnqueueOwner()
