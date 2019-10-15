@@ -54,7 +54,7 @@ func (q QuboleHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionC
 	}
 
 	// If no error, then infer the new Phase from the various states
-	phaseInfo := MapExecutionStateToPhaseInfo(outgoingState)
+	phaseInfo := MapExecutionStateToPhaseInfo(outgoingState, q.quboleClient)
 
 	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, outgoingState); err != nil {
 		return core.UnknownTransition, err
@@ -71,7 +71,7 @@ func (q QuboleHiveExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionCo
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state in Finalize")
 	}
 
-	key, err := tCtx.SecretManager().Get(ctx, q.cfg.QuboleTokenKey)
+	key, err := tCtx.SecretManager().Get(ctx, q.cfg.TokenKey)
 	if err != nil {
 		logger.Errorf(ctx, "Error reading token in Finalize [%s]", err)
 		return err
@@ -97,9 +97,9 @@ func (q QuboleHiveExecutor) GetProperties() core.PluginProperties {
 
 func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	q := NewQuboleHiveExecutor()
-	q.quboleClient = client.NewQuboleClient()
-	q.metrics = getQuboleHiveExecutorMetrics(iCtx.MetricsScope())
 	q.cfg = config.GetQuboleConfig()
+	q.quboleClient = client.NewQuboleClient(q.cfg)
+	q.metrics = getQuboleHiveExecutorMetrics(iCtx.MetricsScope())
 
 	executionsAutoRefreshCache, err := NewQuboleHiveExecutionsCache(ctx, q.quboleClient, iCtx.SecretManager(),
 		config.GetQuboleConfig(), iCtx.MetricsScope().NewSubScope(hiveTaskType))
