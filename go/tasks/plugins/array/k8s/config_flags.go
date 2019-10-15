@@ -41,7 +41,13 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "scheduler"), *new(string), "Decides the scheduler to use when launching array-pods.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), *new(int), "Determines the maximum length of the error string returned for the array.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "scheduler"), defaultConfig.DefaultScheduler, "Decides the scheduler to use when launching array-pods.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), defaultConfig.MaxErrorStringLength, "Determines the maximum length of the error string returned for the array.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.workers"), defaultConfig.OutputAssembler.Workers, "Number of concurrent workers to start processing the queue.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.maxRetries"), defaultConfig.OutputAssembler.MaxRetries, "Maximum number of retries per item.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.maxItems"), defaultConfig.OutputAssembler.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.workers"), defaultConfig.ErrorAssembler.Workers, "Number of concurrent workers to start processing the queue.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxRetries"), defaultConfig.ErrorAssembler.MaxRetries, "Maximum number of retries per item.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxItems"), defaultConfig.ErrorAssembler.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
 	return cmdFlags
 }

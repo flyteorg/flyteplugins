@@ -3,13 +3,11 @@ package k8s
 import (
 	"context"
 	"fmt"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"strconv"
 	"strings"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
-	"github.com/lyft/flytestdlib/bitarray"
-
 	errors2 "github.com/lyft/flytestdlib/errors"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -41,15 +39,6 @@ func formatSubTaskName(_ context.Context, parentName, suffix string) (subTaskNam
 	return fmt.Sprintf("%v-%v", parentName, suffix)
 }
 
-func newStatusCompactArray(count uint) bitarray.CompactArray {
-	a, err := bitarray.NewCompactArray(count, bitarray.Item(len(core.Phases)-1))
-	if err != nil {
-		return bitarray.CompactArray{}
-	}
-
-	return a
-}
-
 func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
 	if len(cfg.DefaultScheduler) > 0 {
 		pod.Spec.SchedulerName = cfg.DefaultScheduler
@@ -60,7 +49,7 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, currentState array.State) (newState array.State, err error) {
+	config *Config, currentState *arrayCore.State) (newState *arrayCore.State, err error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
@@ -101,7 +90,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 					return currentState, nil
 				}
 
-				currentState = currentState.SetPhase(array.PhaseRetryableFailure, 0)
+				currentState = currentState.SetPhase(arrayCore.PhaseRetryableFailure, 0)
 				currentState = currentState.SetReason(err.Error())
 				return currentState, nil
 			}
@@ -114,10 +103,10 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 	arrayStatus := arraystatus2.ArrayStatus{
 		Summary:  arraystatus2.ArraySummary{},
-		Detailed: newStatusCompactArray(uint(size)),
+		Detailed: arrayCore.NewPhasesCompactArray(uint(size)),
 	}
 
-	currentState.SetPhase(array.PhaseCheckingSubTaskExecutions, 0)
+	currentState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0)
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil

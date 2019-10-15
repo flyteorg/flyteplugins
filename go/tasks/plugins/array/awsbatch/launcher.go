@@ -2,29 +2,23 @@ package awsbatch
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
-	"github.com/lyft/flytestdlib/bitarray"
+	core2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 )
-
-func newStatusCompactArray(count uint) bitarray.CompactArray {
-	// TODO: This is fragile, we should introduce a TaskPhaseCount as the last element in the enum
-	a, err := bitarray.NewCompactArray(count, bitarray.Item(core.PhasePermanentFailure))
-	if err != nil {
-		return bitarray.CompactArray{}
-	}
-
-	return a
-}
 
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, pluginConfig *config.Config,
 	currentState *State) (nextState *State, err error) {
 
-	jobDefinition := ""
+	jobDefinition := currentState.GetJobDefinitionArn()
+	if len(jobDefinition) == 0 {
+		return nil, fmt.Errorf("system error; no job definition created")
+	}
+
 	batchInput, err := FlyteTaskToBatchInput(ctx, tCtx, jobDefinition, pluginConfig)
 	if err != nil {
 		return nil, err
@@ -41,12 +35,14 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		return nil, err
 	}
 
-	nextState = currentState.SetExternalJobID(j)
-	nextState = nextState.SetPhase(array.PhaseCheckingSubTaskExecutions, 0).(*State)
-	nextState = nextState.SetArrayStatus(arraystatus.ArrayStatus{
+	parentState := currentState.SetPhase(core2.PhaseCheckingSubTaskExecutions, 0)
+	parentState = parentState.SetArrayStatus(arraystatus.ArrayStatus{
 		Summary:  arraystatus.ArraySummary{},
-		Detailed: newStatusCompactArray(uint(size)),
-	}).(*State)
+		Detailed: core2.NewPhasesCompactArray(uint(size)),
+	})
+
+	nextState = currentState.SetExternalJobID(j)
+	nextState.State = parentState
 
 	return nextState, nil
 }
