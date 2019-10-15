@@ -80,7 +80,7 @@ func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj uti
 	logger.Debugf(ctx, "Sync loop - processing Hive job [%s] - cache key [%s]",
 		executionStateCacheItem.CommandId, executionStateCacheItem.Id)
 
-	quboleApiKey, err := q.secretManager.Get(ctx, q.cfg.QuboleTokenKey)
+	quboleApiKey, err := q.secretManager.Get(ctx, q.cfg.TokenKey)
 	if err != nil {
 		return executionStateCacheItem, utils.Unchanged, err
 	}

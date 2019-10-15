@@ -1,30 +1,30 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"time"
-
-	"bytes"
-	"encoding/json"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/lyft/flytestdlib/logger"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 )
 
-const url = "https://api.qubole.com/api"
-const apiPath = "/v1.2/commands"
-const QuboleLogLinkFormat = "https://api.qubole.com/v2/analyze?command_id=%s"
+const logLinkFormat = "?command_id=%s"
+const commandStatusPathFormat = "/%s"
 
 const tokenKeyForAth = "X-AUTH-TOKEN"
 const acceptHeaderKey = "Accept"
 const hiveCommandType = "HiveCommand"
 const killStatus = "kill"
 const httpRequestTimeoutSecs = 30
-const host = "api.qubole.com"
 const hostHeaderKey = "Host"
 const HeaderContentType = "Content-Type"
 const ContentTypeJSON = "application/json"
@@ -62,19 +62,22 @@ type QuboleClient interface {
 		accountKey string, tags []string) (*QuboleCommandDetails, error)
 	KillCommand(ctx context.Context, commandID string, accountKey string) error
 	GetCommandStatus(ctx context.Context, commandID string, accountKey string) (QuboleStatus, error)
+	GetLogLinkPath(ctx context.Context, commandID string) (*url.URL, error)
 }
 
 // TODO: The Qubole client needs a rate limiter
 type quboleClient struct {
-	client *http.Client
+	client     *http.Client
+	commandURL *url.URL
+	analyzeURL *url.URL
 }
 
-func (q *quboleClient) getHeaders(accountKey string) http.Header {
+func (q *quboleClient) getHeaders(url *url.URL, accountKey string) http.Header {
 	headers := make(http.Header)
 	headers.Set(tokenKeyForAth, accountKey)
 	headers.Set(HeaderContentType, ContentTypeJSON)
 	headers.Set(acceptHeaderKey, ContentTypeJSON)
-	headers.Set(hostHeaderKey, host)
+	headers.Set(hostHeaderKey, url.Host)
 
 	return headers
 }
@@ -119,19 +122,17 @@ func closeBody(ctx context.Context, response *http.Response) {
 }
 
 // Helper method to execute the requests
-func (q *quboleClient) executeRequest(ctx context.Context, method string, path string, body *RequestBody, accountKey string) (*http.Response, error) {
+func (q *quboleClient) executeRequest(ctx context.Context, method string, u *url.URL, body *RequestBody, accountKey string) (*http.Response, error) {
 	var req *http.Request
 	var err error
-	path = url + "/" + path
 
 	switch method {
 	case http.MethodGet:
-		req, err = http.NewRequest("GET", path, nil)
+		req, err = http.NewRequest("GET", u.String(), nil)
 	case http.MethodPost:
-		req, err = http.NewRequest("POST", path, nil)
-		req.Header = q.getHeaders(accountKey)
+		req, err = http.NewRequest("POST", u.String(), nil)
 	case http.MethodPut:
-		req, err = http.NewRequest("PUT", path, nil)
+		req, err = http.NewRequest("PUT", u.String(), nil)
 	}
 
 	if err != nil {
@@ -145,8 +146,8 @@ func (q *quboleClient) executeRequest(ctx context.Context, method string, path s
 		}
 	}
 
-	logger.Debugf(ctx, "Qubole endpoint: %v", path)
-	req.Header = q.getHeaders(accountKey)
+	logger.Debugf(ctx, "Qubole endpoint: %v", u.String())
+	req.Header = q.getHeaders(u, accountKey)
 	return q.client.Do(req)
 }
 
@@ -174,7 +175,8 @@ func (q *quboleClient) ExecuteHiveCommand(
 		ClusterLabel: clusterLabel,
 		Tags:         tags,
 	}
-	response, err := q.executeRequest(ctx, http.MethodPost, apiPath, &requestBody, accountKey)
+
+	response, err := q.executeRequest(ctx, http.MethodPost, q.commandURL, &requestBody, accountKey)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +207,11 @@ func (q *quboleClient) ExecuteHiveCommand(
 	return: error: error in-case of a failure
 */
 func (q *quboleClient) KillCommand(ctx context.Context, commandID string, accountKey string) error {
-	killPath := apiPath + "/" + commandID
+	commandStatus, err := url.Parse(fmt.Sprintf(commandStatusPathFormat, commandID))
+	if err != nil {
+		return err
+	}
+	killPath := q.commandURL.ResolveReference(commandStatus)
 	requestBody := RequestBody{Status: killStatus}
 
 	response, err := q.executeRequest(ctx, http.MethodPut, killPath, &requestBody, accountKey)
@@ -221,7 +227,11 @@ func (q *quboleClient) KillCommand(ctx context.Context, commandID string, accoun
 	return: error: error in-case of a failure
 */
 func (q *quboleClient) GetCommandStatus(ctx context.Context, commandID string, accountKey string) (QuboleStatus, error) {
-	statusPath := apiPath + "/" + commandID
+	commandStatus, err := url.Parse(fmt.Sprintf(commandStatusPathFormat, commandID))
+	if err != nil {
+		return QuboleStatusUnknown, err
+	}
+	statusPath := q.commandURL.ResolveReference(commandStatus)
 	response, err := q.executeRequest(ctx, http.MethodGet, statusPath, nil, accountKey)
 	if err != nil {
 		return QuboleStatusUnknown, err
@@ -246,8 +256,19 @@ func (q *quboleClient) GetCommandStatus(ctx context.Context, commandID string, a
 	return cmdStatus, nil
 }
 
-func NewQuboleClient() QuboleClient {
+func (q *quboleClient) GetLogLinkPath(ctx context.Context, commandID string) (*url.URL, error) {
+	logLink := fmt.Sprintf(logLinkFormat, commandID)
+	l, err := url.Parse(logLink)
+	if err != nil {
+		return nil, err
+	}
+	return q.analyzeURL.ResolveReference(l), nil
+}
+
+func NewQuboleClient(cfg *config.Config) QuboleClient {
 	return &quboleClient{
-		client: &http.Client{Timeout: httpRequestTimeoutSecs * time.Second},
+		client:     &http.Client{Timeout: httpRequestTimeoutSecs * time.Second},
+		commandURL: cfg.Endpoint.ResolveReference(&cfg.CommandAPIPath.URL),
+		analyzeURL: cfg.Endpoint.ResolveReference(&cfg.AnalyzeLinkPath.URL),
 	}
 }

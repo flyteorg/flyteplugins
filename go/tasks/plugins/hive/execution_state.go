@@ -24,8 +24,8 @@ type ExecutionPhase int
 
 const (
 	PhaseNotStarted ExecutionPhase = iota
-	PhaseQueued                    // resource manager token gotten
-	PhaseSubmitted                 // Sent off to Qubole
+	PhaseQueued      // resource manager token gotten
+	PhaseSubmitted   // Sent off to Qubole
 
 	PhaseQuerySucceeded
 	PhaseQueryFailed
@@ -91,7 +91,7 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 	return newState, transformError
 }
 
-func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
+func MapExecutionStateToPhaseInfo(state ExecutionState, quboleClient client.QuboleClient) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 
@@ -106,31 +106,38 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Qubole launch")
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state, quboleClient))
 
 	case PhaseQuerySucceeded:
-		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state, quboleClient))
 
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state, quboleClient))
 	}
 
 	return phaseInfo
 }
 
-func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
+func ConstructTaskLog(e ExecutionState, quboleClient client.QuboleClient) *idlCore.TaskLog {
+	l, err := quboleClient.GetLogLinkPath(context.TODO(), e.CommandId)
+	uri := ""
+	if err == nil {
+		uri = l.String()
+	} else {
+		logger.Errorf(context.TODO(), "failed to create log link, error: %s", err)
+	}
 	return &idlCore.TaskLog{
 		Name:          fmt.Sprintf("Status: %s [%s]", e.Phase, e.CommandId),
 		MessageFormat: idlCore.TaskLog_UNKNOWN,
-		Uri:           fmt.Sprintf(client.QuboleLogLinkFormat, e.CommandId),
+		Uri:           uri,
 	}
 }
 
-func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
+func ConstructTaskInfo(e ExecutionState, quboleClient client.QuboleClient) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
 	if e.CommandId != "" {
-		logs = append(logs, ConstructTaskLog(e))
+		logs = append(logs, ConstructTaskLog(e, quboleClient))
 		return &core.TaskInfo{
 			Logs:       logs,
 			OccurredAt: &t,
@@ -192,7 +199,7 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	cache utils2.AutoRefreshCache, cfg *config.Config) (ExecutionState, error) {
 
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	apiKey, err := tCtx.SecretManager().Get(ctx, cfg.QuboleTokenKey)
+	apiKey, err := tCtx.SecretManager().Get(ctx, cfg.TokenKey)
 	if err != nil {
 		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
 	}
