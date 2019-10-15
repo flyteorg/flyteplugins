@@ -76,12 +76,14 @@ func TestGetQueryInfo(t *testing.T) {
 }
 
 func TestConstructTaskLog(t *testing.T) {
-	taskLog := ConstructTaskLog(ExecutionState{CommandId: "123"})
-	assert.Equal(t, "https://api.qubole.com/v2/analyze?command_id=123", taskLog.Uri)
+	c := client.NewQuboleClient(config.GetQuboleConfig())
+	taskLog := ConstructTaskLog(ExecutionState{CommandId: "123"}, c)
+	assert.Equal(t, "https://wellness.qubole.com/v2/analyze?command_id=123", taskLog.Uri)
 }
 
 func TestConstructTaskInfo(t *testing.T) {
-	empty := ConstructTaskInfo(ExecutionState{})
+	c := client.NewQuboleClient(config.GetQuboleConfig())
+	empty := ConstructTaskInfo(ExecutionState{}, c)
 	assert.Nil(t, empty)
 
 	e := ExecutionState{
@@ -89,16 +91,17 @@ func TestConstructTaskInfo(t *testing.T) {
 		CommandId:        "123",
 		SyncFailureCount: 0,
 	}
-	taskInfo := ConstructTaskInfo(e)
-	assert.Equal(t, "https://api.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
+	taskInfo := ConstructTaskInfo(e, c)
+	assert.Equal(t, "https://wellness.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
 }
 
 func TestMapExecutionStateToPhaseInfo(t *testing.T) {
+	c := client.NewQuboleClient(config.GetQuboleConfig())
 	t.Run("NotStarted", func(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseNotStarted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseNotReady, phaseInfo.Phase())
 	})
 
@@ -107,14 +110,14 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 			Phase:                PhaseQueued,
 			CreationFailureCount: 0,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseQueued, phaseInfo.Phase())
 
 		e = ExecutionState{
 			Phase:                PhaseQueued,
 			CreationFailureCount: 100,
 		}
-		phaseInfo = MapExecutionStateToPhaseInfo(e)
+		phaseInfo = MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 
 	})
@@ -123,7 +126,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseSubmitted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
 }
