@@ -9,7 +9,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
-	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
+	batchConfig "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -44,7 +44,7 @@ func (e Executor) GetProperties() core.PluginProperties {
 }
 
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
-	pluginConfig := config2.GetConfig()
+	pluginConfig := batchConfig.GetConfig()
 
 	pluginState := &State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
@@ -106,7 +106,7 @@ func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) 
 	return nil
 }
 
-func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *config2.Config,
+func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *batchConfig.Config,
 	enqueueOwner core.EnqueueOwner, scope promutils.Scope) (Executor, error) {
 
 	getRateLimiter := utils.NewRateLimiter("getRateLimiter", float64(cfg.GetRateLimiter.Rate),
@@ -139,9 +139,10 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *config2.Config,
 	}
 
 	return Executor{
-		jobStore:        &jobStore,
-		outputAssembler: outputAssembler,
-		errorAssembler:  errorAssembler,
+		jobStore:           &jobStore,
+		jobDefinitionCache: definition.NewCache(cfg.JobDefCacheSize),
+		outputAssembler:    outputAssembler,
+		errorAssembler:     errorAssembler,
 	}, nil
 }
 
@@ -150,16 +151,16 @@ func init() {
 		core.PluginEntry{
 			ID:                  executorName,
 			RegisteredTaskTypes: []core.TaskType{arrayTaskType},
-			LoadPlugin:          GetNewExecutorPlugin,
+			LoadPlugin:          createNewExecutorPlugin,
 			IsDefault:           false,
 		})
 }
 
-func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
+func createNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	awsClient, err := aws.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewExecutor(ctx, awsClient, config2.GetConfig(), iCtx.EnqueueOwner(), iCtx.MetricsScope().NewSubScope(executorName))
+	return NewExecutor(ctx, awsClient, batchConfig.GetConfig(), iCtx.EnqueueOwner(), iCtx.MetricsScope().NewSubScope(executorName))
 }
