@@ -16,6 +16,17 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
+func createSubJobList(count int) []*Job {
+	res := make([]*Job, count)
+	for i := range res {
+		res[i] = &Job{
+			Status: JobStatus{Phase: core.PhaseNotReady},
+		}
+	}
+
+	return res
+}
+
 func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, jobStore *JobStore,
 	cfg *config.Config, currentState *State) (newState *State, err error) {
 
@@ -36,7 +47,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		_, err = jobStore.GetOrCreate(jobName, &Job{
 			ID:             *currentState.ExternalJobID,
 			OwnerReference: taskMeta.GetOwnerID(),
-			SubJobs:        make([]*Job, currentState.GetExecutionArraySize()),
+			SubJobs:        createSubJobList(currentState.GetExecutionArraySize()),
 		})
 
 		if err != nil {
