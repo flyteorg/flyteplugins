@@ -5,6 +5,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lyft/flytestdlib/promutils"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/lyft/flyteplugins/go/tasks/aws"
+
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -17,6 +22,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	batchConfig "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/mocks"
 	cacheMocks "github.com/lyft/flytestdlib/cache/mocks"
@@ -94,4 +100,18 @@ func TestExecutor_Handle(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, transition)
 	assert.Equal(t, pluginCore.PhaseRunning.String(), transition.Info().Phase().String())
+}
+
+func TestExecutor_Start(t *testing.T) {
+	awsClient, err := aws.GetClient()
+	assert.NoError(t, err)
+
+	exec, err := NewExecutor(context.Background(), awsClient, batchConfig.GetConfig(), func(id types.NamespacedName) error {
+		return nil
+	}, promutils.NewTestScope())
+
+	assert.NoError(t, err)
+	assert.NotNil(t, exec)
+
+	assert.NoError(t, exec.Start(context.Background()))
 }
