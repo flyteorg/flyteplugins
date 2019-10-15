@@ -81,7 +81,7 @@ func TestExecutor_Handle(t *testing.T) {
 			assert.True(t, casted)
 
 			actualPhase, _ := actualState.GetPhase()
-			assert.Equal(t, arrayCore.PhaseLaunch, actualPhase)
+			assert.Equal(t, arrayCore.PhasePreLaunch, actualPhase)
 			return nil
 		})
 
