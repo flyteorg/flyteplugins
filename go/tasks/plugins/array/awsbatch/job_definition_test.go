@@ -12,6 +12,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 	batchMocks "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/mocks"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/lyft/flytestdlib/utils"
 	"golang.org/x/net/context"
 
@@ -76,17 +77,25 @@ func TestEnsureJobDefinition(t *testing.T) {
 	t.Run("Not Found", func(t *testing.T) {
 		dCache := definition.NewCache(10)
 
-		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{})
+		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{
+			State: &arrayCore.State{},
+		})
+
 		assert.NoError(t, err)
 		assert.NotNil(t, nextState)
 		assert.Equal(t, "my-arn", nextState.JobDefinitionArn)
+		p, v := nextState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseLaunch, p)
+		assert.Zero(t, v)
 	})
 
 	t.Run("Found", func(t *testing.T) {
 		dCache := definition.NewCache(10)
 		assert.NoError(t, dCache.Put(definition.NewCacheKey("", "img1"), "their-arn"))
 
-		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{})
+		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{
+			State: &arrayCore.State{},
+		})
 		assert.NoError(t, err)
 		assert.NotNil(t, nextState)
 		assert.Equal(t, "their-arn", nextState.JobDefinitionArn)
