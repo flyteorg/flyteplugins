@@ -18,7 +18,6 @@ import (
 )
 
 const logLinkFormat = "?command_id=%s"
-const commandStatusPathFormat = "/%s"
 
 const tokenKeyForAth = "X-AUTH-TOKEN"
 const acceptHeaderKey = "Accept"
@@ -207,7 +206,7 @@ func (q *quboleClient) ExecuteHiveCommand(
 	return: error: error in-case of a failure
 */
 func (q *quboleClient) KillCommand(ctx context.Context, commandID string, accountKey string) error {
-	commandStatus, err := url.Parse(fmt.Sprintf(commandStatusPathFormat, commandID))
+	commandStatus, err := url.Parse(commandID)
 	if err != nil {
 		return err
 	}
@@ -227,7 +226,7 @@ func (q *quboleClient) KillCommand(ctx context.Context, commandID string, accoun
 	return: error: error in-case of a failure
 */
 func (q *quboleClient) GetCommandStatus(ctx context.Context, commandID string, accountKey string) (QuboleStatus, error) {
-	commandStatus, err := url.Parse(fmt.Sprintf(commandStatusPathFormat, commandID))
+	commandStatus, err := url.Parse(commandID)
 	if err != nil {
 		return QuboleStatusUnknown, err
 	}
@@ -243,8 +242,8 @@ func (q *quboleClient) GetCommandStatus(ctx context.Context, commandID string, a
 		if err != nil {
 			return QuboleStatusUnknown, err
 		}
-		return QuboleStatusUnknown, errors.New(fmt.Sprintf("Bad response from Qubole getting command status: %d %s",
-			response.StatusCode, string(bts)))
+		return QuboleStatusUnknown, errors.New(fmt.Sprintf("Bad response from Qubole getting command status: %d %s, path: %s, %s",
+			response.StatusCode, string(bts), statusPath, q.commandURL.String()))
 	}
 
 	var cmd quboleCmdDetailsInternal
