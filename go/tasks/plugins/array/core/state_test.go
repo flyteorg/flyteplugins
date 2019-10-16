@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,7 +24,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 		s := &State{
 			CurrentPhase: PhaseStart,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, s)
+
+		phaseInfo := MapArrayStateToPluginPhase(ctx, s, []*idlCore.TaskLog{})
 		assert.Equal(t, core.PhaseInitializing, phaseInfo.Phase())
 	})
 }

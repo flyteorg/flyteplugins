@@ -67,7 +67,7 @@ func TestCheckSubTasksState(t *testing.T) {
 			utils.NewRateLimiter("", 10, 20))
 
 		jobStore := newJobsStore(t, batchClient)
-		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
+		newState, _, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
 			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   5,
@@ -113,7 +113,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
+		newState, _, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
 			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   5,
@@ -126,7 +126,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		assert.NoError(t, err)
 		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseAssembleFinalOutput.String(), p.String())
+		assert.Equal(t, arrayCore.PhaseWriteToDiscovery.String(), p.String())
 	})
 
 	t.Run("Still running", func(t *testing.T) {
@@ -149,7 +149,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
+		newState, _, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
 			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   2,
