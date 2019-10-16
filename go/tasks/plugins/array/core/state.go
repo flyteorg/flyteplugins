@@ -152,11 +152,14 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(_ context.Context, state *State) core.PhaseInfo {
+func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog) core.PhaseInfo {
 
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
-	nowTaskInfo := &core.TaskInfo{OccurredAt: &t}
+	nowTaskInfo := &core.TaskInfo{
+		OccurredAt: &t,
+		Logs:       logLinks,
+	}
 
 	switch p, version := state.GetPhase(); p {
 	case PhaseStart:
