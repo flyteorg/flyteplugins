@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
 	"github.com/lyft/flytestdlib/storage"
@@ -20,26 +21,34 @@ type TaskReader interface {
 type TaskExecutionContext interface {
 	// Returns a resource manager that can be used to create reservations for limited resources
 	ResourceManager() ResourceManager
+
 	// Returns a secret manager that can retrieve configured secrets for this plugin
 	SecretManager() SecretManager
+
 	// Returns a method that allows a plugin to indicate that the task has a new update and can be invoked again to check for updates
-	GetTaskRefreshIndicator() func()
+	TaskRefreshIndicator() SignalAsync
+
 	// Returns the max allowed dataset size that the outputwriter will accept
 	MaxDatasetSizeBytes() int64
+
 	// Returns a handle to the currently configured storage backend that can be used to communicate with the tasks or write metadata
 	DataStore() *storage.DataStore
 
 	// Returns a reader that retrieves previously stored plugin internal state. the state itself is immutable
 	PluginStateReader() PluginStateReader
+
 	// Returns a TaskReader, to retrieve task details
 	TaskReader() TaskReader
+
 	// Returns an input reader to retrieve input data
 	InputReader() io.InputReader
+
 	// Returns a handle to the Task's execution metadata.
 	TaskExecutionMetadata() TaskExecutionMetadata
 
 	// Provides an output sync of type io.OutputWriter
 	OutputWriter() io.OutputWriter
+
 	// Get a handle to the PluginStateWriter. Any mutations to the plugins internal state can be persisted using this
 	// These mutation will be visible in the next round
 	PluginStateWriter() PluginStateWriter
@@ -49,13 +58,10 @@ type TaskExecutionContext interface {
 
 	// Returns a handle to the Task events recorder, which get stored in the Admin.
 	EventsRecorder() EventsRecorder
-
-	// Gets a handler to invoke for async operations this task spawns. This ensures that the owner object gets traversed
-	// as soon as possible without necessarily waiting for the typical resync period.
-	EnqueueOwner() SignalOwner
 }
 
-type SignalOwner func(ctx context.Context)
+// A simple fire-and-forget func
+type SignalAsync func(ctx context.Context)
 
 // Task events recorder, which get stored in the Admin. If this is invoked multiple times,
 // multiple events will be sent to Admin. It is not recommended that one uses this interface, a transition will trigger an auto event to admin
