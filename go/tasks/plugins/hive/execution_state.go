@@ -3,7 +3,6 @@ package hive
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface"
 	"strconv"
 	"time"
 
@@ -25,15 +24,15 @@ type ExecutionPhase int
 
 const (
 	PhaseNotStarted ExecutionPhase = iota
-	PhaseQueued      // resource manager token gotten
-	PhaseSubmitted   // Sent off to Qubole
+	PhaseQueued                    // resource manager token gotten
+	PhaseSubmitted                 // Sent off to Qubole
 
 	PhaseQuerySucceeded
 	PhaseQueryFailed
 )
 
 const (
-	QuboleResourceNamespace resourcemanager_interface.ResourceNamespace = "qubole"
+	QuboleResourceNamespace core.ResourceNamespace = "qubole"
 )
 
 func (p ExecutionPhase) String() string {
@@ -162,11 +161,11 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext) (Ex
 	}
 	logger.Infof(ctx, "Allocation result for [%s] is [%s]", uniqueId, allocationStatus)
 
-	if allocationStatus == resourcemanager_interface.AllocationStatusGranted {
+	if allocationStatus == core.AllocationStatusGranted {
 		newState.Phase = PhaseQueued
-	} else if allocationStatus == resourcemanager_interface.AllocationStatusExhausted {
+	} else if allocationStatus == core.AllocationStatusExhausted {
 		newState.Phase = PhaseNotStarted
-	} else if allocationStatus == resourcemanager_interface.AllocationStatusNamespaceQuotaExceeded {
+	} else if allocationStatus == core.AllocationStatusNamespaceQuotaExceeded {
 		newState.Phase = PhaseNotStarted
 	} else {
 		return newState, errors.Errorf(errors.ResourceManagerFailure, "Got bad allocation result [%s] for token [%s]",
