@@ -129,6 +129,10 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 			}
 		}
 
+		if len(jobIds) == 0 {
+			return []cache.ItemSyncResponse{}, nil
+		}
+
 		response, err := client.GetJobDetailsBatch(ctx, jobIds)
 		if err != nil {
 			return nil, err
