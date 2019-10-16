@@ -140,20 +140,35 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 
 	// input readers
 	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+	if err != nil {
+		return nil, err
+	}
 
 	// output reader
 	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
+	if err != nil {
+		return nil, err
+	}
 
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
 		taskTemplate.Type, *taskTemplate.Interface, state.GetIndexesToCache(), inputReaders, outputReaders)
 
+	if err != nil {
+		return nil, err
+	}
+
 	if len(catalogWriterItems) == 0 {
 		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
+		return state, nil
 	}
 
 	allWritten, err := WriteToCatalog(ctx, tCtx.TaskRefreshIndicator(), tCtx.Catalog(), catalogWriterItems)
+	if err != nil {
+		return nil, err
+	}
+
 	if allWritten {
 		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 	}
