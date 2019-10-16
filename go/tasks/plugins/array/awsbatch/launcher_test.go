@@ -85,7 +85,7 @@ func TestLaunchSubTasks(t *testing.T) {
 				OriginalMinSuccesses: 5,
 			},
 			ExternalJobID:    nil,
-			JobDefinitionArn: "",
+			JobDefinitionArn: "arn",
 		}
 
 		newState, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{}, currentState)

@@ -57,26 +57,16 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		return currentState, logLinks, nil
 	}
 
-	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
-		existingPhase := core.Phases[existingPhaseIdx]
-		if existingPhase.IsTerminal() {
-			// If we get here it means we have already "processed" this terminal phase since we will only persist
-			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
-			newArrayStatus.Summary.Inc(existingPhase)
-			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
+	logLinks = append(logLinks, &idlCore.TaskLog{
+		Name: fmt.Sprintf("AWS Batch Job"),
+		// TODO: Get job queue?
+		Uri: GetJobUri(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
+			jobStore.Client.GetRegion(), "", job.ID),
+	})
 
-			// TODO: collect log links before doing this
-			continue
-		}
-
+	for childIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		subJob := job.SubJobs[childIdx]
 		originalIndex := calculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		logLinks = append(logLinks, &idlCore.TaskLog{
-			Name: fmt.Sprintf("AWS Batch Job #%v", originalIndex),
-			// TODO: Get job queue
-			Uri: GetJobUri(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
-				jobStore.Client.GetRegion(), "", job.ID, childIdx),
-		})
 
 		for _, attempt := range subJob.Attempts {
 			logLinks = append(logLinks, &idlCore.TaskLog{
