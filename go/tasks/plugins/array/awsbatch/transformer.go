@@ -2,7 +2,6 @@ package awsbatch
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
