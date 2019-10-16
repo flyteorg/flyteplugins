@@ -2,6 +2,7 @@ package awsbatch
 
 import (
 	"context"
+
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
