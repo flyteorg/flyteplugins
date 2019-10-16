@@ -150,6 +150,22 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *batchConfig.Con
 	}, nil
 }
 
+func (e Executor) Start(ctx context.Context) error {
+	if err := e.jobStore.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := e.outputAssembler.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := e.errorAssembler.Start(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func init() {
 	pluginmachinery.PluginRegistry().RegisterCorePlugin(
 		core.PluginEntry{
@@ -166,5 +182,14 @@ func createNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.
 		return nil, err
 	}
 
-	return NewExecutor(ctx, awsClient, batchConfig.GetConfig(), iCtx.EnqueueOwner(), iCtx.MetricsScope().NewSubScope(executorName))
+	exec, err := NewExecutor(ctx, awsClient, batchConfig.GetConfig(), iCtx.EnqueueOwner(), iCtx.MetricsScope().NewSubScope(executorName))
+	if err != nil {
+		return nil, err
+	}
+
+	if err = exec.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	return exec, nil
 }
