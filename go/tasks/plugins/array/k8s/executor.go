@@ -61,6 +61,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	var nextState *arrayCore.State
 	var err error
+	var logLinks []*idlCore.TaskLog
 
 	switch p, _ := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
@@ -74,7 +75,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
-		nextState, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
+		nextState, logLinks, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, pluginState)
@@ -98,7 +99,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, []*idlCore.TaskLog{})
+	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks)
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
