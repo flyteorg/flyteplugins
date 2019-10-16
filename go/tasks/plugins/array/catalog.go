@@ -89,8 +89,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
-			// TODO: This is not correct?  We still need to write parent level results?
-			state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
+			state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 			return state, nil
 		}
 
@@ -151,12 +150,12 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		*taskTemplate.Interface, state.GetIndexesToCache(), inputReaders, outputReaders)
 
 	if len(catalogWriterItems) == 0 {
-		state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 	}
 
 	allWritten, err := WriteToCatalog(ctx, tCtx.EnqueueOwner(), tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
-		state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 	}
 
 	return state, nil
