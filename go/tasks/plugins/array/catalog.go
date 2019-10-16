@@ -270,7 +270,7 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 		return nil, err
 	}
 
-	workItems := make([]catalog.DownloadRequest, len(inputs))
+	workItems := make([]catalog.DownloadRequest, 0, len(inputs))
 	for idx, inputReader := range inputs {
 		// TODO: Check if Id or Interface are empty and return err
 		item := catalog.DownloadRequest{
