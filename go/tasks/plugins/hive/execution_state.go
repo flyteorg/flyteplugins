@@ -3,6 +3,7 @@ package hive
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface"
 	"strconv"
 	"time"
 
@@ -29,6 +30,10 @@ const (
 
 	PhaseQuerySucceeded
 	PhaseQueryFailed
+)
+
+const (
+	QuboleResourceNamespace resourcemanager_interface.ResourceNamespace = "qubole"
 )
 
 func (p ExecutionPhase) String() string {
@@ -149,7 +154,7 @@ func ConstructTaskInfo(e ExecutionState, quboleClient client.QuboleClient) *core
 func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext) (ExecutionState, error) {
 	newState := ExecutionState{}
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), uniqueId)
+	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, QuboleResourceNamespace, uniqueId)
 	if err != nil {
 		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId, err)
@@ -157,11 +162,11 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext) (Ex
 	}
 	logger.Infof(ctx, "Allocation result for [%s] is [%s]", uniqueId, allocationStatus)
 
-	if allocationStatus == core.AllocationStatusGranted {
+	if allocationStatus == resourcemanager_interface.AllocationStatusGranted {
 		newState.Phase = PhaseQueued
-	} else if allocationStatus == core.AllocationStatusExhausted {
+	} else if allocationStatus == resourcemanager_interface.AllocationStatusExhausted {
 		newState.Phase = PhaseNotStarted
-	} else if allocationStatus == core.AllocationStatusNamespaceQuotaExceeded {
+	} else if allocationStatus == resourcemanager_interface.AllocationStatusNamespaceQuotaExceeded {
 		newState.Phase = PhaseNotStarted
 	} else {
 		return newState, errors.Errorf(errors.ResourceManagerFailure, "Got bad allocation result [%s] for token [%s]",
@@ -285,7 +290,7 @@ func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState Exe
 func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState) error {
 	// Release allocation token
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	err := tCtx.ResourceManager().ReleaseResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), uniqueId)
+	err := tCtx.ResourceManager().ReleaseResource(ctx, QuboleResourceNamespace, uniqueId)
 	if err != nil {
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueId, err)
 		return err

@@ -5,6 +5,7 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/resourcemanager_interface"
 	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -20,7 +21,7 @@ type TaskReader interface {
 // task execution
 type TaskExecutionContext interface {
 	// Returns a resource manager that can be used to create reservations for limited resources
-	ResourceManager() ResourceManager
+	ResourceManager() resourcemanager_interface.ResourceManager
 
 	// Returns a secret manager that can retrieve configured secrets for this plugin
 	SecretManager() SecretManager
