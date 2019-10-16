@@ -28,9 +28,9 @@ func createSubJobList(count int) []*Job {
 }
 
 func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, jobStore *JobStore,
-	cfg *config.Config, currentState *State) (newState *State, err error) {
+	cfg *config.Config, currentState *State) (newState *State, logLinks []*idlCore.TaskLog, err error) {
 
-	logLinks := make([]*idlCore.TaskLog, 0, 4)
+	logLinks = make([]*idlCore.TaskLog, 0, 4)
 	newState = currentState
 	parentState := currentState.State
 
@@ -39,6 +39,10 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
+
+	// TODO: Get job queue?
+	logLinks = append(logLinks, GetJobTaskLog(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
+		jobStore.Client.GetRegion(), "", *currentState.GetExternalJobID()))
 
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
 	job := jobStore.Get(jobName)
@@ -51,32 +55,15 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		})
 
 		if err != nil {
-			return nil, err
+			return nil, logLinks, err
 		}
 
-		return currentState, nil
+		return currentState, logLinks, nil
 	}
 
-	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
-		existingPhase := core.Phases[existingPhaseIdx]
-		if existingPhase.IsTerminal() {
-			// If we get here it means we have already "processed" this terminal phase since we will only persist
-			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
-			newArrayStatus.Summary.Inc(existingPhase)
-			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
-
-			// TODO: collect log links before doing this
-			continue
-		}
-
+	for childIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		subJob := job.SubJobs[childIdx]
 		originalIndex := calculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		logLinks = append(logLinks, &idlCore.TaskLog{
-			Name: fmt.Sprintf("AWS Batch Job #%v", originalIndex),
-			// TODO: Get job queue
-			Uri: GetJobUri(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
-				jobStore.Client.GetRegion(), "", job.ID, childIdx),
-		})
 
 		for _, attempt := range subJob.Attempts {
 			logLinks = append(logLinks, &idlCore.TaskLog{
@@ -97,7 +84,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 
 	parentState = parentState.SetArrayStatus(newArrayStatus)
 
-	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()-int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
+	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
 	if phase == arrayCore.PhasePermanentFailure || phase == arrayCore.PhaseRetryableFailure {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)
 		parentState = parentState.SetReason(errorMsg)
@@ -118,7 +105,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	newState.State = parentState
-	return newState, nil
+	return newState, logLinks, nil
 }
 
 // Compute the original index of a sub-task.

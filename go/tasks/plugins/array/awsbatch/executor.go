@@ -3,6 +3,8 @@ package awsbatch
 import (
 	"context"
 
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -56,6 +58,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	var err error
+	var logLinks []*idlCore.TaskLog
 
 	switch p, _ := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
@@ -65,10 +68,10 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState, err = EnsureJobDefinition(ctx, tCtx, pluginConfig, e.jobStore.Client, e.jobDefinitionCache, pluginState)
 
 	case arrayCore.PhaseLaunch:
-		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
+		pluginState, logLinks, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
-		pluginState, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginConfig, pluginState)
+		pluginState, logLinks, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginConfig, pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
 		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, pluginState.State)
@@ -92,8 +95,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State)
-	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
+	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, logLinks)
+	return core.DoTransitionType(core.TransitionTypeEphemeral, phaseInfo), nil
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
