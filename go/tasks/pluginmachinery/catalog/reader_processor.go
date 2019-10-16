@@ -15,7 +15,7 @@ import (
 
 type ReaderWorkItem struct {
 	// ReaderWorkItem outputs:
-	cached     bool
+	cached bool
 
 	// ReaderWorkItem Inputs:
 	outputsWriter io.OutputWriter
@@ -55,6 +55,11 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 
 		// TODO: wrap & log error
 		return workqueue.WorkStatusNotDone, err
+	}
+
+	if op == nil {
+		wi.cached = false
+		return workqueue.WorkStatusSucceeded, nil
 	}
 
 	// TODO: Check task interface, if it has outputs but literalmap is empty (or not matching output), error.
