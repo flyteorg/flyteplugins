@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/lyft/flytestdlib/promutils"
@@ -96,7 +98,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, nextState)
+	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, []*idlCore.TaskLog{})
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 

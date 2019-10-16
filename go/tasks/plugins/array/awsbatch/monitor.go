@@ -28,9 +28,9 @@ func createSubJobList(count int) []*Job {
 }
 
 func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, jobStore *JobStore,
-	cfg *config.Config, currentState *State) (newState *State, err error) {
+	cfg *config.Config, currentState *State) (newState *State, logLinks []*idlCore.TaskLog, err error) {
 
-	logLinks := make([]*idlCore.TaskLog, 0, 4)
+	logLinks = make([]*idlCore.TaskLog, 0, 4)
 	newState = currentState
 	parentState := currentState.State
 
@@ -51,10 +51,10 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		})
 
 		if err != nil {
-			return nil, err
+			return nil, logLinks, err
 		}
 
-		return currentState, nil
+		return currentState, logLinks, nil
 	}
 
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
@@ -118,7 +118,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	newState.State = parentState
-	return newState, nil
+	return newState, logLinks, nil
 }
 
 // Compute the original index of a sub-task.
