@@ -130,6 +130,7 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 		}
 
 		if len(jobIds) == 0 {
+			logger.Debug(ctx, "All jobs in batch have terminated, skipping sync call.")
 			return []cache.ItemSyncResponse{}, nil
 		}
 
