@@ -126,7 +126,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		assert.NoError(t, err)
 		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseAssembleFinalOutput.String(), p.String())
+		assert.Equal(t, arrayCore.PhaseWriteToDiscovery.String(), p.String())
 	})
 
 	t.Run("Still running", func(t *testing.T) {

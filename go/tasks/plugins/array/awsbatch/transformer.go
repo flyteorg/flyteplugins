@@ -14,6 +14,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -45,6 +46,13 @@ func GetJobUri(jobSize int, accountID, region, queue, jobID string) string {
 	}
 
 	return fmt.Sprintf(JobFormatter, region, region, accountID, queue, jobID)
+}
+
+func GetJobTaskLog(jobSize int, accountID, region, queue, jobID string) *idlCore.TaskLog {
+	return &idlCore.TaskLog{
+		Name: fmt.Sprintf("AWS Batch Job"),
+		Uri:  GetJobUri(jobSize, accountID, region, queue, jobID),
+	}
 }
 
 // Note that Name is not set on the result object.
@@ -191,7 +199,7 @@ func toRetryStrategy(_ context.Context, backoffLimit *int32, minRetryAttempts, m
 	}
 }
 
-func toK8sEnvVars(envVars []*core.KeyValuePair) []v1.EnvVar {
+func toK8sEnvVars(envVars []*idlCore.KeyValuePair) []v1.EnvVar {
 	res := make([]v1.EnvVar, 0, len(envVars))
 	for _, v := range envVars {
 		res = append(res, v1.EnvVar{Name: v.Key, Value: v.Value})
@@ -200,7 +208,7 @@ func toK8sEnvVars(envVars []*core.KeyValuePair) []v1.EnvVar {
 	return res
 }
 
-func toBackoffLimit(metadata *core.TaskMetadata) *int32 {
+func toBackoffLimit(metadata *idlCore.TaskMetadata) *int32 {
 	if metadata == nil || metadata.Retries == nil {
 		return nil
 	}
