@@ -242,7 +242,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 
 	if totalSuccesses >= minSuccesses && totalRunning == 0 {
 		logger.Infof(ctx, "Array succeeded because totalSuccesses[%v] >= minSuccesses[%v]", totalSuccesses, minSuccesses)
-		return PhaseAssembleFinalOutput
+		return PhaseWriteToDiscovery
 	}
 
 	logger.Debugf(ctx, "Array is still running [Successes: %v, Failures: %v, Total: %v, MinSuccesses: %v]",
