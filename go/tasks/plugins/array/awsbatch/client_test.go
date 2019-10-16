@@ -72,6 +72,8 @@ func TestClient_GetJobDetailsBatch(t *testing.T) {
 	o, err = c.GetJobDetailsBatch(context.TODO(), []string{"fake_job_id"})
 	assert.NoError(t, err)
 	assert.NotNil(t, o)
+	assert.Equal(t, 1, len(o))
+	assert.Equal(t, "fake_job_id", *o[0].JobId)
 }
 
 func TestClient_RegisterJobDefinition(t *testing.T) {
