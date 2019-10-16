@@ -35,11 +35,12 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		return nil, err
 	}
 
-	parentState := currentState.SetPhase(core2.PhaseCheckingSubTaskExecutions, 0)
-	parentState = parentState.SetArrayStatus(arraystatus.ArrayStatus{
-		Summary:  arraystatus.ArraySummary{},
-		Detailed: core2.NewPhasesCompactArray(uint(size)),
-	})
+	parentState := currentState.
+		SetPhase(core2.PhaseCheckingSubTaskExecutions, 0).
+		SetArrayStatus(arraystatus.ArrayStatus{
+			Summary:  arraystatus.ArraySummary{},
+			Detailed: core2.NewPhasesCompactArray(uint(size)),
+		})
 
 	nextState = currentState.SetExternalJobID(j)
 	nextState.State = parentState
