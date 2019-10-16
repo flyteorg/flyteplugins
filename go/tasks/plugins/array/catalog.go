@@ -111,7 +111,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		state = state.SetPhase(arrayCore.PhasePreLaunch, 0)
 		state = state.SetActualArraySize(int(arrayJob.Size) - resp.GetCachedCount())
 	} else {
-		ownerSignal := tCtx.EnqueueOwner()
+		ownerSignal := tCtx.TaskRefreshIndicator()
 		future.OnReady(func(ctx context.Context, _ catalog.Future) {
 			ownerSignal(ctx)
 		})
@@ -153,7 +153,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 	}
 
-	allWritten, err := WriteToCatalog(ctx, tCtx.EnqueueOwner(), tCtx.Catalog(), catalogWriterItems)
+	allWritten, err := WriteToCatalog(ctx, tCtx.TaskRefreshIndicator(), tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
 		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 	}
@@ -161,7 +161,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	return state, nil
 }
 
-func WriteToCatalog(ctx context.Context, ownerSignal core.SignalOwner, catalogClient catalog.AsyncClient,
+func WriteToCatalog(ctx context.Context, ownerSignal core.SignalAsync, catalogClient catalog.AsyncClient,
 	workItems []catalog.UploadRequest) (bool, error) {
 
 	// Enqueue work items

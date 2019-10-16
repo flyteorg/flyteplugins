@@ -61,11 +61,14 @@ func (m *MockAwsBatchClient) DescribeJobsWithContext(ctx aws.Context, input *bat
 			currentDetails.Status = ref(nextStatus(*currentDetails.Status))
 			m.jobs[id] = currentDetails
 		} else {
-			m.jobs[id] = &batch.JobDetail{
+			currentDetails = &batch.JobDetail{
 				JobName: ref(id),
 				JobId:   ref(id),
 				Status:  ref(batch.JobStatusSubmitted),
 			}
+
+			m.jobs[id] = currentDetails
+			res = append(res, currentDetails)
 		}
 	}
 
