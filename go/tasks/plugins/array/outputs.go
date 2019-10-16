@@ -111,7 +111,7 @@ func appendEmptyOutputs(vars []string, outputs map[string]interface{}) {
 // Assembles a single outputs.pb that contain all the outputs of the subtasks and write them to the final OutputWriter.
 // This step can potentially be expensive (hence the metrics) and why it's offloaded to a background process.
 func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tCtx pluginCore.TaskExecutionContext,
-	state *arrayCore.State) (*arrayCore.State, error) {
+	terminalPhase arrayCore.Phase, state *arrayCore.State) (*arrayCore.State, error) {
 
 	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
 	// build input readers
@@ -132,7 +132,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 		outputVariables := taskTemplate.GetInterface().GetOutputs()
 		if outputVariables == nil || outputVariables.GetVariables() == nil {
 			// If the task has no outputs, bail early.
-			state = state.SetPhase(arrayCore.PhaseSuccess, 0)
+			state = state.SetPhase(terminalPhase, 0)
 			return state, nil
 		}
 
@@ -162,7 +162,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 
 	switch w.Status() {
 	case workqueue.WorkStatusSucceeded:
-		state = state.SetPhase(arrayCore.PhaseSuccess, 0)
+		state = state.SetPhase(terminalPhase, 0)
 	case workqueue.WorkStatusFailed:
 		state = state.SetExecutionErr(&core.ExecutionError{
 			Message: w.Error().Error(),
