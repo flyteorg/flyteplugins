@@ -14,6 +14,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -24,7 +25,7 @@ import (
 const (
 	ArrayJobIndex       = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	LogStreamFormatter  = "https://console.aws.amazon.com/cloudwatch/home?region=%v#logEventViewer:group=/aws/batch/job;stream=%v"
-	ArrayJobFormatter   = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/%v/child/%v:%v"
+	ArrayJobFormatter   = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/%v"
 	JobFormatter        = "https://console.aws.amazon.com/batch/home?region=%v#/jobs/queue/arn:aws:batch:%v:%v:job-queue~2F%v/job/%v"
 	arrayJobIDFormatter = "%v:%v"
 )
@@ -39,12 +40,19 @@ func (i arrayJobInputReader) GetInputPath() storage.DataReference {
 	return i.GetInputPrefixPath()
 }
 
-func GetJobUri(jobSize int, accountID, region, queue, jobID string, subTaskIndex int) string {
+func GetJobUri(jobSize int, accountID, region, queue, jobID string) string {
 	if jobSize > 1 {
-		return fmt.Sprintf(ArrayJobFormatter, region, jobID, jobID, subTaskIndex)
+		return fmt.Sprintf(ArrayJobFormatter, region, jobID)
 	}
 
 	return fmt.Sprintf(JobFormatter, region, region, accountID, queue, jobID)
+}
+
+func GetJobTaskLog(jobSize int, accountID, region, queue, jobID string) *idlCore.TaskLog {
+	return &idlCore.TaskLog{
+		Name: fmt.Sprintf("AWS Batch Job"),
+		Uri:  GetJobUri(jobSize, accountID, region, queue, jobID),
+	}
 }
 
 // Note that Name is not set on the result object.
@@ -191,7 +199,7 @@ func toRetryStrategy(_ context.Context, backoffLimit *int32, minRetryAttempts, m
 	}
 }
 
-func toK8sEnvVars(envVars []*core.KeyValuePair) []v1.EnvVar {
+func toK8sEnvVars(envVars []*idlCore.KeyValuePair) []v1.EnvVar {
 	res := make([]v1.EnvVar, 0, len(envVars))
 	for _, v := range envVars {
 		res = append(res, v1.EnvVar{Name: v.Key, Value: v.Value})
@@ -200,7 +208,7 @@ func toK8sEnvVars(envVars []*core.KeyValuePair) []v1.EnvVar {
 	return res
 }
 
-func toBackoffLimit(metadata *core.TaskMetadata) *int32 {
+func toBackoffLimit(metadata *idlCore.TaskMetadata) *int32 {
 	if metadata == nil || metadata.Retries == nil {
 		return nil
 	}
