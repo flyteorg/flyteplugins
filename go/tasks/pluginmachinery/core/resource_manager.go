@@ -1,6 +1,8 @@
 package core
 
-import "context"
+import (
+	"context"
+)
 
 type AllocationStatus string
 
@@ -19,9 +21,20 @@ const (
 	AllocationStatusNamespaceQuotaExceeded AllocationStatus = "NamespaceQuotaExceeded"
 )
 
-// Resource Manager manages a single resource type, and each allocation is of size one
-type ResourceManager interface {
-	AllocateResource(ctx context.Context, namespace string, allocationToken string) (AllocationStatus, error)
-	ReleaseResource(ctx context.Context, namespace string, allocationToken string) error
+const namespaceSeparator = ":"
+
+type ResourceNamespace string
+
+func (r ResourceNamespace) CreateSubNamespace(namespace ResourceNamespace) ResourceNamespace {
+	return r + namespaceSeparator + namespace
 }
 
+type ResourceNegotiator interface {
+	RegisterResourceQuota(ctx context.Context, namespace ResourceNamespace, quota int) error
+}
+
+// Resource Manager manages a single resource type, and each allocation is of size one
+type ResourceManager interface {
+	AllocateResource(ctx context.Context, namespace ResourceNamespace, allocationToken string) (AllocationStatus, error)
+	ReleaseResource(ctx context.Context, namespace ResourceNamespace, allocationToken string) error
+}
