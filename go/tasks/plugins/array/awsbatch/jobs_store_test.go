@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/lyft/flytestdlib/cache"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	"github.com/lyft/flytestdlib/promutils"
@@ -70,6 +72,34 @@ func BenchmarkStore_GetOrUpdate(b *testing.B) {
 		_, err := s.GetOrCreate("Id1", createJobWithID("Id1"))
 		assert.NoError(b, err)
 	}
+}
+
+type mockItem struct {
+	id   cache.ItemID
+	item cache.Item
+}
+
+func (m mockItem) GetID() cache.ItemID {
+	return m.id
+}
+
+func (m mockItem) GetItem() cache.Item {
+	return m.item
+}
+
+func TestBatchJobsForSync(t *testing.T) {
+	f := batchJobsForSync(context.TODO(), 2)
+	batches, err := f(context.TODO(), []cache.ItemWrapper{
+		mockItem{
+			id:   "id1",
+			item: &Job{ID: "id1"},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, batches, 1)
+	assert.Len(t, batches[0], 1)
+	assert.Equal(t, "id1", batches[0][0].GetID())
 }
 
 // Current values:

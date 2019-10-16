@@ -89,8 +89,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
-			// TODO: This is not correct?  We still need to write parent level results?
-			state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
+			state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 			return state, nil
 		}
 
@@ -112,7 +111,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		state = state.SetPhase(arrayCore.PhasePreLaunch, 0)
 		state = state.SetActualArraySize(int(arrayJob.Size) - resp.GetCachedCount())
 	} else {
-		ownerSignal := tCtx.EnqueueOwner()
+		ownerSignal := tCtx.TaskRefreshIndicator()
 		future.OnReady(func(ctx context.Context, _ catalog.Future) {
 			ownerSignal(ctx)
 		})
@@ -148,21 +147,21 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		*taskTemplate.Interface, state.GetIndexesToCache(), inputReaders, outputReaders)
+		taskTemplate.Type, *taskTemplate.Interface, state.GetIndexesToCache(), inputReaders, outputReaders)
 
 	if len(catalogWriterItems) == 0 {
-		state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 	}
 
-	allWritten, err := WriteToCatalog(ctx, tCtx.EnqueueOwner(), tCtx.Catalog(), catalogWriterItems)
+	allWritten, err := WriteToCatalog(ctx, tCtx.TaskRefreshIndicator(), tCtx.Catalog(), catalogWriterItems)
 	if allWritten {
-		state.SetPhase(arrayCore.PhaseSuccess, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
 	}
 
 	return state, nil
 }
 
-func WriteToCatalog(ctx context.Context, ownerSignal core.SignalOwner, catalogClient catalog.AsyncClient,
+func WriteToCatalog(ctx context.Context, ownerSignal core.SignalAsync, catalogClient catalog.AsyncClient,
 	workItems []catalog.UploadRequest) (bool, error) {
 
 	// Enqueue work items
@@ -185,7 +184,7 @@ func WriteToCatalog(ctx context.Context, ownerSignal core.SignalOwner, catalogCl
 }
 
 func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
-	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
+	cacheVersion string, taskType catalog.TaskType, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
 	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]catalog.UploadRequest, error) {
 
 	writerWorkItems := make([]catalog.UploadRequest, 0, len(inputReaders))
@@ -205,6 +204,7 @@ func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore
 				Identifier:     keyId,
 				InputReader:    input,
 				CacheVersion:   cacheVersion,
+				Type:           taskType,
 				TypedInterface: taskInterface,
 			},
 			ArtifactData: outputReaders[idx],
@@ -261,6 +261,7 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 		item := catalog.DownloadRequest{
 			Key: catalog.Key{
 				Identifier:     *t.Id,
+				Type:           t.Type,
 				CacheVersion:   t.GetMetadata().DiscoveryVersion,
 				InputReader:    inputReader,
 				TypedInterface: *t.Interface,
