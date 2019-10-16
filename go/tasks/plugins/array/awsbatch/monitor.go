@@ -40,6 +40,10 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
+	// TODO: Get job queue?
+	logLinks = append(logLinks, GetJobTaskLog(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
+		jobStore.Client.GetRegion(), "", *currentState.GetExternalJobID()))
+
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
 	job := jobStore.Get(jobName)
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
@@ -56,13 +60,6 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 
 		return currentState, logLinks, nil
 	}
-
-	logLinks = append(logLinks, &idlCore.TaskLog{
-		Name: fmt.Sprintf("AWS Batch Job"),
-		// TODO: Get job queue?
-		Uri: GetJobUri(currentState.GetExecutionArraySize(), jobStore.Client.GetAccountID(),
-			jobStore.Client.GetRegion(), "", job.ID),
-	})
 
 	for childIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		subJob := job.SubJobs[childIdx]
