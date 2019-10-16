@@ -21,12 +21,8 @@ type TaskReader interface {
 // task execution
 type TaskExecutionContext interface {
 	// Returns a resource manager that can be used to create reservations for limited resources
-<<<<<<< HEAD
 	ResourceManager() resourcemanager_interface.ResourceManager
-=======
-	ResourceManager() ResourceManager
 
->>>>>>> 15a34aba28b84b1fc60f92d21ab6622bd9808b59
 	// Returns a secret manager that can retrieve configured secrets for this plugin
 	SecretManager() SecretManager
 
