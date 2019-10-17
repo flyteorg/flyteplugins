@@ -78,13 +78,13 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState, logLinks, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, pluginState)
 
 	case arrayCore.PhaseWriteToDiscovery:
 		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState)
 
 	case arrayCore.PhaseAssembleFinalError:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhaseRetryableFailure, pluginState)
 
 	default:
 		nextState = pluginState

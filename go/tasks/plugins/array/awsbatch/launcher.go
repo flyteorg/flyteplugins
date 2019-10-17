@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/logger"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
@@ -14,27 +14,33 @@ import (
 )
 
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, pluginConfig *config.Config,
-	currentState *State) (nextState *State, logLinks []*idlCore.TaskLog, err error) {
+	currentState *State) (nextState *State, err error) {
 
 	jobDefinition := currentState.GetJobDefinitionArn()
 	if len(jobDefinition) == 0 {
-		return nil, logLinks, fmt.Errorf("system error; no job definition created")
+		return nil, fmt.Errorf("system error; no job definition created")
 	}
 
 	batchInput, err := FlyteTaskToBatchInput(ctx, tCtx, jobDefinition, pluginConfig)
 	if err != nil {
-		return nil, logLinks, err
+		return nil, err
 	}
 
 	size := currentState.GetExecutionArraySize()
+	t, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// If the original job was marked as an array (not a single job), then make sure to set it up correctly.
-	if currentState.GetOriginalArraySize() > 1 {
+	if t.Type == arrayTaskType {
+		logger.Debugf(ctx, "Task is of type [%v]. Will setup task index env vars.", t.Type)
 		batchInput = UpdateBatchInputForArray(ctx, batchInput, int64(size))
 	}
 
 	j, err := batchClient.SubmitJob(ctx, batchInput)
 	if err != nil {
-		return nil, logLinks, err
+		return nil, err
 	}
 
 	parentState := currentState.
@@ -47,11 +53,5 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 	nextState = currentState.SetExternalJobID(j)
 	nextState.State = parentState
 
-	// Add job link to task execution.
-	logLinks = []*idlCore.TaskLog{
-		GetJobTaskLog(currentState.GetExecutionArraySize(), batchClient.GetAccountID(),
-			batchClient.GetRegion(), "", j),
-	}
-
-	return nextState, logLinks, nil
+	return nextState, nil
 }
