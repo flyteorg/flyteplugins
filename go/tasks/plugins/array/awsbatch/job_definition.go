@@ -64,7 +64,9 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 		logger.Infof(ctx, "Found an existing job definition for Image [%v] and Role [%v]. Arn [%v]",
 			containerImage, role, existingArn)
 
-		return currentState.SetJobDefinitionArn(existingArn), nil
+		nextState = currentState.SetJobDefinitionArn(existingArn)
+		nextState.SetPhase(arrayCore.PhaseLaunch, 0)
+		return nextState, nil
 	}
 
 	name := definition.GetJobDefinitionSafeName(containerImageRepository(containerImage))
