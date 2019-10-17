@@ -32,11 +32,10 @@ func (o OutputAssembler) Queue(id workqueue.WorkItemID, item *outputAssembleItem
 }
 
 type outputAssembleItem struct {
-	outputPrefix storage.DataReference
-	varNames     []string
-	finalPhases  bitarray.CompactArray
-	outputWriter io.OutputWriter
-	dataStore    *storage.DataStore
+	outputPaths io.OutputFilePaths
+	varNames    []string
+	finalPhases bitarray.CompactArray
+	dataStore   *storage.DataStore
 }
 
 type assembleOutputsWorker struct {
@@ -45,7 +44,7 @@ type assembleOutputsWorker struct {
 func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
 	i := workItem.(*outputAssembleItem)
 
-	outputReaders, err := ConstructOutputReaders(ctx, i.dataStore, i.outputPrefix, int(i.finalPhases.ItemsCount))
+	outputReaders, err := ConstructOutputReaders(ctx, i.dataStore, i.outputPaths.GetOutputPrefixPath(), int(i.finalPhases.ItemsCount))
 	if err != nil {
 		return workqueue.WorkStatusNotDone, err
 	}
@@ -74,8 +73,8 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 		return workqueue.WorkStatusNotDone, err
 	}
 
-	err = i.outputWriter.Put(ctx, ioutils.NewInMemoryOutputReader(outputs.GetMap(), nil))
-	if err != nil {
+	ow := ioutils.NewRemoteFileOutputWriter(ctx, i.dataStore, i.outputPaths)
+	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(outputs.GetMap(), nil)); err != nil {
 		return workqueue.WorkStatusNotDone, err
 	}
 
@@ -111,7 +110,7 @@ func appendEmptyOutputs(vars []string, outputs map[string]interface{}) {
 // Assembles a single outputs.pb that contain all the outputs of the subtasks and write them to the final OutputWriter.
 // This step can potentially be expensive (hence the metrics) and why it's offloaded to a background process.
 func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tCtx pluginCore.TaskExecutionContext,
-	state *arrayCore.State) (*arrayCore.State, error) {
+	terminalPhase arrayCore.Phase, state *arrayCore.State) (*arrayCore.State, error) {
 
 	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
 	// build input readers
@@ -132,18 +131,17 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 		outputVariables := taskTemplate.GetInterface().GetOutputs()
 		if outputVariables == nil || outputVariables.GetVariables() == nil {
 			// If the task has no outputs, bail early.
-			state = state.SetPhase(arrayCore.PhaseSuccess, 0)
+			state = state.SetPhase(terminalPhase, 0)
 			return state, nil
 		}
 
 		varNames := make([]string, 0, len(outputVariables.GetVariables()))
 
 		err = assemblyQueue.Queue(workItemID, &outputAssembleItem{
-			outputWriter: tCtx.OutputWriter(),
-			varNames:     varNames,
-			finalPhases:  state.GetArrayStatus().Detailed,
-			outputPrefix: tCtx.OutputWriter().GetOutputPrefixPath(),
-			dataStore:    tCtx.DataStore(),
+			varNames:    varNames,
+			finalPhases: state.GetArrayStatus().Detailed,
+			outputPaths: tCtx.OutputWriter(),
+			dataStore:   tCtx.DataStore(),
 		})
 
 		if err != nil {
@@ -162,7 +160,12 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 
 	switch w.Status() {
 	case workqueue.WorkStatusSucceeded:
-		state = state.SetPhase(arrayCore.PhaseSuccess, 0)
+		or := ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(), tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())
+		if err = tCtx.OutputWriter().Put(ctx, or); err != nil {
+			return nil, err
+		}
+
+		state = state.SetPhase(terminalPhase, 0)
 	case workqueue.WorkStatusFailed:
 		state = state.SetExecutionErr(&core.ExecutionError{
 			Message: w.Error().Error(),
@@ -180,7 +183,7 @@ type assembleErrorsWorker struct {
 
 func (a assembleErrorsWorker) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
 	w := workItem.(*outputAssembleItem)
-	outputReaders, err := ConstructOutputReaders(ctx, w.dataStore, w.outputPrefix, int(w.finalPhases.ItemsCount))
+	outputReaders, err := ConstructOutputReaders(ctx, w.dataStore, w.outputPaths.GetOutputPrefixPath(), int(w.finalPhases.ItemsCount))
 	if err != nil {
 		return workqueue.WorkStatusNotDone, err
 	}
@@ -206,19 +209,21 @@ func (a assembleErrorsWorker) Process(ctx context.Context, workItem workqueue.Wo
 		}
 	}
 
+	msg := ""
 	if ec.Length() > 0 {
-		err = w.outputWriter.Put(ctx, ioutils.NewInMemoryOutputReader(nil, &io.ExecutionError{
-			ExecutionError: &core.ExecutionError{
-				Code:     "",
-				Message:  ec.Summary(a.maxErrorMessageLength),
-				ErrorUri: "",
-			},
-			IsRecoverable: false,
-		}))
+		msg = ec.Summary(a.maxErrorMessageLength)
+	}
 
-		if err != nil {
-			return workqueue.WorkStatusNotDone, err
-		}
+	ow := ioutils.NewRemoteFileOutputWriter(ctx, w.dataStore, w.outputPaths)
+	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, &io.ExecutionError{
+		ExecutionError: &core.ExecutionError{
+			Code:     "",
+			Message:  msg,
+			ErrorUri: "",
+		},
+		IsRecoverable: false,
+	})); err != nil {
+		return workqueue.WorkStatusNotDone, err
 	}
 
 	return workqueue.WorkStatusSucceeded, nil

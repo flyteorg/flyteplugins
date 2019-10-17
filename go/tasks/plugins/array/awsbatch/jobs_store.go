@@ -112,6 +112,11 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 		// and update them in the cache.
 		for _, item := range batch {
 			j := item.GetItem().(*Job)
+			if len(j.SubJobs) == 0 {
+				logger.Errorf(ctx, "A job with no subjobs found job id [%v].", j.ID)
+				continue
+			}
+
 			if j.Status.Phase.IsTerminal() {
 				continue
 			}
@@ -207,6 +212,14 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 			action := cache.Unchanged
 			if changed {
 				action = cache.Update
+			}
+
+			// If it's a single job, AWS Batch doesn't support arrays of size 1 so this workaround will ensure the rest
+			// of the code doesn't have to deal with this limitation.
+			if len(job.SubJobs) == 1 {
+				subJob := job.SubJobs[0]
+				subJob.Status = job.Status
+				subJob.Attempts = job.Attempts
 			}
 
 			res = append(res, cache.ItemSyncResponse{

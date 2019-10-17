@@ -187,7 +187,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 		tCtx := &mocks3.TaskExecutionContext{}
 		tCtx.OnTaskExecutionMetadata().Return(tMeta)
 
-		_, err := AssembleFinalOutputs(ctx, assemblyQueue, tCtx, s)
+		_, err := AssembleFinalOutputs(ctx, assemblyQueue, tCtx, arrayCore.PhaseSuccess, s)
 		assert.NoError(t, err)
 		assert.Equal(t, arrayCore.PhaseSuccess, s.CurrentPhase)
 	})
@@ -210,7 +210,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 		tCtx := &mocks3.TaskExecutionContext{}
 		tCtx.OnTaskExecutionMetadata().Return(tMeta)
 
-		_, err := AssembleFinalOutputs(ctx, assemblyQueue, tCtx, s)
+		_, err := AssembleFinalOutputs(ctx, assemblyQueue, tCtx, arrayCore.PhaseSuccess, s)
 		assert.NoError(t, err)
 		assert.Equal(t, arrayCore.PhaseRetryableFailure, s.CurrentPhase)
 	})
@@ -264,7 +264,7 @@ func TestAssembleFinalOutputs(t *testing.T) {
 		tCtx.OnOutputWriter().Return(ow)
 		tCtx.OnDataStore().Return(ds)
 
-		_, err = AssembleFinalOutputs(ctx, assemblyQueue, tCtx, s)
+		_, err = AssembleFinalOutputs(ctx, assemblyQueue, tCtx, arrayCore.PhaseSuccess, s)
 		assert.NoError(t, err)
 		assert.Equal(t, arrayCore.PhaseSuccess, s.CurrentPhase)
 	})
