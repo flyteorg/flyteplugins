@@ -3,9 +3,14 @@ package k8s
 import (
 	"context"
 	"fmt"
-	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 	"strconv"
 	"strings"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	errors2 "github.com/lyft/flytestdlib/errors"
@@ -86,11 +91,12 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 			if k8serrors.IsForbidden(err) {
 				if strings.Contains(err.Error(), "exceeded quota") {
 					// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
-					logger.Warnf(ctx, "Failed to launch job, resource quota exceeded. Err: %v", err)
-					return currentState, nil
+					logger.Infof(ctx, "Failed to launch job, resource quota exceeded. Err: %v", err)
+					currentState = currentState.SetPhase(arrayCore.PhaseWaitingForResources, 0)
+				} else {
+					currentState = currentState.SetPhase(arrayCore.PhaseRetryableFailure, 0)
 				}
 
-				currentState = currentState.SetPhase(arrayCore.PhaseRetryableFailure, 0)
 				currentState = currentState.SetReason(err.Error())
 				return currentState, nil
 			}
@@ -110,4 +116,40 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil
+}
+
+func TerminateSubTasks(ctx context.Context, tMeta core.TaskExecutionMetadata, kubeClient core.KubeClient,
+	errsMaxLength int, currentState *arrayCore.State) error {
+
+	size := currentState.GetExecutionArraySize()
+	errs := errorcollector.NewErrorMessageCollector()
+	for i := 0; i < size; i++ {
+		indexStr := strconv.Itoa(i)
+		podName := formatSubTaskName(ctx, tMeta.GetTaskExecutionID().GetGeneratedName(), indexStr)
+		pod := &corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       PodKind,
+				APIVersion: metav1.SchemeGroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      podName,
+				Namespace: tMeta.GetNamespace(),
+			},
+		}
+
+		err := kubeClient.GetClient().Delete(ctx, pod)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				continue
+			}
+
+			errs.Collect(i, err.Error())
+		}
+	}
+
+	if errs.Length() > 0 {
+		return fmt.Errorf(errs.Summary(errsMaxLength))
+	}
+
+	return nil
 }

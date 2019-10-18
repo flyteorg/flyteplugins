@@ -67,6 +67,9 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case arrayCore.PhasePreLaunch:
 		pluginState, err = EnsureJobDefinition(ctx, tCtx, pluginConfig, e.jobStore.Client, e.jobDefinitionCache, pluginState)
 
+	case arrayCore.PhaseWaitingForResources:
+		fallthrough
+
 	case arrayCore.PhaseLaunch:
 		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState)
 
@@ -108,12 +111,27 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	//TODO: implement
+	pluginState := &State{}
+	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
+	}
+
+	if pluginState.State == nil {
+		pluginState.State = &arrayCore.State{}
+	}
+
+	p, _ := pluginState.GetPhase()
+	logger.Infof(ctx, "Abort is called with phase [%v]", p)
+
+	switch p {
+	case arrayCore.PhaseCheckingSubTaskExecutions:
+		return TerminateSubTasks(ctx, e.jobStore.Client, *pluginState.GetExternalJobID())
+	}
+
 	return nil
 }
 
 func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	//TODO: implement
 	return nil
 }
 

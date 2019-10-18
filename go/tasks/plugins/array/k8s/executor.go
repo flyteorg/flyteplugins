@@ -71,6 +71,9 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion)
 		err = nil
 
+	case arrayCore.PhaseWaitingForResources:
+		fallthrough
+
 	case arrayCore.PhaseLaunch:
 		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 
@@ -103,12 +106,20 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
-func (Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
+func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
 	return nil
 }
 
-func (Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	return nil
+func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
+	pluginConfig := GetConfig()
+
+	pluginState := &arrayCore.State{}
+	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
+	}
+
+	return TerminateSubTasks(ctx, tCtx.TaskExecutionMetadata(), e.kubeClient, pluginConfig.MaxErrorStringLength,
+		pluginState)
 }
 
 func init() {

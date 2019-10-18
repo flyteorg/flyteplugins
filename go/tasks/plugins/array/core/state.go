@@ -25,6 +25,7 @@ const (
 	PhaseStart Phase = iota
 	PhasePreLaunch
 	PhaseLaunch
+	PhaseWaitingForResources
 	PhaseCheckingSubTaskExecutions
 	PhaseAssembleFinalOutput
 	PhaseWriteToDiscovery
@@ -168,6 +169,9 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	case PhaseLaunch:
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
+	case PhaseWaitingForResources:
+		phaseInfo = core.PhaseInfoWaitingForResources(t, version, state.GetReason())
 
 	case PhasePreLaunch:
 		version := GetPhaseVersionOffset(p, 1) + version
