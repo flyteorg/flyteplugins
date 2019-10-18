@@ -138,13 +138,13 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *batchConfig.Con
 		return Executor{}, err
 	}
 
-	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler, scope.NewSubScope("output"))
+	outputAssembler, err := array.NewOutputAssembler(cfg.OutputAssembler, scope.NewSubScope("output_assembler"))
 	if err != nil {
 		return Executor{}, err
 	}
 
 	errorAssembler, err := array.NewErrorAssembler(cfg.MaxErrorStringLength, cfg.ErrorAssembler,
-		scope.NewSubScope("error"))
+		scope.NewSubScope("error_assembler"))
 	if err != nil {
 		return Executor{}, err
 	}

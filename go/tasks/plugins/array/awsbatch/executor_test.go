@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/lyft/flytestdlib/promutils"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -91,10 +93,41 @@ func TestExecutor_Handle(t *testing.T) {
 			return nil
 		})
 
+	tID := &pluginMocks.TaskExecutionID{}
+	tID.OnGetGeneratedName().Return("notfound")
+	tID.OnGetID().Return(core.TaskExecutionIdentifier{
+		TaskId: &core.Identifier{
+			ResourceType: core.ResourceType_TASK,
+			Project:      "a",
+			Domain:       "d",
+			Name:         "n",
+			Version:      "abc",
+		},
+		NodeExecutionId: &core.NodeExecutionIdentifier{
+			NodeId: "node1",
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Project: "a",
+				Domain:  "d",
+				Name:    "exec",
+			},
+		},
+		RetryAttempt: 0,
+	})
+
+	overrides := &pluginMocks.TaskOverrides{}
+	overrides.OnGetConfig().Return(&v1.ConfigMap{Data: map[string]string{
+		DynamicTaskQueueKey: "queue1",
+	}})
+
+	tMeta := &pluginMocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+	tMeta.OnGetOverrides().Return(overrides)
+
 	tCtx := &pluginMocks.TaskExecutionContext{}
 	tCtx.OnPluginStateReader().Return(pluginStateReader)
 	tCtx.OnPluginStateWriter().Return(pluginStateWriter)
 	tCtx.OnTaskReader().Return(tr)
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
 
 	transition, err := e.Handle(ctx, tCtx)
 	assert.NoError(t, err)
