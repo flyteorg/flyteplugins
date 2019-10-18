@@ -18,15 +18,11 @@ type Metadata struct {
 	TaskExecutionIdentifier     *core.TaskExecutionIdentifier
 }
 
-// The task type determining the behavior of the task.
-type TaskType = string
-
 // An identifier for a catalog object.
 type Key struct {
 	Identifier     core.Identifier
 	CacheVersion   string
 	TypedInterface core.TypedInterface
-	Type           TaskType
 	InputReader    io.InputReader
 }
 
