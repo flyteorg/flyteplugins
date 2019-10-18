@@ -195,7 +195,7 @@ func (q *quboleClient) ExecuteHiveCommand(
 		return nil, err
 	}
 
-	status := newQuboleStatus(ctx, cmd.Status)
+	status := NewQuboleStatus(ctx, cmd.Status)
 	return &QuboleCommandDetails{ID: cmd.ID, Status: status}, nil
 }
 
@@ -251,7 +251,7 @@ func (q *quboleClient) GetCommandStatus(ctx context.Context, commandID string, a
 		return QuboleStatusUnknown, err
 	}
 
-	cmdStatus := newQuboleStatus(ctx, cmd.Status)
+	cmdStatus := NewQuboleStatus(ctx, cmd.Status)
 	return cmdStatus, nil
 }
 
