@@ -102,6 +102,87 @@ func batchJobsForSync(_ context.Context, batchChunkSize int) cache.CreateBatches
 	}
 }
 
+func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updated bool, err error) {
+	msg := make([]string, 0, 2)
+	if source.Status == nil {
+		logger.Warnf(ctx, "No status received for job [%v]", *source.JobId)
+		msg = append(msg, "JobID in AWS BATCH has no Status")
+	} else {
+		newPhase := jobPhaseToPluginsPhase(*source.Status)
+		if target.Status.Phase != newPhase {
+			updated = true
+		}
+
+		target.Status.Phase = newPhase
+	}
+
+	if source.StatusReason != nil {
+		msg = append(msg, *source.StatusReason)
+	}
+
+	target.Attempts = make([]Attempt, 0, len(source.Attempts))
+	lastStatusReason := ""
+	for _, attempt := range source.Attempts {
+		a := Attempt{}
+		if attempt.StartedAt != nil {
+			a.StartedAt = time.Unix(*attempt.StartedAt, 0)
+		}
+
+		if attempt.StoppedAt != nil {
+			a.StoppedAt = time.Unix(*attempt.StoppedAt, 0)
+		}
+
+		if container := attempt.Container; container != nil {
+			if container.LogStreamName != nil {
+				a.LogStream = *container.LogStreamName
+			}
+
+			if container.Reason != nil {
+				lastStatusReason = *container.Reason
+			}
+
+			if container.ExitCode != nil {
+				lastStatusReason += fmt.Sprintf(" exit(%v)", *container.ExitCode)
+			}
+		}
+
+		target.Attempts = append(target.Attempts, a)
+	}
+
+	// If no job attempts are present, try to construct one from container status
+	if len(source.Attempts) == 0 {
+		a := Attempt{}
+		if source.StartedAt != nil {
+			a.StartedAt = time.Unix(*source.StartedAt, 0)
+		}
+
+		if source.StoppedAt != nil {
+			a.StoppedAt = time.Unix(*source.StoppedAt, 0)
+		}
+
+		if container := source.Container; container != nil {
+			if container.LogStreamName != nil {
+				a.LogStream = *container.LogStreamName
+			}
+
+			if container.Reason != nil {
+				lastStatusReason = *container.Reason
+			}
+
+			if container.ExitCode != nil {
+				lastStatusReason += fmt.Sprintf(" exit(%v)", *container.ExitCode)
+			}
+		}
+
+		target.Attempts = append(target.Attempts, a)
+	}
+
+	msg = append(msg, lastStatusReason)
+
+	target.Status.Message = strings.Join(msg, " - ")
+	return updated, nil
+}
+
 func syncBatches(_ context.Context, client Client, handler EventHandler) cache.SyncFunc {
 	return func(ctx context.Context, batch cache.Batch) ([]cache.ItemSyncResponse, error) {
 		jobIDsMap := make(map[JobID]*Job, len(batch))
@@ -152,56 +233,10 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 				continue
 			}
 
-			changed := false
-			msg := make([]string, 0, 2)
-			if jobDetail.Status == nil {
-				logger.Warnf(ctx, "No status received for job [%v]", *jobDetail.JobId)
-				msg = append(msg, "JobID in AWS BATCH has no Status")
-			} else {
-				newPhase := jobPhaseToPluginsPhase(*jobDetail.Status)
-				if job.Status.Phase != newPhase {
-					changed = true
-				}
-
-				job.Status.Phase = newPhase
+			changed, err := updateJob(ctx, jobDetail, job)
+			if err != nil {
+				return nil, err
 			}
-
-			if jobDetail.StatusReason != nil {
-				msg = append(msg, *jobDetail.StatusReason)
-			}
-
-			job.Attempts = make([]Attempt, 0, len(jobDetail.Attempts))
-			lastStatusReason := ""
-			for _, attempt := range jobDetail.Attempts {
-				a := Attempt{}
-				if attempt.StartedAt != nil {
-					a.StartedAt = time.Unix(*attempt.StartedAt, 0)
-				}
-
-				if attempt.StoppedAt != nil {
-					a.StoppedAt = time.Unix(*attempt.StoppedAt, 0)
-				}
-
-				if container := attempt.Container; container != nil {
-					if container.LogStreamName != nil {
-						a.LogStream = *container.LogStreamName
-					}
-
-					if container.Reason != nil {
-						lastStatusReason = *container.Reason
-					}
-
-					if container.ExitCode != nil {
-						lastStatusReason += fmt.Sprintf(" exit(%v)", *container.ExitCode)
-					}
-				}
-
-				job.Attempts = append(job.Attempts, a)
-			}
-
-			msg = append(msg, lastStatusReason)
-
-			job.Status.Message = strings.Join(msg, " - ")
 
 			if changed {
 				handler.Updated(ctx, Event{

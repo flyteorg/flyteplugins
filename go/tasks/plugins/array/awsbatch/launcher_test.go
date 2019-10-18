@@ -88,7 +88,7 @@ func TestLaunchSubTasks(t *testing.T) {
 			JobDefinitionArn: "arn",
 		}
 
-		newState, _, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{}, currentState)
+		newState, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{}, currentState)
 		assert.NoError(t, err)
 		newPhase, _ := newState.GetPhase()
 		assert.Equal(t, core2.PhaseCheckingSubTaskExecutions, newPhase)

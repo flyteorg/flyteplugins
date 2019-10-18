@@ -3,8 +3,9 @@ package catalog
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flytestdlib/promutils"
 	"reflect"
+
+	"github.com/lyft/flytestdlib/promutils"
 
 	"github.com/lyft/flytestdlib/bitarray"
 
@@ -110,13 +111,13 @@ func (c AsyncClientImpl) Start(ctx context.Context) error {
 }
 
 func NewAsyncClient(client Client, cfg Config, scope promutils.Scope) (AsyncClientImpl, error) {
-	readerWorkQueue, err := workqueue.NewIndexedWorkQueue(NewReaderProcessor(client), cfg.ReaderWorkqueueConfig,
+	readerWorkQueue, err := workqueue.NewIndexedWorkQueue("reader", NewReaderProcessor(client), cfg.ReaderWorkqueueConfig,
 		scope.NewSubScope("reader"))
 	if err != nil {
 		return AsyncClientImpl{}, err
 	}
 
-	writerWorkQueue, err := workqueue.NewIndexedWorkQueue(NewReaderProcessor(client), cfg.WriterWorkqueueConfig,
+	writerWorkQueue, err := workqueue.NewIndexedWorkQueue("writer", NewReaderProcessor(client), cfg.WriterWorkqueueConfig,
 		scope.NewSubScope("writer"))
 	return AsyncClientImpl{
 		Reader: readerWorkQueue,

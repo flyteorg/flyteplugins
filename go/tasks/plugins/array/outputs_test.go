@@ -84,6 +84,8 @@ func Test_assembleOutputsWorker_Process(t *testing.T) {
 
 	// Setup the expected data to be written to outputWriter.
 	ow := &mocks2.OutputWriter{}
+	ow.OnGetOutputPrefixPath().Return("/bucket/prefix")
+	ow.OnGetOutputPath().Return("/bucket/prefix/outputs.pb")
 	ow.On("Put", mock.Anything, mock.Anything).Return(func(ctx context.Context, reader io.OutputReader) error {
 		// Since 2nd and 4th tasks failed, there should be nil literals in their expected places.
 		expected := coreutils.MustMakeLiteral(map[string]interface{}{
@@ -107,11 +109,10 @@ func Test_assembleOutputsWorker_Process(t *testing.T) {
 	phases.SetItem(3, bitarray.Item(pluginCore.PhasePermanentFailure))
 
 	item := &outputAssembleItem{
-		outputPrefix: "/bucket/prefix",
-		varNames:     []string{"var1", "var2"},
-		finalPhases:  phases,
-		outputWriter: ow,
-		dataStore:    memStore,
+		outputPaths: ow,
+		varNames:    []string{"var1", "var2"},
+		finalPhases: phases,
+		dataStore:   memStore,
 	}
 
 	w := assembleOutputsWorker{}
@@ -139,21 +140,23 @@ func Test_appendSubTaskOutput(t *testing.T) {
 			"var2": []interface{}{coreutils.MustMakeLiteral("hello")},
 		}
 
-		actual := map[string]interface{}{}
+		actual := &core.LiteralMap{
+			Literals: map[string]*core.Literal{},
+		}
 		appendSubTaskOutput(actual, validOutputs, 1)
-		assert.Equal(t, actual, expected)
+		assert.Equal(t, actual, coreutils.MustMakeLiteral(expected).GetMap())
 	})
 
 	t.Run("append to existing", func(t *testing.T) {
-		expected := map[string]interface{}{
-			"var1": []interface{}{coreutils.MustMakeLiteral(nil), coreutils.MustMakeLiteral(5)},
-			"var2": []interface{}{coreutils.MustMakeLiteral(nil), coreutils.MustMakeLiteral("hello")},
-		}
+		expected := coreutils.MustMakeLiteral(map[string]interface{}{
+			"var1": []interface{}{nilLiteral, coreutils.MustMakeLiteral(5)},
+			"var2": []interface{}{nilLiteral, coreutils.MustMakeLiteral("hello")},
+		}).GetMap()
 
-		actual := map[string]interface{}{
-			"var1": []interface{}{coreutils.MustMakeLiteral(nil)},
-			"var2": []interface{}{coreutils.MustMakeLiteral(nil)},
-		}
+		actual := coreutils.MustMakeLiteral(map[string]interface{}{
+			"var1": []interface{}{nilLiteral},
+			"var2": []interface{}{nilLiteral},
+		}).GetMap()
 
 		appendSubTaskOutput(actual, validOutputs, 1)
 		assert.Equal(t, actual, expected)
@@ -184,10 +187,19 @@ func TestAssembleFinalOutputs(t *testing.T) {
 		tMeta := &mocks3.TaskExecutionMetadata{}
 		tMeta.OnGetTaskExecutionID().Return(tID)
 
+		ow := &mocks2.OutputWriter{}
+		ow.OnPutMatch(mock.Anything, mock.Anything).Return(nil)
+
+		d, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+
 		tCtx := &mocks3.TaskExecutionContext{}
 		tCtx.OnTaskExecutionMetadata().Return(tMeta)
+		tCtx.OnOutputWriter().Return(ow)
+		tCtx.OnMaxDatasetSizeBytes().Return(10000)
+		tCtx.OnDataStore().Return(d)
 
-		_, err := AssembleFinalOutputs(ctx, assemblyQueue, tCtx, arrayCore.PhaseSuccess, s)
+		_, err = AssembleFinalOutputs(ctx, assemblyQueue, tCtx, arrayCore.PhaseSuccess, s)
 		assert.NoError(t, err)
 		assert.Equal(t, arrayCore.PhaseSuccess, s.CurrentPhase)
 	})
@@ -246,23 +258,33 @@ func TestAssembleFinalOutputs(t *testing.T) {
 			},
 		}, nil)
 
+		ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+
+		taskOutput := coreutils.MustMakeLiteral(map[string]interface{}{
+			"var1": []interface{}{5, 2},
+		})
+
+		assert.NoError(t, ds.WriteProtobuf(ctx, "/prefix/outputs.pb", storage.Options{}, taskOutput.GetMap()))
+
 		ow := &mocks2.OutputWriter{}
 		ow.OnGetOutputPrefixPath().Return("/prefix/")
-		ow.On("Put", mock.Anything, mock.Anything).Return(func(ctx context.Context, or io.OutputReader) {
+		ow.OnGetOutputPath().Return("/prefix/outputs.pb")
+		ow.On("Put", mock.Anything, mock.Anything).Return(func(ctx context.Context, or io.OutputReader) error {
 			m, ee, err := or.Read(ctx)
 			assert.NoError(t, err)
 			assert.Nil(t, ee)
 			assert.NotNil(t, m)
-		})
 
-		ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
-		assert.NoError(t, err)
+			return err
+		})
 
 		tCtx := &mocks3.TaskExecutionContext{}
 		tCtx.OnTaskExecutionMetadata().Return(tMeta)
 		tCtx.OnTaskReader().Return(tReader)
 		tCtx.OnOutputWriter().Return(ow)
 		tCtx.OnDataStore().Return(ds)
+		tCtx.OnMaxDatasetSizeBytes().Return(10000)
 
 		_, err = AssembleFinalOutputs(ctx, assemblyQueue, tCtx, arrayCore.PhaseSuccess, s)
 		assert.NoError(t, err)
@@ -297,6 +319,8 @@ func Test_assembleErrorsWorker_Process(t *testing.T) {
 
 	// Setup the expected data to be written to outputWriter.
 	ow := &mocks2.OutputWriter{}
+	ow.OnGetOutputPrefixPath().Return("/bucket/prefix")
+	ow.OnGetErrorPath().Return("/bucket/prefix/error.pb")
 	ow.On("Put", mock.Anything, mock.Anything).Return(func(ctx context.Context, reader io.OutputReader) error {
 		// Since 2nd and 4th tasks failed, there should be nil literals in their expected places.
 
@@ -318,11 +342,10 @@ func Test_assembleErrorsWorker_Process(t *testing.T) {
 	phases.SetItem(3, bitarray.Item(pluginCore.PhasePermanentFailure))
 
 	item := &outputAssembleItem{
-		outputPrefix: "/bucket/prefix",
-		varNames:     []string{"var1", "var2"},
-		finalPhases:  phases,
-		outputWriter: ow,
-		dataStore:    memStore,
+		varNames:    []string{"var1", "var2"},
+		finalPhases: phases,
+		outputPaths: ow,
+		dataStore:   memStore,
 	}
 
 	w := assembleErrorsWorker{
