@@ -11,8 +11,6 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/storage"
 
-	"github.com/lyft/flyteidl/clients/go/coreutils"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 
@@ -20,6 +18,18 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	pluginCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+)
+
+var (
+	nilLiteral = &core.Literal{
+		Value: &core.Literal_Scalar{
+			Scalar: &core.Scalar{
+				Value: &core.Scalar_NoneType{
+					NoneType: &core.Void{},
+				},
+			},
+		},
+	}
 )
 
 // Represents an indexed work queue that aggregates outputs of sub tasks.
@@ -49,7 +59,9 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 		return workqueue.WorkStatusNotDone, err
 	}
 
-	finalOutputs := map[string]interface{}{}
+	finalOutputs := &core.LiteralMap{
+		Literals: map[string]*core.Literal{},
+	}
 	for idx, subTaskPhaseIdx := range i.finalPhases.GetItems() {
 		existingPhase := pluginCore.Phases[subTaskPhaseIdx]
 		if existingPhase.IsSuccess() {
@@ -65,45 +77,49 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 		}
 
 		// TODO: Do we need the names of the outputs in the literalMap here?
-		appendEmptyOutputs(i.varNames, finalOutputs)
-	}
-
-	outputs, err := coreutils.MakeLiteralForMap(finalOutputs)
-	if err != nil {
-		return workqueue.WorkStatusNotDone, err
+		appendEmptyOutputs(finalOutputs, i.varNames)
 	}
 
 	ow := ioutils.NewRemoteFileOutputWriter(ctx, i.dataStore, i.outputPaths)
-	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(outputs.GetMap(), nil)); err != nil {
+	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(finalOutputs, nil)); err != nil {
 		return workqueue.WorkStatusNotDone, err
 	}
 
 	return workqueue.WorkStatusSucceeded, nil
 }
 
-func appendSubTaskOutput(outputs map[string]interface{}, subTaskOutput *core.LiteralMap,
+func appendOneItem(outputs *core.LiteralMap, varName string, literal *core.Literal, expectedSize int64) {
+	existingVal, found := outputs.Literals[varName]
+	var list *core.LiteralCollection
+	if found {
+		list = existingVal.GetCollection()
+	} else {
+		list = &core.LiteralCollection{
+			Literals: make([]*core.Literal, 0, expectedSize),
+		}
+
+		existingVal = &core.Literal{
+			Value: &core.Literal_Collection{
+				Collection: list,
+			},
+		}
+	}
+
+	list.Literals = append(list.Literals, literal)
+	outputs.Literals[varName] = existingVal
+}
+
+func appendSubTaskOutput(outputs *core.LiteralMap, subTaskOutput *core.LiteralMap,
 	expectedSize int64) {
 
 	for key, val := range subTaskOutput.GetLiterals() {
-		arr, exists := outputs[key]
-		if !exists {
-			arr = make([]interface{}, 0, expectedSize)
-		}
-
-		arr = append(arr.([]interface{}), val)
-		outputs[key] = arr
+		appendOneItem(outputs, key, val, expectedSize)
 	}
 }
 
-func appendEmptyOutputs(vars []string, outputs map[string]interface{}) {
+func appendEmptyOutputs(outputs *core.LiteralMap, vars []string) {
 	for _, varName := range vars {
-		existingVal, found := outputs[varName]
-		if !found {
-			existingVal = make([]interface{}, 0, 1)
-		}
-
-		existingVal = append(existingVal.([]interface{}), coreutils.MustMakeLiteral(nil))
-		outputs[varName] = existingVal
+		appendOneItem(outputs, varName, nilLiteral, 1)
 	}
 }
 
@@ -230,7 +246,7 @@ func (a assembleErrorsWorker) Process(ctx context.Context, workItem workqueue.Wo
 }
 
 func NewOutputAssembler(workQueueConfig workqueue.Config, scope promutils.Scope) (OutputAssembler, error) {
-	q, err := workqueue.NewIndexedWorkQueue(assembleOutputsWorker{}, workQueueConfig, scope)
+	q, err := workqueue.NewIndexedWorkQueue("output", assembleOutputsWorker{}, workQueueConfig, scope)
 	if err != nil {
 		return OutputAssembler{}, err
 	}
@@ -241,7 +257,7 @@ func NewOutputAssembler(workQueueConfig workqueue.Config, scope promutils.Scope)
 }
 
 func NewErrorAssembler(maxErrorMessageLength int, workQueueConfig workqueue.Config, scope promutils.Scope) (OutputAssembler, error) {
-	q, err := workqueue.NewIndexedWorkQueue(assembleErrorsWorker{
+	q, err := workqueue.NewIndexedWorkQueue("error", assembleErrorsWorker{
 		maxErrorMessageLength: maxErrorMessageLength,
 	}, workQueueConfig, scope)
 

@@ -114,13 +114,13 @@ func Test_workItemCache_Add(t *testing.T) {
 
 func Test_queue_Queue(t *testing.T) {
 	t.Run("Err when not started", func(t *testing.T) {
-		q, err := NewIndexedWorkQueue(newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+		q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 		assert.NoError(t, err)
 		assert.Error(t, q.Queue("abc", "abc"))
 	})
 
 	t.Run("Started first", func(t *testing.T) {
-		q, err := NewIndexedWorkQueue(newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+		q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 		assert.NoError(t, err)
 
 		ctx, cancelNow := context.WithCancel(context.Background())
@@ -131,7 +131,7 @@ func Test_queue_Queue(t *testing.T) {
 }
 
 func Test_queue_Get(t *testing.T) {
-	q, err := NewIndexedWorkQueue(newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+	q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	ctx, cancelNow := context.WithCancel(context.Background())
@@ -172,7 +172,7 @@ func Test_queue_Get(t *testing.T) {
 }
 
 func Test_queue_Start(t *testing.T) {
-	q, err := NewIndexedWorkQueue(newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+	q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	ctx, cancelNow := context.WithCancel(context.Background())
@@ -182,7 +182,7 @@ func Test_queue_Start(t *testing.T) {
 }
 
 func Test_Failures(t *testing.T) {
-	q, err := NewIndexedWorkQueue(alwaysFailingProcessor{}, Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+	q, err := NewIndexedWorkQueue("test1", alwaysFailingProcessor{}, Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	ctx, cancelNow := context.WithCancel(context.Background())

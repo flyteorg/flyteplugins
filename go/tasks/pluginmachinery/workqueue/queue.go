@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/lyft/flytestdlib/contextutils"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
@@ -92,7 +96,16 @@ func (w workItemWrapper) Clone() workItemWrapper {
 	return w
 }
 
+type metrics struct {
+	CacheHit        prometheus.Counter
+	CacheMiss       prometheus.Counter
+	ProcessorErrors prometheus.Counter
+	Scope           promutils.Scope
+}
+
 type queue struct {
+	name       string
+	metrics    metrics
 	wlock      sync.Mutex
 	rlock      sync.RWMutex
 	workers    int
@@ -148,10 +161,12 @@ func (q queue) Get(id WorkItemID) (info WorkItemInfo, found bool, err error) {
 
 	wrapper, found := q.index.Get(id)
 	if !found {
+		q.metrics.CacheMiss.Inc()
 		return nil, found, nil
 	}
 
 	v := wrapper.Clone()
+	q.metrics.CacheHit.Inc()
 	return &v, true, nil
 }
 
@@ -164,7 +179,7 @@ func (q *queue) Start(ctx context.Context) error {
 	}
 
 	for i := 0; i < q.workers; i++ {
-		go func() {
+		go func(ctx context.Context) {
 			for {
 				select {
 				case <-ctx.Done():
@@ -179,8 +194,23 @@ func (q *queue) Start(ctx context.Context) error {
 
 					wrapperV := item.(*workItemWrapper).Clone()
 					wrapper := &wrapperV
-					ws, err := q.processor.Process(ctx, wrapper.payload)
+					ws := wrapper.status
+					var err error
+
+					func() {
+						defer func() {
+							if e, ok := recover().(error); ok {
+								logger.Errorf(ctx, "Worker panic'd while processing item [%v]. Error: %v", wrapper.id, e)
+								err = e
+							}
+						}()
+
+						ws, err = q.processor.Process(ctx, wrapper.payload)
+					}()
+
 					if err != nil {
+						q.metrics.ProcessorErrors.Inc()
+
 						wrapper.retryCount++
 						wrapper.err = err
 						if wrapper.retryCount >= uint(q.maxRetries) {
@@ -200,28 +230,38 @@ func (q *queue) Start(ctx context.Context) error {
 					}
 				}
 			}
-		}()
+		}(contextutils.WithGoroutineLabel(ctx, fmt.Sprintf("%v-worker-%v", q.name, i)))
 	}
 
 	q.started = true
 	return nil
 }
 
+func newMetrics(scope promutils.Scope) metrics {
+	return metrics{
+		CacheHit:        scope.MustNewCounter("cache_hit", "Counter for cache hits."),
+		CacheMiss:       scope.MustNewCounter("cache_miss", "Counter for cache misses."),
+		ProcessorErrors: scope.MustNewCounter("proc_errors", "Counter for processor errors."),
+		Scope:           scope,
+	}
+}
+
 // Instantiates a new Indexed Work queue.
-func NewIndexedWorkQueue(processor Processor, cfg Config, metricsScope promutils.Scope) (IndexedWorkQueue, error) {
+func NewIndexedWorkQueue(name string, processor Processor, cfg Config, metricsScope promutils.Scope) (IndexedWorkQueue, error) {
 	cache, err := lru.New(cfg.IndexCacheMaxItems)
 	if err != nil {
 		return nil, err
 	}
 
 	return &queue{
+		name:       name,
+		metrics:    newMetrics(metricsScope),
 		wlock:      sync.Mutex{},
 		rlock:      sync.RWMutex{},
 		workers:    cfg.Workers,
 		maxRetries: cfg.MaxRetries,
-		// TODO: assign name to get metrics
-		queue:     workqueue.NewNamed(metricsScope.CurrentScope()),
-		index:     workItemCache{Cache: cache},
-		processor: processor,
+		queue:      workqueue.NewNamed(metricsScope.CurrentScope()),
+		index:      workItemCache{Cache: cache},
+		processor:  processor,
 	}, nil
 }
