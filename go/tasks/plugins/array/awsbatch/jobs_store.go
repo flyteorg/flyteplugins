@@ -328,8 +328,9 @@ func NewJobStore(ctx context.Context, batchClient Client, resyncPeriod time.Dura
 		Client: batchClient,
 	}
 
-	autoCache, err := cache.NewAutoRefreshBatchedCache(batchJobsForSync(ctx, cfg.BatchChunkSize), syncBatches(ctx, store, handler),
-		workqueue.DefaultControllerRateLimiter(), resyncPeriod, cfg.Parallelizm, cfg.CacheSize, scope)
+	autoCache, err := cache.NewAutoRefreshBatchedCache("aws-batch-jobs", batchJobsForSync(ctx, cfg.BatchChunkSize),
+		syncBatches(ctx, store, handler), workqueue.DefaultControllerRateLimiter(), resyncPeriod,
+		cfg.Parallelizm, cfg.CacheSize, scope)
 
 	store.AutoRefresh = autoCache
 	return store, err
