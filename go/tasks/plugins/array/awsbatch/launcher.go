@@ -55,3 +55,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 
 	return nextState, nil
 }
+
+func TerminateSubTasks(ctx context.Context, batchClient Client, jobID string) error {
+	return batchClient.TerminateJob(ctx, jobID, "aborted")
+}
