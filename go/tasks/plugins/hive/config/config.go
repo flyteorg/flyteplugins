@@ -28,7 +28,7 @@ func MustParse(s string) config.URL {
 var (
 	defaultConfig = Config{
 		Endpoint:        MustParse("https://wellness.qubole.com"),
-		CommandAPIPath:  MustParse("/api/v1.2/commands"),
+		CommandAPIPath:  MustParse("/api/v1.2/commands/"),
 		AnalyzeLinkPath: MustParse("/v2/analyze"),
 		TokenKey:        "FLYTE_QUBOLE_CLIENT_TOKEN",
 		Limit:           100,
