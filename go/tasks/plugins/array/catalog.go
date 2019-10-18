@@ -219,7 +219,6 @@ func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore
 				Identifier:     keyId,
 				InputReader:    input,
 				CacheVersion:   cacheVersion,
-				Type:           taskType,
 				TypedInterface: taskInterface,
 			},
 			ArtifactData: outputReaders[idx],
@@ -276,7 +275,6 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 		item := catalog.DownloadRequest{
 			Key: catalog.Key{
 				Identifier:     *t.Id,
-				Type:           t.Type,
 				CacheVersion:   t.GetMetadata().DiscoveryVersion,
 				InputReader:    inputReader,
 				TypedInterface: *t.Interface,
