@@ -106,7 +106,7 @@ func (s *State) SetReason(reason string) *State {
 	return s
 }
 
-func (s *State) SetActualArraySize(size int) *State {
+func (s *State) SetExecutionArraySize(size int) *State {
 	s.ExecutionArraySize = size
 	return s
 }
@@ -166,16 +166,16 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	case PhaseStart:
 		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason())
 
+	case PhasePreLaunch:
+		version := GetPhaseVersionOffset(p, 1) + version
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
 	case PhaseLaunch:
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseWaitingForResources:
 		phaseInfo = core.PhaseInfoWaitingForResources(t, version, state.GetReason())
-
-	case PhasePreLaunch:
-		version := GetPhaseVersionOffset(p, 1) + version
-		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseCheckingSubTaskExecutions:
 		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
