@@ -3,6 +3,8 @@ package awsbatch
 import (
 	"fmt"
 
+	"github.com/lyft/flytestdlib/bitarray"
+
 	"github.com/lyft/flytestdlib/logger"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -70,4 +72,20 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 	}
 
 	return logLinks, nil
+}
+
+// Compute the original index of a sub-task.
+func calculateOriginalIndex(childIdx int, toCache *bitarray.BitSet) int {
+	var sum = 0
+	for i := uint(0); i < toCache.Cap(); i++ {
+		if !toCache.IsSet(i) {
+			if sum == childIdx {
+				return int(i)
+			}
+
+			sum++
+		}
+	}
+
+	return -1
 }

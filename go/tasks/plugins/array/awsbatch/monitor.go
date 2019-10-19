@@ -90,19 +90,3 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	newState.State = parentState
 	return newState, nil
 }
-
-// Compute the original index of a sub-task.
-func calculateOriginalIndex(childIdx int, toCache *bitarray.BitSet) int {
-	var sum = 0
-	for i := uint(0); i < toCache.Cap(); i++ {
-		if !toCache.IsSet(i) {
-			if sum == childIdx {
-				return int(i)
-			}
-
-			sum++
-		}
-	}
-
-	return -1
-}
