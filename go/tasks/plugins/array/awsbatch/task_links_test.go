@@ -52,4 +52,28 @@ func Test_calculateOriginalIndex(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("Bitset is all set", func(t *testing.T) {
+		inputArr := bitarray.NewBitSet(3)
+		inputArr.Set(0)
+		inputArr.Set(1)
+		inputArr.Set(2)
+
+		tests := []struct {
+			name     string
+			childIdx int
+			want     int
+		}{
+			{"0", 0, 3},
+			{"1", 1, 4},
+			{"2", 2, 5},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				if got := calculateOriginalIndex(tt.childIdx, inputArr); got != tt.want {
+					t.Errorf("calculateOriginalIndex() = %v, want %v", got, tt.want)
+				}
+			})
+		}
+	})
 }

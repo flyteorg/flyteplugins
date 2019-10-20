@@ -120,6 +120,8 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 		msg = append(msg, *source.StatusReason)
 	}
 
+	logger.Debug(ctx, "Job [%v] has (%v) attempts.", *source.JobId, len(source.Attempts))
+
 	target.Attempts = make([]Attempt, 0, len(source.Attempts))
 	lastStatusReason := ""
 	for _, attempt := range source.Attempts {
@@ -162,6 +164,7 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 
 		if container := source.Container; container != nil {
 			if container.LogStreamName != nil {
+				logger.Debug(ctx, "Using log stream from container info.")
 				a.LogStream = *container.LogStreamName
 			}
 
