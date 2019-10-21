@@ -2,15 +2,15 @@ package catalog
 
 import (
 	"context"
+	"reflect"
+	"testing"
+
 	mocks2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue/mocks"
 	"github.com/lyft/flytestdlib/bitarray"
 	"github.com/stretchr/testify/mock"
-	"reflect"
-	"testing"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
-	"github.com/lyft/flytestdlib/promutils"
 )
 
 func TestAsyncClientImpl_Download(t *testing.T) {
@@ -109,34 +109,6 @@ func TestAsyncClientImpl_Start(t *testing.T) {
 			}
 			if err := c.Start(tt.args.ctx); (err != nil) != tt.wantErr {
 				t.Errorf("AsyncClientImpl.Start() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNewAsyncClient(t *testing.T) {
-	type args struct {
-		client Client
-		cfg    Config
-		scope  promutils.Scope
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    AsyncClientImpl
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewAsyncClient(tt.args.client, tt.args.cfg, tt.args.scope)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewAsyncClient() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewAsyncClient() = %v, want %v", got, tt.want)
 			}
 		})
 	}
