@@ -81,7 +81,18 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, err
 	}
 
-	if future.GetResponseStatus() == catalog.ResponseStatusReady {
+	switch future.GetResponseStatus() {
+	case catalog.ResponseStatusReady:
+		if err = future.GetResponseError(); err != nil {
+			// TODO: maybe add a config option to decide the behavior on catalog failure.
+			logger.Warnf(ctx, "Failing to lookup catalog. Will move on to launching the task. Error: %v", err)
+
+			state = state.SetIndexesToCache(bitarray.NewBitSet(uint(arrayJob.Size)))
+			state = state.SetExecutionArraySize(int(arrayJob.Size))
+			state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion)
+			return state, nil
+		}
+
 		resp, err := future.GetResponse()
 		if err != nil {
 			return state, err
@@ -111,7 +122,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		}
 
 		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion)
-	} else {
+	case catalog.ResponseStatusNotReady:
 		ownerSignal := tCtx.TaskRefreshIndicator()
 		future.OnReady(func(ctx context.Context, _ catalog.Future) {
 			ownerSignal(ctx)
