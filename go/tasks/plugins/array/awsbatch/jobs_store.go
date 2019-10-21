@@ -120,7 +120,7 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 		msg = append(msg, *source.StatusReason)
 	}
 
-	logger.Debug(ctx, "Job [%v] has (%v) attempts.", *source.JobId, len(source.Attempts))
+	logger.Debugf(ctx, "Job [%v] has (%v) attempts.", *source.JobId, len(source.Attempts))
 
 	target.Attempts = make([]Attempt, 0, len(source.Attempts))
 	lastStatusReason := ""
