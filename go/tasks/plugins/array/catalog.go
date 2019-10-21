@@ -200,6 +200,11 @@ func WriteToCatalog(ctx context.Context, ownerSignal core.SignalAsync, catalogCl
 
 	// Immediately read back from the work queue, and see if it's done.
 	if future.GetResponseStatus() == catalog.ResponseStatusReady {
+		if err = future.GetResponseError(); err != nil {
+			// TODO: Add a config option to determine the behavior of catalog write failure.
+			logger.Warnf(ctx, "Catalog write failed. Will be ignored. Error: %v", err)
+		}
+
 		return true, nil
 	}
 

@@ -40,6 +40,10 @@ func (r downloadFuture) GetResponse() (DownloadResponse, error) {
 		return nil, errors.Errorf(ErrResponseNotReady, "Response is not ready yet.")
 	}
 
+	if r.GetResponseError() != nil {
+		return nil, errors.Wrapf(ErrSystemError, r.GetResponseError(), "ResponseError() is not nil.")
+	}
+
 	return r, nil
 }
 
