@@ -14,9 +14,14 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 )
 
+// An async-client for catalog that can queue download and upload requests on workqueues.
 type AsyncClientImpl struct {
 	Reader workqueue.IndexedWorkQueue
 	Writer workqueue.IndexedWorkQueue
+}
+
+func formatWorkItemID(key Key, idx int) string {
+	return fmt.Sprintf("%v-%v", key, idx)
 }
 
 func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error) {
@@ -25,7 +30,7 @@ func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadReque
 	cachedCount := 0
 	var respErr error
 	for idx, request := range requests {
-		workItemID := fmt.Sprintf("%v-%v", request.Key, idx)
+		workItemID := formatWorkItemID(request.Key, idx)
 		err := c.Reader.Queue(workItemID, NewReaderWorkItem(
 			request.Key,
 			request.Target))
@@ -54,10 +59,10 @@ func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadReque
 				cachedResults.Set(uint(idx))
 				cachedCount++
 			}
-		case workqueue.WorkStatusNotDone:
-			status = ResponseStatusNotReady
 		case workqueue.WorkStatusFailed:
 			respErr = info.Error()
+		case workqueue.WorkStatusNotDone:
+			status = ResponseStatusNotReady
 		}
 	}
 
@@ -68,7 +73,7 @@ func (c AsyncClientImpl) Upload(ctx context.Context, requests ...UploadRequest) 
 	status := ResponseStatusReady
 	var respErr error
 	for idx, request := range requests {
-		workItemID := fmt.Sprintf("%v-%v", request.Key, idx)
+		workItemID := formatWorkItemID(request.Key, idx)
 		err := c.Writer.Queue(workItemID, NewWriterWorkItem(
 			request.Key,
 			request.ArtifactData,
