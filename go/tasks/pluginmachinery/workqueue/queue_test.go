@@ -3,9 +3,10 @@ package workqueue
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/go-test/deep"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/stretchr/testify/assert"
@@ -161,8 +162,8 @@ func Test_queue_Get(t *testing.T) {
 				t.Errorf("queue.Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotInfo, tt.wantInfo) {
-				t.Errorf("queue.Get() gotInfo = %v, want %v", gotInfo, tt.wantInfo)
+			if diff := deep.Equal(gotInfo, tt.wantInfo); diff != nil {
+				t.Errorf("queue.Get() diff = %v, gotInfo = %v, want %v", diff, gotInfo, tt.wantInfo)
 			}
 			if gotFound != tt.wantFound {
 				t.Errorf("queue.Get() gotFound = %v, want %v", gotFound, tt.wantFound)
