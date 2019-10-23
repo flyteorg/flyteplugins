@@ -3,6 +3,9 @@ package awsbatch
 import (
 	"fmt"
 
+	errors2 "github.com/lyft/flyteplugins/go/tasks/errors"
+	"github.com/lyft/flytestdlib/errors"
+
 	"github.com/lyft/flytestdlib/bitarray"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -49,11 +52,18 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 		jobStore.Client.GetRegion(), jobConfig.DynamicTaskQueue, *state.GetExternalJobID()))
 
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
-	job := jobStore.Get(jobName)
+	job, err := jobStore.GetOrCreate(jobName, &Job{
+		ID:      *state.GetExternalJobID(),
+		SubJobs: make([]*Job, 0, state.GetExecutionArraySize()),
+	})
+
+	if err != nil {
+		return nil, errors.Wrapf(errors2.DownstreamSystemError, err, "Failed to retrieve a job from job store.")
+	}
 
 	if job == nil {
-		logger.Debug(ctx, "Job [%v] not found in jobs store. It might have been evicted. If reasonable, bump the max "+
-			"size of the LRU cache.")
+		logger.Debugf(ctx, "Job [%v] not found in jobs store. It might have been evicted. If reasonable, bump the max "+
+			"size of the LRU cache.", *state.GetExternalJobID())
 
 		return logLinks, nil
 	}
