@@ -82,7 +82,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 		}
 		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
-		assert.Equal(t, uint32(188), phaseInfo.Version())
+		assert.Equal(t, uint32(368), phaseInfo.Version())
 	})
 
 	t.Run("write to discovery", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 		}
 		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
-		assert.Equal(t, uint32(278), phaseInfo.Version())
+		assert.Equal(t, uint32(548), phaseInfo.Version())
 	})
 
 	t.Run("success", func(t *testing.T) {
