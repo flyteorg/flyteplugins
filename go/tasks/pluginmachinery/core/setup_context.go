@@ -20,4 +20,6 @@ type SetupContext interface {
 	KubeClient() KubeClient
 	// Returns a secret manager that can retrieve configured secrets for this plugin
 	SecretManager() SecretManager
+	// Returns a resource negotiator that the plugin can register resource quota against
+	ResourceRegistrar() ResourceRegistrar
 }
