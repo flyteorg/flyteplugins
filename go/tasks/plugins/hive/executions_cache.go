@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
+	stdErrors "github.com/lyft/flytestdlib/errors"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
@@ -17,7 +19,7 @@ import (
 const ResyncDuration = 30 * time.Second
 
 const (
-	BadQuboleReturnCodeError errors.ErrorCode = "QUBOLE_RETURNED_UNKNOWN"
+	BadQuboleReturnCodeError stdErrors.ErrorCode = "QUBOLE_RETURNED_UNKNOWN"
 )
 
 type QuboleHiveExecutionsCache struct {
