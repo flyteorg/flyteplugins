@@ -19,8 +19,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/lyft/flyteplugins/go/tasks/errors"
-
 	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/lyft/flytestdlib/cache"
 
@@ -31,10 +29,6 @@ type JobName = string
 type JobID = string
 type JobPhaseType = core.Phase
 type ArrayJobSummary map[JobPhaseType]int64
-
-const (
-	ErrAlreadyExists errors.ErrorCode = "ALREADY_EXIST"
-)
 
 type Event struct {
 	OldJob *Job

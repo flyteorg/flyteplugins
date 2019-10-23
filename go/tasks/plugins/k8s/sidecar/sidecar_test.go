@@ -2,10 +2,13 @@ package sidecar
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
+
+	errors2 "github.com/lyft/flyteplugins/go/tasks/errors"
 
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
@@ -37,7 +40,6 @@ var resourceRequirements = &v1.ResourceRequirements{
 		v1.ResourceStorage: resource.MustParse("100M"),
 	},
 }
-
 
 func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemplate {
 	sidecarJSON, err := utils.MarshalToString(&sideCarJob)
@@ -174,8 +176,7 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(task, resourceRequirements)
 	_, err := handler.BuildResource(context.TODO(), taskCtx)
-	assert.EqualError(t, err,
-		"task failed, BadTaskSpecification: invalid Sidecar task, primary container [PrimaryContainer] not defined")
+	assert.True(t, errors.Is(err, errors2.Errorf("BadTaskSpecification", "")))
 }
 
 func TestGetTaskSidecarStatus(t *testing.T) {
