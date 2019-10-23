@@ -29,7 +29,7 @@ func (r ResourceNamespace) CreateSubNamespace(namespace ResourceNamespace) Resou
 	return r + namespaceSeparator + namespace
 }
 
-type ResourceNegotiator interface {
+type ResourceRegistrar interface {
 	RegisterResourceQuota(ctx context.Context, namespace ResourceNamespace, quota int) error
 }
 
