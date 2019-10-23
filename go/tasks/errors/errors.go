@@ -1,71 +1,28 @@
 package errors
 
 import (
-	"fmt"
-
-	"github.com/pkg/errors"
+	"github.com/lyft/flytestdlib/errors"
 )
-
-type ErrorCode = string
 
 const (
-	TaskFailedWithError        ErrorCode = "TaskFailedWithError"
-	DownstreamSystemError      ErrorCode = "DownstreamSystemError"
-	TaskFailedUnknownError     ErrorCode = "TaskFailedUnknownError"
-	BadTaskSpecification       ErrorCode = "BadTaskSpecification"
-	TaskEventRecordingFailed   ErrorCode = "TaskEventRecordingFailed"
-	MetadataAccessFailed       ErrorCode = "MetadataAccessFailed"
-	MetadataTooLarge           ErrorCode = "MetadataTooLarge"
-	PluginInitializationFailed ErrorCode = "PluginInitializationFailed"
-	CacheFailed                ErrorCode = "AutoRefreshCacheFailed"
-	RuntimeFailure             ErrorCode = "RuntimeFailure"
-	CorruptedPluginState       ErrorCode = "CorruptedPluginState"
-	ResourceManagerFailure     ErrorCode = "ResourceManagerFailure"
+	TaskFailedWithError        errors.ErrorCode = "TaskFailedWithError"
+	DownstreamSystemError      errors.ErrorCode = "DownstreamSystemError"
+	TaskFailedUnknownError     errors.ErrorCode = "TaskFailedUnknownError"
+	BadTaskSpecification       errors.ErrorCode = "BadTaskSpecification"
+	TaskEventRecordingFailed   errors.ErrorCode = "TaskEventRecordingFailed"
+	MetadataAccessFailed       errors.ErrorCode = "MetadataAccessFailed"
+	MetadataTooLarge           errors.ErrorCode = "MetadataTooLarge"
+	PluginInitializationFailed errors.ErrorCode = "PluginInitializationFailed"
+	CacheFailed                errors.ErrorCode = "AutoRefreshCacheFailed"
+	RuntimeFailure             errors.ErrorCode = "RuntimeFailure"
+	CorruptedPluginState       errors.ErrorCode = "CorruptedPluginState"
+	ResourceManagerFailure     errors.ErrorCode = "ResourceManagerFailure"
 )
 
-type TaskError struct {
-	Code    string
-	Message string
+func Errorf(errorCode errors.ErrorCode, msgFmt string, args ...interface{}) error {
+	return errors.Errorf(errorCode, msgFmt, args...)
 }
 
-func (e *TaskError) Error() string {
-	return fmt.Sprintf("task failed, %v: %v", e.Code, e.Message)
-}
-
-type TaskErrorWithCause struct {
-	*TaskError
-	cause error
-}
-
-func (e *TaskErrorWithCause) Error() string {
-	return fmt.Sprintf("%v, caused by: %v", e.TaskError.Error(), errors.Cause(e))
-}
-
-func (e *TaskErrorWithCause) Cause() error {
-	return e.cause
-}
-
-func Errorf(errorCode ErrorCode, msgFmt string, args ...interface{}) *TaskError {
-	return &TaskError{
-		Code:    errorCode,
-		Message: fmt.Sprintf(msgFmt, args...),
-	}
-}
-
-func Wrapf(errorCode ErrorCode, err error, msgFmt string, args ...interface{}) *TaskErrorWithCause {
-	return &TaskErrorWithCause{
-		TaskError: Errorf(errorCode, msgFmt, args...),
-		cause:     err,
-	}
-}
-
-func GetErrorCode(err error) (code ErrorCode, isTaskError bool) {
-	isTaskError = false
-	e, ok := err.(*TaskError)
-	if ok {
-		code = e.Code
-		isTaskError = true
-		return
-	}
-	return
+func Wrapf(errorCode errors.ErrorCode, err error, msgFmt string, args ...interface{}) error {
+	return errors.Wrapf(errorCode, err, msgFmt, args...)
 }
