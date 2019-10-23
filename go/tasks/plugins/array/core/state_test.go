@@ -50,7 +50,7 @@ func TestInvertBitSet(t *testing.T) {
 	expected.Set(1)
 	expected.Set(4)
 
-	actual := InvertBitSet(input)
+	actual := InvertBitSet(input, 4)
 	assertBitSetsEqual(t, expected, actual, 4)
 }
 

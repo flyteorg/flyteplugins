@@ -2,7 +2,13 @@ package array
 
 import (
 	"context"
+	"errors"
 	"testing"
+
+	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
+	stdErrors "github.com/lyft/flytestdlib/errors"
+
+	core2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 
 	"github.com/lyft/flytestdlib/bitarray"
 
@@ -21,52 +27,23 @@ import (
 	pluginMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+
+	"github.com/go-test/deep"
 )
 
-func TestDetermineDiscoverability(t *testing.T) {
+func runDetermineDiscoverabilityTest(t testing.TB, taskTemplate *core.TaskTemplate, future catalog.DownloadFuture,
+	expectedState *arrayCore.State, expectedError error) {
+
 	ctx := context.Background()
 
 	tr := &pluginMocks.TaskReader{}
-	tr.OnRead(ctx).Return(&core.TaskTemplate{
-		Id: &core.Identifier{
-			ResourceType: core.ResourceType_TASK,
-			Project:      "p",
-			Domain:       "d",
-			Name:         "n",
-			Version:      "1",
-		},
-		Interface: &core.TypedInterface{
-			Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
-			Outputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
-		},
-		Metadata: &core.TaskMetadata{
-			Discoverable:     true,
-			DiscoveryVersion: "1",
-		},
-		Target: &core.TaskTemplate_Container{
-			Container: &core.Container{
-				Command: []string{"cmd"},
-				Args:    []string{"{{$inputPrefix}}"},
-				Image:   "img1",
-			},
-		},
-	}, nil)
+	tr.OnRead(ctx).Return(taskTemplate, nil)
 
 	ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
-	download := &catalogMocks.DownloadResponse{}
-	download.OnGetCachedCount().Return(0)
-	download.OnGetCachedResults().Return(bitarray.NewBitSet(1))
-	download.OnGetResultsSize().Return(1)
-
-	f := &catalogMocks.DownloadFuture{}
-	f.OnGetResponseStatus().Return(catalog.ResponseStatusReady)
-	f.OnGetResponseError().Return(nil)
-	f.OnGetResponse().Return(download, nil)
-
 	cat := &catalogMocks.AsyncClient{}
-	cat.OnDownloadMatch(mock.Anything, mock.Anything).Return(f, nil)
+	cat.OnDownloadMatch(mock.Anything, mock.Anything).Return(future, nil)
 
 	ir := &ioMocks.InputReader{}
 	ir.OnGetInputPrefixPath().Return("/prefix/")
@@ -100,6 +77,101 @@ func TestDetermineDiscoverability(t *testing.T) {
 	}
 
 	got, err := DetermineDiscoverability(ctx, tCtx, state)
-	assert.NoError(t, err)
-	assert.Equal(t, arrayCore.PhasePreLaunch, got.CurrentPhase)
+	if expectedError != nil {
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, expectedError))
+	} else {
+		assert.NoError(t, err)
+		if diff := deep.Equal(expectedState, got); diff != nil {
+			t.Error(diff)
+		}
+	}
+}
+
+func TestDetermineDiscoverability(t *testing.T) {
+	var template *core.TaskTemplate
+
+	download := &catalogMocks.DownloadResponse{}
+	download.OnGetCachedCount().Return(0)
+	download.OnGetResultsSize().Return(1)
+
+	f := &catalogMocks.DownloadFuture{}
+	f.OnGetResponseStatus().Return(catalog.ResponseStatusReady)
+	f.OnGetResponseError().Return(nil)
+	f.OnGetResponse().Return(download, nil)
+
+	t.Run("Bad Task Spec", func(t *testing.T) {
+		runDetermineDiscoverabilityTest(t, template, f, nil, stdErrors.Errorf(pluginErrors.BadTaskSpecification, ""))
+	})
+
+	template = &core.TaskTemplate{
+		Id: &core.Identifier{
+			ResourceType: core.ResourceType_TASK,
+			Project:      "p",
+			Domain:       "d",
+			Name:         "n",
+			Version:      "1",
+		},
+		Interface: &core.TypedInterface{
+			Inputs:  &core.VariableMap{Variables: map[string]*core.Variable{}},
+			Outputs: &core.VariableMap{Variables: map[string]*core.Variable{}},
+		},
+		Target: &core.TaskTemplate_Container{
+			Container: &core.Container{
+				Command: []string{"cmd"},
+				Args:    []string{"{{$inputPrefix}}"},
+				Image:   "img1",
+			},
+		},
+	}
+
+	t.Run("Not discoverable", func(t *testing.T) {
+		toCache := bitarray.NewBitSet(1)
+
+		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhasePreLaunch,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			ExecutionArraySize:   1,
+			OriginalArraySize:    1,
+			OriginalMinSuccesses: 1,
+			IndexesToCache:       toCache,
+		}, nil)
+	})
+
+	template.Metadata = &core.TaskMetadata{
+		Discoverable:     true,
+		DiscoveryVersion: "1",
+	}
+
+	t.Run("Discoverable but not cached", func(t *testing.T) {
+		download.OnGetCachedResults().Return(bitarray.NewBitSet(1)).Once()
+		toCache := bitarray.NewBitSet(1)
+		toCache.Set(0)
+
+		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhasePreLaunch,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			ExecutionArraySize:   1,
+			OriginalArraySize:    1,
+			OriginalMinSuccesses: 1,
+			IndexesToCache:       toCache,
+		}, nil)
+	})
+
+	t.Run("Discoverable and cached", func(t *testing.T) {
+		cachedResults := bitarray.NewBitSet(1)
+		cachedResults.Set(0)
+
+		download.OnGetCachedResults().Return(cachedResults).Once()
+		toCache := bitarray.NewBitSet(1)
+
+		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhasePreLaunch,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			ExecutionArraySize:   1,
+			OriginalArraySize:    1,
+			OriginalMinSuccesses: 1,
+			IndexesToCache:       toCache,
+		}, nil)
+	})
 }

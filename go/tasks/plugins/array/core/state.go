@@ -4,13 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/lyft/flytestdlib/errors"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	"github.com/lyft/flytestdlib/bitarray"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/lyft/flytestdlib/logger"
@@ -124,8 +125,8 @@ func (s *State) SetArrayStatus(state arraystatus.ArrayStatus) *State {
 
 const (
 	ErrorWorkQueue        errors.ErrorCode = "CATALOG_READER_QUEUE_FAILED"
-	ErrorInternalMismatch                  = "ARRAY_MISMATCH"
-	ErrorK8sArrayGeneric                   = "ARRAY_JOB_GENERIC_FAILURE"
+	ErrorInternalMismatch errors.ErrorCode = "ARRAY_MISMATCH"
+	ErrorK8sArrayGeneric  errors.ErrorCode = "ARRAY_JOB_GENERIC_FAILURE"
 )
 
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
@@ -257,9 +258,9 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	return PhaseCheckingSubTaskExecutions
 }
 
-func InvertBitSet(input *bitarray.BitSet) *bitarray.BitSet {
-	output := bitarray.NewBitSet(input.Cap())
-	for i := uint(0); i < input.Cap(); i++ {
+func InvertBitSet(input *bitarray.BitSet, limit uint) *bitarray.BitSet {
+	output := bitarray.NewBitSet(limit)
+	for i := uint(0); i < limit; i++ {
 		if !input.IsSet(i) {
 			output.Set(i)
 		}
