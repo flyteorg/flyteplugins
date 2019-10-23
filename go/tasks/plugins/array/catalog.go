@@ -38,8 +38,6 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom())
 	if err != nil {
 		return state, err
-	} else if arrayJob == nil {
-		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
 	}
 
 	// Save this in the state
@@ -98,7 +96,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, err
 		}
 
-		state = state.SetIndexesToCache(arrayCore.InvertBitSet(resp.GetCachedResults()))
+		cachedResults := resp.GetCachedResults()
+		state = state.SetIndexesToCache(arrayCore.InvertBitSet(cachedResults, uint(arrayJob.Size)))
 		state = state.SetExecutionArraySize(int(arrayJob.Size) - resp.GetCachedCount())
 
 		// If all the sub-tasks are actually done, then we can just move on.
@@ -107,7 +106,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, nil
 		}
 
-		indexLookup := CatalogBitsetToLiteralCollection(resp.GetCachedResults(), resp.GetResultsSize())
+		indexLookup := CatalogBitsetToLiteralCollection(cachedResults, resp.GetResultsSize())
 		// TODO: Is the right thing to use?  Haytham please take a look
 		indexLookupPath, err := ioutils.GetIndexLookupPath(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath())
 		if err != nil {
