@@ -39,7 +39,7 @@ func TestNewLiteralScalarOfInteger(t *testing.T) {
 func TestCatalogBitsetToLiteralCollection(t *testing.T) {
 	ba := bitarray.NewBitSet(3)
 	ba.Set(1)
-	lc := CatalogBitsetToLiteralCollection(ba, 3)  // TODO: why 2?  why the size?
+	lc := CatalogBitsetToLiteralCollection(ba, 3)
 	assert.Equal(t, 2, len(lc.Literals))
 	assert.Equal(t, int64(0), lc.Literals[0].Value.(*core.Literal_Scalar).Scalar.Value.(*core.Scalar_Primitive).
 		Primitive.Value.(*core.Primitive_Integer).Integer)
