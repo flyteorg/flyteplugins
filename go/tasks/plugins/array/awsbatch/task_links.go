@@ -54,7 +54,7 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
 	job, err := jobStore.GetOrCreate(jobName, &Job{
 		ID:      *state.GetExternalJobID(),
-		SubJobs: make([]*Job, 0, state.GetExecutionArraySize()),
+		SubJobs: createSubJobList(state.GetExecutionArraySize()),
 	})
 
 	if err != nil {

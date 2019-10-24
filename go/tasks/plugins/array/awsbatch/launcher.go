@@ -46,7 +46,9 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 	parentState := currentState.
 		SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0).
 		SetArrayStatus(arraystatus.ArrayStatus{
-			Summary:  arraystatus.ArraySummary{},
+			Summary: arraystatus.ArraySummary{
+				core.PhaseQueued: int64(size),
+			},
 			Detailed: arrayCore.NewPhasesCompactArray(uint(size)),
 		})
 
