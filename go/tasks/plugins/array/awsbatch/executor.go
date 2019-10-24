@@ -140,7 +140,7 @@ func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *batchConfig.Con
 	defaultRateLimiter := utils.NewRateLimiter("defaultRateLimiter", float64(cfg.DefaultRateLimiter.Rate),
 		cfg.DefaultRateLimiter.Burst)
 	batchClient := NewBatchClient(awsClient, getRateLimiter, defaultRateLimiter)
-	jobStore, err := NewJobStore(ctx, batchClient, cfg.ResyncPeriod.Duration, cfg.JobStoreConfig, EventHandler{
+	jobStore, err := NewJobStore(ctx, batchClient, cfg.JobStoreConfig, EventHandler{
 		Updated: func(ctx context.Context, event Event) {
 			err := enqueueOwner(event.NewJob.OwnerReference)
 			if err != nil {
