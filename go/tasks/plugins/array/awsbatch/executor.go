@@ -40,7 +40,9 @@ func (e Executor) GetID() string {
 }
 
 func (e Executor) GetProperties() core.PluginProperties {
-	return core.PluginProperties{}
+	return core.PluginProperties{
+		DisableNodeLevelCaching: true,
+	}
 }
 
 func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
