@@ -50,12 +50,12 @@ func TestJobStore_GetOrCreate(t *testing.T) {
 func TestStore_Get(t *testing.T) {
 	s := newJobsStore(t, nil)
 	assert.NotNil(t, s)
-	j, err := s.GetOrCreate("Id1", createJobWithID("Id1"))
+	_, err := s.GetOrCreate("Id1", createJobWithID("Id1"))
 	assert.NoError(t, err)
-	j, err = s.GetOrCreate("Id2", createJobWithID("Id2"))
+	_, err = s.GetOrCreate("Id2", createJobWithID("Id2"))
 	assert.NoError(t, err)
 
-	j = s.Get("Id2")
+	j := s.Get("Id2")
 	assert.NotNil(t, j)
 	assert.Equal(t, "Id2", j.ID)
 

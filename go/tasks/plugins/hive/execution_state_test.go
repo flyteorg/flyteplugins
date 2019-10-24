@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
+	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -228,13 +229,13 @@ func TestMonitorQuery(t *testing.T) {
 		Phase: PhaseSubmitted,
 	}
 	var getOrCreateCalled = false
-	mockCache := &stdlibMocks.AutoRefreshCache{}
-	mockCache.On("GetOrCreate", mock.Anything).Run(func(_ mock.Arguments) {
-		getOrCreateCalled = true
-	}).Return(ExecutionStateCacheItem{
+	mockCache := &mocks2.AutoRefresh{}
+	mockCache.OnGetOrCreateMatch("my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name", mock.Anything).Return(ExecutionStateCacheItem{
 		ExecutionState: ExecutionState{Phase: PhaseQuerySucceeded},
-		Id:             "some-id",
-	}, nil)
+		Id:             "my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name",
+	}, nil).Run(func(_ mock.Arguments) {
+		getOrCreateCalled = true
+	})
 
 	newState, err := MonitorQuery(ctx, tCtx, state, mockCache)
 	assert.NoError(t, err)
@@ -252,14 +253,14 @@ func TestKickOffQuery(t *testing.T) {
 		Status: client.QuboleStatusWaiting,
 	}
 	mockQubole := &quboleMocks.QuboleClient{}
-	mockQubole.On("ExecuteHiveCommand", mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+	mockQubole.OnExecuteHiveCommandMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		quboleCalled = true
 	}).Return(quboleCommandDetails, nil)
 
 	var getOrCreateCalled = false
-	mockCache := &stdlibMocks.AutoRefreshCache{}
-	mockCache.On("GetOrCreate", mock.Anything).Run(func(_ mock.Arguments) {
+	mockCache := &mocks2.AutoRefresh{}
+	mockCache.OnGetOrCreate(mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		getOrCreateCalled = true
 	}).Return(ExecutionStateCacheItem{}, nil)
 

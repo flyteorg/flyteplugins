@@ -46,6 +46,7 @@ type Config struct {
 	TokenKey        string     `json:"quboleTokenKey" pflag:",Name of the key where to find Qubole token in the secret manager."`
 	Limit           int        `json:"quboleLimit" pflag:",Global limit for concurrent Qubole queries"`
 	LruCacheSize    int        `json:"lruCacheSize" pflag:",Size of the AutoRefreshCache"`
+	Workers         int        `json:"workers" pflag:",Number of parallel workers to refresh the cache"`
 }
 
 // Retrieves the current config value or default.

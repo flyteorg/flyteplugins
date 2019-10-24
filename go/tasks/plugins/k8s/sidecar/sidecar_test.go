@@ -29,7 +29,6 @@ import (
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 )
 
 const ResourceNvidiaGPU = "nvidia.com/gpu"
@@ -201,8 +200,7 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 	}
 
 	for podPhase, expectedTaskPhase := range testCases {
-		var res k8s.Resource
-		res = &v1.Pod{
+		res := &v1.Pod{
 			Status: v1.PodStatus{
 				Phase: podPhase,
 			},
@@ -220,8 +218,7 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 }
 
 func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
-	var res k8s.Resource
-	res = &v1.Pod{
+	res := &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
 			ContainerStatuses: []v1.ContainerStatus{
@@ -247,8 +244,7 @@ func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 }
 
 func TestDemystifiedSidecarStatus_PrimarySucceeded(t *testing.T) {
-	var res k8s.Resource
-	res = &v1.Pod{
+	res := &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
 			ContainerStatuses: []v1.ContainerStatus{
@@ -274,8 +270,7 @@ func TestDemystifiedSidecarStatus_PrimarySucceeded(t *testing.T) {
 }
 
 func TestDemystifiedSidecarStatus_PrimaryRunning(t *testing.T) {
-	var res k8s.Resource
-	res = &v1.Pod{
+	res := &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
 			ContainerStatuses: []v1.ContainerStatus{
@@ -301,8 +296,7 @@ func TestDemystifiedSidecarStatus_PrimaryRunning(t *testing.T) {
 }
 
 func TestDemystifiedSidecarStatus_PrimaryMissing(t *testing.T) {
-	var res k8s.Resource
-	res = &v1.Pod{
+	res := &v1.Pod{
 		Status: v1.PodStatus{
 			Phase: v1.PodRunning,
 			ContainerStatuses: []v1.ContainerStatus{

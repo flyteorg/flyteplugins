@@ -122,12 +122,6 @@ func Test_assembleOutputsWorker_Process(t *testing.T) {
 }
 
 func Test_appendSubTaskOutput(t *testing.T) {
-	type args struct {
-		outputs       map[string]interface{}
-		subTaskOutput *core.LiteralMap
-		expectedSize  int64
-	}
-
 	nativeMap := map[string]interface{}{
 		"var1": 5,
 		"var2": "hello",

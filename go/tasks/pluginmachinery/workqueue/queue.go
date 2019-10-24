@@ -156,7 +156,7 @@ func (q *queue) Queue(id WorkItemID, once WorkItem) error {
 	return nil
 }
 
-func (q queue) Get(id WorkItemID) (info WorkItemInfo, found bool, err error) {
+func (q *queue) Get(id WorkItemID) (info WorkItemInfo, found bool, err error) {
 	q.rlock.Lock()
 	defer q.rlock.Unlock()
 

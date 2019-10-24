@@ -4,14 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/lyft/flytestdlib/cache"
+	cacheMocks "github.com/lyft/flytestdlib/cache/mocks"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	quboleMocks "github.com/lyft/flyteplugins/go/tasks/plugins/hive/client/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 
 	"github.com/lyft/flytestdlib/promutils"
-	"github.com/lyft/flytestdlib/utils"
-	stdlibMocks "github.com/lyft/flytestdlib/utils/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -20,15 +21,15 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("terminal state return unchanged", func(t *testing.T) {
-		mockCache := &stdlibMocks.AutoRefreshCache{}
+		mockCache := &cacheMocks.AutoRefresh{}
 		mockQubole := &quboleMocks.QuboleClient{}
 		testScope := promutils.NewTestScope()
 
 		q := QuboleHiveExecutionsCache{
-			AutoRefreshCache: mockCache,
-			quboleClient:     mockQubole,
-			scope:            testScope,
-			cfg:              config.GetQuboleConfig(),
+			AutoRefresh:  mockCache,
+			quboleClient: mockQubole,
+			scope:        testScope,
+			cfg:          config.GetQuboleConfig(),
 		}
 
 		state := ExecutionState{
@@ -38,14 +39,19 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 			ExecutionState: state,
 			Id:             "some-id",
 		}
-		newCacheItem, action, err := q.SyncQuboleQuery(ctx, cacheItem)
+
+		iw := &cacheMocks.ItemWrapper{}
+		iw.OnGetItem().Return(cacheItem)
+		iw.OnGetID().Return("some-id")
+
+		newCacheItem, err := q.SyncQuboleQuery(ctx, []cache.ItemWrapper{iw})
 		assert.NoError(t, err)
-		assert.Equal(t, utils.Unchanged, action)
-		assert.Equal(t, cacheItem, newCacheItem)
+		assert.Equal(t, cache.Unchanged, newCacheItem[0].Action)
+		assert.Equal(t, cacheItem, newCacheItem[0].Item)
 	})
 
 	t.Run("move to success", func(t *testing.T) {
-		mockCache := &stdlibMocks.AutoRefreshCache{}
+		mockCache := &cacheMocks.AutoRefresh{}
 		mockQubole := &quboleMocks.QuboleClient{}
 		mockSecretManager := &mocks.SecretManager{}
 		mockSecretManager.OnGetMatch(mock.Anything, mock.Anything).Return("fake key", nil)
@@ -53,11 +59,11 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		testScope := promutils.NewTestScope()
 
 		q := QuboleHiveExecutionsCache{
-			AutoRefreshCache: mockCache,
-			quboleClient:     mockQubole,
-			scope:            testScope,
-			secretManager:    mockSecretManager,
-			cfg:              config.GetQuboleConfig(),
+			AutoRefresh:   mockCache,
+			quboleClient:  mockQubole,
+			scope:         testScope,
+			secretManager: mockSecretManager,
+			cfg:           config.GetQuboleConfig(),
 		}
 
 		state := ExecutionState{
@@ -72,10 +78,14 @@ func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
 			return commandId == state.CommandId
 		}), mock.Anything).Return(client.QuboleStatusDone, nil)
 
-		newCacheItem, action, err := q.SyncQuboleQuery(ctx, cacheItem)
-		newExecutionState := newCacheItem.(ExecutionStateCacheItem)
+		iw := &cacheMocks.ItemWrapper{}
+		iw.OnGetItem().Return(cacheItem)
+		iw.OnGetID().Return("some-id")
+
+		newCacheItem, err := q.SyncQuboleQuery(ctx, []cache.ItemWrapper{iw})
+		newExecutionState := newCacheItem[0].Item.(ExecutionStateCacheItem)
 		assert.NoError(t, err)
-		assert.Equal(t, utils.Update, action)
+		assert.Equal(t, cache.Update, newCacheItem[0].Action)
 		assert.Equal(t, PhaseQuerySucceeded, newExecutionState.Phase)
 	})
 }
