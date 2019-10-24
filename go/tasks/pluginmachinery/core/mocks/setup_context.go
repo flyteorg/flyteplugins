@@ -145,6 +145,40 @@ func (_m *SetupContext) OwnerKind() string {
 	return r0
 }
 
+type SetupContext_ResourceRegistrar struct {
+	*mock.Call
+}
+
+func (_m SetupContext_ResourceRegistrar) Return(_a0 core.ResourceRegistrar) *SetupContext_ResourceRegistrar {
+	return &SetupContext_ResourceRegistrar{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *SetupContext) OnResourceRegistrar() *SetupContext_ResourceRegistrar {
+	c := _m.On("ResourceRegistrar")
+	return &SetupContext_ResourceRegistrar{Call: c}
+}
+
+func (_m *SetupContext) OnResourceRegistrarMatch(matchers ...interface{}) *SetupContext_ResourceRegistrar {
+	c := _m.On("ResourceRegistrar", matchers...)
+	return &SetupContext_ResourceRegistrar{Call: c}
+}
+
+// ResourceRegistrar provides a mock function with given fields:
+func (_m *SetupContext) ResourceRegistrar() core.ResourceRegistrar {
+	ret := _m.Called()
+
+	var r0 core.ResourceRegistrar
+	if rf, ok := ret.Get(0).(func() core.ResourceRegistrar); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.ResourceRegistrar)
+		}
+	}
+
+	return r0
+}
+
 type SetupContext_SecretManager struct {
 	*mock.Call
 }
