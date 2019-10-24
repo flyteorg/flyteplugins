@@ -33,7 +33,9 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 
 	msg := errorcollector.NewErrorMessageCollector()
 	newArrayStatus := arraystatus.ArrayStatus{
-		Summary:  arraystatus.ArraySummary{},
+		Summary: arraystatus.ArraySummary{
+			core.PhaseQueued: int64(currentState.GetExecutionArraySize()),
+		},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
