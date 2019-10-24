@@ -318,7 +318,7 @@ func (s JobStore) IsStarted() bool {
 }
 
 // Constructs a new in-memory store.
-func NewJobStore(ctx context.Context, batchClient Client, resyncPeriod time.Duration, cfg config.JobStoreConfig,
+func NewJobStore(ctx context.Context, batchClient Client, cfg config.JobStoreConfig,
 	handler EventHandler, scope promutils.Scope) (JobStore, error) {
 
 	store := JobStore{
@@ -326,7 +326,7 @@ func NewJobStore(ctx context.Context, batchClient Client, resyncPeriod time.Dura
 	}
 
 	autoCache, err := cache.NewAutoRefreshBatchedCache("aws-batch-jobs", batchJobsForSync(ctx, cfg.BatchChunkSize),
-		syncBatches(ctx, store, handler), workqueue.DefaultControllerRateLimiter(), resyncPeriod,
+		syncBatches(ctx, store, handler), workqueue.DefaultControllerRateLimiter(), cfg.ResyncPeriod.Duration,
 		cfg.Parallelizm, cfg.CacheSize, scope)
 
 	store.AutoRefresh = autoCache
