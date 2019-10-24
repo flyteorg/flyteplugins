@@ -1,6 +1,6 @@
 package config
 
-//go:generate pflags Config
+//go:generate pflags Config --default-var=defaultConfig
 
 import (
 	"context"
@@ -33,6 +33,7 @@ var (
 		TokenKey:        "FLYTE_QUBOLE_CLIENT_TOKEN",
 		Limit:           100,
 		LruCacheSize:    2000,
+		Workers:         15,
 	}
 
 	quboleConfigSection = pluginsConfig.MustRegisterSubSection(quboleConfigSectionKey, &defaultConfig)

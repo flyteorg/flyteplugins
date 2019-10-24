@@ -35,7 +35,7 @@ var (
 	defaultConfig = &Config{
 		JobStoreConfig: JobStoreConfig{
 			CacheSize:      10000,
-			Parallelizm:    10,
+			Parallelizm:    20,
 			BatchChunkSize: 1000,
 		},
 		JobDefCacheSize: 10000,
