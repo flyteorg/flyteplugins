@@ -124,6 +124,10 @@ func NewAsyncClient(client Client, cfg Config, scope promutils.Scope) (AsyncClie
 
 	writerWorkQueue, err := workqueue.NewIndexedWorkQueue("writer", NewReaderProcessor(client), cfg.WriterWorkqueueConfig,
 		scope.NewSubScope("writer"))
+	if err != nil {
+		return AsyncClientImpl{}, err
+	}
+
 	return AsyncClientImpl{
 		Reader: readerWorkQueue,
 		Writer: writerWorkQueue,

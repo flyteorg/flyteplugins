@@ -23,8 +23,7 @@ var (
 
 type RemoteFileInputReader struct {
 	io.InputFilePaths
-	store          storage.ProtobufStore
-	maxPayloadSize int64
+	store storage.ProtobufStore
 }
 
 func (r RemoteFileInputReader) Get(ctx context.Context) (*core.LiteralMap, error) {

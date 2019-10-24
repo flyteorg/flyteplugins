@@ -3,15 +3,15 @@ package hive
 import (
 	"context"
 
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/promutils"
-	utils2 "github.com/lyft/flytestdlib/utils"
+	"github.com/lyft/flytestdlib/cache"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
+	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/promutils"
 )
 
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
@@ -29,7 +29,7 @@ type QuboleHiveExecutor struct {
 	id              string
 	metrics         QuboleHiveExecutorMetrics
 	quboleClient    client.QuboleClient
-	executionsCache utils2.AutoRefreshCache
+	executionsCache cache.AutoRefresh
 	cfg             *config.Config
 }
 
@@ -106,7 +106,11 @@ func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core
 	if err != nil {
 		return nil, err
 	}
-	iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, quboleResourceNamespace, quboleResourceQuota)
+
+	if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, quboleResourceNamespace, quboleResourceQuota); err != nil {
+		return nil, err
+	}
+
 	return q, nil
 }
 
@@ -114,10 +118,14 @@ func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core
 func NewQuboleHiveExecutor(ctx context.Context, cfg *config.Config, quboleClient client.QuboleClient, secretManager core.SecretManager, scope promutils.Scope) (QuboleHiveExecutor, error) {
 	executionsAutoRefreshCache, err := NewQuboleHiveExecutionsCache(ctx, quboleClient, secretManager, cfg, scope.NewSubScope(hiveTaskType))
 	if err != nil {
-		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleHiveExecutor Setup")
+		logger.Errorf(ctx, "Failed to create AutoRefreshCache in QuboleHiveExecutor Setup. Error: %v", err)
 		return QuboleHiveExecutor{}, err
 	}
-	executionsAutoRefreshCache.Start(ctx)
+
+	err = executionsAutoRefreshCache.Start(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Failed to start AutoRefreshCache. Error: %v", err)
+	}
 
 	return QuboleHiveExecutor{
 		id:              quboleHiveExecutorId,
