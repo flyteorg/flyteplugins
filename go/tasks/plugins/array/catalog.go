@@ -270,6 +270,9 @@ func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
 // if there are five subtasks originally, but 0-2 are cached in Catalog, then an array job with two jobs will kick off.
 // The first job will have an AWS supplied index of 0, which will resolve to 3 from this function, and the second
 // will have an index of 1, which will resolve to 4.
+// The size argument to this function is needed because the BitSet may create more bits (has a capacity) higher than
+// the original requested amount. If you make a BitSet with 10 bits, it may create 64 in the background, so you need
+// to keep track of how many were actually requested.
 func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet, size int) *idlCore.LiteralCollection {
 	literals := make([]*idlCore.Literal, 0, size)
 	for i := 0; i < size; i++ {
