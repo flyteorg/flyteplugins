@@ -165,6 +165,28 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_jobStoreConfig.resyncPeriod", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("jobStoreConfig.resyncPeriod"); err == nil {
+				assert.Equal(t, string(defaultConfig.JobStoreConfig.ResyncPeriod.String()), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultConfig.JobStoreConfig.ResyncPeriod.String()
+
+			cmdFlags.Set("jobStoreConfig.resyncPeriod", testValue)
+			if vString, err := cmdFlags.GetString("jobStoreConfig.resyncPeriod"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.JobStoreConfig.ResyncPeriod)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 	t.Run("Test_defCacheSize", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
@@ -379,28 +401,6 @@ func TestConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("roleAnnotationKey", testValue)
 			if vString, err := cmdFlags.GetString("roleAnnotationKey"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RoleAnnotationKey)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_resyncPeriod", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("resyncPeriod"); err == nil {
-				assert.Equal(t, string(defaultConfig.ResyncPeriod.String()), vString)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := defaultConfig.ResyncPeriod.String()
-
-			cmdFlags.Set("resyncPeriod", testValue)
-			if vString, err := cmdFlags.GetString("resyncPeriod"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.ResyncPeriod)
 
 			} else {
 				assert.FailNow(t, err.Error())
