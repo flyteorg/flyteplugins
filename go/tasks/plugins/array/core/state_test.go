@@ -18,14 +18,6 @@ func TestGetPhaseVersionOffset(t *testing.T) {
 	assert.Equal(t, uint32(length*9), discoverWriteOffset-checkSubTasksOffset)
 }
 
-func TestNewLiteralScalarOfInteger(t *testing.T) {
-
-}
-
-func TestCatalogBitsetToLiteralCollection(t *testing.T) {
-
-}
-
 func TestInvertBitSet(t *testing.T) {
 	input := bitarray.NewBitSet(4)
 	input.Set(0)
