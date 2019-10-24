@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/lyft/flyteplugins/go/tasks/aws"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/lyft/flytestdlib/config"
@@ -20,15 +22,15 @@ type Config struct {
 	DefaultEnvVars       map[string]string `json:"defaultEnvVars" pflag:"-,Additional environment variable that should be injected into every resource"`
 	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	RoleAnnotationKey    string            `json:"roleAnnotationKey" pflag:",Map key to use to lookup role from task annotations."`
-	ResyncPeriod         config.Duration   `json:"resyncPeriod" pflag:",Defines the duration for syncing job details from AWS Batch."`
 	OutputAssembler      workqueue.Config  `json:"outputAssembler"`
 	ErrorAssembler       workqueue.Config  `json:"errorAssembler"`
 }
 
 type JobStoreConfig struct {
-	CacheSize      int `json:"jacheSize" pflag:",Maximum informer cache size as number of items. Caches are used as an optimization to lessen the load on AWS Services."`
-	Parallelizm    int `json:"parallelizm"`
-	BatchChunkSize int `json:"batchChunkSize" pflag:",Determines the size of each batch sent to GetJobDetails api."`
+	CacheSize      int             `json:"jacheSize" pflag:",Maximum informer cache size as number of items. Caches are used as an optimization to lessen the load on AWS Services."`
+	Parallelizm    int             `json:"parallelizm"`
+	BatchChunkSize int             `json:"batchChunkSize" pflag:",Determines the size of each batch sent to GetJobDetails api."`
+	ResyncPeriod   config.Duration `json:"resyncPeriod" pflag:",Defines the duration for syncing job details from AWS Batch."`
 }
 
 var (
@@ -37,6 +39,7 @@ var (
 			CacheSize:      10000,
 			Parallelizm:    20,
 			BatchChunkSize: 1000,
+			ResyncPeriod:   config.Duration{Duration: 30 * time.Second},
 		},
 		JobDefCacheSize: 10000,
 		MaxArrayJobSize: 5000,

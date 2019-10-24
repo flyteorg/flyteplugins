@@ -31,14 +31,6 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	newState = currentState
 	parentState := currentState.State
 
-	msg := errorcollector.NewErrorMessageCollector()
-	newArrayStatus := arraystatus.ArrayStatus{
-		Summary: arraystatus.ArraySummary{
-			core.PhaseQueued: int64(currentState.GetExecutionArraySize()),
-		},
-		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
-	}
-
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
 	job := jobStore.Get(jobName)
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
@@ -54,6 +46,12 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		}
 
 		return currentState, nil
+	}
+
+	msg := errorcollector.NewErrorMessageCollector()
+	newArrayStatus := arraystatus.ArrayStatus{
+		Summary:  arraystatus.ArraySummary{},
+		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
 	for childIdx, subJob := range job.SubJobs {
