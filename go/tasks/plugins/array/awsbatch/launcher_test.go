@@ -3,6 +3,12 @@ package awsbatch
 import (
 	"testing"
 
+	core3 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
+	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+
+	"github.com/go-test/deep"
+
 	mocks3 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	v1 "k8s.io/api/core/v1"
@@ -88,9 +94,32 @@ func TestLaunchSubTasks(t *testing.T) {
 			JobDefinitionArn: "arn",
 		}
 
+		expectedState := &State{
+			State: &core2.State{
+				CurrentPhase:         core2.PhaseCheckingSubTaskExecutions,
+				ExecutionArraySize:   5,
+				OriginalArraySize:    10,
+				OriginalMinSuccesses: 5,
+				ArrayStatus: arraystatus.ArrayStatus{
+					Summary: map[core3.Phase]int64{
+						core3.PhaseQueued: 5,
+					},
+					Detailed: arrayCore.NewPhasesCompactArray(5),
+				},
+			},
+
+			ExternalJobID:    refStr("qpxyarq"),
+			JobDefinitionArn: "arn",
+		}
+
 		newState, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{}, currentState)
 		assert.NoError(t, err)
-		newPhase, _ := newState.GetPhase()
-		assert.Equal(t, core2.PhaseCheckingSubTaskExecutions, newPhase)
+		assertEqual(t, expectedState, newState)
 	})
+}
+
+func assertEqual(t testing.TB, a, b interface{}) {
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error(diff)
+	}
 }

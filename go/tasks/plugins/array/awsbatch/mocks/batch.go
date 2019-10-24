@@ -6,10 +6,10 @@ package mocks
 
 import (
 	"context"
+	"encoding/base32"
+	"hash/fnv"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"github.com/aws/aws-sdk-go/aws/request"
 
 	"github.com/aws/aws-sdk-go/service/batch"
@@ -23,7 +23,13 @@ type MockAwsBatchClient struct {
 	RegisterJobDefinitionWithContextCb func(ctx context.Context, input *batch.RegisterJobDefinitionInput, opts ...request.Option) (*batch.RegisterJobDefinitionOutput, error)
 }
 
-func (m *MockAwsBatchClient) SubmitJobWithContext(ctx aws.Context, input *batch.SubmitJobInput, opts ...request.Option) (*batch.SubmitJobOutput, error) {
+const specialEncoderKey = "abcdefghijklmnopqrstuvwxyz123456"
+
+var base32Encoder = base32.NewEncoding(specialEncoderKey).WithPadding(base32.NoPadding)
+
+func (m *MockAwsBatchClient) SubmitJobWithContext(ctx aws.Context, input *batch.SubmitJobInput, opts ...request.Option) (
+	*batch.SubmitJobOutput, error) {
+
 	m.jobs[*input.JobName] = &batch.JobDetail{
 		JobName: input.JobName,
 		JobId:   input.JobName,
@@ -34,13 +40,22 @@ func (m *MockAwsBatchClient) SubmitJobWithContext(ctx aws.Context, input *batch.
 		return m.SubmitJobWithContextCb(ctx, input, opts...)
 	}
 
+	hasher := fnv.New32a()
+	_, err := hasher.Write([]byte(*input.JobName))
+	if err != nil {
+		return nil, err
+	}
+
+	b := hasher.Sum(nil)
 	return &batch.SubmitJobOutput{
-		JobId:   ref(rand.String(10)),
+		JobId:   ref(base32Encoder.EncodeToString(b)),
 		JobName: input.JobName,
 	}, nil
 }
 
-func (m *MockAwsBatchClient) TerminateJobWithContext(ctx aws.Context, input *batch.TerminateJobInput, opts ...request.Option) (*batch.TerminateJobOutput, error) {
+func (m *MockAwsBatchClient) TerminateJobWithContext(ctx aws.Context, input *batch.TerminateJobInput,
+	opts ...request.Option) (*batch.TerminateJobOutput, error) {
+
 	if m.TerminateJobWithContextCb != nil {
 		return m.TerminateJobWithContextCb(ctx, input, opts...)
 	}
@@ -48,7 +63,9 @@ func (m *MockAwsBatchClient) TerminateJobWithContext(ctx aws.Context, input *bat
 	return &batch.TerminateJobOutput{}, nil
 }
 
-func (m *MockAwsBatchClient) DescribeJobsWithContext(ctx aws.Context, input *batch.DescribeJobsInput, opts ...request.Option) (*batch.DescribeJobsOutput, error) {
+func (m *MockAwsBatchClient) DescribeJobsWithContext(ctx aws.Context, input *batch.DescribeJobsInput,
+	opts ...request.Option) (*batch.DescribeJobsOutput, error) {
+
 	if m.DescribeJobsWithContextCb != nil {
 		return m.DescribeJobsWithContextCb(ctx, input, opts...)
 	}
@@ -75,7 +92,9 @@ func (m *MockAwsBatchClient) DescribeJobsWithContext(ctx aws.Context, input *bat
 	return &batch.DescribeJobsOutput{Jobs: res}, nil
 }
 
-func (m *MockAwsBatchClient) RegisterJobDefinitionWithContext(ctx aws.Context, input *batch.RegisterJobDefinitionInput, opts ...request.Option) (*batch.RegisterJobDefinitionOutput, error) {
+func (m *MockAwsBatchClient) RegisterJobDefinitionWithContext(ctx aws.Context, input *batch.RegisterJobDefinitionInput,
+	opts ...request.Option) (*batch.RegisterJobDefinitionOutput, error) {
+
 	if m.RegisterJobDefinitionWithContextCb != nil {
 		return m.RegisterJobDefinitionWithContextCb(ctx, input, opts...)
 	}

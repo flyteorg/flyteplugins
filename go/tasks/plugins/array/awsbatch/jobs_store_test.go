@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	config2 "github.com/lyft/flytestdlib/config"
+
 	"github.com/lyft/flytestdlib/cache"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
@@ -25,10 +27,11 @@ func createJobWithID(id JobID) *Job {
 }
 
 func newJobsStore(t testing.TB, batchClient Client) *JobStore {
-	store, err := NewJobStore(context.TODO(), batchClient, 1000, config.JobStoreConfig{
+	store, err := NewJobStore(context.TODO(), batchClient, config.JobStoreConfig{
 		CacheSize:      1,
 		Parallelizm:    1,
 		BatchChunkSize: 1,
+		ResyncPeriod:   config2.Duration{Duration: 1000},
 	}, EventHandler{}, promutils.NewTestScope())
 	assert.NoError(t, err)
 	return &store
