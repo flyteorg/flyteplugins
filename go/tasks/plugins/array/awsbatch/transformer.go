@@ -69,6 +69,9 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 	args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(),
 		arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
 	taskTemplate.GetContainer().GetEnv()
+	if err != nil {
+		return nil, err
+	}
 
 	envVars := getEnvVarsForTask(ctx, tCtx, taskTemplate.GetContainer().GetEnv(), cfg.DefaultEnvVars)
 	resources := newContainerResourcesFromContainerTask(ctx, taskTemplate.GetContainer())
@@ -178,15 +181,6 @@ func toRetryStrategy(_ context.Context, backoffLimit *int32, minRetryAttempts, m
 	return &batch.RetryStrategy{
 		Attempts: refInt(int64(retries)),
 	}
-}
-
-func toK8sEnvVars(envVars []*idlCore.KeyValuePair) []v1.EnvVar {
-	res := make([]v1.EnvVar, 0, len(envVars))
-	for _, v := range envVars {
-		res = append(res, v1.EnvVar{Name: v.Key, Value: v.Value})
-	}
-
-	return res
 }
 
 func toBackoffLimit(metadata *idlCore.TaskMetadata) *int32 {

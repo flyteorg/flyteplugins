@@ -116,7 +116,7 @@ func Init(ctx context.Context, cfg *Config) (err error) {
 		}
 	}
 
-	return nil
+	return err
 }
 
 // Gets singleton AWS Client.

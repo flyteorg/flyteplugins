@@ -6,18 +6,18 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lyft/flytestdlib/cache"
+
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 
-	"github.com/lyft/flytestdlib/logger"
-	utils2 "github.com/lyft/flytestdlib/utils"
-
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
+	"github.com/lyft/flytestdlib/logger"
 )
 
 type ExecutionPhase int
@@ -68,7 +68,7 @@ type ExecutionState struct {
 
 // This is the main state iteration
 func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
-	executionsCache utils2.AutoRefreshCache, cfg *config.Config) (ExecutionState, error) {
+	executionsCache cache.AutoRefresh, cfg *config.Config) (ExecutionState, error) {
 
 	var transformError error
 	var newState ExecutionState
@@ -200,7 +200,7 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 }
 
 func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
-	cache utils2.AutoRefreshCache, cfg *config.Config) (ExecutionState, error) {
+	cache cache.AutoRefresh, cfg *config.Config) (ExecutionState, error) {
 
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	apiKey, err := tCtx.SecretManager().Get(ctx, cfg.TokenKey)
@@ -232,7 +232,7 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		}
 
 		// The first time we put it in the cache, we know it won't have succeeded so we don't need to look at it
-		_, err := cache.GetOrCreate(executionStateCacheItem)
+		_, err := cache.GetOrCreate(uniqueId, executionStateCacheItem)
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
 			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]. Error %s",
@@ -245,7 +245,7 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	return currentState, nil
 }
 
-func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, cache utils2.AutoRefreshCache) (
+func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, cache cache.AutoRefresh) (
 	ExecutionState, error) {
 
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
@@ -253,7 +253,8 @@ func MonitorQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		ExecutionState: currentState,
 		Id:             uniqueId,
 	}
-	cachedItem, err := cache.GetOrCreate(executionStateCacheItem)
+
+	cachedItem, err := cache.GetOrCreate(uniqueId, executionStateCacheItem)
 	if err != nil {
 		// This means that our cache has fundamentally broken... return a system error
 		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]. Error %s",

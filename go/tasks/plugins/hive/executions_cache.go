@@ -4,6 +4,10 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/client-go/util/workqueue"
+
+	"github.com/lyft/flytestdlib/cache"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	stdErrors "github.com/lyft/flytestdlib/errors"
 
@@ -13,7 +17,6 @@ import (
 
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
-	"github.com/lyft/flytestdlib/utils"
 )
 
 const ResyncDuration = 30 * time.Second
@@ -23,7 +26,7 @@ const (
 )
 
 type QuboleHiveExecutionsCache struct {
-	utils.AutoRefreshCache
+	cache.AutoRefresh
 	quboleClient  client.QuboleClient
 	secretManager core.SecretManager
 	scope         promutils.Scope
@@ -33,19 +36,18 @@ type QuboleHiveExecutionsCache struct {
 func NewQuboleHiveExecutionsCache(ctx context.Context, quboleClient client.QuboleClient,
 	secretManager core.SecretManager, cfg *config.Config, scope promutils.Scope) (QuboleHiveExecutionsCache, error) {
 
-	rateLimiter := utils.NewRateLimiter("qubole-api-updater", 5, 15)
 	q := QuboleHiveExecutionsCache{
 		quboleClient:  quboleClient,
 		secretManager: secretManager,
 		scope:         scope,
 		cfg:           cfg,
 	}
-	autoRefreshCache, err := utils.NewAutoRefreshCache(q.SyncQuboleQuery, rateLimiter, ResyncDuration, cfg.LruCacheSize, scope)
+	autoRefreshCache, err := cache.NewAutoRefreshCache("qubole", q.SyncQuboleQuery, workqueue.DefaultControllerRateLimiter(), ResyncDuration, cfg.Workers, cfg.LruCacheSize, scope)
 	if err != nil {
 		logger.Errorf(ctx, "Could not create AutoRefreshCache in QuboleHiveExecutor. [%s]", err)
 		return q, errors.Wrapf(errors.CacheFailed, err, "Error creating AutoRefreshCache")
 	}
-	q.AutoRefreshCache = autoRefreshCache
+	q.AutoRefresh = autoRefreshCache
 	return q, nil
 }
 
@@ -64,60 +66,86 @@ func (e ExecutionStateCacheItem) ID() string {
 
 // This basically grab an updated status from the Qubole API and store it in the cache
 // All other handling should be in the synchronous loop.
-func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, obj utils.CacheItem) (
-	utils.CacheItem, utils.CacheSyncAction, error) {
+func (q *QuboleHiveExecutionsCache) SyncQuboleQuery(ctx context.Context, batch cache.Batch) (
+	updatedBatch []cache.ItemSyncResponse, err error) {
 
-	// Cast the item back to the thing we want to work with.
-	executionStateCacheItem, ok := obj.(ExecutionStateCacheItem)
-	if !ok {
-		logger.Errorf(ctx, "Sync loop - Error casting cache object into ExecutionState")
-		return obj, utils.Unchanged, errors.Errorf(errors.CacheFailed, "Failed to cast [%v]", obj)
-	}
+	resp := make([]cache.ItemSyncResponse, 0, len(batch))
+	for _, query := range batch {
+		// Cast the item back to the thing we want to work with.
+		executionStateCacheItem, ok := query.GetItem().(ExecutionStateCacheItem)
+		if !ok {
+			logger.Errorf(ctx, "Sync loop - Error casting cache object into ExecutionState")
+			return nil, errors.Errorf(errors.CacheFailed, "Failed to cast [%v]", batch[0].GetID())
+		}
 
-	if executionStateCacheItem.CommandId == "" {
-		logger.Warnf(ctx, "Sync loop - CommandID is blank for [%s] skipping", executionStateCacheItem.Id)
-		return executionStateCacheItem, utils.Unchanged, nil
-	}
+		if executionStateCacheItem.CommandId == "" {
+			logger.Warnf(ctx, "Sync loop - CommandID is blank for [%s] skipping", executionStateCacheItem.Id)
+			resp = append(resp, cache.ItemSyncResponse{
+				ID:     query.GetID(),
+				Item:   query.GetItem(),
+				Action: cache.Unchanged,
+			})
 
-	logger.Debugf(ctx, "Sync loop - processing Hive job [%s] - cache key [%s]",
-		executionStateCacheItem.CommandId, executionStateCacheItem.Id)
+			continue
+		}
 
-	quboleApiKey, err := q.secretManager.Get(ctx, q.cfg.TokenKey)
-	if err != nil {
-		return executionStateCacheItem, utils.Unchanged, err
-	}
-
-	if InTerminalState(executionStateCacheItem.ExecutionState) {
-		logger.Debugf(ctx, "Sync loop - Qubole id [%s] in terminal state [%s]",
+		logger.Debugf(ctx, "Sync loop - processing Hive job [%s] - cache key [%s]",
 			executionStateCacheItem.CommandId, executionStateCacheItem.Id)
 
-		return executionStateCacheItem, utils.Unchanged, nil
+		quboleApiKey, err := q.secretManager.Get(ctx, q.cfg.TokenKey)
+		if err != nil {
+			return nil, err
+		}
+
+		if InTerminalState(executionStateCacheItem.ExecutionState) {
+			logger.Debugf(ctx, "Sync loop - Qubole id [%s] in terminal state [%s]",
+				executionStateCacheItem.CommandId, executionStateCacheItem.Id)
+
+			resp = append(resp, cache.ItemSyncResponse{
+				ID:     query.GetID(),
+				Item:   query.GetItem(),
+				Action: cache.Unchanged,
+			})
+
+			continue
+		}
+
+		// Get an updated status from Qubole
+		logger.Debugf(ctx, "Querying Qubole for %s - %s", executionStateCacheItem.CommandId, executionStateCacheItem.Id)
+		commandStatus, err := q.quboleClient.GetCommandStatus(ctx, executionStateCacheItem.CommandId, quboleApiKey)
+		if err != nil {
+			logger.Errorf(ctx, "Error from Qubole command %s", executionStateCacheItem.CommandId)
+			executionStateCacheItem.SyncFailureCount++
+			// Make sure we don't return nil for the first argument, because that deletes it from the cache.
+			resp = append(resp, cache.ItemSyncResponse{
+				ID:     query.GetID(),
+				Item:   executionStateCacheItem,
+				Action: cache.Update,
+			})
+
+			continue
+		}
+
+		newExecutionPhase, err := QuboleStatusToExecutionPhase(commandStatus)
+		if err != nil {
+			return nil, err
+		}
+
+		if newExecutionPhase > executionStateCacheItem.Phase {
+			logger.Infof(ctx, "Moving ExecutionPhase for %s %s from %s to %s", executionStateCacheItem.CommandId,
+				executionStateCacheItem.Id, executionStateCacheItem.Phase, newExecutionPhase)
+
+			executionStateCacheItem.Phase = newExecutionPhase
+
+			resp = append(resp, cache.ItemSyncResponse{
+				ID:     query.GetID(),
+				Item:   executionStateCacheItem,
+				Action: cache.Update,
+			})
+		}
 	}
 
-	// Get an updated status from Qubole
-	logger.Debugf(ctx, "Querying Qubole for %s - %s", executionStateCacheItem.CommandId, executionStateCacheItem.Id)
-	commandStatus, err := q.quboleClient.GetCommandStatus(ctx, executionStateCacheItem.CommandId, quboleApiKey)
-	if err != nil {
-		logger.Errorf(ctx, "Error from Qubole command %s", executionStateCacheItem.CommandId)
-		executionStateCacheItem.SyncFailureCount++
-		// Make sure we don't return nil for the first argument, because that deletes it from the cache.
-		return executionStateCacheItem, utils.Update, err
-	}
-	newExecutionPhase, err := QuboleStatusToExecutionPhase(commandStatus)
-	if err != nil {
-		return executionStateCacheItem, utils.Unchanged, err
-	}
-
-	if newExecutionPhase > executionStateCacheItem.Phase {
-		logger.Infof(ctx, "Moving ExecutionPhase for %s %s from %s to %s", executionStateCacheItem.CommandId,
-			executionStateCacheItem.Id, executionStateCacheItem.Phase, newExecutionPhase)
-
-		executionStateCacheItem.Phase = newExecutionPhase
-
-		return executionStateCacheItem, utils.Update, nil
-	}
-
-	return executionStateCacheItem, utils.Unchanged, nil
+	return resp, nil
 }
 
 // We need some way to translate results we get from Qubole, into a plugin phase

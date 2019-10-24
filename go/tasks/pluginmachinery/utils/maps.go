@@ -10,13 +10,10 @@ func UnionMaps(maps ...map[string]string) map[string]string {
 
 	composite := make(map[string]string, size)
 	for _, m := range maps {
-		if m != nil {
-			for k, v := range m {
-				composite[k] = v
-			}
+		for k, v := range m {
+			composite[k] = v
 		}
 	}
 
 	return composite
 }
-
