@@ -28,6 +28,8 @@ type PluginEntry struct {
 
 // System level properties that this Plugin supports
 type PluginProperties struct {
+	// Instructs the execution engine to not attempt to cache lookup or write for the node.
+	DisableNodeLevelCaching bool
 }
 
 // Interface for the core Flyte plugin
