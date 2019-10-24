@@ -17,8 +17,7 @@ ignored = ["k8s.io/spark-on-k8s-operator",
 
 [[constraint]]
   name = "github.com/lyft/flytestdlib"
-  branch = "autorefresh-cache-size"
-  #version = "^0.2.x"
+  version = "^0.2.x"
 
 [[constraint]]
   name = "sigs.k8s.io/controller-runtime"
