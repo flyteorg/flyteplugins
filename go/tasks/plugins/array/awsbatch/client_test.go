@@ -7,6 +7,8 @@ package awsbatch
 import (
 	"context"
 
+	stdConfig "github.com/lyft/flytestdlib/config"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/mocks"
@@ -29,10 +31,11 @@ func TestClient_SubmitJob(t *testing.T) {
 	ctx := context.Background()
 	rateLimiter := utils.NewRateLimiter("Get", 1000, 1000)
 	c := NewCustomBatchClient(mocks.NewMockAwsBatchClient(), "account-id", "test-region", rateLimiter, rateLimiter).(*client)
-	store, err := NewJobStore(ctx, c, 1000, config.JobStoreConfig{
+	store, err := NewJobStore(ctx, c, config.JobStoreConfig{
 		CacheSize:      1,
 		Parallelizm:    1,
 		BatchChunkSize: 1,
+		ResyncPeriod:   stdConfig.Duration{Duration: 1000},
 	}, EventHandler{}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
