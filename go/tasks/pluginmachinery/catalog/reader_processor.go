@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/lyft/flyteplugins/go/tasks/errors"
+
 	"github.com/lyft/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,13 +50,14 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	op, err := p.catalogClient.Get(ctx, wi.key)
 	if err != nil {
 		if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
-			logger.Infof(ctx, "Artifact not found in Catalog.")
+			logger.Infof(ctx, "Artifact not found in Catalog. Key: %v", wi.key)
 
 			wi.cached = false
 			return workqueue.WorkStatusSucceeded, nil
 		}
 
-		// TODO: wrap & log error
+		err = errors.Wrapf("CausedBy", err, "Failed to call catalog for Key: %v.", wi.key)
+		logger.Warnf(ctx, "Cache call failed: %v", err)
 		return workqueue.WorkStatusNotDone, err
 	}
 
@@ -66,7 +69,8 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	// TODO: Check task interface, if it has outputs but literalmap is empty (or not matching output), error.
 	err = wi.outputsWriter.Put(ctx, op)
 	if err != nil {
-		// TODO: wrap error
+		err = errors.Wrapf("CausedBy", err, "Failed to persist cached output for Key: %v.", wi.key)
+		logger.Warnf(ctx, "Cache write failed: %v", err)
 		return workqueue.WorkStatusNotDone, err
 	}
 
