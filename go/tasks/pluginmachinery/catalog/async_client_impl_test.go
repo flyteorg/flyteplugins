@@ -50,30 +50,29 @@ func TestAsyncClientImpl_Download(t *testing.T) {
 }
 
 func TestAsyncClientImpl_Upload(t *testing.T) {
-	type fields struct {
-		Reader workqueue.IndexedWorkQueue
-		Writer workqueue.IndexedWorkQueue
-	}
-	type args struct {
-		ctx      context.Context
-		requests []UploadRequest
-	}
+	ctx := context.Background()
+
+	q := &mocks.IndexedWorkQueue{}
+	info := &mocks.WorkItemInfo{}
+	info.OnItem().Return(NewReaderWorkItem(Key{}, &mocks2.OutputWriter{}))
+	info.OnStatus().Return(workqueue.WorkStatusSucceeded)
+	q.OnGet("{UNSPECIFIED     {} [] 0}:-0").Return(info, true, nil)
+	q.OnQueueMatch(mock.Anything, mock.Anything).Return(nil)
+
 	tests := []struct {
 		name          string
-		fields        fields
-		args          args
+		requests      []UploadRequest
 		wantPutFuture UploadFuture
 		wantErr       bool
 	}{
-		// TODO: Add test cases.
+		{"UploadSucceeded", []UploadRequest{{}}, newUploadFuture(ResponseStatusReady, nil), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := AsyncClientImpl{
-				Reader: tt.fields.Reader,
-				Writer: tt.fields.Writer,
+				Writer: q,
 			}
-			gotPutFuture, err := c.Upload(tt.args.ctx, tt.args.requests...)
+			gotPutFuture, err := c.Upload(ctx, tt.requests...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AsyncClientImpl.Upload() error = %v, wantErr %v", err, tt.wantErr)
 				return
