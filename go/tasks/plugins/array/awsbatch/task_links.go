@@ -88,14 +88,15 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 func calculateOriginalIndex(childIdx int, toCache *bitarray.BitSet) int {
 	var sum = 0
 	for i := uint(0); i < toCache.Cap(); i++ {
-		if !toCache.IsSet(i) {
-			if sum == childIdx {
-				return int(i)
-			}
-
+		if toCache.IsSet(i) {
 			sum++
+		}
+
+		if childIdx+1 == sum {
+			return int(i)
 		}
 	}
 
 	return -1
+
 }

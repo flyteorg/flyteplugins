@@ -18,10 +18,9 @@ func Test_calculateOriginalIndex(t *testing.T) {
 			childIdx int
 			want     int
 		}{
-			{"0", 0, 0},
-			{"1", 1, 1},
-			{"2", 2, 2},
-			{"3", 3, 6},
+			{"0", 0, 3},
+			{"1", 1, 4},
+			{"2", 2, 5},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
@@ -32,17 +31,18 @@ func Test_calculateOriginalIndex(t *testing.T) {
 		}
 	})
 
-	t.Run("Bitset is empty", func(t *testing.T) {
-		inputArr := bitarray.NewBitSet(20)
+	t.Run("Bitset is half set", func(t *testing.T) {
+		inputArr := bitarray.NewBitSet(3)
+		inputArr.Set(1)
+		inputArr.Set(2)
+
 		tests := []struct {
 			name     string
 			childIdx int
 			want     int
 		}{
-			{"0", 0, 0},
-			{"1", 1, 1},
-			{"2", 2, 2},
-			{"3", 3, 3},
+			{"0", 0, 1},
+			{"1", 1, 2},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
@@ -64,9 +64,9 @@ func Test_calculateOriginalIndex(t *testing.T) {
 			childIdx int
 			want     int
 		}{
-			{"0", 0, 3},
-			{"1", 1, 4},
-			{"2", 2, 5},
+			{"0", 0, 0},
+			{"1", 1, 1},
+			{"2", 2, 2},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
