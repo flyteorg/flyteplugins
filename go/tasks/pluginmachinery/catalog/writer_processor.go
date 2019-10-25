@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -32,7 +33,7 @@ type writerProcessor struct {
 func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
 	wi, casted := workItem.(*WriterWorkItem)
 	if !casted {
-		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
+		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type. Received: %v", reflect.TypeOf(workItem))
 	}
 
 	err := p.catalogClient.Put(ctx, wi.key, wi.data, wi.metadata)

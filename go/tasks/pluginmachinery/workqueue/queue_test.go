@@ -3,6 +3,7 @@ package workqueue
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -16,14 +17,20 @@ import (
 
 type singleStatusProcessor struct {
 	targetStatus WorkStatus
+	expectedType interface{}
 }
 
 func (s singleStatusProcessor) Process(ctx context.Context, workItem WorkItem) (WorkStatus, error) {
+	comingType := reflect.TypeOf(workItem)
+	expectedType := reflect.TypeOf(s.expectedType)
+	if comingType != expectedType {
+		return WorkStatusFailed, fmt.Errorf("expected Type != incoming Type. %v != %v", expectedType, comingType)
+	}
 	return s.targetStatus, nil
 }
 
-func newSingleStatusProcessor(status WorkStatus) singleStatusProcessor {
-	return singleStatusProcessor{targetStatus: status}
+func newSingleStatusProcessor(expectedType interface{}, status WorkStatus) singleStatusProcessor {
+	return singleStatusProcessor{targetStatus: status, expectedType: expectedType}
 }
 
 type alwaysFailingProcessor struct{}
@@ -115,13 +122,13 @@ func Test_workItemCache_Add(t *testing.T) {
 
 func Test_queue_Queue(t *testing.T) {
 	t.Run("Err when not started", func(t *testing.T) {
-		q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+		q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor("hello", WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 		assert.NoError(t, err)
 		assert.Error(t, q.Queue("abc", "abc"))
 	})
 
 	t.Run("Started first", func(t *testing.T) {
-		q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+		q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor("hello", WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 		assert.NoError(t, err)
 
 		ctx, cancelNow := context.WithCancel(context.Background())
@@ -132,14 +139,17 @@ func Test_queue_Queue(t *testing.T) {
 }
 
 func Test_queue_Get(t *testing.T) {
-	q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+	q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(&workItemWrapper{}, WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	ctx, cancelNow := context.WithCancel(context.Background())
 	defer cancelNow()
 	assert.NoError(t, q.Start(ctx))
 
-	assert.NoError(t, q.Queue("abc", "hello"))
+	assert.NoError(t, q.Queue("abc", &workItemWrapper{
+		id:      "abc",
+		payload: "something",
+	}))
 
 	tests := []struct {
 		name      string
@@ -152,7 +162,7 @@ func Test_queue_Get(t *testing.T) {
 		{"Found", q, "abc", &workItemWrapper{
 			status:  WorkStatusSucceeded,
 			id:      "abc",
-			payload: "hello",
+			payload: &workItemWrapper{id: "abc", payload: "something"},
 		}, true, false},
 	}
 	for _, tt := range tests {
@@ -173,7 +183,7 @@ func Test_queue_Get(t *testing.T) {
 }
 
 func Test_queue_Start(t *testing.T) {
-	q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor(WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+	q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor("", WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 	assert.NoError(t, err)
 
 	ctx, cancelNow := context.WithCancel(context.Background())

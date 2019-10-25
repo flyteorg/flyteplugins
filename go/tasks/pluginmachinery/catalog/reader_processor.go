@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/lyft/flytestdlib/logger"
 	"google.golang.org/grpc/codes"
@@ -41,7 +42,7 @@ type ReaderProcessor struct {
 func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkItem) (workqueue.WorkStatus, error) {
 	wi, casted := workItem.(*ReaderWorkItem)
 	if !casted {
-		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type")
+		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type. Received: %v", reflect.TypeOf(workItem))
 	}
 
 	op, err := p.catalogClient.Get(ctx, wi.key)
