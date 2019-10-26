@@ -91,6 +91,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, nil
 		}
 
+		logger.Debug(ctx, "Catalog download response is ready.")
 		resp, err := future.GetResponse()
 		if err != nil {
 			return state, err

@@ -37,8 +37,8 @@ type OutputAssembler struct {
 	workqueue.IndexedWorkQueue
 }
 
-func (o OutputAssembler) Queue(id workqueue.WorkItemID, item *outputAssembleItem) error {
-	return o.IndexedWorkQueue.Queue(id, item)
+func (o OutputAssembler) Queue(ctx context.Context, id workqueue.WorkItemID, item *outputAssembleItem) error {
+	return o.IndexedWorkQueue.Queue(ctx, id, item)
 }
 
 type outputAssembleItem struct {
@@ -153,7 +153,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 
 		varNames := make([]string, 0, len(outputVariables.GetVariables()))
 
-		err = assemblyQueue.Queue(workItemID, &outputAssembleItem{
+		err = assemblyQueue.Queue(ctx, workItemID, &outputAssembleItem{
 			varNames:    varNames,
 			finalPhases: state.GetArrayStatus().Detailed,
 			outputPaths: tCtx.OutputWriter(),

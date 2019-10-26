@@ -31,7 +31,7 @@ func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadReque
 	var respErr error
 	for idx, request := range requests {
 		workItemID := formatWorkItemID(request.Key, idx)
-		err := c.Reader.Queue(workItemID, NewReaderWorkItem(
+		err := c.Reader.Queue(ctx, workItemID, NewReaderWorkItem(
 			request.Key,
 			request.Target))
 
@@ -74,7 +74,7 @@ func (c AsyncClientImpl) Upload(ctx context.Context, requests ...UploadRequest) 
 	var respErr error
 	for idx, request := range requests {
 		workItemID := formatWorkItemID(request.Key, idx)
-		err := c.Writer.Queue(workItemID, NewWriterWorkItem(
+		err := c.Writer.Queue(ctx, workItemID, NewWriterWorkItem(
 			request.Key,
 			request.ArtifactData,
 			request.ArtifactMetadata))

@@ -50,12 +50,12 @@ func TestOutputAssembler_Queue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			q := &mocks.IndexedWorkQueue{}
-			q.OnQueue(mock.Anything, mock.Anything).Return(nil).Once()
+			q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 			o := OutputAssembler{
 				IndexedWorkQueue: q,
 			}
-			if err := o.Queue(tt.args.id, tt.args.item); (err != nil) != tt.wantErr {
+			if err := o.Queue(context.TODO(), tt.args.id, tt.args.item); (err != nil) != tt.wantErr {
 				t.Errorf("OutputAssembler.Queue() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -160,8 +160,8 @@ func Test_appendSubTaskOutput(t *testing.T) {
 func TestAssembleFinalOutputs(t *testing.T) {
 	ctx := context.Background()
 	q := &mocks.IndexedWorkQueue{}
-	q.On("Queue", mock.Anything, mock.Anything).Return(
-		func(id workqueue.WorkItemID, workItem workqueue.WorkItem) error {
+	q.On("Queue", mock.Anything, mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, id workqueue.WorkItemID, workItem workqueue.WorkItem) error {
 			return nil
 		})
 	assemblyQueue := OutputAssembler{
