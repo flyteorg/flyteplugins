@@ -3,10 +3,10 @@ package awsbatch
 import (
 	"fmt"
 
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+
 	errors2 "github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flytestdlib/errors"
-
-	"github.com/lyft/flytestdlib/bitarray"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -69,7 +69,7 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 	}
 
 	for childIdx, subJob := range job.SubJobs {
-		originalIndex := calculateOriginalIndex(childIdx, state.GetIndexesToCache())
+		originalIndex := core.CalculateOriginalIndex(childIdx, state.GetIndexesToCache())
 
 		for attemptIdx, attempt := range subJob.Attempts {
 			if len(attempt.LogStream) > 0 {
@@ -82,21 +82,4 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 	}
 
 	return logLinks, nil
-}
-
-// Compute the original index of a sub-task.
-func calculateOriginalIndex(childIdx int, toCache *bitarray.BitSet) int {
-	var sum = 0
-	for i := uint(0); i < toCache.Cap(); i++ {
-		if toCache.IsSet(i) {
-			sum++
-		}
-
-		if childIdx+1 == sum {
-			return int(i)
-		}
-	}
-
-	return -1
-
 }

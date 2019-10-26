@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flytestdlib/logger"
+
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
@@ -56,7 +58,8 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 
 	outputReaders, err := ConstructOutputReaders(ctx, i.dataStore, i.outputPaths.GetOutputPrefixPath(), int(i.finalPhases.ItemsCount))
 	if err != nil {
-		return workqueue.WorkStatusNotDone, err
+		logger.Warnf(ctx, "Failed to construct output readers. Error: %v", err)
+		return workqueue.WorkStatusFailed, err
 	}
 
 	finalOutputs := &core.LiteralMap{
@@ -67,7 +70,8 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 		if existingPhase.IsSuccess() {
 			output, executionError, err := outputReaders[idx].Read(ctx)
 			if err != nil {
-				return workqueue.WorkStatusNotDone, err
+				logger.Warnf(ctx, "Failed to read output for subtask [%v]. Error: %v", idx, err)
+				return workqueue.WorkStatusFailed, err
 			}
 
 			if executionError == nil && output != nil {
@@ -123,6 +127,24 @@ func appendEmptyOutputs(outputs *core.LiteralMap, vars []string) {
 	}
 }
 
+func buildFinalPhases(executedTasks bitarray.CompactArray, indexes *bitarray.BitSet, totalSize uint) bitarray.CompactArray {
+	res := arrayCore.NewPhasesCompactArray(totalSize)
+
+	// Copy phases of executed sub-tasks
+	for i, phaseIdx := range executedTasks.GetItems() {
+		res.SetItem(arrayCore.CalculateOriginalIndex(i, indexes), phaseIdx)
+	}
+
+	// Set phases os already discovered tasks to success
+	for i := uint(0); i < totalSize; i++ {
+		if !indexes.IsSet(i) {
+			res.SetItem(int(i), bitarray.Item(pluginCore.PhaseSuccess))
+		}
+	}
+
+	return res
+}
+
 // Assembles a single outputs.pb that contain all the outputs of the subtasks and write them to the final OutputWriter.
 // This step can potentially be expensive (hence the metrics) and why it's offloaded to a background process.
 func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tCtx pluginCore.TaskExecutionContext,
@@ -152,10 +174,12 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 		}
 
 		varNames := make([]string, 0, len(outputVariables.GetVariables()))
+		finalPhases := buildFinalPhases(state.GetArrayStatus().Detailed,
+			state.GetIndexesToCache(), uint(state.GetOriginalArraySize()))
 
 		err = assemblyQueue.Queue(ctx, workItemID, &outputAssembleItem{
 			varNames:    varNames,
-			finalPhases: state.GetArrayStatus().Detailed,
+			finalPhases: finalPhases,
 			outputPaths: tCtx.OutputWriter(),
 			dataStore:   tCtx.DataStore(),
 		})
