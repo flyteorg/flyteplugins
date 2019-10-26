@@ -85,7 +85,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			// TODO: maybe add a config option to decide the behavior on catalog failure.
 			logger.Warnf(ctx, "Failing to lookup catalog. Will move on to launching the task. Error: %v", err)
 
-			state = state.SetIndexesToCache(bitarray.NewBitSet(uint(arrayJob.Size)))
+			state = state.SetIndexesToCache(arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJob.Size)), uint(arrayJob.Size)))
 			state = state.SetExecutionArraySize(int(arrayJob.Size))
 			state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion)
 			return state, nil
@@ -139,6 +139,11 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		return state, err
 	} else if taskTemplate == nil {
 		return state, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
+	}
+
+	if tMeta := taskTemplate.Metadata; tMeta == nil || !tMeta.Discoverable {
+		logger.Debug(ctx, "Task is not marked as discoverable. Moving to AssembleFinalOutput phase.")
+		return state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion), nil
 	}
 
 	// Extract the custom plugin pb
