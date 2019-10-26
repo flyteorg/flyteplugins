@@ -67,8 +67,8 @@ func (_m IndexedWorkQueue_Queue) Return(_a0 error) *IndexedWorkQueue_Queue {
 	return &IndexedWorkQueue_Queue{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *IndexedWorkQueue) OnQueue(id string, once workqueue.WorkItem) *IndexedWorkQueue_Queue {
-	c := _m.On("Queue", id, once)
+func (_m *IndexedWorkQueue) OnQueue(ctx context.Context, id string, once workqueue.WorkItem) *IndexedWorkQueue_Queue {
+	c := _m.On("Queue", ctx, id, once)
 	return &IndexedWorkQueue_Queue{Call: c}
 }
 
@@ -77,13 +77,13 @@ func (_m *IndexedWorkQueue) OnQueueMatch(matchers ...interface{}) *IndexedWorkQu
 	return &IndexedWorkQueue_Queue{Call: c}
 }
 
-// Queue provides a mock function with given fields: id, once
-func (_m *IndexedWorkQueue) Queue(id string, once workqueue.WorkItem) error {
-	ret := _m.Called(id, once)
+// Queue provides a mock function with given fields: ctx, id, once
+func (_m *IndexedWorkQueue) Queue(ctx context.Context, id string, once workqueue.WorkItem) error {
+	ret := _m.Called(ctx, id, once)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, workqueue.WorkItem) error); ok {
-		r0 = rf(id, once)
+	if rf, ok := ret.Get(0).(func(context.Context, string, workqueue.WorkItem) error); ok {
+		r0 = rf(ctx, id, once)
 	} else {
 		r0 = ret.Error(0)
 	}

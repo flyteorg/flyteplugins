@@ -47,7 +47,7 @@ func TestExecutor_Handle(t *testing.T) {
 	jc := definition.NewCache(10)
 
 	q := &queueMocks.IndexedWorkQueue{}
-	q.OnQueue(mock.Anything, mock.Anything).Return(nil).Once()
+	q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 	oa := array.OutputAssembler{
 		IndexedWorkQueue: q,

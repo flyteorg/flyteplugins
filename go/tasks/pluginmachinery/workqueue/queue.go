@@ -55,7 +55,7 @@ type WorkItemInfo interface {
 type IndexedWorkQueue interface {
 	// Queues the item to be processed. If the item is already in the cache or has been processed before (and is still
 	// in-memory), it'll not be added again.
-	Queue(id WorkItemID, once WorkItem) error
+	Queue(ctx context.Context, id WorkItemID, once WorkItem) error
 
 	// Retrieves an item by id.
 	Get(id WorkItemID) (info WorkItemInfo, found bool, err error)
@@ -71,6 +71,7 @@ type Processor interface {
 
 type workItemWrapper struct {
 	id         WorkItemID
+	logFields  map[string]interface{}
 	payload    WorkItem
 	status     WorkStatus
 	retryCount uint
@@ -134,7 +135,7 @@ func (c workItemCache) Add(item *workItemWrapper) (evicted bool) {
 	return c.Cache.Add(item.id, item)
 }
 
-func (q *queue) Queue(id WorkItemID, once WorkItem) error {
+func (q *queue) Queue(ctx context.Context, id WorkItemID, once WorkItem) error {
 	q.wlock.Lock()
 	defer q.wlock.Unlock()
 
@@ -147,8 +148,9 @@ func (q *queue) Queue(id WorkItemID, once WorkItem) error {
 	}
 
 	wrapper := &workItemWrapper{
-		id:      id,
-		payload: once,
+		id:        id,
+		logFields: contextutils.GetLogFields(ctx),
+		payload:   once,
 	}
 
 	q.index.Add(wrapper)
@@ -169,6 +171,14 @@ func (q *queue) Get(id WorkItemID) (info WorkItemInfo, found bool, err error) {
 	v := wrapper.Clone()
 	q.metrics.CacheHit.Inc()
 	return &v, true, nil
+}
+
+func contextWithValues(ctx context.Context, fields map[string]interface{}) context.Context {
+	for key, value := range fields {
+		ctx = context.WithValue(ctx, key, value)
+	}
+
+	return ctx
 }
 
 func (q *queue) Start(ctx context.Context) error {
@@ -206,7 +216,8 @@ func (q *queue) Start(ctx context.Context) error {
 							}
 						}()
 
-						ws, err = q.processor.Process(ctx, wrapper.payload)
+						ctxWithFields := contextWithValues(ctx, wrapper.logFields)
+						ws, err = q.processor.Process(ctxWithFields, wrapper.payload)
 					}()
 
 					if err != nil {
