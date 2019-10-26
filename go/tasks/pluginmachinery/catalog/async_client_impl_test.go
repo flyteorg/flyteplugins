@@ -21,7 +21,7 @@ func TestAsyncClientImpl_Download(t *testing.T) {
 	info.OnItem().Return(NewReaderWorkItem(Key{}, &mocks2.OutputWriter{}))
 	info.OnStatus().Return(workqueue.WorkStatusSucceeded)
 	q.OnGet("{UNSPECIFIED     {} [] 0}:-0").Return(info, true, nil)
-	q.OnQueueMatch(mock.Anything, mock.Anything).Return(nil)
+	q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	tests := []struct {
 		name             string
@@ -57,7 +57,7 @@ func TestAsyncClientImpl_Upload(t *testing.T) {
 	info.OnItem().Return(NewReaderWorkItem(Key{}, &mocks2.OutputWriter{}))
 	info.OnStatus().Return(workqueue.WorkStatusSucceeded)
 	q.OnGet("{UNSPECIFIED     {} [] 0}:-0").Return(info, true, nil)
-	q.OnQueueMatch(mock.Anything, mock.Anything).Return(nil)
+	q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	tests := []struct {
 		name          string

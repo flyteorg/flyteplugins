@@ -124,7 +124,7 @@ func Test_queue_Queue(t *testing.T) {
 	t.Run("Err when not started", func(t *testing.T) {
 		q, err := NewIndexedWorkQueue("test1", newSingleStatusProcessor("hello", WorkStatusSucceeded), Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
 		assert.NoError(t, err)
-		assert.Error(t, q.Queue("abc", "abc"))
+		assert.Error(t, q.Queue(context.TODO(), "abc", "abc"))
 	})
 
 	t.Run("Started first", func(t *testing.T) {
@@ -133,7 +133,7 @@ func Test_queue_Queue(t *testing.T) {
 
 		ctx, cancelNow := context.WithCancel(context.Background())
 		assert.NoError(t, q.Start(ctx))
-		assert.NoError(t, q.Queue("abc", "abc"))
+		assert.NoError(t, q.Queue(context.TODO(), "abc", "abc"))
 		cancelNow()
 	})
 }
@@ -146,7 +146,7 @@ func Test_queue_Get(t *testing.T) {
 	defer cancelNow()
 	assert.NoError(t, q.Start(ctx))
 
-	assert.NoError(t, q.Queue("abc", &workItemWrapper{
+	assert.NoError(t, q.Queue(ctx, "abc", &workItemWrapper{
 		id:      "abc",
 		payload: "something",
 	}))
@@ -200,7 +200,7 @@ func Test_Failures(t *testing.T) {
 	defer cancelNow()
 	assert.NoError(t, q.Start(ctx))
 
-	assert.NoError(t, q.Queue("abc", "hello"))
+	assert.NoError(t, q.Queue(ctx, "abc", "hello"))
 	time.Sleep(100 * time.Millisecond)
 	info, found, err := q.Get("abc")
 	assert.NoError(t, err)
