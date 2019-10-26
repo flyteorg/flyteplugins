@@ -167,10 +167,13 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		return nil, err
 	}
 
+	iface := *taskTemplate.Interface
+	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
+
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		*taskTemplate.Interface, state.GetIndexesToCache(), inputReaders, outputReaders)
+		iface, state.GetIndexesToCache(), inputReaders, outputReaders)
 
 	if err != nil {
 		return nil, err
@@ -291,6 +294,27 @@ func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet, size int)
 	}
 }
 
+func makeSingularTaskInterface(varMap *idlCore.VariableMap) *idlCore.VariableMap {
+	if varMap == nil || len(varMap.Variables) == 0 {
+		return varMap
+	}
+
+	res := &idlCore.VariableMap{
+		Variables: make(map[string]*idlCore.Variable, len(varMap.Variables)),
+	}
+
+	for key, val := range varMap.Variables {
+		if val.GetType().GetCollectionType() != nil {
+			res.Variables[key] = &idlCore.Variable{Type: val.GetType().GetCollectionType()}
+		} else {
+			res.Variables[key] = val
+		}
+	}
+
+	return res
+
+}
+
 func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskReader, inputs []io.InputReader,
 	outputs []io.OutputWriter) ([]catalog.DownloadRequest, error) {
 
@@ -300,6 +324,10 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 	}
 
 	workItems := make([]catalog.DownloadRequest, 0, len(inputs))
+
+	iface := *t.Interface
+	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
+
 	for idx, inputReader := range inputs {
 		// TODO: Check if Id or Interface are empty and return err
 		item := catalog.DownloadRequest{
@@ -307,7 +335,7 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 				Identifier:     *t.Id,
 				CacheVersion:   t.GetMetadata().DiscoveryVersion,
 				InputReader:    inputReader,
-				TypedInterface: *t.Interface,
+				TypedInterface: iface,
 			},
 			Target: outputs[idx],
 		}
