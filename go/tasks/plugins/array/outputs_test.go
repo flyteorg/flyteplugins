@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
@@ -384,4 +386,33 @@ func TestNewErrorAssembler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, o)
 	})
+}
+
+func Test_buildFinalPhases(t *testing.T) {
+	executedTasks := arrayCore.NewPhasesCompactArray(2)
+	executedTasks.SetItem(0, bitarray.Item(pluginCore.PhaseSuccess))
+	executedTasks.SetItem(1, bitarray.Item(pluginCore.PhaseRetryableFailure))
+
+	indexes := bitarray.NewBitSet(5)
+	indexes.Set(1)
+	indexes.Set(2)
+
+	expected := arrayCore.NewPhasesCompactArray(5)
+	expected.SetItem(0, bitarray.Item(pluginCore.PhaseSuccess))
+	expected.SetItem(1, bitarray.Item(pluginCore.PhaseSuccess))
+	expected.SetItem(2, bitarray.Item(pluginCore.PhaseRetryableFailure))
+	expected.SetItem(3, bitarray.Item(pluginCore.PhaseSuccess))
+	expected.SetItem(4, bitarray.Item(pluginCore.PhaseSuccess))
+
+	actual := buildFinalPhases(executedTasks, indexes, 5)
+
+	if diff := deep.Equal(expected, actual); diff != nil {
+		t.Errorf("expected != actual. Diff: %v", diff)
+		for i, expectedPhaseIdx := range expected.GetItems() {
+			actualPhaseIdx := actual.GetItem(i)
+			if expectedPhaseIdx != actualPhaseIdx {
+				t.Errorf("[%v] expected = %v, actual = %v", i, pluginCore.Phases[expectedPhaseIdx], pluginCore.Phases[actualPhaseIdx])
+			}
+		}
+	}
 }
