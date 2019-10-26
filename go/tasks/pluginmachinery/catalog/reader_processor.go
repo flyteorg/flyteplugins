@@ -58,7 +58,7 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 
 		err = errors.Wrapf("CausedBy", err, "Failed to call catalog for Key: %v.", wi.key)
 		logger.Warnf(ctx, "Cache call failed: %v", err)
-		return workqueue.WorkStatusNotDone, err
+		return workqueue.WorkStatusFailed, err
 	}
 
 	if op == nil {
@@ -67,11 +67,12 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	}
 
 	// TODO: Check task interface, if it has outputs but literalmap is empty (or not matching output), error.
+	logger.Debugf(ctx, "Persisting output to %v", wi.outputsWriter.GetOutputPath())
 	err = wi.outputsWriter.Put(ctx, op)
 	if err != nil {
 		err = errors.Wrapf("CausedBy", err, "Failed to persist cached output for Key: %v.", wi.key)
-		logger.Warnf(ctx, "Cache write failed: %v", err)
-		return workqueue.WorkStatusNotDone, err
+		logger.Warnf(ctx, "Cache write to output writer failed: %v", err)
+		return workqueue.WorkStatusFailed, err
 	}
 
 	wi.cached = true
