@@ -173,6 +173,9 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 			return state, nil
 		}
 
+		logger.Debugf(ctx, "Building final phases for original array of size [%v] and execution size [%v]",
+			state.GetOriginalArraySize(), state.GetArrayStatus().Detailed.ItemsCount)
+
 		varNames := make([]string, 0, len(outputVariables.GetVariables()))
 		finalPhases := buildFinalPhases(state.GetArrayStatus().Detailed,
 			state.GetIndexesToCache(), uint(state.GetOriginalArraySize()))
