@@ -2,7 +2,9 @@ package catalog
 
 import (
 	"context"
+	"encoding/base32"
 	"fmt"
+	"hash/fnv"
 	"reflect"
 
 	"github.com/lyft/flytestdlib/promutils"
@@ -14,14 +16,29 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 )
 
+const specialEncoderKey = "abcdefghijklmnopqrstuvwxyz123456"
+
+var base32Encoder = base32.NewEncoding(specialEncoderKey).WithPadding(base32.NoPadding)
+
 // An async-client for catalog that can queue download and upload requests on workqueues.
 type AsyncClientImpl struct {
 	Reader workqueue.IndexedWorkQueue
 	Writer workqueue.IndexedWorkQueue
 }
 
-func formatWorkItemID(key Key, idx int) string {
-	return fmt.Sprintf("%v-%v", key, idx)
+func formatWorkItemID(key Key, idx int, suffix string) string {
+	return fmt.Sprintf("%v-%v-%v", key, idx, suffix)
+}
+
+func consistentHash(str string) (string, error) {
+	hasher := fnv.New32a()
+	_, err := hasher.Write([]byte(str))
+	if err != nil {
+		return "", err
+	}
+
+	b := hasher.Sum(nil)
+	return base32Encoder.EncodeToString(b), nil
 }
 
 func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error) {
@@ -30,8 +47,13 @@ func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadReque
 	cachedCount := 0
 	var respErr error
 	for idx, request := range requests {
-		workItemID := formatWorkItemID(request.Key, idx)
-		err := c.Reader.Queue(ctx, workItemID, NewReaderWorkItem(
+		uniqueOutputLoc, err := consistentHash(request.Target.GetOutputPrefixPath().String())
+		if err != nil {
+			return nil, err
+		}
+
+		workItemID := formatWorkItemID(request.Key, idx, uniqueOutputLoc)
+		err = c.Reader.Queue(ctx, workItemID, NewReaderWorkItem(
 			request.Key,
 			request.Target))
 
@@ -73,7 +95,7 @@ func (c AsyncClientImpl) Upload(ctx context.Context, requests ...UploadRequest) 
 	status := ResponseStatusReady
 	var respErr error
 	for idx, request := range requests {
-		workItemID := formatWorkItemID(request.Key, idx)
+		workItemID := formatWorkItemID(request.Key, idx, "")
 		err := c.Writer.Queue(ctx, workItemID, NewWriterWorkItem(
 			request.Key,
 			request.ArtifactData,
