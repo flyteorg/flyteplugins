@@ -2,6 +2,7 @@ package array
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
@@ -50,7 +51,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		// Set an all set indexes to cache. This task won't try to write to catalog anyway.
 		state = state.SetIndexesToCache(arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJob.Size)), uint(arrayJob.Size)))
 		state = state.SetExecutionArraySize(int(arrayJob.Size))
-		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion)
+		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion).SetReason("Task is not discoverable.")
 		return state, nil
 	}
 
@@ -87,7 +88,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 			state = state.SetIndexesToCache(arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJob.Size)), uint(arrayJob.Size)))
 			state = state.SetExecutionArraySize(int(arrayJob.Size))
-			state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion)
+			state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion).SetReason(fmt.Sprintf("Skipping cache check due to err [%v]", err))
 			return state, nil
 		}
 
@@ -103,7 +104,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
-			state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
+			state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion).SetReason("All subtasks are cached. assembling final outputs.")
 			return state, nil
 		}
 
@@ -121,7 +122,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, err
 		}
 
-		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion)
+		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion).SetReason("Finished cache lookup.")
 	case catalog.ResponseStatusNotReady:
 		ownerSignal := tCtx.TaskRefreshIndicator()
 		future.OnReady(func(ctx context.Context, _ catalog.Future) {
@@ -144,7 +145,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 
 	if tMeta := taskTemplate.Metadata; tMeta == nil || !tMeta.Discoverable {
 		logger.Debug(ctx, "Task is not marked as discoverable. Moving to AssembleFinalOutput phase.")
-		return state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion), nil
+		return state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion).SetReason("Task is not discoverable."), nil
 	}
 
 	// Extract the custom plugin pb
@@ -180,7 +181,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	if len(catalogWriterItems) == 0 {
-		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion).SetReason("No outputs need to be cached.")
 		return state, nil
 	}
 
@@ -190,7 +191,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	if allWritten {
-		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion)
+		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion).SetReason("Finished writing catalog cache.")
 	}
 
 	return state, nil

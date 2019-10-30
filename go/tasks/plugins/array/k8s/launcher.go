@@ -55,6 +55,14 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, currentState *arrayCore.State) (newState *arrayCore.State, err error) {
+
+	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
+		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
+		logger.Info(ctx, ee)
+		currentState = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
+		return currentState, nil
+	}
+
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
@@ -92,9 +100,9 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 				if strings.Contains(err.Error(), "exceeded quota") {
 					// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
 					logger.Infof(ctx, "Failed to launch job, resource quota exceeded. Err: %v", err)
-					currentState = currentState.SetPhase(arrayCore.PhaseWaitingForResources, 0)
+					currentState = currentState.SetPhase(arrayCore.PhaseWaitingForResources, 0).SetReason("Not enough resources to launch job.")
 				} else {
-					currentState = currentState.SetPhase(arrayCore.PhaseRetryableFailure, 0)
+					currentState = currentState.SetPhase(arrayCore.PhaseRetryableFailure, 0).SetReason("Failed to launch job.")
 				}
 
 				currentState = currentState.SetReason(err.Error())
@@ -112,7 +120,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		Detailed: arrayCore.NewPhasesCompactArray(uint(size)),
 	}
 
-	currentState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0)
+	currentState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0).SetReason("Job launched.")
 	currentState.SetArrayStatus(arrayStatus)
 
 	return currentState, nil

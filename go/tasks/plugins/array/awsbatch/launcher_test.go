@@ -97,6 +97,7 @@ func TestLaunchSubTasks(t *testing.T) {
 		expectedState := &State{
 			State: &core2.State{
 				CurrentPhase:         core2.PhaseCheckingSubTaskExecutions,
+				Reason:               "Successfully launched subtasks.",
 				ExecutionArraySize:   5,
 				OriginalArraySize:    10,
 				OriginalMinSuccesses: 5,
@@ -112,7 +113,7 @@ func TestLaunchSubTasks(t *testing.T) {
 			JobDefinitionArn: "arn",
 		}
 
-		newState, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{}, currentState)
+		newState, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{MaxArrayJobSize: 10}, currentState)
 		assert.NoError(t, err)
 		assertEqual(t, expectedState, newState)
 	})

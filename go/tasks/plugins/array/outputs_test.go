@@ -237,6 +237,10 @@ func TestAssembleFinalOutputs(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedStatus,
 			},
+			IndexesToCache:       arrayCore.InvertBitSet(bitarray.NewBitSet(2), 2),
+			OriginalArraySize:    2,
+			ExecutionArraySize:   2,
+			OriginalMinSuccesses: 2,
 		}
 
 		tID := &mocks3.TaskExecutionID{}

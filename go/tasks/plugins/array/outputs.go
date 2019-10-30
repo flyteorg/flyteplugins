@@ -169,7 +169,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 		outputVariables := taskTemplate.GetInterface().GetOutputs()
 		if outputVariables == nil || outputVariables.GetVariables() == nil {
 			// If the task has no outputs, bail early.
-			state = state.SetPhase(terminalPhase, 0)
+			state = state.SetPhase(terminalPhase, 0).SetReason("Task has no outputs")
 			return state, nil
 		}
 
@@ -208,13 +208,13 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 			return nil, err
 		}
 
-		state = state.SetPhase(terminalPhase, 0)
+		state = state.SetPhase(terminalPhase, 0).SetReason("Finished assembling outputs/errors.")
 	case workqueue.WorkStatusFailed:
 		state = state.SetExecutionErr(&core.ExecutionError{
 			Message: w.Error().Error(),
 		})
 
-		state = state.SetPhase(arrayCore.PhaseRetryableFailure, 0)
+		state = state.SetPhase(arrayCore.PhaseRetryableFailure, 0).SetReason("Failed to assemble outputs/errors.")
 	}
 
 	return state, nil

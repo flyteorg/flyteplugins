@@ -75,14 +75,12 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 
 	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
-		if phase == arrayCore.PhaseCheckingSubTaskExecutions {
-			// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
-			for phase, count := range parentState.GetArrayStatus().Summary {
-				newPhaseVersion += uint32(phase) * uint32(count)
-			}
+		// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
+		for phase, count := range parentState.GetArrayStatus().Summary {
+			newPhaseVersion += uint32(phase) * uint32(count)
 		}
 
-		parentState = parentState.SetPhase(phase, newPhaseVersion)
+		parentState = parentState.SetPhase(phase, newPhaseVersion).SetReason("Task is still running.")
 	} else {
 		parentState = parentState.SetPhase(phase, core.DefaultPhaseVersion)
 	}

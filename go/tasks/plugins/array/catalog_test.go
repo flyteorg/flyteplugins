@@ -142,7 +142,7 @@ func TestDetermineDiscoverability(t *testing.T) {
 	}
 
 	t.Run("Not discoverable", func(t *testing.T) {
-		toCache := bitarray.NewBitSet(1)
+		toCache := arrayCore.InvertBitSet(bitarray.NewBitSet(1), 1)
 
 		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
 			CurrentPhase:         arrayCore.PhasePreLaunch,
@@ -151,6 +151,7 @@ func TestDetermineDiscoverability(t *testing.T) {
 			OriginalArraySize:    1,
 			OriginalMinSuccesses: 1,
 			IndexesToCache:       toCache,
+			Reason:               "Task is not discoverable.",
 		}, nil)
 	})
 
@@ -171,6 +172,7 @@ func TestDetermineDiscoverability(t *testing.T) {
 			OriginalArraySize:    1,
 			OriginalMinSuccesses: 1,
 			IndexesToCache:       toCache,
+			Reason:               "Finished cache lookup.",
 		}, nil)
 	})
 
@@ -188,6 +190,7 @@ func TestDetermineDiscoverability(t *testing.T) {
 			OriginalArraySize:    1,
 			OriginalMinSuccesses: 1,
 			IndexesToCache:       toCache,
+			Reason:               "Finished cache lookup.",
 		}, nil)
 	})
 }
