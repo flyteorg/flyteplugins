@@ -2,7 +2,10 @@ package hive
 
 import (
 	"context"
+	"net/url"
 	"testing"
+
+	config2 "github.com/lyft/flytestdlib/config"
 
 	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
 
@@ -77,22 +80,29 @@ func TestGetQueryInfo(t *testing.T) {
 }
 
 func TestConstructTaskLog(t *testing.T) {
-	c := client.NewQuboleClient(config.GetQuboleConfig())
-	taskLog := ConstructTaskLog(ExecutionState{CommandId: "123"}, c)
-	assert.Equal(t, "https://wellness.qubole.com/v2/analyze?command_id=123", taskLog.Uri)
+	expected := "https://wellness.qubole.com/v2/analyze?command_id=123"
+	u, err := url.Parse(expected)
+	assert.NoError(t, err)
+	taskLog := ConstructTaskLog(ExecutionState{CommandId: "123", URI: config2.URL{URL: *u}})
+	assert.Equal(t, expected, taskLog.Uri)
 }
 
 func TestConstructTaskInfo(t *testing.T) {
-	c := client.NewQuboleClient(config.GetQuboleConfig())
-	empty := ConstructTaskInfo(ExecutionState{}, c)
+	empty := ConstructTaskInfo(ExecutionState{})
 	assert.Nil(t, empty)
+
+	expected := "https://wellness.qubole.com/v2/analyze?command_id=123"
+	u, err := url.Parse(expected)
+	assert.NoError(t, err)
 
 	e := ExecutionState{
 		Phase:            PhaseQuerySucceeded,
 		CommandId:        "123",
 		SyncFailureCount: 0,
+		URI:              config2.URL{URL: *u},
 	}
-	taskInfo := ConstructTaskInfo(e, c)
+
+	taskInfo := ConstructTaskInfo(e)
 	assert.Equal(t, "https://wellness.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
 }
 
