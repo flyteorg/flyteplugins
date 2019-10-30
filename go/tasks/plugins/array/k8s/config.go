@@ -16,6 +16,7 @@ const configSectionKey = "k8s-array"
 var (
 	defaultConfig = &Config{
 		MaxErrorStringLength: 1000,
+		MaxArrayJobSize:      5000,
 		OutputAssembler: workqueue.Config{
 			IndexCacheMaxItems: 100000,
 			MaxRetries:         5,
@@ -35,6 +36,7 @@ var (
 type Config struct {
 	DefaultScheduler     string `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
 	MaxErrorStringLength int    `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
+	MaxArrayJobSize      int64  `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
 }
