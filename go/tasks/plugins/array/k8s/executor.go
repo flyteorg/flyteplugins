@@ -124,6 +124,18 @@ func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) 
 		pluginState)
 }
 
+func (e Executor) Start(ctx context.Context) error {
+	if err := e.outputsAssembler.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := e.errorAssembler.Start(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func init() {
 	pluginmachinery.PluginRegistry().RegisterCorePlugin(
 		core.PluginEntry{
@@ -134,6 +146,15 @@ func init() {
 		})
 }
 
-func GetNewExecutorPlugin(_ context.Context, iCtx core.SetupContext) (core.Plugin, error) {
-	return NewExecutor(iCtx.KubeClient(), GetConfig(), iCtx.MetricsScope())
+func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
+	exec, err := NewExecutor(iCtx.KubeClient(), GetConfig(), iCtx.MetricsScope())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = exec.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	return exec, nil
 }
