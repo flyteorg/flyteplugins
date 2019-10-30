@@ -65,7 +65,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 			containerImage, role, existingArn)
 
 		nextState = currentState.SetJobDefinitionArn(existingArn)
-		nextState.SetPhase(arrayCore.PhaseLaunch, 0)
+		nextState.State = nextState.SetPhase(arrayCore.PhaseLaunch, 0).SetReason("AWS job definition already exist.")
 		return nextState, nil
 	}
 
@@ -83,7 +83,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 	}
 
 	nextState = currentState.SetJobDefinitionArn(arn)
-	nextState.SetPhase(arrayCore.PhaseLaunch, 0)
+	nextState.State = nextState.SetPhase(arrayCore.PhaseLaunch, 0).SetReason("Created AWS job definition")
 
 	return nextState, nil
 }

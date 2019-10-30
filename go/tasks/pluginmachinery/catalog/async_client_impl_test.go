@@ -20,8 +20,12 @@ func TestAsyncClientImpl_Download(t *testing.T) {
 	info := &mocks.WorkItemInfo{}
 	info.OnItem().Return(NewReaderWorkItem(Key{}, &mocks2.OutputWriter{}))
 	info.OnStatus().Return(workqueue.WorkStatusSucceeded)
-	q.OnGet("{UNSPECIFIED     {} [] 0}:-0").Return(info, true, nil)
+	q.OnGetMatch(mock.Anything).Return(info, true, nil)
 	q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	ow := &mocks2.OutputWriter{}
+	ow.OnGetOutputPrefixPath().Return("/prefix/")
+	ow.OnGetOutputPath().Return("/prefix/outputs.pb")
 
 	tests := []struct {
 		name             string
@@ -30,7 +34,12 @@ func TestAsyncClientImpl_Download(t *testing.T) {
 		wantOutputFuture DownloadFuture
 		wantErr          bool
 	}{
-		{"DownloadQueued", q, []DownloadRequest{{}}, newDownloadFuture(ResponseStatusReady, nil, bitarray.NewBitSet(1), 1, 0), false},
+		{"DownloadQueued", q, []DownloadRequest{
+			{
+				Key:    Key{},
+				Target: ow,
+			},
+		}, newDownloadFuture(ResponseStatusReady, nil, bitarray.NewBitSet(1), 1, 0), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -56,7 +65,7 @@ func TestAsyncClientImpl_Upload(t *testing.T) {
 	info := &mocks.WorkItemInfo{}
 	info.OnItem().Return(NewReaderWorkItem(Key{}, &mocks2.OutputWriter{}))
 	info.OnStatus().Return(workqueue.WorkStatusSucceeded)
-	q.OnGet("{UNSPECIFIED     {} [] 0}:-0").Return(info, true, nil)
+	q.OnGet("{UNSPECIFIED     {} [] 0}:-0-").Return(info, true, nil)
 	q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	tests := []struct {
@@ -65,7 +74,11 @@ func TestAsyncClientImpl_Upload(t *testing.T) {
 		wantPutFuture UploadFuture
 		wantErr       bool
 	}{
-		{"UploadSucceeded", []UploadRequest{{}}, newUploadFuture(ResponseStatusReady, nil), false},
+		{"UploadSucceeded", []UploadRequest{
+			{
+				Key: Key{},
+			},
+		}, newUploadFuture(ResponseStatusReady, nil), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

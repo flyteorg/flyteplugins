@@ -16,6 +16,13 @@ import (
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, pluginConfig *config.Config,
 	currentState *State) (nextState *State, err error) {
 
+	if int64(currentState.GetExecutionArraySize()) > pluginConfig.MaxArrayJobSize {
+		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), pluginConfig.MaxArrayJobSize)
+		logger.Info(ctx, ee)
+		currentState.State = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
+		return currentState, nil
+	}
+
 	jobDefinition := currentState.GetJobDefinitionArn()
 	if len(jobDefinition) == 0 {
 		return nil, fmt.Errorf("system error; no job definition created")
@@ -50,7 +57,8 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 				core.PhaseQueued: int64(size),
 			},
 			Detailed: arrayCore.NewPhasesCompactArray(uint(size)),
-		})
+		}).
+		SetReason("Successfully launched subtasks.")
 
 	nextState = currentState.SetExternalJobID(j)
 	nextState.State = parentState
