@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	stdConfig "github.com/lyft/flytestdlib/config"
+
 	"github.com/lyft/flytestdlib/cache"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -55,7 +57,8 @@ type ExecutionState struct {
 	Phase ExecutionPhase
 
 	// This will store the command ID from Qubole
-	CommandId string `json:"command_id,omitempty"`
+	CommandId string        `json:"command_id,omitempty"`
+	URI       stdConfig.URL `json:"uri,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task
@@ -110,43 +113,37 @@ func MapExecutionStateToPhaseInfo(state ExecutionState, quboleClient client.Qubo
 			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Qubole launch")
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state, quboleClient))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
 
 	case PhaseQuerySucceeded:
-		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state, quboleClient))
+		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
 
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state, quboleClient))
+		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
 	}
 
 	return phaseInfo
 }
 
-func ConstructTaskLog(e ExecutionState, quboleClient client.QuboleClient) *idlCore.TaskLog {
-	l, err := quboleClient.GetLogLinkPath(context.TODO(), e.CommandId)
-	uri := ""
-	if err == nil {
-		uri = l.String()
-	} else {
-		logger.Errorf(context.TODO(), "failed to create log link, error: %s", err)
-	}
+func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	return &idlCore.TaskLog{
 		Name:          fmt.Sprintf("Status: %s [%s]", e.Phase, e.CommandId),
 		MessageFormat: idlCore.TaskLog_UNKNOWN,
-		Uri:           uri,
+		Uri:           e.URI.String(),
 	}
 }
 
-func ConstructTaskInfo(e ExecutionState, quboleClient client.QuboleClient) *core.TaskInfo {
+func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
 	if e.CommandId != "" {
-		logs = append(logs, ConstructTaskLog(e, quboleClient))
+		logs = append(logs, ConstructTaskLog(e))
 		return &core.TaskInfo{
 			Logs:       logs,
 			OccurredAt: &t,
 		}
 	}
+
 	return nil
 }
 
@@ -226,6 +223,8 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		logger.Infof(ctx, "Created Qubole ID [%s] for token %s", commandId, uniqueId)
 		currentState.CommandId = commandId
 		currentState.Phase = PhaseSubmitted
+		currentState.URI = stdConfig.URL{URL: cmdDetails.URI}
+
 		executionStateCacheItem := ExecutionStateCacheItem{
 			ExecutionState: currentState,
 			Id:             uniqueId,

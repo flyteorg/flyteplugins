@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -37,6 +38,7 @@ type quboleCmdDetailsInternal struct {
 type QuboleCommandDetails struct {
 	ID     int64
 	Status QuboleStatus
+	URI    url.URL
 }
 
 // QuboleClient API Request Body, meant to be passed into JSON.marshal
@@ -61,7 +63,6 @@ type QuboleClient interface {
 		accountKey string, tags []string) (*QuboleCommandDetails, error)
 	KillCommand(ctx context.Context, commandID string, accountKey string) error
 	GetCommandStatus(ctx context.Context, commandID string, accountKey string) (QuboleStatus, error)
-	GetLogLinkPath(ctx context.Context, commandID string) (*url.URL, error)
 }
 
 // TODO: The Qubole client needs a rate limiter
@@ -195,8 +196,21 @@ func (q *quboleClient) ExecuteHiveCommand(
 		return nil, err
 	}
 
+	u, err := q.GetLogLinkPath(ctx, strconv.FormatInt(cmd.ID, 10))
+	if err != nil {
+		return nil, err
+	}
+
+	if u == nil {
+		return nil, fmt.Errorf("failed to build log link for command [%v]", cmd.ID)
+	}
+
 	status := NewQuboleStatus(ctx, cmd.Status)
-	return &QuboleCommandDetails{ID: cmd.ID, Status: status}, nil
+	return &QuboleCommandDetails{
+		ID:     cmd.ID,
+		Status: status,
+		URI:    *u,
+	}, nil
 }
 
 /*
