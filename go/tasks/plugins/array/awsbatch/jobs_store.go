@@ -78,7 +78,7 @@ func batchJobsForSync(_ context.Context, batchChunkSize int) cache.CreateBatches
 				continue
 			}
 
-			if currentBatchSize+len(j.SubJobs)+1 >= batchChunkSize {
+			if currentBatchSize > 0 && currentBatchSize+len(j.SubJobs)+1 >= batchChunkSize {
 				batches = append(batches, currentBatch)
 				currentBatchSize = 0
 				currentBatch = make(cache.Batch, 0, batchChunkSize)
@@ -180,7 +180,15 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 	return updated, nil
 }
 
-func syncBatches(_ context.Context, client Client, handler EventHandler) cache.SyncFunc {
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
+}
+
+func syncBatches(_ context.Context, client Client, handler EventHandler, batchChunkSize int) cache.SyncFunc {
 	return func(ctx context.Context, batch cache.Batch) ([]cache.ItemSyncResponse, error) {
 		jobIDsMap := make(map[JobID]*Job, len(batch))
 		jobIds := make([]JobID, 0, len(batch))
@@ -217,48 +225,51 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 			return []cache.ItemSyncResponse{}, nil
 		}
 
-		response, err := client.GetJobDetailsBatch(ctx, jobIds)
-		if err != nil {
-			return nil, err
-		}
-
-		res := make([]cache.ItemSyncResponse, 0, len(response))
-		for _, jobDetail := range response {
-			job, found := jobIDsMap[*jobDetail.JobId]
-			if !found {
-				logger.Warn(ctx, "Received an update for unrequested job id [%v]", jobDetail.JobId)
-				continue
-			}
-
-			changed, err := updateJob(ctx, jobDetail, job)
+		res := make([]cache.ItemSyncResponse, 0, len(jobIds))
+		for startIndex := 0; startIndex+batchChunkSize <= len(jobIds); startIndex += batchChunkSize {
+			endIdx := minInt(batchChunkSize+startIndex, len(jobIds))
+			response, err := client.GetJobDetailsBatch(ctx, jobIds[startIndex:endIdx])
 			if err != nil {
 				return nil, err
 			}
 
-			if changed {
-				handler.Updated(ctx, Event{
-					NewJob: job,
+			for _, jobDetail := range response {
+				job, found := jobIDsMap[*jobDetail.JobId]
+				if !found {
+					logger.Warn(ctx, "Received an update for unrequested job id [%v]", jobDetail.JobId)
+					continue
+				}
+
+				changed, err := updateJob(ctx, jobDetail, job)
+				if err != nil {
+					return nil, err
+				}
+
+				if changed {
+					handler.Updated(ctx, Event{
+						NewJob: job,
+					})
+				}
+
+				action := cache.Unchanged
+				if changed {
+					action = cache.Update
+				}
+
+				// If it's a single job, AWS Batch doesn't support arrays of size 1 so this workaround will ensure the rest
+				// of the code doesn't have to deal with this limitation.
+				if len(job.SubJobs) == 1 {
+					subJob := job.SubJobs[0]
+					subJob.Status = job.Status
+					subJob.Attempts = job.Attempts
+				}
+
+				res = append(res, cache.ItemSyncResponse{
+					ID:     jobNames[job.ID],
+					Item:   job,
+					Action: action,
 				})
 			}
-
-			action := cache.Unchanged
-			if changed {
-				action = cache.Update
-			}
-
-			// If it's a single job, AWS Batch doesn't support arrays of size 1 so this workaround will ensure the rest
-			// of the code doesn't have to deal with this limitation.
-			if len(job.SubJobs) == 1 {
-				subJob := job.SubJobs[0]
-				subJob.Status = job.Status
-				subJob.Attempts = job.Attempts
-			}
-
-			res = append(res, cache.ItemSyncResponse{
-				ID:     jobNames[job.ID],
-				Item:   job,
-				Action: action,
-			})
 		}
 
 		return res, nil
@@ -267,7 +278,7 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 
 type JobStore struct {
 	Client
-	cache.Refresh
+	cache.AutoRefresh
 
 	started bool
 }
@@ -326,7 +337,7 @@ func NewJobStore(ctx context.Context, batchClient Client, cfg config.JobStoreCon
 	}
 
 	autoCache, err := cache.NewAutoRefreshBatchedCache("aws-batch-jobs", batchJobsForSync(ctx, cfg.BatchChunkSize),
-		syncBatches(ctx, store, handler), workqueue.DefaultControllerRateLimiter(), cfg.ResyncPeriod.Duration,
+		syncBatches(ctx, store, handler, cfg.BatchChunkSize), workqueue.DefaultControllerRateLimiter(), cfg.ResyncPeriod.Duration,
 		cfg.Parallelizm, cfg.CacheSize, scope)
 
 	store.AutoRefresh = autoCache
