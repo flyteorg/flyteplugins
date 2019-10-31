@@ -55,6 +55,22 @@ func setSparkConfig(cfg *Config) error {
 type sparkResourceHandler struct {
 }
 
+func (sparkResourceHandler) GetProperties() pluginsCore.PluginProperties {
+	return pluginsCore.PluginProperties{}
+}
+
+func validateSparkJob(sparkJob *plugins.SparkJob) error {
+	if sparkJob == nil {
+		return fmt.Errorf("empty sparkJob")
+	}
+
+	if len(sparkJob.MainApplicationFile) == 0 && len(sparkJob.MainClass) == 0 {
+		return fmt.Errorf("either MainApplicationFile or MainClass must be set")
+	}
+
+	return nil
+}
+
 // Creates a new Job that will execute the main container as well as any generated types the result from the execution.
 func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
@@ -63,10 +79,15 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	} else if taskTemplate == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "nil task specification")
 	}
+
 	sparkJob := plugins.SparkJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sparkJob)
 	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
+		return nil, errors.Wrapf(errors.BadTaskSpecification, err, "invalid TaskSpecification [%v], failed to unmarshal", taskTemplate.GetCustom())
+	}
+
+	if err = validateSparkJob(&sparkJob); err != nil {
+		return nil, errors.Wrapf(errors.BadTaskSpecification, err, "invalid TaskSpecification [%v].", taskTemplate.GetCustom())
 	}
 
 	annotations := utils.UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetAnnotations()))
@@ -98,7 +119,8 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			EnvVars:     sparkEnvVars,
 		},
 	}
-	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(context.TODO(), container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
+
+	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, err
 	}

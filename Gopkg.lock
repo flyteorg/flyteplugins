@@ -318,7 +318,7 @@
   packages = ["."]
   pruneopts = ""
   revision = "03217c3e97663914aec3faafde50d081f197a0a2"
-  version = "1.1.8"
+  version = "v1.1.8"
 
 [[projects]]
   digest = "1:0f51cee70b0d254dbc93c22666ea2abf211af81c1701a96d04e2284b408621db"
@@ -1012,8 +1012,6 @@
     "github.com/coocood/freecache",
     "github.com/go-test/deep",
     "github.com/golang/protobuf/jsonpb",
-    "github.com/golang/protobuf/proto",
-    "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/struct",
     "github.com/hashicorp/golang-lru",
     "github.com/lyft/flyteidl/clients/go/coreutils",
