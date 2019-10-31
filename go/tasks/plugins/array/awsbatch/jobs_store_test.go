@@ -9,6 +9,10 @@ import (
 	"fmt"
 	"testing"
 
+	mocks2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/mocks"
+	mocks3 "github.com/lyft/flytestdlib/cache/mocks"
+	"github.com/lyft/flytestdlib/utils"
+
 	config2 "github.com/lyft/flytestdlib/config"
 
 	"github.com/lyft/flytestdlib/cache"
@@ -126,4 +130,20 @@ func BenchmarkStore_Get(b *testing.B) {
 		j := s.Get(createName(i))
 		assert.NotNil(b, j)
 	}
+}
+
+func Test_syncBatches(t *testing.T) {
+	ctx := context.Background()
+	c := NewCustomBatchClient(mocks2.NewMockAwsBatchClient(), "", "",
+		utils.NewRateLimiter("", 10, 20),
+		utils.NewRateLimiter("", 10, 20))
+	f := syncBatches(ctx, c, EventHandler{Updated: func(ctx context.Context, event Event) {
+	}}, 2)
+
+	i := &mocks3.ItemWrapper{}
+	i.OnGetItem().Return(&Job{})
+
+	r, err := f(ctx, []cache.ItemWrapper{i, i, i})
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
 }
