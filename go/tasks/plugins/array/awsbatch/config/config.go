@@ -38,7 +38,7 @@ var (
 		JobStoreConfig: JobStoreConfig{
 			CacheSize:      10000,
 			Parallelizm:    20,
-			BatchChunkSize: 1000,
+			BatchChunkSize: 100,
 			ResyncPeriod:   config.Duration{Duration: 30 * time.Second},
 		},
 		JobDefCacheSize: 10000,
