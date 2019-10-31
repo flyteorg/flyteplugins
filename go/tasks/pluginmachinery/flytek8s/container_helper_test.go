@@ -37,6 +37,14 @@ func TestApplyResourceOverrides_OverrideCpu(t *testing.T) {
 		},
 	})
 	assert.EqualValues(t, cpuLimit, overrides.Limits[v1.ResourceCPU])
+
+	// request equals limit if not set
+	overrides = ApplyResourceOverrides(context.Background(), v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU: cpuLimit,
+		},
+	})
+	assert.EqualValues(t, cpuLimit, overrides.Requests[v1.ResourceCPU])
 }
 
 func TestApplyResourceOverrides_OverrideMemory(t *testing.T) {

@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	stdConfig "github.com/lyft/flytestdlib/config"
-
 	"github.com/lyft/flytestdlib/cache"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -57,8 +55,8 @@ type ExecutionState struct {
 	Phase ExecutionPhase
 
 	// This will store the command ID from Qubole
-	CommandId string        `json:"command_id,omitempty"`
-	URI       stdConfig.URL `json:"uri,omitempty"`
+	CommandId string `json:"command_id,omitempty"`
+	URI       string `json:"uri,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task
@@ -129,7 +127,7 @@ func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	return &idlCore.TaskLog{
 		Name:          fmt.Sprintf("Status: %s [%s]", e.Phase, e.CommandId),
 		MessageFormat: idlCore.TaskLog_UNKNOWN,
-		Uri:           e.URI.String(),
+		Uri:           e.URI,
 	}
 }
 
@@ -223,7 +221,7 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		logger.Infof(ctx, "Created Qubole ID [%s] for token %s", commandId, uniqueId)
 		currentState.CommandId = commandId
 		currentState.Phase = PhaseSubmitted
-		currentState.URI = stdConfig.URL{URL: cmdDetails.URI}
+		currentState.URI = cmdDetails.URI.String()
 
 		executionStateCacheItem := ExecutionStateCacheItem{
 			ExecutionState: currentState,

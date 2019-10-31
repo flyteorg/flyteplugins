@@ -5,8 +5,6 @@ import (
 	"net/url"
 	"testing"
 
-	config2 "github.com/lyft/flytestdlib/config"
-
 	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
 
 	"github.com/stretchr/testify/assert"
@@ -83,7 +81,7 @@ func TestConstructTaskLog(t *testing.T) {
 	expected := "https://wellness.qubole.com/v2/analyze?command_id=123"
 	u, err := url.Parse(expected)
 	assert.NoError(t, err)
-	taskLog := ConstructTaskLog(ExecutionState{CommandId: "123", URI: config2.URL{URL: *u}})
+	taskLog := ConstructTaskLog(ExecutionState{CommandId: "123", URI: u.String()})
 	assert.Equal(t, expected, taskLog.Uri)
 }
 
@@ -99,7 +97,7 @@ func TestConstructTaskInfo(t *testing.T) {
 		Phase:            PhaseQuerySucceeded,
 		CommandId:        "123",
 		SyncFailureCount: 0,
-		URI:              config2.URL{URL: *u},
+		URI:              u.String(),
 	}
 
 	taskInfo := ConstructTaskInfo(e)

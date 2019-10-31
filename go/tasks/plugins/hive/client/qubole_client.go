@@ -18,22 +18,25 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 )
 
-const logLinkFormat = "?command_id=%s"
-
-const tokenKeyForAth = "X-AUTH-TOKEN"
-const acceptHeaderKey = "Accept"
-const hiveCommandType = "HiveCommand"
-const killStatus = "kill"
-const httpRequestTimeoutSecs = 30
-const hostHeaderKey = "Host"
-const HeaderContentType = "Content-Type"
-const ContentTypeJSON = "application/json"
+const (
+	logLinkFormat          = "?command_id=%s"
+	tokenKeyForAth         = "X-AUTH-TOKEN"
+	acceptHeaderKey        = "Accept"
+	hiveCommandType        = "HiveCommand"
+	killStatus             = "kill"
+	httpRequestTimeoutSecs = 30
+	hostHeaderKey          = "Host"
+	HeaderContentType      = "Content-Type"
+	ContentTypeJSON        = "application/json"
+)
 
 // QuboleClient CommandStatus Response Format, only used to unmarshal the response
 type quboleCmdDetailsInternal struct {
 	ID     int64
 	Status string
 }
+
+type QuboleUri = string
 
 type QuboleCommandDetails struct {
 	ID     int64
