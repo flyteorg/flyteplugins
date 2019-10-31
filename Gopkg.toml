@@ -32,9 +32,9 @@ ignored = ["k8s.io/spark-on-k8s-operator",
   source = "https://github.com/lyft/apimachinery"
   revision = "695912cabb3a9c08353fbe628115867d47f56b1f"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.13.1"
+  version = "kubernetes-1.16.2"
 
 [[constraint]]
   name = "github.com/GoogleCloudPlatform/spark-on-k8s-operator"
@@ -43,7 +43,7 @@ ignored = ["k8s.io/spark-on-k8s-operator",
 
 [[override]]
   name = "k8s.io/api"
-  revision = "27b77cf22008a0bf6e510b2a500b8885805a1b68"
+  revision = "d4740b14bfb937c7c9078de87432168940e36316"
   source = "https://github.com/lyft/api"
 
 [[override]]
