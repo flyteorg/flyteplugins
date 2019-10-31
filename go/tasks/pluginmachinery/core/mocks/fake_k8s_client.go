@@ -102,7 +102,7 @@ func (m *FakeKubeClient) Create(ctx context.Context, obj runtime.Object) (err er
 	return errors.NewAlreadyExists(schema.GroupResource{}, accessor.GetName())
 }
 
-func (m *FakeKubeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+func (m *FakeKubeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	m.syncObj.Lock()
 	defer m.syncObj.Unlock()
 
