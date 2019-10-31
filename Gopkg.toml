@@ -1,6 +1,7 @@
 required = ["github.com/lyft/flytestdlib/storage",
             "github.com/lyft/flyteidl/gen/pb-go/flyteidl/event",
-            "sigs.k8s.io/controller-runtime/pkg/client/config",
+            "sigs.k8s.io/controller-runtime/pkg/client",
+            "sigs.k8s.io/controller-runtime/pkg/cache",
             "k8s.io/apimachinery/pkg/apis/meta/v1",
             "k8s.io/client-go/tools/record",
             ]
@@ -21,7 +22,7 @@ ignored = ["k8s.io/spark-on-k8s-operator",
 
 [[constraint]]
   name = "sigs.k8s.io/controller-runtime"
-  version = "^0.1.0"
+  version = "^0.3.0"
 
 # Type resource.Quantity unmarshals with json, but not jsonpb (https://github.com/kubernetes/apimachinery/issues/59).
 # Because we embed k8s protos in our own proto definitions we need to be able to call jsonpb marshal/unmarshal in order
