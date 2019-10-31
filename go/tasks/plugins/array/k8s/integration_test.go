@@ -66,14 +66,14 @@ func TestEndToEnd(t *testing.T) {
 
 func advancePodPhases(ctx context.Context, store *storage.DataStore, outputWriter io.OutputWriter, runtimeClient client.Client) error {
 	podList := &v1.PodList{}
-	err := runtimeClient.List(ctx, &client.ListOptions{
+	err := runtimeClient.List(ctx, podList, &client.ListOptions{
 		Raw: &metav1.ListOptions{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "pod",
 				APIVersion: v1.SchemeGroupVersion.String(),
 			},
 		},
-	}, podList)
+	})
 	if err != nil {
 		return err
 	}
