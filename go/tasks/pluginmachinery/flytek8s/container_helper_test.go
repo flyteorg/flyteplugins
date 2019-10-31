@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -29,6 +29,13 @@ func TestApplyResourceOverrides_OverrideCpu(t *testing.T) {
 		},
 	})
 	assert.EqualValues(t, cpuRequest, overrides.Requests[v1.ResourceCPU])
+
+	// request equals limit if not set
+	overrides = ApplyResourceOverrides(context.Background(), v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU: cpuLimit,
+		},
+	})
 	assert.EqualValues(t, cpuLimit, overrides.Limits[v1.ResourceCPU])
 }
 
@@ -53,6 +60,17 @@ func TestApplyResourceOverrides_OverrideMemory(t *testing.T) {
 	})
 	assert.EqualValues(t, memoryRequest, overrides.Requests[v1.ResourceMemory])
 	assert.EqualValues(t, memoryLimit, overrides.Limits[v1.ResourceMemory])
+
+	// request equals limit if not set
+	cpuLimit := resource.MustParse("2")
+	overrides = ApplyResourceOverrides(context.Background(), v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceMemory: memoryLimit,
+			v1.ResourceCPU:    cpuLimit,
+		},
+	})
+	assert.EqualValues(t, memoryLimit, overrides.Requests[v1.ResourceMemory])
+	assert.EqualValues(t, cpuLimit, overrides.Requests[v1.ResourceCPU])
 }
 
 func TestApplyResourceOverrides_RemoveStorage(t *testing.T) {
@@ -72,12 +90,12 @@ func TestApplyResourceOverrides_RemoveStorage(t *testing.T) {
 	})
 	assert.EqualValues(t, v1.ResourceList{
 		v1.ResourceMemory: requestedResourceQuantity,
-		v1.ResourceCPU: requestedResourceQuantity,
+		v1.ResourceCPU:    requestedResourceQuantity,
 	}, overrides.Requests)
 
 	assert.EqualValues(t, v1.ResourceList{
 		v1.ResourceMemory: requestedResourceQuantity,
-		v1.ResourceCPU: requestedResourceQuantity,
+		v1.ResourceCPU:    requestedResourceQuantity,
 	}, overrides.Limits)
 }
 
