@@ -135,6 +135,12 @@ func (c workItemCache) Add(item *workItemWrapper) (evicted bool) {
 	return c.Cache.Add(item.id, item)
 }
 
+func copyAllowedLogFields(ctx context.Context) map[string]interface{} {
+	logFields := contextutils.GetLogFields(ctx)
+	delete(logFields, contextutils.RoutineLabelKey.String())
+	return logFields
+}
+
 func (q *queue) Queue(ctx context.Context, id WorkItemID, once WorkItem) error {
 	q.wlock.Lock()
 	defer q.wlock.Unlock()
@@ -149,7 +155,7 @@ func (q *queue) Queue(ctx context.Context, id WorkItemID, once WorkItem) error {
 
 	wrapper := &workItemWrapper{
 		id:        id,
-		logFields: contextutils.GetLogFields(ctx),
+		logFields: copyAllowedLogFields(ctx),
 		payload:   once,
 	}
 
