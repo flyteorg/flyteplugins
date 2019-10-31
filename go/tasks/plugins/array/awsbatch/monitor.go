@@ -3,6 +3,8 @@ package awsbatch
 import (
 	"context"
 
+	"github.com/lyft/flytestdlib/logger"
+
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flytestdlib/bitarray"
@@ -35,6 +37,8 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	job := jobStore.Get(jobName)
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
 	if job == nil {
+		logger.Info(ctx, "Job not found in cache, adding it.")
+
 		_, err = jobStore.GetOrCreate(jobName, &Job{
 			ID:             *currentState.ExternalJobID,
 			OwnerReference: taskMeta.GetOwnerID(),
@@ -66,7 +70,6 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	parentState = parentState.SetArrayStatus(newArrayStatus)
-
 	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
 	if phase == arrayCore.PhasePermanentFailure || phase == arrayCore.PhaseRetryableFailure {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)
@@ -85,6 +88,9 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		parentState = parentState.SetPhase(phase, core.DefaultPhaseVersion)
 	}
 
+	p, v := parentState.GetPhase()
+	logger.Debug(ctx, "Current phase [%v, %v]. Summary: %+v", p, v, newArrayStatus.Summary)
 	newState.State = parentState
+
 	return newState, nil
 }

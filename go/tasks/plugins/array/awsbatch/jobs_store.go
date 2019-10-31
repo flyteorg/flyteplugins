@@ -267,7 +267,7 @@ func syncBatches(_ context.Context, client Client, handler EventHandler) cache.S
 
 type JobStore struct {
 	Client
-	cache.AutoRefresh
+	cache.Refresh
 
 	started bool
 }
