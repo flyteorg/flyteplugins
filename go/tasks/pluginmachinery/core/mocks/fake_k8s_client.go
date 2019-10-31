@@ -57,19 +57,24 @@ func (m *FakeKubeClient) Get(ctx context.Context, key client.ObjectKey, out runt
 	return errors.NewNotFound(schema.GroupResource{}, key.Name)
 }
 
-func (m *FakeKubeClient) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
+func (m *FakeKubeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 	m.syncObj.RLock()
 	defer m.syncObj.RUnlock()
 
 	objs := make([]runtime.Object, 0, len(m.Cache))
 
+	listOptions := &client.ListOptions{}
+	for _, opt := range opts {
+		opt.ApplyToList(listOptions)
+	}
+
 	for _, val := range m.Cache {
-		if opts.Raw != nil {
-			if val.GetObjectKind().GroupVersionKind().Kind != opts.Raw.Kind {
+		if listOptions.Raw != nil {
+			if val.GetObjectKind().GroupVersionKind().Kind != listOptions.Raw.Kind {
 				continue
 			}
 
-			if val.GetObjectKind().GroupVersionKind().GroupVersion().String() != opts.Raw.APIVersion {
+			if val.GetObjectKind().GroupVersionKind().GroupVersion().String() != listOptions.Raw.APIVersion {
 				continue
 			}
 		}
@@ -80,7 +85,7 @@ func (m *FakeKubeClient) List(ctx context.Context, opts *client.ListOptions, lis
 	return meta.SetList(list, objs)
 }
 
-func (m *FakeKubeClient) Create(ctx context.Context, obj runtime.Object) (err error) {
+func (m *FakeKubeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) (err error) {
 	m.syncObj.Lock()
 	defer m.syncObj.Unlock()
 
@@ -123,7 +128,7 @@ func (m *FakeKubeClient) Delete(ctx context.Context, obj runtime.Object, opts ..
 	return nil
 }
 
-func (m *FakeKubeClient) Update(ctx context.Context, obj runtime.Object) error {
+func (m *FakeKubeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 	m.syncObj.Lock()
 	defer m.syncObj.Unlock()
 
@@ -146,6 +151,18 @@ func (m *FakeKubeClient) Update(ctx context.Context, obj runtime.Object) error {
 }
 
 func (*FakeKubeClient) Status() client.StatusWriter {
+	panic("implement me")
+}
+
+// Patch patches the given obj in the Kubernetes cluster. obj must be a
+// struct pointer so that obj can be updated with the content returned by the Server.
+func (*FakeKubeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	panic("implement me")
+
+}
+
+// DeleteAllOf deletes all objects of the given type matching the given options.
+func (*FakeKubeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
 	panic("implement me")
 }
 
