@@ -36,8 +36,6 @@ type quboleCmdDetailsInternal struct {
 	Status string
 }
 
-type QuboleUri = string
-
 type QuboleCommandDetails struct {
 	ID     int64
 	Status QuboleStatus
