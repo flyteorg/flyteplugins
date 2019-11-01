@@ -15,7 +15,6 @@ var jsonPbUnmarshaler = &jsonpb.Unmarshaler{
 	AllowUnknownFields: true,
 }
 
-
 func UnmarshalStruct(structObj *structpb.Struct, msg proto.Message) error {
 	if structObj == nil {
 		return fmt.Errorf("nil Struct Object passed")

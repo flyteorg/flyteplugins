@@ -90,6 +90,7 @@ func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in 
 	}
 
 	return val[:startIdx] + v + val[endIdx:], nil
+
 }
 
 func serializePrimitive(p *core.Primitive) (string, error) {
