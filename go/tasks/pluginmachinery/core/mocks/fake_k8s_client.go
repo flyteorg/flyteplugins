@@ -121,9 +121,7 @@ func (m *FakeKubeClient) Delete(ctx context.Context, obj runtime.Object, opts ..
 		Namespace: accessor.GetNamespace(),
 	}, obj.GetObjectKind().GroupVersionKind())
 
-	if _, exists := m.Cache[key]; exists {
-		delete(m.Cache, key)
-	}
+	delete(m.Cache, key)
 
 	return nil
 }

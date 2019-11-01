@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,6 +11,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	errors2 "github.com/lyft/flytestdlib/errors"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -28,6 +29,7 @@ const (
 	hostHeaderKey          = "Host"
 	HeaderContentType      = "Content-Type"
 	ContentTypeJSON        = "application/json"
+	ErrRequestFailed       = "REQUEST_FAILED"
 )
 
 // QuboleClient CommandStatus Response Format, only used to unmarshal the response
@@ -186,10 +188,11 @@ func (q *quboleClient) ExecuteHiveCommand(
 	if response.StatusCode != 200 {
 		bts, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, err
+			return nil, errors2.Wrapf(ErrRequestFailed, err, "request failed. Response code [%v]", response.StatusCode)
 		}
-		return nil, errors.New(fmt.Sprintf("Bad response from Qubole creating query: %d %s",
-			response.StatusCode, string(bts)))
+
+		return nil, fmt.Errorf("bad response from Qubole creating query: %d %s",
+			response.StatusCode, string(bts))
 	}
 
 	var cmd quboleCmdDetailsInternal
@@ -250,6 +253,7 @@ func (q *quboleClient) GetCommandStatus(ctx context.Context, commandID string, a
 	if err != nil {
 		return QuboleStatusUnknown, err
 	}
+
 	defer closeBody(ctx, response)
 
 	if response.StatusCode != 200 {
@@ -257,8 +261,9 @@ func (q *quboleClient) GetCommandStatus(ctx context.Context, commandID string, a
 		if err != nil {
 			return QuboleStatusUnknown, err
 		}
-		return QuboleStatusUnknown, errors.New(fmt.Sprintf("Bad response from Qubole getting command status: %d %s, path: %s, %s",
-			response.StatusCode, string(bts), statusPath, q.commandURL.String()))
+
+		return QuboleStatusUnknown, fmt.Errorf("bad response from Qubole getting command status: %d %s, path: %s, %s",
+			response.StatusCode, string(bts), statusPath, q.commandURL.String())
 	}
 
 	var cmd quboleCmdDetailsInternal
