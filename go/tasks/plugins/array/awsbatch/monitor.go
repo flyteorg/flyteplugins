@@ -37,7 +37,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	job := jobStore.Get(jobName)
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
 	if job == nil {
-		logger.Info(ctx, "Job not found in cache, adding it.")
+		logger.Info(ctx, "Job not found in cache, adding it. [%v]", jobName)
 
 		_, err = jobStore.GetOrCreate(jobName, &Job{
 			ID:             *currentState.ExternalJobID,
@@ -89,7 +89,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	p, v := parentState.GetPhase()
-	logger.Debug(ctx, "Current phase [%v, %v]. Summary: %+v", p, v, newArrayStatus.Summary)
+	logger.Debugf(ctx, "Current phase [phase: %v, version: %v]. Summary: %+v", p, v, newArrayStatus.Summary)
 	newState.State = parentState
 
 	return newState, nil

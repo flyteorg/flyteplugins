@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/service/batch"
+
 	mocks2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/mocks"
 	mocks3 "github.com/lyft/flytestdlib/cache/mocks"
 	"github.com/lyft/flytestdlib/utils"
@@ -95,18 +97,69 @@ func (m mockItem) GetItem() cache.Item {
 }
 
 func TestBatchJobsForSync(t *testing.T) {
-	f := batchJobsForSync(context.TODO(), 2)
-	batches, err := f(context.TODO(), []cache.ItemWrapper{
-		mockItem{
-			id:   "id1",
-			item: &Job{ID: "id1"},
-		},
+	t.Run("jobs < chunk size", func(t *testing.T) {
+		f := batchJobsForSync(context.TODO(), 2)
+		batches, err := f(context.TODO(), []cache.ItemWrapper{
+			mockItem{
+				id:   "id1",
+				item: &Job{ID: "id1"},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, batches, 1)
+		assert.Len(t, batches[0], 1)
+		assert.Equal(t, "id1", batches[0][0].GetID())
 	})
 
-	assert.NoError(t, err)
-	assert.Len(t, batches, 1)
-	assert.Len(t, batches[0], 1)
-	assert.Equal(t, "id1", batches[0][0].GetID())
+	t.Run("jobs > chunk size", func(t *testing.T) {
+		f := batchJobsForSync(context.TODO(), 2)
+		batches, err := f(context.TODO(), []cache.ItemWrapper{
+			mockItem{
+				id:   "id1",
+				item: &Job{ID: "id1"},
+			},
+			mockItem{
+				id:   "id2",
+				item: &Job{ID: "id2"},
+			},
+			mockItem{
+				id:   "id3",
+				item: &Job{ID: "id3"},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, batches, 2)
+		assert.Len(t, batches[0], 2)
+		assert.Len(t, batches[1], 1)
+		assert.Equal(t, "id1", batches[0][0].GetID())
+	})
+
+	t.Run("sub jobs > chunk size", func(t *testing.T) {
+		f := batchJobsForSync(context.TODO(), 2)
+		batches, err := f(context.TODO(), []cache.ItemWrapper{
+			mockItem{
+				id:   "id1",
+				item: &Job{ID: "id1"},
+			},
+			mockItem{
+				id:   "id2",
+				item: &Job{ID: "id2", SubJobs: createSubJobList(3)},
+			},
+			mockItem{
+				id:   "id3",
+				item: &Job{ID: "id3"},
+			},
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, batches, 3)
+		assert.Len(t, batches[0], 1)
+		assert.Len(t, batches[1], 1)
+		assert.Len(t, batches[2], 1)
+		assert.Equal(t, "id1", batches[0][0].GetID())
+	})
 }
 
 // Current values:
@@ -137,13 +190,32 @@ func Test_syncBatches(t *testing.T) {
 	c := NewCustomBatchClient(mocks2.NewMockAwsBatchClient(), "", "",
 		utils.NewRateLimiter("", 10, 20),
 		utils.NewRateLimiter("", 10, 20))
+
+	for i := 0; i < 10; i++ {
+		_, err := c.SubmitJob(ctx, &batch.SubmitJobInput{
+			JobName: refStr(fmt.Sprintf("job-%v", i)),
+		})
+
+		assert.NoError(t, err)
+	}
+
 	f := syncBatches(ctx, c, EventHandler{Updated: func(ctx context.Context, event Event) {
 	}}, 2)
 
 	i := &mocks3.ItemWrapper{}
-	i.OnGetItem().Return(&Job{})
+	i.OnGetItem().Return(&Job{
+		ID:      "job",
+		SubJobs: createSubJobList(3),
+	})
+	i.OnGetID().Return("job")
 
-	r, err := f(ctx, []cache.ItemWrapper{i, i, i})
-	assert.NoError(t, err)
-	assert.NotNil(t, r)
+	var resp []cache.ItemSyncResponse
+	var err error
+	for iter := 0; iter < 3; iter++ {
+		resp, err = f(ctx, []cache.ItemWrapper{i, i, i})
+		assert.NoError(t, err)
+		assert.Len(t, resp, 3)
+	}
+
+	assert.Len(t, resp, 3)
 }

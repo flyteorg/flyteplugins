@@ -78,7 +78,7 @@ func batchJobsForSync(_ context.Context, batchChunkSize int) cache.CreateBatches
 				continue
 			}
 
-			if currentBatchSize > 0 && currentBatchSize+len(j.SubJobs)+1 >= batchChunkSize {
+			if currentBatchSize > 0 && currentBatchSize+len(j.SubJobs)+1 > batchChunkSize {
 				batches = append(batches, currentBatch)
 				currentBatchSize = 0
 				currentBatch = make(cache.Batch, 0, batchChunkSize)
@@ -91,6 +91,8 @@ func batchJobsForSync(_ context.Context, batchChunkSize int) cache.CreateBatches
 		if len(currentBatch) != 0 {
 			batches = append(batches, currentBatch)
 		}
+
+		logger.Debugf(ctx, "Created batches from [%v] item(s). Batches [%v]", len(items), len(batches))
 
 		return batches, nil
 	}
@@ -225,11 +227,14 @@ func syncBatches(_ context.Context, client Client, handler EventHandler, batchCh
 			return []cache.ItemSyncResponse{}, nil
 		}
 
+		logger.Debugf(ctx, "Syncing jobs [%v].", len(jobIds))
+
 		res := make([]cache.ItemSyncResponse, 0, len(jobIds))
 		for startIndex := 0; startIndex+batchChunkSize <= len(jobIds); startIndex += batchChunkSize {
 			endIdx := minInt(batchChunkSize+startIndex, len(jobIds))
 			response, err := client.GetJobDetailsBatch(ctx, jobIds[startIndex:endIdx])
 			if err != nil {
+				logger.Errorf(ctx, "Failed to get job details from AWS. Error: %v", err)
 				return nil, err
 			}
 
@@ -264,11 +269,13 @@ func syncBatches(_ context.Context, client Client, handler EventHandler, batchCh
 					subJob.Attempts = job.Attempts
 				}
 
-				res = append(res, cache.ItemSyncResponse{
-					ID:     jobNames[job.ID],
-					Item:   job,
-					Action: action,
-				})
+				if jobName, found := jobNames[job.ID]; found {
+					res = append(res, cache.ItemSyncResponse{
+						ID:     jobName,
+						Item:   job,
+						Action: action,
+					})
+				}
 			}
 		}
 
