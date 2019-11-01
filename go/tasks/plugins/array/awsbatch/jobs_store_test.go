@@ -186,36 +186,73 @@ func BenchmarkStore_Get(b *testing.B) {
 }
 
 func Test_syncBatches(t *testing.T) {
-	ctx := context.Background()
-	c := NewCustomBatchClient(mocks2.NewMockAwsBatchClient(), "", "",
-		utils.NewRateLimiter("", 10, 20),
-		utils.NewRateLimiter("", 10, 20))
+	t.Run("chunksize < length", func(t *testing.T) {
+		ctx := context.Background()
+		c := NewCustomBatchClient(mocks2.NewMockAwsBatchClient(), "", "",
+			utils.NewRateLimiter("", 10, 20),
+			utils.NewRateLimiter("", 10, 20))
 
-	for i := 0; i < 10; i++ {
-		_, err := c.SubmitJob(ctx, &batch.SubmitJobInput{
-			JobName: refStr(fmt.Sprintf("job-%v", i)),
+		for i := 0; i < 10; i++ {
+			_, err := c.SubmitJob(ctx, &batch.SubmitJobInput{
+				JobName: refStr(fmt.Sprintf("job-%v", i)),
+			})
+
+			assert.NoError(t, err)
+		}
+
+		f := syncBatches(ctx, c, EventHandler{Updated: func(ctx context.Context, event Event) {
+		}}, 2)
+
+		i := &mocks3.ItemWrapper{}
+		i.OnGetItem().Return(&Job{
+			ID:      "job",
+			SubJobs: createSubJobList(3),
 		})
+		i.OnGetID().Return("job")
 
-		assert.NoError(t, err)
-	}
+		var resp []cache.ItemSyncResponse
+		var err error
+		for iter := 0; iter < 2; iter++ {
+			resp, err = f(ctx, []cache.ItemWrapper{i, i, i})
+			assert.NoError(t, err)
+			assert.Len(t, resp, 3)
+		}
 
-	f := syncBatches(ctx, c, EventHandler{Updated: func(ctx context.Context, event Event) {
-	}}, 2)
-
-	i := &mocks3.ItemWrapper{}
-	i.OnGetItem().Return(&Job{
-		ID:      "job",
-		SubJobs: createSubJobList(3),
-	})
-	i.OnGetID().Return("job")
-
-	var resp []cache.ItemSyncResponse
-	var err error
-	for iter := 0; iter < 3; iter++ {
-		resp, err = f(ctx, []cache.ItemWrapper{i, i, i})
-		assert.NoError(t, err)
 		assert.Len(t, resp, 3)
-	}
+	})
 
-	assert.Len(t, resp, 3)
+	t.Run("chunksize > length", func(t *testing.T) {
+		ctx := context.Background()
+		c := NewCustomBatchClient(mocks2.NewMockAwsBatchClient(), "", "",
+			utils.NewRateLimiter("", 10, 20),
+			utils.NewRateLimiter("", 10, 20))
+
+		for i := 0; i < 10; i++ {
+			_, err := c.SubmitJob(ctx, &batch.SubmitJobInput{
+				JobName: refStr(fmt.Sprintf("job-%v", i)),
+			})
+
+			assert.NoError(t, err)
+		}
+
+		f := syncBatches(ctx, c, EventHandler{Updated: func(ctx context.Context, event Event) {
+		}}, 10)
+
+		i := &mocks3.ItemWrapper{}
+		i.OnGetItem().Return(&Job{
+			ID:      "job",
+			SubJobs: createSubJobList(3),
+		})
+		i.OnGetID().Return("job")
+
+		var resp []cache.ItemSyncResponse
+		var err error
+		for iter := 0; iter < 2; iter++ {
+			resp, err = f(ctx, []cache.ItemWrapper{i, i, i})
+			assert.NoError(t, err)
+			assert.Len(t, resp, 3)
+		}
+
+		assert.Len(t, resp, 3)
+	})
 }

@@ -230,7 +230,7 @@ func syncBatches(_ context.Context, client Client, handler EventHandler, batchCh
 		logger.Debugf(ctx, "Syncing jobs [%v].", len(jobIds))
 
 		res := make([]cache.ItemSyncResponse, 0, len(jobIds))
-		for startIndex := 0; startIndex+batchChunkSize <= len(jobIds); startIndex += batchChunkSize {
+		for startIndex := 0; startIndex <= len(jobIds); startIndex += batchChunkSize {
 			endIdx := minInt(batchChunkSize+startIndex, len(jobIds))
 			response, err := client.GetJobDetailsBatch(ctx, jobIds[startIndex:endIdx])
 			if err != nil {
