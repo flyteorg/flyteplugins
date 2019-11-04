@@ -190,6 +190,18 @@ func minInt(a, b int) int {
 	return b
 }
 
+func toRanges(totalSize, chunkSize int) (startIdx, endIdx []int) {
+	startIdx = make([]int, 0, totalSize/chunkSize+1)
+	endIdx = make([]int, 0, totalSize/chunkSize+1)
+	for i := 0; i < totalSize; i += chunkSize {
+		endI := minInt(chunkSize+i, totalSize)
+		startIdx = append(startIdx, i)
+		endIdx = append(endIdx, endI)
+	}
+
+	return
+}
+
 func syncBatches(_ context.Context, client Client, handler EventHandler, batchChunkSize int) cache.SyncFunc {
 	return func(ctx context.Context, batch cache.Batch) ([]cache.ItemSyncResponse, error) {
 		jobIDsMap := make(map[JobID]*Job, len(batch))
@@ -230,9 +242,10 @@ func syncBatches(_ context.Context, client Client, handler EventHandler, batchCh
 		logger.Debugf(ctx, "Syncing jobs [%v].", len(jobIds))
 
 		res := make([]cache.ItemSyncResponse, 0, len(jobIds))
-		for startIndex := 0; startIndex <= len(jobIds); startIndex += batchChunkSize {
-			endIdx := minInt(batchChunkSize+startIndex, len(jobIds))
-			response, err := client.GetJobDetailsBatch(ctx, jobIds[startIndex:endIdx])
+		startIdx, endIdx := toRanges(len(jobIds), batchChunkSize)
+		for i := 0; i < len(startIdx); i++ {
+			logger.Debugf(ctx, "Syncing chunk [%v, %v) out of [%v] job ids.", startIdx[i], endIdx[i])
+			response, err := client.GetJobDetailsBatch(ctx, jobIds[startIdx[i]:endIdx[i]])
 			if err != nil {
 				logger.Errorf(ctx, "Failed to get job details from AWS. Error: %v", err)
 				return nil, err

@@ -7,6 +7,7 @@ package awsbatch
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/batch"
@@ -255,4 +256,29 @@ func Test_syncBatches(t *testing.T) {
 
 		assert.Len(t, resp, 3)
 	})
+}
+
+func Test_toRanges(t *testing.T) {
+	tests := []struct {
+		name         string
+		totalSize    int
+		chunkSize    int
+		wantStartIdx []int
+		wantEndIdx   []int
+	}{
+		{"even", 10, 2, []int{0, 2, 4, 6, 8}, []int{2, 4, 6, 8, 10}},
+		{"odd", 10, 3, []int{0, 3, 6, 9}, []int{3, 6, 9, 10}},
+		{"chunk>size", 2, 10, []int{0}, []int{2}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStartIdx, gotEndIdx := toRanges(tt.totalSize, tt.chunkSize)
+			if !reflect.DeepEqual(gotStartIdx, tt.wantStartIdx) {
+				t.Errorf("toRanges() gotStartIdx = %v, want %v", gotStartIdx, tt.wantStartIdx)
+			}
+			if !reflect.DeepEqual(gotEndIdx, tt.wantEndIdx) {
+				t.Errorf("toRanges() gotEndIdx = %v, want %v", gotEndIdx, tt.wantEndIdx)
+			}
+		})
+	}
 }
