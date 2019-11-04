@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flytestdlib/storage"
 )
@@ -46,7 +48,20 @@ func (w RemoteFileOutputWriter) Put(ctx context.Context, reader io.OutputReader)
 	}
 
 	if executionErr != nil {
-		return w.store.WriteProtobuf(ctx, w.GetErrorPath(), storage.Options{}, executionErr)
+		errorKind := core.ContainerError_RECOVERABLE
+		if !executionErr.IsRecoverable {
+			errorKind = core.ContainerError_NON_RECOVERABLE
+		}
+
+		errDoc := &core.ErrorDocument{
+			Error: &core.ContainerError{
+				Code:    executionErr.Code,
+				Message: executionErr.Message,
+				Kind:    errorKind,
+			},
+		}
+
+		return w.store.WriteProtobuf(ctx, w.GetErrorPath(), storage.Options{}, errDoc)
 	}
 
 	if literals != nil {
