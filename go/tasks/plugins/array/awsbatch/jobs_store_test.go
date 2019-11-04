@@ -34,10 +34,14 @@ func createJobWithID(id JobID) *Job {
 }
 
 func newJobsStore(t testing.TB, batchClient Client) *JobStore {
+	return newJobsStoreWithSize(t, batchClient, 1)
+}
+
+func newJobsStoreWithSize(t testing.TB, batchClient Client, size int) *JobStore {
 	store, err := NewJobStore(context.TODO(), batchClient, config.JobStoreConfig{
-		CacheSize:      1,
+		CacheSize:      size,
 		Parallelizm:    1,
-		BatchChunkSize: 1,
+		BatchChunkSize: 2,
 		ResyncPeriod:   config2.Duration{Duration: 1000},
 	}, EventHandler{}, promutils.NewTestScope())
 	assert.NoError(t, err)
@@ -167,7 +171,7 @@ func TestBatchJobsForSync(t *testing.T) {
 // BenchmarkStore_Get-8           	  200000	     11400 ns/op
 func BenchmarkStore_Get(b *testing.B) {
 	n := b.N
-	s := newJobsStore(b, nil)
+	s := newJobsStoreWithSize(b, nil, b.N)
 	assert.NotNil(b, s)
 	createName := func(i int) string {
 		return fmt.Sprintf("Id%v", i)
