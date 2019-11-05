@@ -1,7 +1,12 @@
 package awsbatch
 
 import (
+	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/lyft/flytestdlib/promutils/labeled"
 	"testing"
+
+	"github.com/lyft/flytestdlib/promutils"
+	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 
@@ -23,6 +28,10 @@ import (
 	"github.com/lyft/flytestdlib/bitarray"
 )
 
+func init() {
+	labeled.SetMetricKeys(contextutils.RoutineLabelKey)
+}
+
 func TestCheckSubTasksState(t *testing.T) {
 	ctx := context.Background()
 	tID := &mocks.TaskExecutionID{}
@@ -42,7 +51,7 @@ func TestCheckSubTasksState(t *testing.T) {
 			utils.NewRateLimiter("", 10, 20))
 
 		jobStore := newJobsStore(t, batchClient)
-		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
+		newState, err := CheckSubTasksState(ctx, tMeta, "", jobStore, nil, &config.Config{}, &State{
 			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   5,
@@ -88,7 +97,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
+		newState, err := CheckSubTasksState(ctx, tMeta, "", jobStore, nil, &config.Config{}, &State{
 			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   5,
@@ -124,7 +133,10 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		newState, err := CheckSubTasksState(ctx, tMeta, jobStore, &config.Config{}, &State{
+		inMemDatastore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+
+		newState, err := CheckSubTasksState(ctx, tMeta, "", jobStore, inMemDatastore, &config.Config{}, &State{
 			State: &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   2,

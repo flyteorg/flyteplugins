@@ -387,15 +387,24 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 	outputReaders := make([]io.OutputReader, 0, size)
 
 	for i := 0; i < size; i++ {
-		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
+		reader, err := ConstructOutputReader(ctx, dataStore, outputPrefix, i)
 		if err != nil {
-			return outputReaders, err
+			return nil, err
 		}
 
-		outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference)
-		reader := ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999))
 		outputReaders = append(outputReaders, reader)
 	}
 
 	return outputReaders, nil
+}
+
+func ConstructOutputReader(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
+	index int) (io.OutputReader, error) {
+	dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(index))
+	if err != nil {
+		return nil, err
+	}
+
+	outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference)
+	return ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999)), nil
 }

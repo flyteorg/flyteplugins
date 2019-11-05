@@ -6,6 +6,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lyft/flytestdlib/storage"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
@@ -31,7 +35,8 @@ const (
 )
 
 func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	cfg *Config, currentState *arrayCore.State) (newState *arrayCore.State, logLinks []*idlCore.TaskLog, err error) {
+	dataStore *storage.DataStore, outputPrefix storage.DataReference, currentState *arrayCore.State) (
+	newState *arrayCore.State, logLinks []*idlCore.TaskLog, err error) {
 
 	logLinks = make([]*idlCore.TaskLog, 0, 4)
 	newState = currentState
@@ -71,8 +76,17 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 			msg.Collect(childIdx, phaseInfo.Err().String())
 		}
 
-		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(phaseInfo.Phase()))
-		newArrayStatus.Summary.Inc(phaseInfo.Phase())
+		actualPhase := phaseInfo.Phase()
+		if phaseInfo.Phase().IsSuccess() {
+			originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
+			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, childIdx, originalIdx)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
+		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(actualPhase))
+		newArrayStatus.Summary.Inc(actualPhase)
 	}
 
 	newState = newState.SetArrayStatus(newArrayStatus)

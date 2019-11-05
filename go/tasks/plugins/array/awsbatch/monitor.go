@@ -3,6 +3,9 @@ package awsbatch
 import (
 	"context"
 
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+	"github.com/lyft/flytestdlib/storage"
+
 	"github.com/lyft/flytestdlib/logger"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
@@ -27,8 +30,8 @@ func createSubJobList(count int) []*Job {
 	return res
 }
 
-func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, jobStore *JobStore,
-	cfg *config.Config, currentState *State) (newState *State, err error) {
+func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, outputPrefix storage.DataReference, jobStore *JobStore,
+	dataStore *storage.DataStore, cfg *config.Config, currentState *State) (newState *State, err error) {
 
 	newState = currentState
 	parentState := currentState.State
@@ -59,14 +62,21 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	for childIdx, subJob := range job.SubJobs {
+		actualPhase := subJob.Status.Phase
 		if subJob.Status.Phase.IsFailure() {
 			if len(subJob.Status.Message) > 0 {
 				msg.Collect(childIdx, subJob.Status.Message)
 			}
+		} else if subJob.Status.Phase.IsSuccess() {
+			originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
+			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, childIdx, originalIdx)
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(subJob.Status.Phase))
-		newArrayStatus.Summary.Inc(subJob.Status.Phase)
+		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(actualPhase))
+		newArrayStatus.Summary.Inc(actualPhase)
 	}
 
 	parentState = parentState.SetArrayStatus(newArrayStatus)
