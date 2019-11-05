@@ -31,10 +31,6 @@ const (
 	PhaseQueryFailed
 )
 
-const (
-	QuboleResourceNamespace core.ResourceNamespace = "qubole"
-)
-
 func (p ExecutionPhase) String() string {
 	switch p {
 	case PhaseNotStarted:
@@ -69,14 +65,14 @@ type ExecutionState struct {
 
 // This is the main state iteration
 func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
-	executionsCache cache.AutoRefresh, cfg *config.Config) (ExecutionState, error) {
+	executionsCache cache.AutoRefresh, resourceNamespace core.ResourceNamespace, cfg *config.Config) (ExecutionState, error) {
 
 	var transformError error
 	var newState ExecutionState
 
 	switch currentState.Phase {
 	case PhaseNotStarted:
-		newState, transformError = GetAllocationToken(ctx, tCtx)
+		newState, transformError = GetAllocationToken(ctx, resourceNamespace, tCtx)
 
 	case PhaseQueued:
 		newState, transformError = KickOffQuery(ctx, tCtx, currentState, quboleClient, executionsCache, cfg)
@@ -145,10 +141,10 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 	return nil
 }
 
-func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext) (ExecutionState, error) {
+func GetAllocationToken(ctx context.Context, resourceNamespace core.ResourceNamespace, tCtx core.TaskExecutionContext) (ExecutionState, error) {
 	newState := ExecutionState{}
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, QuboleResourceNamespace, uniqueId)
+	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, uniqueId)
 	if err != nil {
 		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId, err)
@@ -284,10 +280,10 @@ func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState Exe
 	return nil
 }
 
-func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState) error {
+func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, resourceNamespace core.ResourceNamespace, _ ExecutionState) error {
 	// Release allocation token
 	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	err := tCtx.ResourceManager().ReleaseResource(ctx, QuboleResourceNamespace, uniqueId)
+	err := tCtx.ResourceManager().ReleaseResource(ctx, resourceNamespace, uniqueId)
 	if err != nil {
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueId, err)
 		return err
