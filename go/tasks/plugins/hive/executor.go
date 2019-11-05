@@ -22,7 +22,6 @@ const quboleHiveExecutorId = "qubole-hive-executor"
 const pluginStateVersion = 0
 
 const hiveTaskType = "hive" // This needs to match the type defined in Flytekit constants.py
-const quboleResourceQuota = 200
 const quboleResourceNamespace = "qubole"
 
 type QuboleHiveExecutor struct {
@@ -107,7 +106,7 @@ func QuboleHiveExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core
 		return nil, err
 	}
 
-	if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, quboleResourceNamespace, quboleResourceQuota); err != nil {
+	if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, quboleResourceNamespace, cfg.Limit); err != nil {
 		return nil, err
 	}
 

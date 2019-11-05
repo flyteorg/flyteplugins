@@ -31,7 +31,7 @@ var (
 		CommandAPIPath:  MustParse("/api/v1.2/commands/"),
 		AnalyzeLinkPath: MustParse("/v2/analyze"),
 		TokenKey:        "FLYTE_QUBOLE_CLIENT_TOKEN",
-		Limit:           100,
+		Limit:           200,
 		LruCacheSize:    2000,
 		Workers:         15,
 	}
