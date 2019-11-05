@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/lyft/flytestdlib/logger"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -169,13 +169,45 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 
 func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 	code = "UnknownError"
-	message = "Container/Pod failed. No message received from kubernetes. Could be permissions?"
-	if status.Reason != "" {
+	message = "Container/Pod failed. No message received from kubernetes."
+	if len(status.Reason) > 0 {
 		code = status.Reason
 	}
-	if status.Message != "" {
+
+	if len(status.Message) > 0 {
 		message = status.Message
+	} else {
+		for _, c := range status.InitContainerStatuses {
+			if c.LastTerminationState.Terminated != nil {
+				message += fmt.Sprintf("\r\nInit Container [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
+					c.ContainerID,
+					c.LastTerminationState.Terminated.ExitCode,
+					c.LastTerminationState.Terminated.Reason,
+					c.LastTerminationState.Terminated.Message)
+			}
+		}
+
+		for _, c := range status.ContainerStatuses {
+			if c.LastTerminationState.Terminated != nil {
+				message += fmt.Sprintf("\r\nContainer [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
+					c.ContainerID,
+					c.LastTerminationState.Terminated.ExitCode,
+					c.LastTerminationState.Terminated.Reason,
+					c.LastTerminationState.Terminated.Message)
+			}
+		}
+
+		for _, c := range status.EphemeralContainerStatuses {
+			if c.LastTerminationState.Terminated != nil {
+				message += fmt.Sprintf("\r\nEphemeral Container [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
+					c.ContainerID,
+					c.LastTerminationState.Terminated.ExitCode,
+					c.LastTerminationState.Terminated.Reason,
+					c.LastTerminationState.Terminated.Message)
+			}
+		}
 	}
+
 	return
 }
 
@@ -200,4 +232,3 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
 
 	return lastTransitionTime
 }
-
