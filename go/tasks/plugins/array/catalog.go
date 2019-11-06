@@ -133,7 +133,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	return state, nil
 }
 
-func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state *arrayCore.State) (*arrayCore.State, error) {
+func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state *arrayCore.State, phaseOnSuccess arrayCore.Phase) (*arrayCore.State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -144,8 +144,8 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	if tMeta := taskTemplate.Metadata; tMeta == nil || !tMeta.Discoverable {
-		logger.Debug(ctx, "Task is not marked as discoverable. Moving to AssembleFinalOutput phase.")
-		return state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion).SetReason("Task is not discoverable."), nil
+		logger.Debugf(ctx, "Task is not marked as discoverable. Moving to [%v] phase.", phaseOnSuccess)
+		return state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("Task is not discoverable."), nil
 	}
 
 	// Extract the custom plugin pb
@@ -171,17 +171,26 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	iface := *taskTemplate.Interface
 	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
 
+	// Do not cache failed tasks. Retrieve the final phase from array status and unset the non-successful ones.
+	tasksToCache := state.GetIndexesToCache().DeepCopy()
+	for idx, phaseIdx := range state.ArrayStatus.Detailed.GetItems() {
+		phase := core.Phases[phaseIdx]
+		if !phase.IsSuccess() {
+			tasksToCache.Clear(uint(idx))
+		}
+	}
+
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		iface, state.GetIndexesToCache(), inputReaders, outputReaders)
+		iface, &tasksToCache, inputReaders, outputReaders)
 
 	if err != nil {
 		return nil, err
 	}
 
 	if len(catalogWriterItems) == 0 {
-		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion).SetReason("No outputs need to be cached.")
+		state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("No outputs need to be cached.")
 		return state, nil
 	}
 
@@ -191,7 +200,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	if allWritten {
-		state.SetPhase(arrayCore.PhaseAssembleFinalOutput, core.DefaultPhaseVersion).SetReason("Finished writing catalog cache.")
+		state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("Finished writing catalog cache.")
 	}
 
 	return state, nil

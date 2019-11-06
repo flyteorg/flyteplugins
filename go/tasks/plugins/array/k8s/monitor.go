@@ -100,7 +100,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 	}
 
 	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
-	if phase == arrayCore.PhasePermanentFailure || phase == arrayCore.PhaseRetryableFailure {
+	if phase == arrayCore.PhaseWriteToDiscoveryThenFail {
 		errorMsg := msg.Summary(GetConfig().MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg)
 	}

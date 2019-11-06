@@ -82,8 +82,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case arrayCore.PhaseAssembleFinalOutput:
 		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, arrayCore.PhaseSuccess, pluginState.State)
 
+	case arrayCore.PhaseWriteToDiscoveryThenFail:
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalError)
+
 	case arrayCore.PhaseWriteToDiscovery:
-		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State)
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalOutput)
 
 	case arrayCore.PhaseAssembleFinalError:
 		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhaseRetryableFailure, pluginState.State)
