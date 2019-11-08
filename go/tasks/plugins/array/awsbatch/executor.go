@@ -109,7 +109,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	logger.Infof(ctx, "Exiting handle with phase [%v]", pluginState.State.CurrentPhase)
 
 	// Determine transition information from the state
-	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, logLinks)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, logLinks)
+	if err != nil {
+		return core.UnknownTransition, err
+	}
+
 	return core.DoTransition(phaseInfo), nil
 }
 

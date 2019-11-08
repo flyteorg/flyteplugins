@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/lyft/flytestdlib/errors"
@@ -155,7 +156,7 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog) core.PhaseInfo {
+func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog) (core.PhaseInfo, error) {
 
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
@@ -190,6 +191,9 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	case PhaseAssembleFinalError:
 		fallthrough
 
+	case PhaseWriteToDiscoveryThenFail:
+		fallthrough
+
 	case PhaseWriteToDiscovery:
 		version := GetPhaseVersionOffset(p, state.GetOriginalArraySize()) + version
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
@@ -210,9 +214,11 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 		} else {
 			phaseInfo = core.PhaseInfoFailure(ErrorK8sArrayGeneric, state.GetReason(), nowTaskInfo)
 		}
+	default:
+		return phaseInfo, fmt.Errorf("failed to map custom state phase to core phase. State Phase [%v]", p)
 	}
 
-	return phaseInfo
+	return phaseInfo, nil
 }
 
 func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {

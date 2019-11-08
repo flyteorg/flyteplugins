@@ -52,7 +52,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 		s := State{
 			CurrentPhase: PhaseStart,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseInitializing, phaseInfo.Phase())
 	})
 
@@ -61,7 +62,9 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			CurrentPhase: PhaseLaunch,
 			PhaseVersion: 0,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
+
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
 
@@ -72,7 +75,9 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			OriginalArraySize:  10,
 			ExecutionArraySize: 5,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
+
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 		assert.Equal(t, uint32(368), phaseInfo.Version())
 	})
@@ -84,7 +89,9 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			OriginalArraySize:  10,
 			ExecutionArraySize: 5,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
+
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 		assert.Equal(t, uint32(548), phaseInfo.Version())
 	})
@@ -94,7 +101,9 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			CurrentPhase: PhaseSuccess,
 			PhaseVersion: 0,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
+
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseSuccess, phaseInfo.Phase())
 	})
 
@@ -103,7 +112,9 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			CurrentPhase: PhaseRetryableFailure,
 			PhaseVersion: 0,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
+
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 	})
 
@@ -112,7 +123,9 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			CurrentPhase: PhasePermanentFailure,
 			PhaseVersion: 0,
 		}
-		phaseInfo := MapArrayStateToPluginPhase(ctx, &s, nil)
+
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, core.PhasePermanentFailure, phaseInfo.Phase())
 	})
 }

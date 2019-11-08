@@ -108,7 +108,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks)
+	if err != nil {
+		return core.UnknownTransition, err
+	}
+
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 

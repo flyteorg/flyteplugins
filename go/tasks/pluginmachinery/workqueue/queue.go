@@ -137,7 +137,6 @@ func (c workItemCache) Add(item *workItemWrapper) (evicted bool) {
 
 func copyAllowedLogFields(ctx context.Context) map[string]interface{} {
 	logFields := contextutils.GetLogFields(ctx)
-	logger.Debugf(ctx, "Copied log fields from context. Count [%v]", len(logFields))
 	delete(logFields, contextutils.RoutineLabelKey.String())
 	return logFields
 }
