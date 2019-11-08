@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -34,4 +37,9 @@ func (k Key) String() string {
 type Client interface {
 	Get(ctx context.Context, key Key) (io.OutputReader, error)
 	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) error
+}
+
+func IsNotFound(err error) bool {
+	taskStatus, ok := status.FromError(err)
+	return ok && taskStatus.Code() == codes.NotFound
 }

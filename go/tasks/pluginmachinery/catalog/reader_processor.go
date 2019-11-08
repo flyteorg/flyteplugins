@@ -7,11 +7,8 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 
-	"github.com/lyft/flytestdlib/logger"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 )
@@ -49,9 +46,8 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 
 	op, err := p.catalogClient.Get(ctx, wi.key)
 	if err != nil {
-		if taskStatus, ok := status.FromError(err); ok && taskStatus.Code() == codes.NotFound {
+		if IsNotFound(err) {
 			logger.Infof(ctx, "Artifact not found in Catalog. Key: %v", wi.key)
-
 			wi.cached = false
 			return workqueue.WorkStatusSucceeded, nil
 		}
@@ -76,6 +72,8 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 	}
 
 	wi.cached = true
+
+	logger.Debugf(ctx, "Successfully wrote to catalog. Key [%v]", wi.key)
 	return workqueue.WorkStatusSucceeded, nil
 }
 
