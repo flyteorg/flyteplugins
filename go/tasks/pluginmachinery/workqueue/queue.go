@@ -181,7 +181,7 @@ func (q *queue) Get(id WorkItemID) (info WorkItemInfo, found bool, err error) {
 
 func contextWithValues(ctx context.Context, fields map[string]interface{}) context.Context {
 	for key, value := range fields {
-		ctx = context.WithValue(ctx, key, value)
+		ctx = context.WithValue(ctx, contextutils.Key(key), value)
 	}
 
 	return ctx

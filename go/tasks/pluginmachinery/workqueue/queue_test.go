@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lyft/flytestdlib/contextutils"
+
 	"github.com/go-test/deep"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -16,8 +18,9 @@ import (
 )
 
 type singleStatusProcessor struct {
-	targetStatus WorkStatus
-	expectedType interface{}
+	targetStatus          WorkStatus
+	expectedType          interface{}
+	expectedContextFields []contextutils.Key
 }
 
 func (s singleStatusProcessor) Process(ctx context.Context, workItem WorkItem) (WorkStatus, error) {
@@ -26,6 +29,14 @@ func (s singleStatusProcessor) Process(ctx context.Context, workItem WorkItem) (
 	if comingType != expectedType {
 		return WorkStatusFailed, fmt.Errorf("expected Type != incoming Type. %v != %v", expectedType, comingType)
 	}
+
+	for _, expectedField := range s.expectedContextFields {
+		actualVal := ctx.Value(expectedField)
+		if actualVal == nil {
+			return WorkStatusFailed, fmt.Errorf("expected field not found. [%v]", expectedField)
+		}
+	}
+
 	return s.targetStatus, nil
 }
 
@@ -180,6 +191,37 @@ func Test_queue_Get(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_queue_contextFields(t *testing.T) {
+	q, err := NewIndexedWorkQueue("test1", singleStatusProcessor{
+		targetStatus:          WorkStatusSucceeded,
+		expectedType:          &workItemWrapper{},
+		expectedContextFields: []contextutils.Key{contextutils.RoutineLabelKey, contextutils.NamespaceKey},
+	}, Config{Workers: 1, MaxRetries: 0, IndexCacheMaxItems: 1}, promutils.NewTestScope())
+	assert.NoError(t, err)
+
+	ctx, cancelNow := context.WithCancel(context.Background())
+	defer cancelNow()
+	assert.NoError(t, q.Start(ctx))
+
+	ctx = context.WithValue(context.Background(), contextutils.NamespaceKey, "blah")
+	assert.NoError(t, q.Queue(ctx, "abc", &workItemWrapper{
+		id:        "abc",
+		payload:   "something",
+		logFields: copyAllowedLogFields(ctx),
+	}))
+
+	wi, found, err := q.Get("abc")
+	for ; err == nil && (wi.Status() != WorkStatusSucceeded && wi.Status() != WorkStatusFailed); wi, found, err = q.Get("abc") {
+		assert.True(t, found)
+		assert.NoError(t, err)
+	}
+
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, WorkStatusSucceeded.String(), wi.Status().String())
+	assert.NoError(t, wi.Error())
 }
 
 func Test_queue_Start(t *testing.T) {

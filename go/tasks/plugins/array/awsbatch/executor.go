@@ -110,7 +110,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	// Determine transition information from the state
 	phaseInfo := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, logLinks)
-	return core.DoTransitionType(core.TransitionTypeEphemeral, phaseInfo), nil
+	return core.DoTransition(phaseInfo), nil
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
