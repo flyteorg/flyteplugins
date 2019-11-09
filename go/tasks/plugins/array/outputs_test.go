@@ -185,6 +185,8 @@ func TestAssembleFinalOutputs(t *testing.T) {
 
 		ow := &mocks2.OutputWriter{}
 		ow.OnPutMatch(mock.Anything, mock.Anything).Return(nil)
+		ow.OnGetOutputPath().Return("/location/prefix/outputs.pb")
+		ow.OnGetErrorPath().Return("/location/prefix/error.pb")
 
 		d, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 		assert.NoError(t, err)

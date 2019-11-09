@@ -208,7 +208,33 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 			return nil, err
 		}
 
-		state = state.SetPhase(terminalPhase, 0).SetReason("Finished assembling outputs/errors.")
+		outputExists, err := or.Exists(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if outputExists {
+			state = state.SetPhase(terminalPhase, 0).SetReason("Assembled outputs")
+			return state, nil
+		}
+
+		isErr, err := or.IsError(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if isErr {
+			ee, err := or.ReadError(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			state = state.SetPhase(terminalPhase, 0).
+				SetReason("Assembled error").
+				SetExecutionErr(ee.ExecutionError)
+		} else {
+			state = state.SetPhase(terminalPhase, 0).SetReason("No output or error assembled.")
+		}
 	case workqueue.WorkStatusFailed:
 		state = state.SetExecutionErr(&core.ExecutionError{
 			Message: w.Error().Error(),
