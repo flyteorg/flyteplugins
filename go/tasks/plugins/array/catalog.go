@@ -378,16 +378,25 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 	outputWriters := make([]io.OutputWriter, 0, size)
 
 	for i := 0; i < size; i++ {
-		dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(i))
+		ow, err := ConstructOutputWriter(ctx, dataStore, outputPrefix, i)
 		if err != nil {
 			return outputWriters, err
 		}
 
-		writer := ioutils.NewRemoteFileOutputWriter(ctx, dataStore, ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference))
-		outputWriters = append(outputWriters, writer)
+		outputWriters = append(outputWriters, ow)
 	}
 
 	return outputWriters, nil
+}
+
+func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
+	index int) (io.OutputWriter, error) {
+	dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(index))
+	if err != nil {
+		return nil, err
+	}
+
+	return ioutils.NewRemoteFileOutputWriter(ctx, dataStore, ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference)), nil
 }
 
 func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,

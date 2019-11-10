@@ -3,6 +3,9 @@ package awsbatch
 import (
 	"context"
 
+	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -63,12 +66,41 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 
 	for childIdx, subJob := range job.SubJobs {
 		actualPhase := subJob.Status.Phase
+		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 		if subJob.Status.Phase.IsFailure() {
 			if len(subJob.Status.Message) > 0 {
+				// If the service reported an error but there is no error.pb written, write one with the
+				// service-provided error message.
 				msg.Collect(childIdx, subJob.Status.Message)
+				or, err := array.ConstructOutputReader(ctx, dataStore, outputPrefix, originalIdx)
+				if err != nil {
+					return nil, err
+				}
+
+				if hasErr, err := or.IsError(ctx); err != nil {
+					return nil, err
+				} else if !hasErr {
+					// The subtask has not produced an error.pb, write one.
+					ow, err := array.ConstructOutputWriter(ctx, dataStore, outputPrefix, originalIdx)
+					if err != nil {
+						return nil, err
+					}
+
+					if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, &io.ExecutionError{
+						ExecutionError: &core2.ExecutionError{
+							Code:     "",
+							Message:  subJob.Status.Message,
+							ErrorUri: "",
+						},
+						IsRecoverable: false,
+					})); err != nil {
+						return nil, err
+					}
+				}
+			} else {
+				msg.Collect(childIdx, "Job failed")
 			}
 		} else if subJob.Status.Phase.IsSuccess() {
-			originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, childIdx, originalIdx)
 			if err != nil {
 				return nil, err
@@ -80,6 +112,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	parentState = parentState.SetArrayStatus(newArrayStatus)
+	// Based on the summary produced above, deduce the overall phase of the task.
 	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
 	if phase == arrayCore.PhaseWriteToDiscoveryThenFail {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)
