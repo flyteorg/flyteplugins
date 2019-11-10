@@ -128,6 +128,18 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhasePermanentFailure, phaseInfo.Phase())
 	})
+
+	t.Run("All phases", func(t *testing.T) {
+		for _, p := range PhaseValues() {
+			s := State{
+				CurrentPhase: p,
+			}
+
+			phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+			assert.NoError(t, err)
+			assert.NotEqual(t, core.PhaseUndefined, phaseInfo.Phase())
+		}
+	})
 }
 
 func Test_calculateOriginalIndex(t *testing.T) {

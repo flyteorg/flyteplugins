@@ -274,6 +274,8 @@ func (a assembleErrorsWorker) Process(ctx context.Context, workItem workqueue.Wo
 				}
 
 				ec.Collect(idx, executionError.String())
+			} else {
+				ec.Collect(idx, "Job Failed.")
 			}
 		}
 	}
