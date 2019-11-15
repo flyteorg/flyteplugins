@@ -132,8 +132,7 @@ func Test_getEnvVarsForTask(t *testing.T) {
 
 	assert.NoError(t, flyteK8sConfig.SetK8sPluginConfig(&flyteK8sConfig.K8sPluginConfig{
 		DefaultEnvVars: map[string]string{
-			"MyKey":      "BadVal",
-			"MyOtherVal": "MyOtherVal",
+			"MyKey": "BadVal",
 		},
 	}))
 
@@ -145,10 +144,6 @@ func Test_getEnvVarsForTask(t *testing.T) {
 		{
 			Name:  "MyKey",
 			Value: "MyVal",
-		},
-		{
-			Name:  "MyOtherVal",
-			Value: "MyOtherVal",
 		},
 	}, envVars)
 }
