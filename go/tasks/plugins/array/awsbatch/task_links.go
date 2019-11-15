@@ -70,7 +70,8 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 
 	for childIdx, subJob := range job.SubJobs {
 		originalIndex := core.CalculateOriginalIndex(childIdx, state.GetIndexesToCache())
-		finalPhaseIdx := state.GetArrayStatus().Detailed.GetItem(childIdx)
+		detailedArrayStatus := state.GetArrayStatus().Detailed
+		finalPhaseIdx := detailedArrayStatus.GetItem(childIdx)
 		finalPhase := pluginCore.Phases[finalPhaseIdx]
 
 		// The caveat here is that we will mark all attempts with the final phase we are tracking in the state.
