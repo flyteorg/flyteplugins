@@ -68,9 +68,9 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 		return logLinks, nil
 	}
 
+	detailedArrayStatus := state.GetArrayStatus().Detailed
 	for childIdx, subJob := range job.SubJobs {
 		originalIndex := core.CalculateOriginalIndex(childIdx, state.GetIndexesToCache())
-		detailedArrayStatus := state.GetArrayStatus().Detailed
 		finalPhaseIdx := detailedArrayStatus.GetItem(childIdx)
 		finalPhase := pluginCore.Phases[finalPhaseIdx]
 
