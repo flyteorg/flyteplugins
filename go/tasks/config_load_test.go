@@ -78,6 +78,8 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("spark-config-test", func(t *testing.T) {
 		assert.NotNil(t, spark.GetSparkConfig())
+		assert.NotNil(t, spark.GetSparkConfig().SparkNodeSelector)
+		assert.NotNil(t, spark.GetSparkConfig().SparkTolerations)
 		assert.NotNil(t, spark.GetSparkConfig().DefaultSparkConfig)
 	})
 

@@ -44,6 +44,18 @@ plugins:
       - spark.hadoop.fs.s3a.multipart.threshold: "536870912"
       - spark.blacklist.enabled: "true"
       - spark.blacklist.timeout: "5m"
+    spark-tolerations:
+      - key: flyte/spark
+        value: dedicated
+        operator: Equal
+        effect: NoSchedule
+    spark-node-selector:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: instance-type
+              operator: In
+              values:
+                - test-type
   # Logging configuration
   logs:
     kubernetes-enabled: true

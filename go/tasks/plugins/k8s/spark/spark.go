@@ -3,6 +3,7 @@ package spark
 import (
 	"context"
 	"fmt"
+	"k8s.io/api/core/v1"
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -37,6 +38,8 @@ var sparkTaskType = "spark"
 type Config struct {
 	DefaultSparkConfig    map[string]string `json:"spark-config-default" pflag:",Key value pairs of default spark configuration that should be applied to every SparkJob"`
 	SparkHistoryServerURL string            `json:"spark-history-server-url" pflag:",URL for SparkHistory Server that each job will publish the execution history to."`
+	SparkTolerations      []v1.Toleration   `json:"spark-tolerations"  pflag:"-,Default tolerations to be applied"`
+	SparkNodeSelector     *v1.NodeSelector  `json:"spark-node-selector"  pflag:",Default node-selector to be applied"`
 }
 
 var (
@@ -118,6 +121,24 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			Image:       &container.Image,
 			EnvVars:     sparkEnvVars,
 		},
+	}
+
+	if len(GetSparkConfig().SparkTolerations) > 0 {
+		driverSpec.Tolerations = GetSparkConfig().SparkTolerations
+		executorSpec.Tolerations = GetSparkConfig().SparkTolerations
+	}
+
+	if GetSparkConfig().SparkNodeSelector != nil {
+		driverSpec.Affinity = &v1.Affinity{
+			NodeAffinity: &v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: GetSparkConfig().SparkNodeSelector,
+			},
+		}
+		executorSpec.Affinity = &v1.Affinity{
+			NodeAffinity: &v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: GetSparkConfig().SparkNodeSelector,
+			},
+		}
 	}
 
 	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
