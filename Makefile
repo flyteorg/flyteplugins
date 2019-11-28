@@ -1,4 +1,3 @@
-export GO111MODULE=off
 export REPOSITORY=flyteplugins
 include boilerplate/lyft/golang_test_targets/Makefile
 
