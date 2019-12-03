@@ -169,7 +169,7 @@ func GetAllocationToken(ctx context.Context, resourceNamespace core.ResourceName
 func validateQuboleHiveJob(hiveJob plugins.QuboleHiveJob) error {
 	if hiveJob.Query == nil {
 		return errors.Errorf(errors.BadTaskSpecification,
-			"Query could not be found. Please ensure that you are at least on Flytekit version 1.21.6 or later.")
+			"Query could not be found. Please ensure that you are at least on Flytekit version 0.3.0 or later.")
 	}
 	return nil
 }
