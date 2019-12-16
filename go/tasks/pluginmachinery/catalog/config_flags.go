@@ -41,11 +41,13 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "reader.workers"), defaultConfig.ReaderWorkqueueConfig.Workers, "Number of concurrent workers to start processing the queue.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "reader.maxRetries"), defaultConfig.ReaderWorkqueueConfig.MaxRetries, "Maximum number of retries per item.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "reader.maxItems"), defaultConfig.ReaderWorkqueueConfig.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writer.workers"), defaultConfig.WriterWorkqueueConfig.Workers, "Number of concurrent workers to start processing the queue.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writer.maxRetries"), defaultConfig.WriterWorkqueueConfig.MaxRetries, "Maximum number of retries per item.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writer.maxItems"), defaultConfig.WriterWorkqueueConfig.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "reader.queue.workers"), defaultConfig.Reader.Workqueue.Workers, "Number of concurrent workers to start processing the queue.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "reader.queue.maxRetries"), defaultConfig.Reader.Workqueue.MaxRetries, "Maximum number of retries per item.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "reader.queue.maxItems"), defaultConfig.Reader.Workqueue.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "reader.itemsPerRound"), defaultConfig.Reader.MaxItemsPerRound, "Max number of items to process in each round. Under load,  this ensures fairness between different array jobs and avoid head-of-line blocking.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writer.queue.workers"), defaultConfig.Writer.Workqueue.Workers, "Number of concurrent workers to start processing the queue.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writer.queue.maxRetries"), defaultConfig.Writer.Workqueue.MaxRetries, "Maximum number of retries per item.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writer.queue.maxItems"), defaultConfig.Writer.Workqueue.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writer.itemsPerRound"), defaultConfig.Writer.MaxItemsPerRound, "Max number of items to process in each round. Under load,  this ensures fairness between different array jobs and avoid head-of-line blocking.")
 	return cmdFlags
 }

@@ -59,7 +59,7 @@ func runDetermineDiscoverabilityTest(t testing.TB, taskTemplate *core.TaskTempla
 	assert.NoError(t, err)
 
 	cat := &catalogMocks.AsyncClient{}
-	cat.OnDownloadMatch(mock.Anything, mock.Anything).Return(future, nil)
+	cat.OnDownloadArrayMatch(mock.Anything, mock.Anything).Return(future, nil)
 
 	ir := &ioMocks.InputReader{}
 	ir.OnGetInputPrefixPath().Return("/prefix/")

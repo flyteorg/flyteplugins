@@ -59,15 +59,13 @@ func (r downloadFuture) GetCachedCount() int {
 	return r.cachedCount
 }
 
-func newDownloadFuture(status ResponseStatus, err error, cachedResults *bitarray.BitSet, resultsSize int,
-	cachedCount int) downloadFuture {
+func newDownloadFuture(status ResponseStatus, err error, cachedResults *bitarray.BitSet, resultsSize int) downloadFuture {
 
 	return downloadFuture{
 		future: &future{
 			responseStatus: status,
 			err:            err,
 		},
-		cachedCount:   cachedCount,
 		cachedResults: cachedResults,
 		resultsSize:   resultsSize,
 	}

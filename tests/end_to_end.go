@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"github.com/go-test/deep"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -199,15 +198,19 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 			catData.Store(key, o)
 		})
 	cat, err := catalog.NewAsyncClient(catClient, catalog.Config{
-		ReaderWorkqueueConfig: workqueue.Config{
-			MaxRetries:         0,
-			Workers:            2,
-			IndexCacheMaxItems: 100,
+		Reader: catalog.ProcessorConfig{
+			Workqueue: workqueue.Config{
+				MaxRetries:         0,
+				Workers:            2,
+				IndexCacheMaxItems: 100,
+			},
 		},
-		WriterWorkqueueConfig: workqueue.Config{
-			MaxRetries:         0,
-			Workers:            2,
-			IndexCacheMaxItems: 100,
+		Writer: catalog.ProcessorConfig{
+			Workqueue: workqueue.Config{
+				MaxRetries:         0,
+				Workers:            2,
+				IndexCacheMaxItems: 100,
+			},
 		},
 	}, promutils.NewTestScope())
 	assert.NoError(t, err)

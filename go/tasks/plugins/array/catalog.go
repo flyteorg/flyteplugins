@@ -55,27 +55,21 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, nil
 	}
 
-	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
-	// build input readers
-	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
-	if err != nil {
-		return state, err
-	}
+	iface := *taskTemplate.Interface
+	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
 
-	// build output writers
-	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
-	if err != nil {
-		return state, err
-	}
-
-	// build work items from inputs and outputs
-	workItems, err := ConstructCatalogReaderWorkItems(ctx, tCtx.TaskReader(), inputReaders, outputWriters)
-	if err != nil {
-		return state, err
+	request := catalog.DownloadArrayRequest{
+		Identifier:      *taskTemplate.GetId(),
+		CacheVersion:    taskTemplate.Metadata.DiscoveryVersion,
+		TypedInterface:  iface,
+		BaseInputReader: tCtx.InputReader(),
+		BaseTarget:      tCtx.OutputWriter(),
+		Indexes:         arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJob.Size)), uint(arrayJob.Size)),
+		Count:           int(arrayJob.Size),
 	}
 
 	// Check catalog, and if we have responses from catalog for everything, then move to writing the mapping file.
-	future, err := tCtx.Catalog().Download(ctx, workItems...)
+	future, err := tCtx.Catalog().DownloadArray(ctx, request)
 	if err != nil {
 		return state, err
 	}
@@ -156,45 +150,40 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
 	}
 
-	// input readers
-	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
-	if err != nil {
-		return nil, err
-	}
-
-	// output reader
-	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
-	if err != nil {
-		return nil, err
-	}
-
-	iface := *taskTemplate.Interface
-	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
-
+	taskExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	// Do not cache failed tasks. Retrieve the final phase from array status and unset the non-successful ones.
 	tasksToCache := state.GetIndexesToCache().DeepCopy()
+	toCacheCount := 0
 	for idx, phaseIdx := range state.ArrayStatus.Detailed.GetItems() {
 		phase := core.Phases[phaseIdx]
 		if !phase.IsSuccess() {
 			tasksToCache.Clear(uint(idx))
+		} else {
+			toCacheCount++
 		}
 	}
 
-	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
-	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
-		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		iface, &tasksToCache, inputReaders, outputReaders)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(catalogWriterItems) == 0 {
+	if toCacheCount == 0 {
 		state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("No outputs need to be cached.")
 		return state, nil
 	}
 
-	allWritten, err := WriteToCatalog(ctx, tCtx.TaskRefreshIndicator(), tCtx.Catalog(), catalogWriterItems)
+	iface := *taskTemplate.Interface
+	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
+	request := catalog.UploadArrayRequest{
+		Identifier:     *tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
+		CacheVersion:   taskTemplate.Metadata.DiscoveryVersion,
+		TypedInterface: iface,
+		ArtifactMetadata: catalog.Metadata{
+			TaskExecutionIdentifier: &taskExecID,
+		},
+		BaseInputReader:  tCtx.InputReader(),
+		BaseArtifactData: tCtx.OutputWriter(),
+		Indexes:          &tasksToCache,
+		Count:            int(arrayJob.Size),
+	}
+
+	allWritten, err := WriteToCatalog(ctx, tCtx.TaskRefreshIndicator(), tCtx.Catalog(), request)
 	if err != nil {
 		return nil, err
 	}
@@ -207,10 +196,10 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 }
 
 func WriteToCatalog(ctx context.Context, ownerSignal core.SignalAsync, catalogClient catalog.AsyncClient,
-	workItems []catalog.UploadRequest) (bool, error) {
+	workItem catalog.UploadArrayRequest) (bool, error) {
 
 	// Enqueue work items
-	future, err := catalogClient.Upload(ctx, workItems...)
+	future, err := catalogClient.UploadArray(ctx, workItem)
 	if err != nil {
 		return false, errors.Wrapf(arrayCore.ErrorWorkQueue, err,
 			"Error enqueuing work items")
@@ -231,41 +220,6 @@ func WriteToCatalog(ctx context.Context, ownerSignal core.SignalAsync, catalogCl
 	})
 
 	return false, nil
-}
-
-func ConstructCatalogUploadRequests(keyId idlCore.Identifier, taskExecId idlCore.TaskExecutionIdentifier,
-	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
-	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]catalog.UploadRequest, error) {
-
-	writerWorkItems := make([]catalog.UploadRequest, 0, len(inputReaders))
-
-	if len(inputReaders) != len(outputReaders) {
-		return nil, errors.Errorf(arrayCore.ErrorInternalMismatch, "Length different building catalog writer items %d %d",
-			len(inputReaders), len(outputReaders))
-	}
-
-	for idx, input := range inputReaders {
-		if !whichTasksToCache.IsSet(uint(idx)) {
-			continue
-		}
-
-		wi := catalog.UploadRequest{
-			Key: catalog.Key{
-				Identifier:     keyId,
-				InputReader:    input,
-				CacheVersion:   cacheVersion,
-				TypedInterface: taskInterface,
-			},
-			ArtifactData: outputReaders[idx],
-			ArtifactMetadata: catalog.Metadata{
-				TaskExecutionIdentifier: &taskExecId,
-			},
-		}
-
-		writerWorkItems = append(writerWorkItems, wi)
-	}
-
-	return writerWorkItems, nil
 }
 
 func NewLiteralScalarOfInteger(number int64) *idlCore.Literal {
@@ -323,70 +277,6 @@ func makeSingularTaskInterface(varMap *idlCore.VariableMap) *idlCore.VariableMap
 
 	return res
 
-}
-
-func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskReader, inputs []io.InputReader,
-	outputs []io.OutputWriter) ([]catalog.DownloadRequest, error) {
-
-	t, err := taskReader.Read(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	workItems := make([]catalog.DownloadRequest, 0, len(inputs))
-
-	iface := *t.Interface
-	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
-
-	for idx, inputReader := range inputs {
-		// TODO: Check if Id or Interface are empty and return err
-		item := catalog.DownloadRequest{
-			Key: catalog.Key{
-				Identifier:     *t.Id,
-				CacheVersion:   t.GetMetadata().DiscoveryVersion,
-				InputReader:    inputReader,
-				TypedInterface: iface,
-			},
-			Target: outputs[idx],
-		}
-		workItems = append(workItems, item)
-	}
-
-	return workItems, nil
-}
-
-func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
-	size int) ([]io.InputReader, error) {
-
-	inputReaders := make([]io.InputReader, 0, size)
-	for i := 0; i < size; i++ {
-		indexedInputLocation, err := dataStore.ConstructReference(ctx, inputPrefix, strconv.Itoa(i))
-		if err != nil {
-			return inputReaders, err
-		}
-
-		inputReader := ioutils.NewRemoteFileInputReader(ctx, dataStore, ioutils.NewInputFilePaths(ctx, dataStore, indexedInputLocation))
-		inputReaders = append(inputReaders, inputReader)
-	}
-
-	return inputReaders, nil
-}
-
-func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
-	size int) ([]io.OutputWriter, error) {
-
-	outputWriters := make([]io.OutputWriter, 0, size)
-
-	for i := 0; i < size; i++ {
-		ow, err := ConstructOutputWriter(ctx, dataStore, outputPrefix, i)
-		if err != nil {
-			return outputWriters, err
-		}
-
-		outputWriters = append(outputWriters, ow)
-	}
-
-	return outputWriters, nil
 }
 
 func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,

@@ -3,6 +3,10 @@ package catalog
 import (
 	"context"
 
+	"github.com/lyft/flytestdlib/storage"
+
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/lyft/flytestdlib/bitarray"
 
 	"github.com/lyft/flytestdlib/errors"
@@ -24,7 +28,8 @@ const (
 
 type UploadRequest struct {
 	Key              Key
-	ArtifactData     io.OutputReader
+	ArtifactData     io.OutputFilePaths
+	DataStore        *storage.DataStore
 	ArtifactMetadata Metadata
 }
 
@@ -49,8 +54,9 @@ type UploadFuture interface {
 
 // Catalog Download Request to represent async operation download request.
 type DownloadRequest struct {
-	Key    Key
-	Target io.OutputWriter
+	Key       Key
+	Target    io.OutputWriter
+	DataStore *storage.DataStore
 }
 
 // Catalog download future to represent async process of downloading catalog artifacts.
@@ -73,13 +79,58 @@ type DownloadResponse interface {
 	GetCachedCount() int
 }
 
+// Catalog Download Request to represent async operation download request.
+type DownloadArrayRequest struct {
+	// Identifier is the same among all subtasks of the array
+	Identifier core.Identifier
+	// Cache version is the same among all subtasks of the array
+	CacheVersion string
+	// Interface is the same among all subtasks of the array
+	TypedInterface core.TypedInterface
+
+	dataStore *storage.DataStore
+
+	// Base input reader to build subtasks input readers from
+	BaseInputReader io.InputReader
+	// Base output writer to build subtasks input readers from
+	BaseTarget io.OutputWriter
+	Indexes    *bitarray.BitSet
+	Count      int
+}
+
+type UploadArrayRequest struct {
+	// Identifier is the same among all subtasks of the array
+	Identifier core.Identifier
+	// Cache version is the same among all subtasks of the array
+	CacheVersion string
+	// Interface is the same among all subtasks of the array
+	TypedInterface core.TypedInterface
+	// ArtifactMetadata is the same among all subtasks of the array
+	ArtifactMetadata Metadata
+
+	dataStore *storage.DataStore
+
+	// Base input reader to build subtasks input readers from
+	BaseInputReader io.InputReader
+	// Base output reader to build subtasks input readers from
+	BaseArtifactData io.OutputFilePaths
+	Indexes          *bitarray.BitSet
+	Count            int
+}
+
 // An interface that helps async interaction with catalog service
 type AsyncClient interface {
 	// Returns if an entry exists for the given task and input. It returns the data as a LiteralMap
-	Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error)
+	Download(ctx context.Context, request DownloadRequest) (outputFuture DownloadFuture, err error)
 
 	// Adds a new entry to catalog for the given task execution context and the generated output
-	Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error)
+	Upload(ctx context.Context, request UploadRequest) (putFuture UploadFuture, err error)
+
+	// Returns if an entry exists for the given task and input. It returns the data as a LiteralMap
+	DownloadArray(ctx context.Context, request DownloadArrayRequest) (outputFuture DownloadFuture, err error)
+
+	// Adds a new entry to catalog for the given task execution context and the generated output
+	UploadArray(ctx context.Context, requests UploadArrayRequest) (putFuture UploadFuture, err error)
 }
 
 var _ AsyncClient = AsyncClientImpl{}
