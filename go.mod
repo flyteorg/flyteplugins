@@ -5,7 +5,6 @@ go 1.13
 require (
 	cloud.google.com/go v0.47.0 // indirect
 	github.com/Azure/azure-sdk-for-go v10.2.1-beta+incompatible // indirect
-	github.com/Azure/go-autorest v13.3.0+incompatible // indirect
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
 	github.com/aws/aws-sdk-go v1.25.24
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -41,7 +40,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
-	github.com/vektra/mockery v0.0.0-20191009061720-9d0c8670c2f0 // indirect
 	go.opencensus.io v0.22.1 // indirect
 	golang.org/x/crypto v0.0.0-20191029031824-8986dd9e96cf // indirect
 	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
@@ -56,7 +54,6 @@ require (
 	k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
 	k8s.io/client-go v0.0.0-20191016111102-bec269661e48
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d // indirect
 	k8s.io/utils v0.0.0-20191030222137-2b95a09bc58d // indirect
 	sigs.k8s.io/controller-runtime v0.3.1-0.20191029211253-40070e2a1958
 )
