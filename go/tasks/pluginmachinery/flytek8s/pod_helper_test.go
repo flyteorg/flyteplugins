@@ -356,6 +356,23 @@ func TestDemystifySuccess(t *testing.T) {
 		assert.Equal(t, "OOMKilled", phaseInfo.Err().Code)
 	})
 
+	t.Run("InitContainer OOMKilled", func(t *testing.T) {
+		phaseInfo, err := DemystifySuccess(v1.PodStatus{
+			InitContainerStatuses: []v1.ContainerStatus{
+				{
+					State: v1.ContainerState{
+						Terminated: &v1.ContainerStateTerminated{
+							Reason: OOMKilled,
+						},
+					},
+				},
+			},
+		}, pluginsCore.TaskInfo{})
+		assert.Nil(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		assert.Equal(t, "OOMKilled", phaseInfo.Err().Code)
+	})
+
 	t.Run("success", func(t *testing.T) {
 		phaseInfo, err := DemystifySuccess(v1.PodStatus{}, pluginsCore.TaskInfo{})
 		assert.Nil(t, err)

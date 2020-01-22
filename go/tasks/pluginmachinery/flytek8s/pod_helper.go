@@ -176,6 +176,12 @@ func DemystifySuccess(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 				"Pod reported success despite being OOMKilled", &info), nil
 		}
 	}
+	for _, status := range status.InitContainerStatuses {
+		if status.State.Terminated != nil && strings.Contains(status.State.Terminated.Reason, OOMKilled) {
+			return pluginsCore.PhaseInfoRetryableFailure("OOMKilled",
+				"Pod reported success despite being OOMKilled", &info), nil
+		}
+	}
 	return pluginsCore.PhaseInfoSuccess(&info), nil
 }
 
