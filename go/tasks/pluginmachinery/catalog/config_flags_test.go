@@ -99,11 +99,11 @@ func TestConfig_SetFlags(t *testing.T) {
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
-	t.Run("Test_reader.workers", func(t *testing.T) {
+	t.Run("Test_reader.queue.workers", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("reader.workers"); err == nil {
-				assert.Equal(t, int(defaultConfig.ReaderWorkqueueConfig.Workers), vInt)
+			if vInt, err := cmdFlags.GetInt("reader.queue.workers"); err == nil {
+				assert.Equal(t, int(defaultConfig.Reader.Workqueue.Workers), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -112,20 +112,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("reader.workers", testValue)
-			if vInt, err := cmdFlags.GetInt("reader.workers"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ReaderWorkqueueConfig.Workers)
+			cmdFlags.Set("reader.queue.workers", testValue)
+			if vInt, err := cmdFlags.GetInt("reader.queue.workers"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Reader.Workqueue.Workers)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_reader.maxRetries", func(t *testing.T) {
+	t.Run("Test_reader.queue.maxRetries", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("reader.maxRetries"); err == nil {
-				assert.Equal(t, int(defaultConfig.ReaderWorkqueueConfig.MaxRetries), vInt)
+			if vInt, err := cmdFlags.GetInt("reader.queue.maxRetries"); err == nil {
+				assert.Equal(t, int(defaultConfig.Reader.Workqueue.MaxRetries), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -134,20 +134,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("reader.maxRetries", testValue)
-			if vInt, err := cmdFlags.GetInt("reader.maxRetries"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ReaderWorkqueueConfig.MaxRetries)
+			cmdFlags.Set("reader.queue.maxRetries", testValue)
+			if vInt, err := cmdFlags.GetInt("reader.queue.maxRetries"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Reader.Workqueue.MaxRetries)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_reader.maxItems", func(t *testing.T) {
+	t.Run("Test_reader.queue.maxItems", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("reader.maxItems"); err == nil {
-				assert.Equal(t, int(defaultConfig.ReaderWorkqueueConfig.IndexCacheMaxItems), vInt)
+			if vInt, err := cmdFlags.GetInt("reader.queue.maxItems"); err == nil {
+				assert.Equal(t, int(defaultConfig.Reader.Workqueue.IndexCacheMaxItems), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -156,20 +156,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("reader.maxItems", testValue)
-			if vInt, err := cmdFlags.GetInt("reader.maxItems"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ReaderWorkqueueConfig.IndexCacheMaxItems)
+			cmdFlags.Set("reader.queue.maxItems", testValue)
+			if vInt, err := cmdFlags.GetInt("reader.queue.maxItems"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Reader.Workqueue.IndexCacheMaxItems)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_writer.workers", func(t *testing.T) {
+	t.Run("Test_reader.itemsPerRound", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("writer.workers"); err == nil {
-				assert.Equal(t, int(defaultConfig.WriterWorkqueueConfig.Workers), vInt)
+			if vInt, err := cmdFlags.GetInt("reader.itemsPerRound"); err == nil {
+				assert.Equal(t, int(defaultConfig.Reader.MaxItemsPerRound), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -178,20 +178,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("writer.workers", testValue)
-			if vInt, err := cmdFlags.GetInt("writer.workers"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.WriterWorkqueueConfig.Workers)
+			cmdFlags.Set("reader.itemsPerRound", testValue)
+			if vInt, err := cmdFlags.GetInt("reader.itemsPerRound"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Reader.MaxItemsPerRound)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_writer.maxRetries", func(t *testing.T) {
+	t.Run("Test_writer.queue.workers", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("writer.maxRetries"); err == nil {
-				assert.Equal(t, int(defaultConfig.WriterWorkqueueConfig.MaxRetries), vInt)
+			if vInt, err := cmdFlags.GetInt("writer.queue.workers"); err == nil {
+				assert.Equal(t, int(defaultConfig.Writer.Workqueue.Workers), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -200,20 +200,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("writer.maxRetries", testValue)
-			if vInt, err := cmdFlags.GetInt("writer.maxRetries"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.WriterWorkqueueConfig.MaxRetries)
+			cmdFlags.Set("writer.queue.workers", testValue)
+			if vInt, err := cmdFlags.GetInt("writer.queue.workers"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Writer.Workqueue.Workers)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_writer.maxItems", func(t *testing.T) {
+	t.Run("Test_writer.queue.maxRetries", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("writer.maxItems"); err == nil {
-				assert.Equal(t, int(defaultConfig.WriterWorkqueueConfig.IndexCacheMaxItems), vInt)
+			if vInt, err := cmdFlags.GetInt("writer.queue.maxRetries"); err == nil {
+				assert.Equal(t, int(defaultConfig.Writer.Workqueue.MaxRetries), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -222,9 +222,53 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("writer.maxItems", testValue)
-			if vInt, err := cmdFlags.GetInt("writer.maxItems"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.WriterWorkqueueConfig.IndexCacheMaxItems)
+			cmdFlags.Set("writer.queue.maxRetries", testValue)
+			if vInt, err := cmdFlags.GetInt("writer.queue.maxRetries"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Writer.Workqueue.MaxRetries)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_writer.queue.maxItems", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("writer.queue.maxItems"); err == nil {
+				assert.Equal(t, int(defaultConfig.Writer.Workqueue.IndexCacheMaxItems), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("writer.queue.maxItems", testValue)
+			if vInt, err := cmdFlags.GetInt("writer.queue.maxItems"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Writer.Workqueue.IndexCacheMaxItems)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_writer.itemsPerRound", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("writer.itemsPerRound"); err == nil {
+				assert.Equal(t, int(defaultConfig.Writer.MaxItemsPerRound), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("writer.itemsPerRound", testValue)
+			if vInt, err := cmdFlags.GetInt("writer.itemsPerRound"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Writer.MaxItemsPerRound)
 
 			} else {
 				assert.FailNow(t, err.Error())

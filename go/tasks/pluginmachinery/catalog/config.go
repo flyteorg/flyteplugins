@@ -10,20 +10,31 @@ import (
 var cfgSection = config.MustRegisterSubSection("catalogCache", defaultConfig)
 
 type Config struct {
-	ReaderWorkqueueConfig workqueue.Config `json:"reader" pflag:",Catalog reader workqueue config. Make sure the index cache must be big enough to accommodate the biggest array task allowed to run on the system."`
-	WriterWorkqueueConfig workqueue.Config `json:"writer" pflag:",Catalog writer workqueue config. Make sure the index cache must be big enough to accommodate the biggest array task allowed to run on the system."`
+	Reader ProcessorConfig `json:"reader" pflag:",Catalog reader processor config."`
+	Writer ProcessorConfig `json:"writer" pflag:",Catalog writer processor config."`
+}
+
+type ProcessorConfig struct {
+	Workqueue        workqueue.Config `json:"queue" pflag:",Workqueue config. Make sure the index cache must be big enough to accommodate the biggest array task allowed to run on the system."`
+	MaxItemsPerRound int              `json:"itemsPerRound" pflag:",Max number of items to process in each round. Under load, this ensures fairness between different array jobs and avoid head-of-line blocking."`
 }
 
 var defaultConfig = &Config{
-	ReaderWorkqueueConfig: workqueue.Config{
-		MaxRetries:         3,
-		Workers:            10,
-		IndexCacheMaxItems: 1000,
+	Reader: ProcessorConfig{
+		Workqueue: workqueue.Config{
+			MaxRetries:         3,
+			Workers:            10,
+			IndexCacheMaxItems: 1000,
+		},
+		MaxItemsPerRound: 100,
 	},
-	WriterWorkqueueConfig: workqueue.Config{
-		MaxRetries:         3,
-		Workers:            10,
-		IndexCacheMaxItems: 1000,
+	Writer: ProcessorConfig{
+		Workqueue: workqueue.Config{
+			MaxRetries:         3,
+			Workers:            10,
+			IndexCacheMaxItems: 1000,
+		},
+		MaxItemsPerRound: 100,
 	},
 }
 

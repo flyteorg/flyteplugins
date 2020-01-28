@@ -2,8 +2,18 @@ package catalog
 
 import (
 	"context"
-	"reflect"
 	"testing"
+
+	"github.com/go-test/deep"
+
+	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/lyft/flytestdlib/promutils/labeled"
+
+	"github.com/lyft/flytestdlib/promutils"
+	"github.com/lyft/flytestdlib/storage"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	mocks2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue/mocks"
@@ -13,12 +23,27 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
 )
 
+func init() {
+	labeled.SetMetricKeys(contextutils.NamespaceKey)
+}
+
+func invertBitSet(input *bitarray.BitSet, limit uint) *bitarray.BitSet {
+	output := bitarray.NewBitSet(limit)
+	for i := uint(0); i < limit; i++ {
+		if !input.IsSet(i) {
+			output.Set(i)
+		}
+	}
+
+	return output
+}
+
 func TestAsyncClientImpl_Download(t *testing.T) {
 	ctx := context.Background()
 
 	q := &mocks.IndexedWorkQueue{}
 	info := &mocks.WorkItemInfo{}
-	info.OnItem().Return(NewReaderWorkItem(Key{}, &mocks2.OutputWriter{}))
+	info.OnItem().Return(NewArrayReaderWorkItem(DownloadArrayRequest{}))
 	info.OnStatus().Return(workqueue.WorkStatusSucceeded)
 	q.OnGetMatch(mock.Anything).Return(info, true, nil)
 	q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -27,32 +52,44 @@ func TestAsyncClientImpl_Download(t *testing.T) {
 	ow.OnGetOutputPrefixPath().Return("/prefix/")
 	ow.OnGetOutputPath().Return("/prefix/outputs.pb")
 
+	ir := &mocks2.InputReader{}
+	ir.OnGetInputPrefixPath().Return("/prefix/")
+
+	ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	assert.NoError(t, err)
+
 	tests := []struct {
 		name             string
 		reader           workqueue.IndexedWorkQueue
-		requests         []DownloadRequest
+		request          DownloadArrayRequest
 		wantOutputFuture DownloadFuture
 		wantErr          bool
 	}{
-		{"DownloadQueued", q, []DownloadRequest{
-			{
-				Key:    Key{},
-				Target: ow,
-			},
-		}, newDownloadFuture(ResponseStatusReady, nil, bitarray.NewBitSet(1), 1, 0), false},
+		{"DownloadQueued", q, DownloadArrayRequest{
+			Identifier:      core.Identifier{},
+			CacheVersion:    "",
+			TypedInterface:  core.TypedInterface{},
+			dataStore:       ds,
+			BaseInputReader: ir,
+			BaseTarget:      ow,
+			Indexes:         invertBitSet(bitarray.NewBitSet(1), 1),
+			Count:           1,
+		}, newDownloadFuture(ResponseStatusReady, nil, bitarray.NewBitSet(1), 1), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := AsyncClientImpl{
-				Reader: tt.reader,
+				ArrayReader: tt.reader,
 			}
-			gotOutputFuture, err := c.Download(ctx, tt.requests...)
+
+			gotOutputFuture, err := c.DownloadArray(ctx, tt.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AsyncClientImpl.Download() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotOutputFuture, tt.wantOutputFuture) {
-				t.Errorf("AsyncClientImpl.Download() = %v, want %v", gotOutputFuture, tt.wantOutputFuture)
+
+			if diff := deep.Equal(tt.wantOutputFuture, gotOutputFuture); diff != nil {
+				t.Errorf("expected != actual. Diff: %v", diff)
 			}
 		})
 	}
@@ -63,35 +100,53 @@ func TestAsyncClientImpl_Upload(t *testing.T) {
 
 	q := &mocks.IndexedWorkQueue{}
 	info := &mocks.WorkItemInfo{}
-	info.OnItem().Return(NewReaderWorkItem(Key{}, &mocks2.OutputWriter{}))
+	info.OnItem().Return(NewArrayReaderWorkItem(DownloadArrayRequest{}))
 	info.OnStatus().Return(workqueue.WorkStatusSucceeded)
-	q.OnGet("{UNSPECIFIED     {} [] 0}:-0-").Return(info, true, nil)
+	q.OnGet("cfqacua").Return(info, true, nil)
 	q.OnQueueMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	ir := &mocks2.InputReader{}
+	ir.OnGetInputPrefixPath().Return("/prefix/")
+
+	ow := &mocks2.OutputWriter{}
+	ow.OnGetOutputPrefixPath().Return("/prefix/")
+	ow.OnGetOutputPath().Return("/prefix/outputs.pb")
+
+	ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	assert.NoError(t, err)
 
 	tests := []struct {
 		name          string
-		requests      []UploadRequest
+		request       UploadArrayRequest
 		wantPutFuture UploadFuture
 		wantErr       bool
 	}{
-		{"UploadSucceeded", []UploadRequest{
-			{
-				Key: Key{},
-			},
+		{"UploadSucceeded", UploadArrayRequest{
+			Identifier:       core.Identifier{},
+			CacheVersion:     "",
+			TypedInterface:   core.TypedInterface{},
+			ArtifactMetadata: Metadata{},
+			dataStore:        ds,
+			BaseInputReader:  ir,
+			BaseArtifactData: ow,
+			Indexes:          invertBitSet(bitarray.NewBitSet(1), 1),
+			Count:            1,
 		}, newUploadFuture(ResponseStatusReady, nil), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := AsyncClientImpl{
-				Writer: q,
+				ArrayWriter: q,
 			}
-			gotPutFuture, err := c.Upload(ctx, tt.requests...)
+
+			gotPutFuture, err := c.UploadArray(ctx, tt.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AsyncClientImpl.Upload() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotPutFuture, tt.wantPutFuture) {
-				t.Errorf("AsyncClientImpl.Upload() = %v, want %v", gotPutFuture, tt.wantPutFuture)
+
+			if diff := deep.Equal(tt.wantPutFuture, gotPutFuture); diff != nil {
+				t.Errorf("expected != actual. Diff: %v", diff)
 			}
 		})
 	}
@@ -116,8 +171,8 @@ func TestAsyncClientImpl_Start(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := AsyncClientImpl{
-				Reader: tt.fields.Reader,
-				Writer: tt.fields.Writer,
+				ArrayReader: tt.fields.Reader,
+				ArrayWriter: tt.fields.Writer,
 			}
 			if err := c.Start(tt.args.ctx); (err != nil) != tt.wantErr {
 				t.Errorf("AsyncClientImpl.Start() error = %v, wantErr %v", err, tt.wantErr)

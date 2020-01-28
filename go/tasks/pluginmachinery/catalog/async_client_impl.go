@@ -9,8 +9,6 @@ import (
 
 	"github.com/lyft/flytestdlib/promutils"
 
-	"github.com/lyft/flytestdlib/bitarray"
-
 	"github.com/lyft/flytestdlib/errors"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
@@ -22,12 +20,8 @@ var base32Encoder = base32.NewEncoding(specialEncoderKey).WithPadding(base32.NoP
 
 // An async-client for catalog that can queue download and upload requests on workqueues.
 type AsyncClientImpl struct {
-	Reader workqueue.IndexedWorkQueue
-	Writer workqueue.IndexedWorkQueue
-}
-
-func formatWorkItemID(key Key, idx int, suffix string) string {
-	return fmt.Sprintf("%v-%v-%v", key, idx, suffix)
+	ArrayReader workqueue.IndexedWorkQueue
+	ArrayWriter workqueue.IndexedWorkQueue
 }
 
 func consistentHash(str string) (string, error) {
@@ -41,96 +35,113 @@ func consistentHash(str string) (string, error) {
 	return base32Encoder.EncodeToString(b), nil
 }
 
-func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error) {
-	status := ResponseStatusReady
-	cachedResults := bitarray.NewBitSet(uint(len(requests)))
-	cachedCount := 0
-	var respErr error
-	for idx, request := range requests {
-		uniqueOutputLoc, err := consistentHash(request.Target.GetOutputPrefixPath().String())
-		if err != nil {
-			return nil, err
-		}
+// Returns if an entry exists for the given task and input. It returns the data as a LiteralMap
+func (c AsyncClientImpl) DownloadArray(ctx context.Context, request DownloadArrayRequest) (outputFuture DownloadFuture, err error) {
+	workItemID := fmt.Sprintf("%v-%v-%v-%v-%v-%v", request.Identifier.String(), request.Count,
+		request.BaseTarget.GetOutputPrefixPath(), request.TypedInterface, request.BaseInputReader.GetInputPrefixPath(),
+		request.CacheVersion)
 
-		workItemID := formatWorkItemID(request.Key, idx, uniqueOutputLoc)
-		err = c.Reader.Queue(ctx, workItemID, NewReaderWorkItem(
-			request.Key,
-			request.Target))
-
-		if err != nil {
-			return nil, err
-		}
-
-		info, found, err := c.Reader.Get(workItemID)
-		if err != nil {
-			return nil, errors.Wrapf(ErrSystemError, err, "Failed to lookup from reader workqueue for info: %v", workItemID)
-		}
-
-		if !found {
-			return nil, errors.Errorf(ErrSystemError, "Item not found in the reader workqueue even though it was just added. ItemID: %v", workItemID)
-		}
-
-		switch info.Status() {
-		case workqueue.WorkStatusSucceeded:
-			readerWorkItem, casted := info.Item().(*ReaderWorkItem)
-			if !casted {
-				return nil, errors.Errorf(ErrSystemError, "Item wasn't casted to ReaderWorkItem. ItemID: %v. Type: %v", workItemID, reflect.TypeOf(info))
-			}
-
-			if readerWorkItem.IsCached() {
-				cachedResults.Set(uint(idx))
-				cachedCount++
-			}
-		case workqueue.WorkStatusFailed:
-			respErr = info.Error()
-		case workqueue.WorkStatusNotDone:
-			status = ResponseStatusNotReady
-		}
+	hashedID, err := consistentHash(workItemID)
+	if err != nil {
+		return nil, err
 	}
 
-	return newDownloadFuture(status, respErr, cachedResults, len(requests), cachedCount), nil
+	err = c.ArrayReader.Queue(ctx, hashedID, NewArrayReaderWorkItem(request))
+	if err != nil {
+		return nil, err
+	}
+
+	info, found, err := c.ArrayReader.Get(hashedID)
+	if err != nil {
+		return nil, errors.Wrapf(ErrSystemError, err, "Failed to lookup from reader workqueue for info: %v", workItemID)
+	}
+
+	if !found {
+		return nil, errors.Errorf(ErrSystemError, "Item not found in the reader workqueue even though it was just added. ItemID: %v", workItemID)
+	}
+
+	switch info.Status() {
+	case workqueue.WorkStatusSucceeded:
+		readerWorkItem, casted := info.Item().(*ArrayReaderWorkItem)
+		if !casted {
+			return nil, errors.Errorf(ErrSystemError, "Item wasn't casted to ReaderWorkItem. ItemID: %v. Type: %v", workItemID, reflect.TypeOf(info))
+		}
+
+		return newDownloadFuture(ResponseStatusReady, nil, readerWorkItem.CachedResults(), request.Count), nil
+	case workqueue.WorkStatusFailed:
+		return newDownloadFuture(ResponseStatusReady, info.Error(), nil, request.Count), nil
+	default:
+		return newDownloadFuture(ResponseStatusNotReady, nil, nil, request.Count), nil
+	}
 }
 
-func (c AsyncClientImpl) Upload(ctx context.Context, requests ...UploadRequest) (putFuture UploadFuture, err error) {
-	status := ResponseStatusReady
-	var respErr error
-	for idx, request := range requests {
-		workItemID := formatWorkItemID(request.Key, idx, "")
-		err := c.Writer.Queue(ctx, workItemID, NewWriterWorkItem(
-			request.Key,
-			request.ArtifactData,
-			request.ArtifactMetadata))
+// Adds a new entry to catalog for the given task execution context and the generated output
+func (c AsyncClientImpl) UploadArray(ctx context.Context, request UploadArrayRequest) (putFuture UploadFuture, err error) {
+	workItemID := fmt.Sprintf("%v-%v-%v-%v-%v", request.Identifier.String(), request.Count,
+		request.TypedInterface, request.BaseInputReader.GetInputPrefixPath(), request.CacheVersion)
 
-		if err != nil {
-			return nil, err
-		}
-
-		info, found, err := c.Writer.Get(workItemID)
-		if err != nil {
-			return nil, errors.Wrapf(ErrSystemError, err, "Failed to lookup from writer workqueue for info: %v", workItemID)
-		}
-
-		if !found {
-			return nil, errors.Errorf(ErrSystemError, "Item not found in the writer workqueue even though it was just added. ItemID: %v", workItemID)
-		}
-
-		switch info.Status() {
-		case workqueue.WorkStatusNotDone:
-			status = ResponseStatusNotReady
-		case workqueue.WorkStatusFailed:
-			respErr = info.Error()
-		}
+	hashedID, err := consistentHash(workItemID)
+	if err != nil {
+		return nil, err
 	}
 
-	return newUploadFuture(status, respErr), nil
+	err = c.ArrayWriter.Queue(ctx, hashedID, NewArrayWriterWorkItem(request))
+	if err != nil {
+		return nil, err
+	}
+
+	info, found, err := c.ArrayWriter.Get(hashedID)
+	if err != nil {
+		return nil, errors.Wrapf(ErrSystemError, err, "Failed to lookup from reader workqueue for info: %v", workItemID)
+	}
+
+	if !found {
+		return nil, errors.Errorf(ErrSystemError, "Item not found in the reader workqueue even though it was just added. ItemID: %v", workItemID)
+	}
+
+	switch info.Status() {
+	case workqueue.WorkStatusSucceeded:
+		return newUploadFuture(ResponseStatusReady, nil), nil
+	case workqueue.WorkStatusFailed:
+		return newUploadFuture(ResponseStatusReady, info.Error()), nil
+	default:
+		return newUploadFuture(ResponseStatusNotReady, nil), nil
+	}
+}
+
+func (c AsyncClientImpl) Download(ctx context.Context, request DownloadRequest) (outputFuture DownloadFuture, err error) {
+	return c.DownloadArray(ctx, DownloadArrayRequest{
+		Identifier:      request.Key.Identifier,
+		CacheVersion:    request.Key.CacheVersion,
+		TypedInterface:  request.Key.TypedInterface,
+		BaseInputReader: request.Key.InputReader,
+		BaseTarget:      request.Target,
+		dataStore:       request.DataStore,
+		Indexes:         nil,
+		Count:           0,
+	})
+}
+
+func (c AsyncClientImpl) Upload(ctx context.Context, requests UploadRequest) (putFuture UploadFuture, err error) {
+	return c.UploadArray(ctx, UploadArrayRequest{
+		Identifier:       requests.Key.Identifier,
+		CacheVersion:     requests.Key.CacheVersion,
+		TypedInterface:   requests.Key.TypedInterface,
+		ArtifactMetadata: requests.ArtifactMetadata,
+		dataStore:        requests.DataStore,
+		BaseInputReader:  requests.Key.InputReader,
+		BaseArtifactData: requests.ArtifactData,
+		Indexes:          nil,
+		Count:            0,
+	})
 }
 
 func (c AsyncClientImpl) Start(ctx context.Context) error {
-	if err := c.Reader.Start(ctx); err != nil {
+	if err := c.ArrayReader.Start(ctx); err != nil {
 		return errors.Wrapf(ErrSystemError, err, "Failed to start reader queue.")
 	}
 
-	if err := c.Writer.Start(ctx); err != nil {
+	if err := c.ArrayWriter.Start(ctx); err != nil {
 		return errors.Wrapf(ErrSystemError, err, "Failed to start writer queue.")
 	}
 
@@ -138,20 +149,20 @@ func (c AsyncClientImpl) Start(ctx context.Context) error {
 }
 
 func NewAsyncClient(client Client, cfg Config, scope promutils.Scope) (AsyncClientImpl, error) {
-	readerWorkQueue, err := workqueue.NewIndexedWorkQueue("reader", NewReaderProcessor(client), cfg.ReaderWorkqueueConfig,
+	arrayReaderWorkQueue, err := workqueue.NewIndexedWorkQueue("reader", NewArrayReaderProcessor(client, cfg.Reader.MaxItemsPerRound), cfg.Reader.Workqueue,
 		scope.NewSubScope("reader"))
 	if err != nil {
 		return AsyncClientImpl{}, err
 	}
 
-	writerWorkQueue, err := workqueue.NewIndexedWorkQueue("writer", NewWriterProcessor(client), cfg.WriterWorkqueueConfig,
+	arrayWriterWorkQueue, err := workqueue.NewIndexedWorkQueue("writer", NewWriterArrayProcessor(client, cfg.Writer.MaxItemsPerRound), cfg.Writer.Workqueue,
 		scope.NewSubScope("writer"))
 	if err != nil {
 		return AsyncClientImpl{}, err
 	}
 
 	return AsyncClientImpl{
-		Reader: readerWorkQueue,
-		Writer: writerWorkQueue,
+		ArrayWriter: arrayWriterWorkQueue,
+		ArrayReader: arrayReaderWorkQueue,
 	}, nil
 }

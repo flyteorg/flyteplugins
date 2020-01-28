@@ -19,8 +19,8 @@ func (_m AsyncClient_Download) Return(outputFuture catalog.DownloadFuture, err e
 	return &AsyncClient_Download{Call: _m.Call.Return(outputFuture, err)}
 }
 
-func (_m *AsyncClient) OnDownload(ctx context.Context, requests ...catalog.DownloadRequest) *AsyncClient_Download {
-	c := _m.On("Download", ctx, requests)
+func (_m *AsyncClient) OnDownload(ctx context.Context, request catalog.DownloadRequest) *AsyncClient_Download {
+	c := _m.On("Download", ctx, request)
 	return &AsyncClient_Download{Call: c}
 }
 
@@ -29,20 +29,13 @@ func (_m *AsyncClient) OnDownloadMatch(matchers ...interface{}) *AsyncClient_Dow
 	return &AsyncClient_Download{Call: c}
 }
 
-// Download provides a mock function with given fields: ctx, requests
-func (_m *AsyncClient) Download(ctx context.Context, requests ...catalog.DownloadRequest) (catalog.DownloadFuture, error) {
-	_va := make([]interface{}, len(requests))
-	for _i := range requests {
-		_va[_i] = requests[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Download provides a mock function with given fields: ctx, request
+func (_m *AsyncClient) Download(ctx context.Context, request catalog.DownloadRequest) (catalog.DownloadFuture, error) {
+	ret := _m.Called(ctx, request)
 
 	var r0 catalog.DownloadFuture
-	if rf, ok := ret.Get(0).(func(context.Context, ...catalog.DownloadRequest) catalog.DownloadFuture); ok {
-		r0 = rf(ctx, requests...)
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.DownloadRequest) catalog.DownloadFuture); ok {
+		r0 = rf(ctx, request)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(catalog.DownloadFuture)
@@ -50,8 +43,49 @@ func (_m *AsyncClient) Download(ctx context.Context, requests ...catalog.Downloa
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...catalog.DownloadRequest) error); ok {
-		r1 = rf(ctx, requests...)
+	if rf, ok := ret.Get(1).(func(context.Context, catalog.DownloadRequest) error); ok {
+		r1 = rf(ctx, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+type AsyncClient_DownloadArray struct {
+	*mock.Call
+}
+
+func (_m AsyncClient_DownloadArray) Return(outputFuture catalog.DownloadFuture, err error) *AsyncClient_DownloadArray {
+	return &AsyncClient_DownloadArray{Call: _m.Call.Return(outputFuture, err)}
+}
+
+func (_m *AsyncClient) OnDownloadArray(ctx context.Context, request catalog.DownloadArrayRequest) *AsyncClient_DownloadArray {
+	c := _m.On("DownloadArray", ctx, request)
+	return &AsyncClient_DownloadArray{Call: c}
+}
+
+func (_m *AsyncClient) OnDownloadArrayMatch(matchers ...interface{}) *AsyncClient_DownloadArray {
+	c := _m.On("DownloadArray", matchers...)
+	return &AsyncClient_DownloadArray{Call: c}
+}
+
+// DownloadArray provides a mock function with given fields: ctx, request
+func (_m *AsyncClient) DownloadArray(ctx context.Context, request catalog.DownloadArrayRequest) (catalog.DownloadFuture, error) {
+	ret := _m.Called(ctx, request)
+
+	var r0 catalog.DownloadFuture
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.DownloadArrayRequest) catalog.DownloadFuture); ok {
+		r0 = rf(ctx, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(catalog.DownloadFuture)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, catalog.DownloadArrayRequest) error); ok {
+		r1 = rf(ctx, request)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -67,8 +101,8 @@ func (_m AsyncClient_Upload) Return(putFuture catalog.UploadFuture, err error) *
 	return &AsyncClient_Upload{Call: _m.Call.Return(putFuture, err)}
 }
 
-func (_m *AsyncClient) OnUpload(ctx context.Context, requests ...catalog.UploadRequest) *AsyncClient_Upload {
-	c := _m.On("Upload", ctx, requests)
+func (_m *AsyncClient) OnUpload(ctx context.Context, request catalog.UploadRequest) *AsyncClient_Upload {
+	c := _m.On("Upload", ctx, request)
 	return &AsyncClient_Upload{Call: c}
 }
 
@@ -77,20 +111,13 @@ func (_m *AsyncClient) OnUploadMatch(matchers ...interface{}) *AsyncClient_Uploa
 	return &AsyncClient_Upload{Call: c}
 }
 
-// Upload provides a mock function with given fields: ctx, requests
-func (_m *AsyncClient) Upload(ctx context.Context, requests ...catalog.UploadRequest) (catalog.UploadFuture, error) {
-	_va := make([]interface{}, len(requests))
-	for _i := range requests {
-		_va[_i] = requests[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Upload provides a mock function with given fields: ctx, request
+func (_m *AsyncClient) Upload(ctx context.Context, request catalog.UploadRequest) (catalog.UploadFuture, error) {
+	ret := _m.Called(ctx, request)
 
 	var r0 catalog.UploadFuture
-	if rf, ok := ret.Get(0).(func(context.Context, ...catalog.UploadRequest) catalog.UploadFuture); ok {
-		r0 = rf(ctx, requests...)
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.UploadRequest) catalog.UploadFuture); ok {
+		r0 = rf(ctx, request)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(catalog.UploadFuture)
@@ -98,8 +125,49 @@ func (_m *AsyncClient) Upload(ctx context.Context, requests ...catalog.UploadReq
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...catalog.UploadRequest) error); ok {
-		r1 = rf(ctx, requests...)
+	if rf, ok := ret.Get(1).(func(context.Context, catalog.UploadRequest) error); ok {
+		r1 = rf(ctx, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+type AsyncClient_UploadArray struct {
+	*mock.Call
+}
+
+func (_m AsyncClient_UploadArray) Return(putFuture catalog.UploadFuture, err error) *AsyncClient_UploadArray {
+	return &AsyncClient_UploadArray{Call: _m.Call.Return(putFuture, err)}
+}
+
+func (_m *AsyncClient) OnUploadArray(ctx context.Context, requests catalog.UploadArrayRequest) *AsyncClient_UploadArray {
+	c := _m.On("UploadArray", ctx, requests)
+	return &AsyncClient_UploadArray{Call: c}
+}
+
+func (_m *AsyncClient) OnUploadArrayMatch(matchers ...interface{}) *AsyncClient_UploadArray {
+	c := _m.On("UploadArray", matchers...)
+	return &AsyncClient_UploadArray{Call: c}
+}
+
+// UploadArray provides a mock function with given fields: ctx, requests
+func (_m *AsyncClient) UploadArray(ctx context.Context, requests catalog.UploadArrayRequest) (catalog.UploadFuture, error) {
+	ret := _m.Called(ctx, requests)
+
+	var r0 catalog.UploadFuture
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.UploadArrayRequest) catalog.UploadFuture); ok {
+		r0 = rf(ctx, requests)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(catalog.UploadFuture)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, catalog.UploadArrayRequest) error); ok {
+		r1 = rf(ctx, requests)
 	} else {
 		r1 = ret.Error(1)
 	}
