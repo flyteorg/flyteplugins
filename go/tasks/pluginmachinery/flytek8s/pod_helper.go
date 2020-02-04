@@ -202,6 +202,9 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 					c.LastTerminationState.Terminated.ExitCode,
 					c.LastTerminationState.Terminated.Reason,
 					c.LastTerminationState.Terminated.Message)
+			} else if c.State.Terminated != nil && strings.Contains(c.State.Terminated.Reason, OOMKilled) {
+				code = OOMKilled
+				message += fmt.Sprintf("\r\nInit Container [%v] terminated due to being OOMKilled", c.ContainerID)
 			}
 		}
 
@@ -212,6 +215,9 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 					c.LastTerminationState.Terminated.ExitCode,
 					c.LastTerminationState.Terminated.Reason,
 					c.LastTerminationState.Terminated.Message)
+			} else if c.State.Terminated != nil && strings.Contains(c.State.Terminated.Reason, OOMKilled) {
+				code = OOMKilled
+				message += fmt.Sprintf("\r\nContainer [%v] terminated due to being OOMKilled", c.ContainerID)
 			}
 		}
 
@@ -222,6 +228,9 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 					c.LastTerminationState.Terminated.ExitCode,
 					c.LastTerminationState.Terminated.Reason,
 					c.LastTerminationState.Terminated.Message)
+			} else if c.State.Terminated != nil && strings.Contains(c.State.Terminated.Reason, OOMKilled) {
+				code = OOMKilled
+				message += fmt.Sprintf("\r\nContainer [%v] terminated due to being OOMKilled", c.ContainerID)
 			}
 		}
 	}
