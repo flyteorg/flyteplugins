@@ -196,40 +196,24 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 		message = status.Message
 		return
 	}
-	for _, c := range status.InitContainerStatuses {
-		if c.LastTerminationState.Terminated != nil {
-			message += fmt.Sprintf("\r\nInit Container [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
-				c.ContainerID,
-				c.LastTerminationState.Terminated.ExitCode,
-				c.LastTerminationState.Terminated.Reason,
-				c.LastTerminationState.Terminated.Message)
-		}
-	}
 
-	for _, c := range status.ContainerStatuses {
-		if c.LastTerminationState.Terminated != nil {
-			message += fmt.Sprintf("\r\nContainer [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
-				c.ContainerID,
-				c.LastTerminationState.Terminated.ExitCode,
-				c.LastTerminationState.Terminated.Reason,
-				c.LastTerminationState.Terminated.Message)
-		}
-	}
-
-	for _, c := range status.EphemeralContainerStatuses {
-		if c.LastTerminationState.Terminated != nil {
-			message += fmt.Sprintf("\r\nEphemeral Container [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
-				c.ContainerID,
-				c.LastTerminationState.Terminated.ExitCode,
-				c.LastTerminationState.Terminated.Reason,
-				c.LastTerminationState.Terminated.Message)
-		}
-	}
 	for _, c := range append(
 		append(status.InitContainerStatuses, status.ContainerStatuses...), status.EphemeralContainerStatuses...) {
-		if c.State.Terminated != nil && strings.Contains(c.State.Terminated.Reason, OOMKilled) {
-			code = OOMKilled
-			message += "\r\n" + c.State.Terminated.Reason
+		var containerState v1.ContainerState
+		if c.LastTerminationState.Terminated != nil {
+			containerState = c.LastTerminationState
+		} else if c.State.Terminated != nil {
+			containerState = c.State
+		}
+		if containerState.Terminated != nil {
+			if strings.Contains(c.State.Terminated.Reason, OOMKilled) {
+				code = OOMKilled
+			}
+			message += fmt.Sprintf("\r\nContainer [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
+				c.Name,
+				containerState.Terminated.ExitCode,
+				containerState.Terminated.Reason,
+				containerState.Terminated.Message)
 		}
 	}
 	return
