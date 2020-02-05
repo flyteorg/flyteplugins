@@ -189,7 +189,6 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 
 	if len(status.Message) > 0 {
 		message = status.Message
-		return
 	}
 
 	for _, c := range append(
