@@ -8,6 +8,8 @@ import (
 	"context"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	flyteK8sConfig "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	mocks2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
@@ -43,6 +45,25 @@ func createSampleContainerTask() *core.Container {
 
 func ref(s string) *string {
 	return &s
+}
+
+func TestResourceRequirementsToBatchRequirements(t *testing.T) {
+	memoryTests := []struct {
+		Input    string
+		Expected int64
+	}{
+		{"200", 200},
+		{"200M", 200},
+		{"64G", 64000},
+	}
+
+	for i, testCase := range memoryTests {
+		q, err := resource.ParseQuantity(testCase.Input)
+		if assert.NoError(t, err) {
+			assert.Equal(t, testCase.Expected, q.ScaledValue(resource.Mega),
+				"Expected != Actual for test case [%v] with Input [%v]", i, testCase.Input)
+		}
+	}
 }
 
 func TestArrayJobToBatchInput(t *testing.T) {
