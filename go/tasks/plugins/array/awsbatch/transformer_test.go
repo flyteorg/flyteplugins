@@ -52,7 +52,8 @@ func TestResourceRequirementsToBatchRequirements(t *testing.T) {
 		Input    string
 		Expected int64
 	}{
-		{"200", 200},
+		// resource Quantity gets the ceiling of values to the nearest scale
+		{"200", 1},
 		{"200M", 200},
 		{"64G", 64000},
 	}
@@ -79,8 +80,8 @@ func TestArrayJobToBatchInput(t *testing.T) {
 			Environment: []*batch.KeyValuePair{
 				{Name: refStr("BATCH_JOB_ARRAY_INDEX_VAR_NAME"), Value: refStr("AWS_BATCH_JOB_ARRAY_INDEX")},
 			},
-			Memory: refInt(700),
-			Vcpus:  refInt(2),
+			Memory: refInt(1074),
+			Vcpus:  refInt(1),
 		},
 	}
 
@@ -98,6 +99,11 @@ func TestArrayJobToBatchInput(t *testing.T) {
 		Data: map[string]string{
 			DynamicTaskQueueKey: "child_queue",
 		},
+	})
+
+	to.OnGetResources().Return(&v12.ResourceRequirements{
+		Limits:   v12.ResourceList{},
+		Requests: v12.ResourceList{},
 	})
 
 	tMetadata := &mocks.TaskExecutionMetadata{}
