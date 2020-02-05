@@ -170,13 +170,8 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 }
 
 func DemystifySuccess(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
-	for _, status := range status.ContainerStatuses {
-		if status.State.Terminated != nil && strings.Contains(status.State.Terminated.Reason, OOMKilled) {
-			return pluginsCore.PhaseInfoRetryableFailure("OOMKilled",
-				"Pod reported success despite being OOMKilled", &info), nil
-		}
-	}
-	for _, status := range status.InitContainerStatuses {
+	for _, status := range append(
+		append(status.InitContainerStatuses, status.ContainerStatuses...), status.EphemeralContainerStatuses...) {
 		if status.State.Terminated != nil && strings.Contains(status.State.Terminated.Reason, OOMKilled) {
 			return pluginsCore.PhaseInfoRetryableFailure("OOMKilled",
 				"Pod reported success despite being OOMKilled", &info), nil
