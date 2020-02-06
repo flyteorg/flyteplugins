@@ -3,7 +3,7 @@ module github.com/lyft/flyteplugins
 go 1.13
 
 require (
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200204050059-d212b2996113
 	github.com/aws/aws-sdk-go v1.28.9
 	github.com/coocood/freecache v1.1.0
 	github.com/go-test/deep v1.0.5
@@ -23,7 +23,6 @@ require (
 	k8s.io/api v0.17.2
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/klog v1.0.0 // indirect
 	k8s.io/utils v0.0.0-20200122174043-1e243dd1a584 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
 )
@@ -33,9 +32,9 @@ require (
 //   replace k8s.io/client-go => k8s.io/client-go kubernetes-1.16.2
 // and it will be replaced with the 'sha' variant of the version
 
-replace (
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
-	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
-	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
-)
+// github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.3
+replace k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
+
+replace k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
+
+replace k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48

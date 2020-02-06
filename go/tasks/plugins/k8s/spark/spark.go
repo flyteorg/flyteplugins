@@ -16,7 +16,7 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 
-	sparkOp "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta1"
+	sparkOp "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
 	logUtils "github.com/lyft/flyteidl/clients/go/coreutils/logs"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -139,6 +139,16 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 
 	for k, v := range sparkJob.GetSparkConf() {
+		// Add GPU Request to CRD
+		if k == "spark.gpu.enabled" && v == "true" {
+			gpuSpec := &sparkOp.GPUSpec{
+				Name:     "nvidia.com/gpu",
+				Quantity: 1,
+			}
+			driverSpec.SparkPodSpec.GPU = gpuSpec
+			executorSpec.SparkPodSpec.GPU = gpuSpec
+			continue
+		}
 		sparkConfig[k] = v
 	}
 
@@ -156,15 +166,14 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			APIVersion: sparkOp.SchemeGroupVersion.String(),
 		},
 		Spec: sparkOp.SparkApplicationSpec{
-			ServiceAccount: &sparkTaskType,
-			Type:           getApplicationType(sparkJob.GetApplicationType()),
-			Mode:           sparkOp.ClusterMode,
-			Image:          &container.Image,
-			Arguments:      modifiedArgs,
-			Driver:         driverSpec,
-			Executor:       executorSpec,
-			SparkConf:      sparkConfig,
-			HadoopConf:     sparkJob.GetHadoopConf(),
+			Type:       getApplicationType(sparkJob.GetApplicationType()),
+			Mode:       sparkOp.ClusterMode,
+			Image:      &container.Image,
+			Arguments:  modifiedArgs,
+			Driver:     driverSpec,
+			Executor:   executorSpec,
+			SparkConf:  sparkConfig,
+			HadoopConf: sparkJob.GetHadoopConf(),
 			// SubmissionFailures handled here. Task Failures handled at Propeller/Job level.
 			RestartPolicy: sparkOp.RestartPolicy{
 				Type:                       sparkOp.OnFailure,
@@ -301,7 +310,7 @@ func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.
 
 	occurredAt := time.Now()
 	switch app.Status.AppState.State {
-	case sparkOp.NewState, sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
+	case sparkOp.NewState, sparkOp.SubmittedState:
 		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
 	case sparkOp.FailedSubmissionState:
 		reason := fmt.Sprintf("Spark Job  Submission Failed with Error: %s", app.Status.AppState.ErrorMessage)
