@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lyft/flyteplugins/go/tasks/errors"
+
 	"github.com/lyft/flytestdlib/logger"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
@@ -67,6 +69,24 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 	return nextState, nil
 }
 
-func TerminateSubTasks(ctx context.Context, batchClient Client, jobID string) error {
-	return batchClient.TerminateJob(ctx, jobID, "aborted")
+func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, reason string) error {
+	pluginState := &State{}
+	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
+	}
+
+	if pluginState.State == nil {
+		pluginState.State = &arrayCore.State{}
+	}
+
+	p, _ := pluginState.GetPhase()
+	logger.Infof(ctx, "TerminateSubTasks is called with phase [%v] and reason [%v]", p, reason)
+
+	if pluginState.GetExternalJobID() != nil {
+		jobID := *pluginState.GetExternalJobID()
+		logger.Infof(ctx, "Cancelling AWS Job [%v] because [%v].", jobID, reason)
+		return batchClient.TerminateJob(ctx, jobID, reason)
+	}
+
+	return nil
 }
