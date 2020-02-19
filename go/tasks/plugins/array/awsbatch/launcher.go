@@ -75,10 +75,6 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batc
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	if pluginState.State == nil {
-		pluginState.State = &arrayCore.State{}
-	}
-
 	p, _ := pluginState.GetPhase()
 	logger.Infof(ctx, "TerminateSubTasks is called with phase [%v] and reason [%v]", p, reason)
 
