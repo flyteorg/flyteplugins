@@ -69,6 +69,8 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 	return nextState, nil
 }
 
+// Attempts to terminate the AWS Job if one is recorded in the pluginState. This API is idempotent and should be safe
+// to call multiple times on the same job. It'll result in multiple calls to AWS Batch in that case, however.
 func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, reason string) error {
 	pluginState := &State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
