@@ -74,7 +74,13 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, reason string) error {
 	pluginState := &State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
-		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state")
+	}
+
+	// This only makes sense if the task has "just" been kicked off. Assigning state here is meant to make subsequent
+	// code simpler.
+	if pluginState.State == nil {
+		pluginState.State = &arrayCore.State{}
 	}
 
 	p, _ := pluginState.GetPhase()
