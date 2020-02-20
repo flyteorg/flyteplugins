@@ -9,6 +9,7 @@ import (
 )
 
 const DefaultPhaseVersion = uint32(0)
+const SystemErrorCode = "SystemError"
 
 //go:generate enumer -type=Phase
 
@@ -32,6 +33,8 @@ const (
 	PhaseRetryableFailure
 	// Indicate that the failure is non recoverable even if retries exist
 	PhasePermanentFailure
+	// Indicates that its a system failure and is recoverable
+	PhaseSystemRetryableFailure
 )
 
 var Phases = []Phase{
@@ -185,4 +188,8 @@ func PhaseInfoFailure(code, reason string, info *TaskInfo) PhaseInfo {
 
 func PhaseInfoRetryableFailure(code, reason string, info *TaskInfo) PhaseInfo {
 	return PhaseInfoFailed(PhaseRetryableFailure, &core.ExecutionError{Code: code, Message: reason}, info)
+}
+
+func PhaseInfoSystemRetryableFailure(code, reason string, info *TaskInfo) PhaseInfo {
+	return PhaseInfoFailed(PhaseRetryableFailure, &core.ExecutionError{Code: code, Message: reason, Kind: core.ExecutionError_SYSTEM}, info)
 }
