@@ -33,8 +33,6 @@ const (
 	PhaseRetryableFailure
 	// Indicate that the failure is non recoverable even if retries exist
 	PhasePermanentFailure
-	// Indicates that its a system failure and is recoverable
-	PhaseSystemRetryableFailure
 )
 
 var Phases = []Phase{
