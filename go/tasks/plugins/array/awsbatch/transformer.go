@@ -169,7 +169,7 @@ func toContainerOverrides(ctx context.Context, command []string, overrides *v1.R
 
 	return &batch.ContainerOverrides{
 		Memory:      refInt(overrides.Limits.Memory().ScaledValue(resource.Mega)),
-		Vcpus:       refInt(overrides.Limits.Cpu().ScaledValue(resource.Mega)),
+		Vcpus:       refInt(overrides.Limits.Cpu().Value()),
 		Environment: toEnvironmentVariables(ctx, envVars),
 		Command:     refStrSlice(command),
 	}
