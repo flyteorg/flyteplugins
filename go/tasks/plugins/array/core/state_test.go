@@ -6,7 +6,6 @@ import (
 
 	"github.com/lyft/flytestdlib/bitarray"
 
-	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -119,7 +118,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 	})
 
-	t.Run("system retryable failure", func(t *testing.T) {
+	t.Run("permanent failure", func(t *testing.T) {
 		s := State{
 			CurrentPhase: PhasePermanentFailure,
 			PhaseVersion: 0,
@@ -127,8 +126,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
-		assert.Equal(t, core2.ExecutionError_SYSTEM, phaseInfo.Err().Kind)
+		assert.Equal(t, core.PhasePermanentFailure, phaseInfo.Phase())
 	})
 
 	t.Run("All phases", func(t *testing.T) {
