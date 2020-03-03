@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	"k8s.io/client-go/util/workqueue"
@@ -117,7 +119,7 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 	}
 
 	logger.Debugf(ctx, "Job [%v] has (%v) attempts.", *source.JobId, len(source.Attempts))
-
+	uniqueLogStreams := sets.String{}
 	target.Attempts = make([]Attempt, 0, len(source.Attempts))
 	lastStatusReason := ""
 	for _, attempt := range source.Attempts {
@@ -133,6 +135,7 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 		if container := attempt.Container; container != nil {
 			if container.LogStreamName != nil {
 				a.LogStream = *container.LogStreamName
+				uniqueLogStreams.Insert(a.LogStream)
 			}
 
 			if container.Reason != nil {
@@ -147,8 +150,8 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 		target.Attempts = append(target.Attempts, a)
 	}
 
-	// If no job attempts are present, try to construct one from container status
-	if len(source.Attempts) == 0 {
+	// Add the "current" log stream to log links if one exists.
+	{
 		a := Attempt{}
 		if source.StartedAt != nil {
 			a.StartedAt = time.Unix(*source.StartedAt, 0)
@@ -173,7 +176,9 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 			}
 		}
 
-		target.Attempts = append(target.Attempts, a)
+		if !uniqueLogStreams.Has(a.LogStream) {
+			target.Attempts = append(target.Attempts, a)
+		}
 	}
 
 	msg = append(msg, lastStatusReason)
