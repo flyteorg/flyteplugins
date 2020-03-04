@@ -44,6 +44,38 @@ func (_m *OutputFilePaths) GetErrorPath() storage.DataReference {
 	return r0
 }
 
+type OutputFilePaths_GetOutputDataSandboxPath struct {
+	*mock.Call
+}
+
+func (_m OutputFilePaths_GetOutputDataSandboxPath) Return(_a0 storage.DataReference) *OutputFilePaths_GetOutputDataSandboxPath {
+	return &OutputFilePaths_GetOutputDataSandboxPath{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *OutputFilePaths) OnGetOutputDataSandboxPath() *OutputFilePaths_GetOutputDataSandboxPath {
+	c := _m.On("GetOutputDataSandboxPath")
+	return &OutputFilePaths_GetOutputDataSandboxPath{Call: c}
+}
+
+func (_m *OutputFilePaths) OnGetOutputDataSandboxPathMatch(matchers ...interface{}) *OutputFilePaths_GetOutputDataSandboxPath {
+	c := _m.On("GetOutputDataSandboxPath", matchers...)
+	return &OutputFilePaths_GetOutputDataSandboxPath{Call: c}
+}
+
+// GetOutputDataSandboxPath provides a mock function with given fields:
+func (_m *OutputFilePaths) GetOutputDataSandboxPath() storage.DataReference {
+	ret := _m.Called()
+
+	var r0 storage.DataReference
+	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(storage.DataReference)
+	}
+
+	return r0
+}
+
 type OutputFilePaths_GetOutputPath struct {
 	*mock.Call
 }

@@ -28,7 +28,7 @@ func createAlphabetAndNumerals() []rune {
 	return GenerateArabicNumerals(b)
 }
 
-// this sharder distributes data into one of the precomputed shards. The precomputed shards in this specific case
+// this sharder distributes data into one of the precomputed buckets. The precomputed shards in this specific case
 // are of the format {[0-9a-z][0-9a-z]} 2 character long. The bucket is deterministically determined given the input s
 type BucketsDataSharder struct {
 	precomputedPrefixes []string

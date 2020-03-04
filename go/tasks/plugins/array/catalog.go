@@ -396,7 +396,8 @@ func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, ou
 		return nil, err
 	}
 
-	return ioutils.NewRemoteFileOutputWriter(ctx, dataStore, ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference)), nil
+	p := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewRandomPrefixShardedOutputSandbox(ctx, ioutils.))
+	return ioutils.NewRemoteFileOutputWriter(ctx, dataStore, p), nil
 }
 
 func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, outputPrefix storage.DataReference,
