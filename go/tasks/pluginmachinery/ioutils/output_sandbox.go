@@ -3,17 +3,18 @@ package ioutils
 import (
 	"context"
 	"crypto/md5"
+	"encoding/hex"
 
 	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
 
-type randomPrefixShardedOutputSandbox struct {
+type precomputedOutputSandbox struct {
 	path storage.DataReference
 }
 
-func (r randomPrefixShardedOutputSandbox) GetOutputDataSandboxPath() storage.DataReference {
+func (r precomputedOutputSandbox) GetOutputDataSandboxPath() storage.DataReference {
 	return r.path
 }
 
@@ -29,11 +30,16 @@ func NewRandomPrefixShardedOutputSandbox(ctx context.Context, sharder ShardSelec
 	}
 	m := md5.New()
 	m.Write(o)
-	path, err := store.ConstructReference(ctx, basePath, prefix, string(m.Sum(nil)))
+	path, err := store.ConstructReference(ctx, basePath, prefix, hex.EncodeToString(m.Sum(nil)))
 	if err != nil {
 		return nil, err
 	}
-	return randomPrefixShardedOutputSandbox{
+	return precomputedOutputSandbox{
 		path: path,
 	}, nil
+}
+
+// A simple Output sandbox at a given path
+func NewOutputSandbox(ctx context.Context, outputSandboxPath storage.DataReference) io.OutputDataSandbox {
+	return precomputedOutputSandbox{path: outputSandboxPath}
 }
