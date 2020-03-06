@@ -39,6 +39,7 @@ func (containerTaskExecutor) GetTaskPhase(ctx context.Context, pluginContext k8s
 	}
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
+		logger.Infof(ctx, "[rubenbarragan] PodSucceeded!")
 		return flytek8s.DemystifySuccess(pod.Status, info)
 	case v1.PodFailed:
 		code, message := flytek8s.ConvertPodFailureToError(pod.Status)
