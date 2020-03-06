@@ -3,8 +3,6 @@ package container
 import (
 	"context"
 
-	"fmt"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
@@ -75,7 +73,6 @@ func (containerTaskExecutor) BuildIdentityResource(_ context.Context, _ pluginsC
 }
 
 func init() {
-	fmt.Printf("hello!!! thsi is a test.")
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  containerTaskType,
