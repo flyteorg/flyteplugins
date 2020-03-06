@@ -8,6 +8,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/lyft/flytestdlib/logger"
+
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
@@ -73,6 +75,7 @@ func (containerTaskExecutor) BuildIdentityResource(_ context.Context, _ pluginsC
 }
 
 func init() {
+	logger.Infof("WEEEPS!")
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  containerTaskType,
