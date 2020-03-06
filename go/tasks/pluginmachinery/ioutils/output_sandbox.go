@@ -40,6 +40,6 @@ func NewRandomPrefixShardedOutputSandbox(ctx context.Context, sharder ShardSelec
 }
 
 // A simple Output sandbox at a given path
-func NewOutputSandbox(ctx context.Context, outputSandboxPath storage.DataReference) io.OutputDataSandbox {
+func NewOutputSandbox(_ context.Context, outputSandboxPath storage.DataReference) io.OutputDataSandbox {
 	return precomputedOutputSandbox{path: outputSandboxPath}
 }

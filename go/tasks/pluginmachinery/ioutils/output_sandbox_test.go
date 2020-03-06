@@ -23,8 +23,8 @@ func TestNewRandomPrefixShardedOutputSandbox(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-		ss := NewConstantShardSelector([]string{"x"})
-		_, err := NewRandomPrefixShardedOutputSandbox(ctx, ss, "#/	", "m", storage.URLPathConstructor{})
-		assert.Error(t, err)
+		ss := NewConstantShardSelector([]string{"s3:// abc"})
+		sd, err := NewRandomPrefixShardedOutputSandbox(ctx, ss, "s3://bucket", "m", storage.URLPathConstructor{})
+		assert.Error(t, err, "%s", sd)
 	})
 }

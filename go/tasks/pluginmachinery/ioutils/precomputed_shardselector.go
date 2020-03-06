@@ -59,12 +59,10 @@ func NewBase36PrefixShardSelector(ctx context.Context) (ShardSelector, error) {
 		}
 	}
 
-	return &PrecomputedShardSelector{
-		precomputedPrefixes: precomputedPrefixes,
-		buckets:             uint32(n * n),
-	}, nil
+	return NewConstantShardSelector(precomputedPrefixes), nil
 }
 
+// uses the given shards to select a shard
 func NewConstantShardSelector(shards []string) ShardSelector {
 	return &PrecomputedShardSelector{
 		precomputedPrefixes: shards,
