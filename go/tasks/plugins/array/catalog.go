@@ -164,7 +164,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	// output reader
-	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), int(arrayJob.Size))
+	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetOutputDataSandboxPath(), int(arrayJob.Size))
 	if err != nil {
 		return nil, err
 	}
