@@ -18,6 +18,8 @@ type ArrayStatus struct {
 
 	// Status of every job in the array.
 	Detailed bitarray.CompactArray `json:"details"`
+	// Retry count of every job in the array.
+	Retries bitarray.CompactArray `json:"retries,omitempty"`
 }
 
 // This is a status object that is returned after we make Catalog calls to see if subtasks are Cached

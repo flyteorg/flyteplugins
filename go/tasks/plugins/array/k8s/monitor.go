@@ -45,10 +45,12 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 	newArrayStatus := arraystatus.ArrayStatus{
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
+		Retries:  arrayCore.NewPhasesCompactArray((uint(currenState.GetExecutionArraySize()))
 	}
 
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
+		existingRetryCount := currentState.GetArrayStatus().Retries
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
@@ -86,6 +88,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 		}
 
 		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(actualPhase))
+		newArrayStatus.Retries.SetItem(childIdx, bitarray.Item(retryCount))
 		newArrayStatus.Summary.Inc(actualPhase)
 	}
 
