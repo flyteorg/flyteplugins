@@ -15,7 +15,7 @@ const (
 	PrestoStatusQueued    command.CommandStatus = "QUEUED"
 	PrestoStatusRunning   command.CommandStatus = "RUNNING"
 	PrestoStatusFinished  command.CommandStatus = "FINISHED"
-	PrestoStatusError     command.CommandStatus = "FAILED"
+	PrestoStatusFailed    command.CommandStatus = "FAILED"
 	PrestoStatusCancelled command.CommandStatus = "CANCELLED"
 )
 
@@ -24,14 +24,14 @@ var PrestoStatuses = map[command.CommandStatus]struct{}{
 	PrestoStatusQueued:    {},
 	PrestoStatusRunning:   {},
 	PrestoStatusFinished:  {},
-	PrestoStatusError:     {},
+	PrestoStatusFailed:    {},
 	PrestoStatusCancelled: {},
 }
 
 func NewPrestoStatus(ctx context.Context, state string) command.CommandStatus {
 	upperCased := strings.ToUpper(state)
 	if strings.Contains(upperCased, "FAILED") {
-		return PrestoStatusError
+		return PrestoStatusFailed
 	} else if _, ok := PrestoStatuses[command.CommandStatus(upperCased)]; ok {
 		return command.CommandStatus(upperCased)
 	} else {

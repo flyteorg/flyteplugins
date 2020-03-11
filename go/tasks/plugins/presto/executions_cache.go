@@ -12,7 +12,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	stdErrors "github.com/lyft/flytestdlib/errors"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client3"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/config"
 
 	"github.com/lyft/flytestdlib/logger"
