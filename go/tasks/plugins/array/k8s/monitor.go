@@ -45,12 +45,13 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 	newArrayStatus := arraystatus.ArrayStatus{
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
-		Retries:  arrayCore.NewPhasesCompactArray((uint(currenState.GetExecutionArraySize()))
+		Retries:  arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
-		existingRetryCount := currentState.GetArrayStatus().Retries
+		existingRetryCount := currentState.ArrayStatus.Retries.GetItem(childIdx)
+
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
@@ -63,7 +64,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 
 		phaseInfo, err := CheckPodStatus(ctx, kubeClient,
 			k8sTypes.NamespacedName{
-				Name:      formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), strconv.Itoa(childIdx)),
+				Name:      formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), strconv.Itoa(childIdx), existingRetryCount),
 				Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
 			})
 		if err != nil {

@@ -40,7 +40,11 @@ var arrayJobEnvVars = []corev1.EnvVar{
 	},
 }
 
-func formatSubTaskName(_ context.Context, parentName, suffix string) (subTaskName string) {
+func formatSubTaskName(_ context.Context, parentName, suffix string, retryCount uint64) (subTaskName string) {
+	if retryCount > 0 {
+		return fmt.Sprintf("%v-%v-%v", parentName, suffix, strconv.FormatUint(retryCount, 10))
+	}
+
 	return fmt.Sprintf("%v-%v", parentName, suffix)
 }
 
@@ -78,8 +82,12 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 	// TODO: Respect parallelism param
 	for i := 0; i < size; i++ {
 		pod := podTemplate.DeepCopy()
+		retryCount := currentState.ArrayStatus.Retries.GetItem(i)
 		indexStr := strconv.Itoa(i)
-		pod.Name = formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
+
+		// if retryCount > tCtx.TaskExecutionMetadata().GetAnnotations()
+
+		pod.Name = formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryCount)
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:  FlyteK8sArrayIndexVarName,
 			Value: indexStr,
