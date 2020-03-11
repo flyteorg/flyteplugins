@@ -2,7 +2,7 @@ package presto
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/command"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/cmd"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 
 	"github.com/lyft/flytestdlib/cache"
@@ -16,7 +16,7 @@ import (
 )
 
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
-const prestoExecutorId = "presto-executor"
+const prestoExecutorID = "presto-executor"
 
 // Version of the custom state this plugin stores.  Useful for backwards compatibility if you one day need to update
 // the structure of the stored state
@@ -24,19 +24,19 @@ const pluginStateVersion = 0
 
 const prestoTaskType = "presto" // This needs to match the type defined in Flytekit constants.py
 
-type PrestoExecutor struct {
+type Executor struct {
 	id              string
-	metrics         PrestoExecutorMetrics
-	prestoClient    command.CommandClient
+	metrics         ExecutorMetrics
+	prestoClient    cmd.CommandClient
 	executionsCache cache.AutoRefresh
 	cfg             *config.Config
 }
 
-func (p PrestoExecutor) GetID() string {
+func (p Executor) GetID() string {
 	return p.id
 }
 
-func (p PrestoExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
+func (p Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	incomingState := ExecutionState{}
 
 	// We assume here that the first time this function is called, the custom state we get back is whatever we passed in,
@@ -66,7 +66,7 @@ func (p PrestoExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionConte
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
-func (p PrestoExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
+func (p Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
 	incomingState := ExecutionState{}
 	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
 		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state in Finalize [%s] Err [%s]",
@@ -77,7 +77,7 @@ func (p PrestoExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionContex
 	return Abort(ctx, incomingState, p.prestoClient)
 }
 
-func (p PrestoExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
+func (p Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
 	incomingState := ExecutionState{}
 	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
 		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state in Finalize [%s] Err [%s]",
@@ -88,11 +88,11 @@ func (p PrestoExecutor) Finalize(ctx context.Context, tCtx core.TaskExecutionCon
 	return Finalize(ctx, tCtx, incomingState)
 }
 
-func (p PrestoExecutor) GetProperties() core.PluginProperties {
+func (p Executor) GetProperties() core.PluginProperties {
 	return core.PluginProperties{}
 }
 
-func PrestoExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
+func ExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	cfg := config.GetPrestoConfig()
 	return InitializePrestoExecutor(ctx, iCtx, cfg, BuildResourceConfig(cfg), client.NewPrestoClient(cfg))
 }
@@ -111,11 +111,11 @@ func InitializePrestoExecutor(
 	iCtx core.SetupContext,
 	cfg *config.Config,
 	resourceConfig map[string]int,
-	prestoClient command.CommandClient) (core.Plugin, error) {
+	prestoClient cmd.CommandClient) (core.Plugin, error) {
 	logger.Infof(ctx, "Initializing a Presto executor with a resource config [%v]", resourceConfig)
 	q, err := NewPrestoExecutor(ctx, cfg, prestoClient, iCtx.MetricsScope())
 	if err != nil {
-		logger.Errorf(ctx, "Failed to create a new PrestoExecutor due to error: [%v]", err)
+		logger.Errorf(ctx, "Failed to create a new Executor due to error: [%v]", err)
 		return nil, err
 	}
 
@@ -133,12 +133,12 @@ func InitializePrestoExecutor(
 func NewPrestoExecutor(
 	ctx context.Context,
 	cfg *config.Config,
-	prestoClient command.CommandClient,
-	scope promutils.Scope) (PrestoExecutor, error) {
+	prestoClient cmd.CommandClient,
+	scope promutils.Scope) (Executor, error) {
 	executionsAutoRefreshCache, err := NewPrestoExecutionsCache(ctx, prestoClient, cfg, scope.NewSubScope(prestoTaskType))
 	if err != nil {
-		logger.Errorf(ctx, "Failed to create AutoRefreshCache in PrestoExecutor Setup. Error: %v", err)
-		return PrestoExecutor{}, err
+		logger.Errorf(ctx, "Failed to create AutoRefreshCache in Executor Setup. Error: %v", err)
+		return Executor{}, err
 	}
 
 	err = executionsAutoRefreshCache.Start(ctx)
@@ -146,8 +146,8 @@ func NewPrestoExecutor(
 		logger.Errorf(ctx, "Failed to start AutoRefreshCache. Error: %v", err)
 	}
 
-	return PrestoExecutor{
-		id:              prestoExecutorId,
+	return Executor{
+		id:              prestoExecutorID,
 		cfg:             cfg,
 		metrics:         getPrestoExecutorMetrics(scope),
 		prestoClient:    prestoClient,
@@ -158,9 +158,9 @@ func NewPrestoExecutor(
 func init() {
 	pluginMachinery.PluginRegistry().RegisterCorePlugin(
 		core.PluginEntry{
-			ID:                  prestoExecutorId,
+			ID:                  prestoExecutorID,
 			RegisteredTaskTypes: []core.TaskType{prestoTaskType},
-			LoadPlugin:          PrestoExecutorLoader,
+			LoadPlugin:          ExecutorLoader,
 			IsDefault:           false,
 		})
 }

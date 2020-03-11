@@ -2,7 +2,7 @@ package presto
 
 import (
 	"context"
-	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/command/mocks"
+	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/cmd/mocks"
 	"testing"
 
 	"github.com/lyft/flytestdlib/cache"
@@ -25,7 +25,7 @@ func TestPrestoExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		mockPresto := &prestoMocks.CommandClient{}
 		testScope := promutils.NewTestScope()
 
-		p := PrestoExecutionsCache{
+		p := ExecutionsCache{
 			AutoRefresh:  mockCache,
 			prestoClient: mockPresto,
 			scope:        testScope,
@@ -37,7 +37,7 @@ func TestPrestoExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		}
 		cacheItem := ExecutionStateCacheItem{
 			ExecutionState: state,
-			Id:             "some-id",
+			Identifier:     "some-id",
 		}
 
 		iw := &cacheMocks.ItemWrapper{}
@@ -58,7 +58,7 @@ func TestPrestoExecutionsCache_SyncQuboleQuery(t *testing.T) {
 
 		testScope := promutils.NewTestScope()
 
-		p := PrestoExecutionsCache{
+		p := ExecutionsCache{
 			AutoRefresh:  mockCache,
 			prestoClient: mockPresto,
 			scope:        testScope,
@@ -66,15 +66,15 @@ func TestPrestoExecutionsCache_SyncQuboleQuery(t *testing.T) {
 		}
 
 		state := ExecutionState{
-			CommandId: "123456",
+			CommandID: "123456",
 			Phase:     PhaseSubmitted,
 		}
 		cacheItem := ExecutionStateCacheItem{
 			ExecutionState: state,
-			Id:             "some-id",
+			Identifier:     "some-id",
 		}
 		mockPresto.OnGetCommandStatusMatch(mock.Anything, mock.MatchedBy(func(commandId string) bool {
-			return commandId == state.CommandId
+			return commandId == state.CommandID
 		}), mock.Anything).Return(client.PrestoStatusFinished, nil)
 
 		iw := &cacheMocks.ItemWrapper{}

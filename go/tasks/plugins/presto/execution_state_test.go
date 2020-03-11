@@ -2,9 +2,8 @@ package presto
 
 import (
 	"context"
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/command/mocks"
+	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/cmd/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/config"
 	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
@@ -108,7 +107,7 @@ func TestConstructTaskLog(t *testing.T) {
 	expected := "https://prestoproxy-internal.lyft.net:443"
 	u, err := url.Parse(expected)
 	assert.NoError(t, err)
-	taskLog := ConstructTaskLog(ExecutionState{CommandId: "123", URI: u.String()})
+	taskLog := ConstructTaskLog(ExecutionState{CommandID: "123", URI: u.String()})
 	assert.Equal(t, expected, taskLog.Uri)
 }
 
@@ -122,7 +121,7 @@ func TestConstructTaskInfo(t *testing.T) {
 
 	e := ExecutionState{
 		Phase:            PhaseQuerySucceeded,
-		CommandId:        "123",
+		CommandID:        "123",
 		SyncFailureCount: 0,
 		URI:              u.String(),
 	}
@@ -260,7 +259,7 @@ func TestAbort(t *testing.T) {
 			x = true
 		}).Return(nil)
 
-		err := Abort(ctx, ExecutionState{Phase: PhaseSubmitted, CommandId: "123456"}, mockPresto)
+		err := Abort(ctx, ExecutionState{Phase: PhaseSubmitted, CommandID: "123456"}, mockPresto)
 		assert.NoError(t, err)
 		assert.True(t, x)
 	})
@@ -273,7 +272,7 @@ func TestAbort(t *testing.T) {
 			x = true
 		}).Return(nil)
 
-		err := Abort(ctx, ExecutionState{Phase: PhaseQuerySucceeded, CommandId: "123456",}, mockPresto)
+		err := Abort(ctx, ExecutionState{Phase: PhaseQuerySucceeded, CommandID: "123456",}, mockPresto)
 		assert.NoError(t, err)
 		assert.False(t, x)
 	})
@@ -306,7 +305,7 @@ func TestMonitorQuery(t *testing.T) {
 	mockCache := &mocks2.AutoRefresh{}
 	mockCache.OnGetOrCreateMatch("my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name", mock.Anything).Return(ExecutionStateCacheItem{
 		ExecutionState: ExecutionState{Phase: PhaseQuerySucceeded},
-		Id:             "my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name",
+		Identifier:     "my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name",
 	}, nil).Run(func(_ mock.Arguments) {
 		getOrCreateCalled = true
 	})
@@ -324,7 +323,7 @@ func TestKickOffQuery(t *testing.T) {
 	var prestoCalled = false
 
 	prestoExecuteResponse := client.PrestoExecuteResponse{
-		Id:     "1234567",
+		ID:     "1234567",
 		Status: client.PrestoStatusQueued,
 	}
 	mockPresto := &prestoMocks.CommandClient{}
@@ -342,14 +341,14 @@ func TestKickOffQuery(t *testing.T) {
 	newState, err := KickOffQuery(ctx, tCtx, state, mockPresto, mockCache)
 	assert.NoError(t, err)
 	assert.Equal(t, PhaseSubmitted, newState.Phase)
-	assert.Equal(t, "1234567", newState.CommandId)
+	assert.Equal(t, "1234567", newState.CommandID)
 	assert.True(t, getOrCreateCalled)
 	assert.True(t, prestoCalled)
 }
 
 func createMockPrestoCfg() *config.Config {
 	return &config.Config{
-		Environment:         config.UrlMustParse("https://prestoproxy-internal.lyft.net:443"),
+		Environment:         config.URLMustParse("https://prestoproxy-internal.lyft.net:443"),
 		DefaultRoutingGroup: "adhoc",
 		Workers:             15,
 		LruCacheSize:        2000,
@@ -382,53 +381,3 @@ func Test_mapLabelToPrimaryLabel(t *testing.T) {
 		})
 	}
 }
-
-func createMockTaskExecutionContextWithProjectDomain(project string, domain string) *mocks.TaskExecutionContext {
-	mockTaskExecutionContext := mocks.TaskExecutionContext{}
-	taskExecID := &pluginsCoreMocks.TaskExecutionID{}
-	taskExecID.OnGetID().Return(idlCore.TaskExecutionIdentifier{
-		NodeExecutionId: &idlCore.NodeExecutionIdentifier{ExecutionId: &idlCore.WorkflowExecutionIdentifier{
-			Project: project,
-			Domain:  domain,
-			Name:    "random name",
-		}},
-	})
-
-	taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
-	taskMetadata.OnGetTaskExecutionID().Return(taskExecID)
-	mockTaskExecutionContext.On("TaskExecutionMetadata").Return(taskMetadata)
-	return &mockTaskExecutionContext
-}
-
-//func Test_getClusterPrimaryLabel(t *testing.T) {
-//	ctx := context.TODO()
-//	err := config.SetQuboleConfig(createMockPrestoCfg())
-//	assert.Nil(t, err)
-//
-//	type args struct {
-//		ctx                  context.Context
-//		tCtx                 core.TaskExecutionContext
-//		clusterLabelOverride string
-//	}
-//	tests := []struct {
-//		name string
-//		args args
-//		want string
-//	}{
-//		{name: "Override is not empty + override has NO existing mapping + project-domain has an existing mapping", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project A", "domain Z"), clusterLabelOverride: "AAAA"}, want: "primary B"},
-//		{name: "Override is not empty + override has NO existing mapping + project-domain has NO existing mapping", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project A", "domain blah"), clusterLabelOverride: "blh"}, want: DefaultClusterPrimaryLabel},
-//		{name: "Override is not empty + override has an existing mapping + project-domain has NO existing mapping", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project blah", "domain blah"), clusterLabelOverride: "C-prod"}, want: "primary C"},
-//		{name: "Override is not empty + override has an existing mapping + project-domain has an existing mapping", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project A", "domain A"), clusterLabelOverride: "C-prod"}, want: "primary C"},
-//		{name: "Override is empty + project-domain has an existing mapping", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project A", "domain X"), clusterLabelOverride: ""}, want: "primary A"},
-//		{name: "Override is empty + project-domain has an existing mapping2", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project A", "domain Z"), clusterLabelOverride: ""}, want: "primary B"},
-//		{name: "Override is empty + project-domain has NO existing mapping", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project A", "domain blah"), clusterLabelOverride: ""}, want: DefaultClusterPrimaryLabel},
-//		{name: "Override is empty + project-domain has NO existing mapping2", args: args{ctx: ctx, tCtx: createMockTaskExecutionContextWithProjectDomain("project blah", "domain X"), clusterLabelOverride: ""}, want: DefaultClusterPrimaryLabel},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			if got := getClusterPrimaryLabel(tt.args.ctx, tt.args.tCtx, tt.args.clusterLabelOverride); got != tt.want {
-//				t.Errorf("getClusterPrimaryLabel() = %v, want %v", got, tt.want)
-//			}
-//		})
-//	}
-//}

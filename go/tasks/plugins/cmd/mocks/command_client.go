@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	command "github.com/lyft/flyteplugins/go/tasks/plugins/command"
+	command "github.com/lyft/flyteplugins/go/tasks/plugins/cmd"
 
 	mock "github.com/stretchr/testify/mock"
 )

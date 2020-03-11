@@ -14,7 +14,7 @@ import (
 
 const prestoConfigSectionKey = "presto"
 
-func UrlMustParse(s string) config.URL {
+func URLMustParse(s string) config.URL {
 	r, err := url.Parse(s)
 	if err != nil {
 		logger.Panicf(context.TODO(), "Bad Presto URL Specified as default, error: %s", err)
@@ -34,7 +34,7 @@ type RoutingGroupConfig struct {
 
 var (
 	defaultConfig = Config{
-		Environment:         UrlMustParse("https://prestoproxy-internal.lyft.net:443"),
+		Environment:         URLMustParse("https://prestoproxy-internal.lyft.net:443"),
 		DefaultRoutingGroup: "adhoc",
 		Workers:             15,
 		LruCacheSize:        2000,

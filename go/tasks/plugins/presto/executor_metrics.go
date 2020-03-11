@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type PrestoExecutorMetrics struct {
+type ExecutorMetrics struct {
 	Scope                 promutils.Scope
 	ReleaseResourceFailed labeled.Counter
 	AllocationGranted     labeled.Counter
@@ -18,8 +18,8 @@ var (
 	tokenAgeObjectives = map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001, 1.0: 0.0}
 )
 
-func getPrestoExecutorMetrics(scope promutils.Scope) PrestoExecutorMetrics {
-	return PrestoExecutorMetrics{
+func getPrestoExecutorMetrics(scope promutils.Scope) ExecutorMetrics {
+	return ExecutorMetrics{
 		Scope: scope,
 		ReleaseResourceFailed: labeled.NewCounter("released_resource_failed",
 			"Error releasing allocation token", scope),

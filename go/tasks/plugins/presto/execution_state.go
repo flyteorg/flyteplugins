@@ -21,7 +21,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/command"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/cmd"
 )
 
 type ExecutionPhase int
@@ -54,11 +54,11 @@ type ExecutionState struct {
 	Phase ExecutionPhase
 
 	// This will store the command ID from Presto
-	CommandId string `json:"command_id,omitempty"`
+	CommandID string `json:"command_id,omitempty"`
 	URI       string `json:"uri,omitempty"`
 
-	CurrentPrestoQuery PrestoQuery `json:"current_presto_query, omitempty"`
-	QueryCount         int         `json:"query_count,omitempty"`
+	CurrentPrestoQuery Query `json:"current_presto_query,omitempty"`
+	QueryCount         int   `json:"query_count,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task
@@ -72,11 +72,11 @@ type ExecutionState struct {
 	AllocationTokenRequestStartTime time.Time `json:"allocation_token_request_start_time,omitempty"`
 }
 
-type PrestoQuery struct {
-	Statement         string                   `json:"statement, omitempty"`
-	ExtraArgs         client.PrestoExecuteArgs `json:"extra_args, omitempty"`
-	TempTableName     string                   `json:"temp_table_name, omitempty"`
-	ExternalTableName string                   `json:"external_table_name, omitempty"`
+type Query struct {
+	Statement         string                   `json:"statement,omitempty"`
+	ExtraArgs         client.PrestoExecuteArgs `json:"extra_args,omitempty"`
+	TempTableName     string                   `json:"temp_table_name,omitempty"`
+	ExternalTableName string                   `json:"external_table_name,omitempty"`
 	ExternalLocation  string                   `json:"external_location"`
 }
 
@@ -85,9 +85,9 @@ func HandleExecutionState(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
 	currentState ExecutionState,
-	prestoClient command.CommandClient,
+	prestoClient cmd.CommandClient,
 	executionsCache cache.AutoRefresh,
-	metrics PrestoExecutorMetrics) (ExecutionState, error) {
+	metrics ExecutorMetrics) (ExecutionState, error) {
 
 	var transformError error
 	var newState ExecutionState
@@ -111,7 +111,7 @@ func HandleExecutionState(
 		if currentState.QueryCount < 4 {
 			// If there are still Presto statements to execute, increment the query count, reset the phase to get a new
 			// allocation token, and continue executing the remaining statements
-			currentState.QueryCount += 1
+			currentState.QueryCount++
 			currentState.Phase = PhaseQueued
 		}
 		newState = currentState
@@ -129,25 +129,25 @@ func GetAllocationToken(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
 	currentState ExecutionState,
-	metric PrestoExecutorMetrics) (ExecutionState, error) {
+	metric ExecutorMetrics) (ExecutionState, error) {
 
 	newState := ExecutionState{}
-	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	routingGroup, err := composeResourceNamespaceWithRoutingGroup(ctx, tCtx)
 	if err != nil {
-		return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error getting query info when requesting allocation token %s", uniqueId)
+		return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error getting query info when requesting allocation token %s", uniqueID)
 	}
 
 	resourceConstraintsSpec := createResourceConstraintsSpec(ctx, tCtx, routingGroup)
 
-	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, routingGroup, uniqueId, resourceConstraintsSpec)
+	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, routingGroup, uniqueID, resourceConstraintsSpec)
 	if err != nil {
 		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId, err)
-		return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", uniqueId)
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID, err)
+		return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", uniqueID)
 	}
-	logger.Infof(ctx, "Allocation result for [%s] is [%s]", uniqueId, allocationStatus)
+	logger.Infof(ctx, "Allocation result for [%s] is [%s]", uniqueID, allocationStatus)
 
 	// Emitting the duration this execution has been waiting for a token allocation
 	if currentState.AllocationTokenRequestStartTime.IsZero() {
@@ -166,7 +166,7 @@ func GetAllocationToken(
 		newState.Phase = PhaseNotStarted
 	} else {
 		return newState, errors.Errorf(errors.ResourceManagerFailure, "Got bad allocation result [%s] for token [%s]",
-			allocationStatus, uniqueId)
+			allocationStatus, uniqueID)
 	}
 
 	return newState, nil
@@ -263,7 +263,7 @@ func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionCont
 func GetNextQuery(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
-	currentState ExecutionState) (PrestoQuery, error) {
+	currentState ExecutionState) (Query, error) {
 
 	switch currentState.QueryCount {
 	case 0:
@@ -271,12 +271,12 @@ func GetNextQuery(
 		tempTableName := generateRandomString(32)
 		routingGroup, catalog, schema, statement, err := GetQueryInfo(ctx, tCtx)
 		if err != nil {
-			return PrestoQuery{}, err
+			return Query{}, err
 		}
 
 		statement = fmt.Sprintf(`CREATE TABLE hive.flyte_temporary_tables.%s_temp AS %s`, tempTableName, statement)
 
-		prestoQuery := PrestoQuery{
+		prestoQuery := Query{
 			Statement: statement,
 			ExtraArgs: client.PrestoExecuteArgs{
 				RoutingGroup: resolveRoutingGroup(ctx, routingGroup, prestoCfg),
@@ -365,10 +365,10 @@ func KickOffQuery(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
 	currentState ExecutionState,
-	prestoClient command.CommandClient,
+	prestoClient cmd.CommandClient,
 	cache cache.AutoRefresh) (ExecutionState, error) {
 
-	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	statement := currentState.CurrentPrestoQuery.Statement
 	extraArgs := currentState.CurrentPrestoQuery.ExtraArgs
@@ -377,29 +377,29 @@ func KickOffQuery(
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
 		currentState.CreationFailureCount = currentState.CreationFailureCount + 1
-		logger.Warnf(ctx, "Error creating Presto query for %s, failure counts %d. Error: %s", uniqueId, currentState.CreationFailureCount, err)
+		logger.Warnf(ctx, "Error creating Presto query for %s, failure counts %d. Error: %s", uniqueID, currentState.CreationFailureCount, err)
 	} else {
 		executeResponse := response.(client.PrestoExecuteResponse)
 
 		// If we succeed, then store the command id returned from Presto, and update our state. Also, add to the
 		// AutoRefreshCache so we start getting updates for its status.
-		commandId := executeResponse.Id
-		logger.Infof(ctx, "Created Presto Id [%s] for token %s", commandId, uniqueId)
-		currentState.CommandId = commandId
+		commandID := executeResponse.ID
+		logger.Infof(ctx, "Created Presto ID [%s] for token %s", commandID, uniqueID)
+		currentState.CommandID = commandID
 		currentState.Phase = PhaseSubmitted
-		currentState.URI = executeResponse.NextUri
+		currentState.URI = executeResponse.NextURI
 
 		executionStateCacheItem := ExecutionStateCacheItem{
 			ExecutionState: currentState,
-			Id:             uniqueId,
+			Identifier:     uniqueID,
 		}
 
 		// The first time we put it in the cache, we know it won't have succeeded so we don't need to look at it
-		_, err := cache.GetOrCreate(uniqueId, executionStateCacheItem)
+		_, err := cache.GetOrCreate(uniqueID, executionStateCacheItem)
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
 			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]. Error %s",
-				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
+				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID,
 				tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 			return currentState, err
 		}
@@ -414,17 +414,17 @@ func MonitorQuery(
 	currentState ExecutionState,
 	cache cache.AutoRefresh) (ExecutionState, error) {
 
-	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	executionStateCacheItem := ExecutionStateCacheItem{
 		ExecutionState: currentState,
-		Id:             uniqueId,
+		Identifier:     uniqueID,
 	}
 
-	cachedItem, err := cache.GetOrCreate(uniqueId, executionStateCacheItem)
+	cachedItem, err := cache.GetOrCreate(uniqueID, executionStateCacheItem)
 	if err != nil {
 		// This means that our cache has fundamentally broken... return a system error
 		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]. Error %s",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueId,
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID,
 			tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 		return currentState, errors.Wrapf(errors.CacheFailed, err, "Error when GetOrCreate while monitoring")
 	}
@@ -469,7 +469,7 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
-	if e.CommandId != "" {
+	if e.CommandID != "" {
 		logs = append(logs, ConstructTaskLog(e))
 		return &core.TaskInfo{
 			Logs:       logs,
@@ -482,16 +482,16 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 
 func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	return &idlCore.TaskLog{
-		Name:          fmt.Sprintf("Status: %s [%s]", e.Phase, e.CommandId),
+		Name:          fmt.Sprintf("Status: %s [%s]", e.Phase, e.CommandID),
 		MessageFormat: idlCore.TaskLog_UNKNOWN,
 		Uri:           e.URI,
 	}
 }
 
-func Abort(ctx context.Context, currentState ExecutionState, client command.CommandClient) error {
+func Abort(ctx context.Context, currentState ExecutionState, client cmd.CommandClient) error {
 	// Cancel Presto query if non-terminal state
-	if !InTerminalState(currentState) && currentState.CommandId != "" {
-		err := client.KillCommand(ctx, currentState.CommandId)
+	if !InTerminalState(currentState) && currentState.CommandID != "" {
+		err := client.KillCommand(ctx, currentState.CommandID)
 		if err != nil {
 			logger.Errorf(ctx, "Error terminating Presto command in Finalize [%s]", err)
 			return err
@@ -502,16 +502,16 @@ func Abort(ctx context.Context, currentState ExecutionState, client command.Comm
 
 func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState) error {
 	// Release allocation token
-	uniqueId := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	routingGroup, err := composeResourceNamespaceWithRoutingGroup(ctx, tCtx)
 	if err != nil {
-		return errors.Wrapf(errors.ResourceManagerFailure, err, "Error getting query info when releasing allocation token %s", uniqueId)
+		return errors.Wrapf(errors.ResourceManagerFailure, err, "Error getting query info when releasing allocation token %s", uniqueID)
 	}
 
-	err = tCtx.ResourceManager().ReleaseResource(ctx, routingGroup, uniqueId)
+	err = tCtx.ResourceManager().ReleaseResource(ctx, routingGroup, uniqueID)
 
 	if err != nil {
-		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueId, err)
+		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueID, err)
 		return err
 	}
 	return nil
