@@ -26,8 +26,6 @@ const (
 	PrestoUserHeader         = "X-Presto-User"
 )
 
-//go:generate mockery -all -case=snake
-
 type prestoClient struct {
 	client      *http.Client
 	environment *url.URL

@@ -177,7 +177,7 @@ func composeResourceNamespaceWithRoutingGroup(ctx context.Context, tCtx core.Tas
 	if err != nil {
 		return "", err
 	}
-	clusterPrimaryLabel := resolveRoutingGroup(ctx, routingGroup)
+	clusterPrimaryLabel := resolveRoutingGroup(ctx, routingGroup, config.GetPrestoConfig())
 	return core.ResourceNamespace(clusterPrimaryLabel), nil
 }
 
@@ -221,9 +221,7 @@ func validatePrestoStatement(prestoJob plugins.PrestoQuery) error {
 	return nil
 }
 
-func resolveRoutingGroup(ctx context.Context, routingGroup string) string {
-	prestoCfg := config.GetPrestoConfig()
-
+func resolveRoutingGroup(ctx context.Context, routingGroup string, prestoCfg *config.Config) string {
 	if routingGroup == "" {
 		logger.Debugf(ctx, "Input routing group is an empty string; falling back to using the default routing group [%v]", prestoCfg.DefaultRoutingGroup)
 		return prestoCfg.DefaultRoutingGroup
@@ -269,6 +267,7 @@ func GetNextQuery(
 
 	switch currentState.QueryCount {
 	case 0:
+		prestoCfg := config.GetPrestoConfig()
 		tempTableName := generateRandomString(32)
 		routingGroup, catalog, schema, statement, err := GetQueryInfo(ctx, tCtx)
 		if err != nil {
@@ -280,7 +279,7 @@ func GetNextQuery(
 		prestoQuery := PrestoQuery{
 			Statement: statement,
 			ExtraArgs: client.PrestoExecuteArgs{
-				RoutingGroup: resolveRoutingGroup(ctx, routingGroup),
+				RoutingGroup: resolveRoutingGroup(ctx, routingGroup, prestoCfg),
 				Catalog:      catalog,
 				Schema:       schema,
 			},
