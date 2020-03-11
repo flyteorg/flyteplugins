@@ -7,6 +7,7 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -161,6 +162,14 @@ func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plu
 	}
 
 	if err = exec.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	primaryLabel := GetConfig().TokenConfigs.primaryLabel
+	tokenLimit := GetConfig().TokenConfigs.limit
+
+	if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(primaryLabel), tokenLimit); err != nil {
+		logger.Errorf(ctx, "Token Resource registration for [%v] failed due to error [%v]", primaryLabel, err)
 		return nil, err
 	}
 

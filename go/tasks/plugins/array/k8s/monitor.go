@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
@@ -59,9 +60,10 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 			continue
 		}
 
+		generatedName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), strconv.Itoa(childIdx))
 		phaseInfo, err := CheckPodStatus(ctx, kubeClient,
 			k8sTypes.NamespacedName{
-				Name:      formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), strconv.Itoa(childIdx)),
+				Name:      generatedName,
 				Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
 			})
 		if err != nil {
@@ -78,6 +80,15 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 
 		actualPhase := phaseInfo.Phase()
 		if phaseInfo.Phase().IsSuccess() {
+
+			// Release token
+			resourceNamespace := core.ResourceNamespace(tCtx.TaskExecutionMetadata().GetOwnerID().Namespace)
+			err = tCtx.ResourceManager().ReleaseResource(ctx, resourceNamespace, generatedName)
+			if err != nil {
+				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueID, err)
+				return currentState, logLinks, errors.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")
+			}
+
 			originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, childIdx, originalIdx)
 			if err != nil {

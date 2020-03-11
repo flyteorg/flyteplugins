@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +32,7 @@ const (
 	ErrSubmitJob              errors2.ErrorCode = "SUBMIT_JOB_FAILED"
 	JobIndexVarName           string            = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	FlyteK8sArrayIndexVarName string            = "FLYTE_K8S_ARRAY_INDEX"
+	TokenPrimaryLabel         string            = "token"
 )
 
 var arrayJobEnvVars = []corev1.EnvVar{
@@ -93,6 +95,16 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		}
 
 		pod = ApplyPodPolicies(ctx, config, pod)
+
+		// Allocate Token
+		resourceNamespace := core.ResourceNamespace(pod.Namespace)
+		allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, pod.Name, core.ResourceConstraintsSpec{})
+		if err != nil {
+			logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
+				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), pod.Name, err)
+			return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", pod.Name)
+		}
+		logger.Infof(ctx, "Allocation result for [%s] is [%s]", pod.Name, allocationStatus)
 
 		err = kubeClient.GetClient().Create(ctx, pod)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {

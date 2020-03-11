@@ -32,6 +32,11 @@ var (
 	configSection = config.MustRegisterSection(configSectionKey, defaultConfig)
 )
 
+type TokenConfig struct {
+	primaryLabel string
+	limit        int
+}
+
 // Defines custom config for K8s Array plugin
 type Config struct {
 	DefaultScheduler     string `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
@@ -39,6 +44,7 @@ type Config struct {
 	MaxArrayJobSize      int64  `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
+	TokenConfigs         TokenConfig
 }
 
 func GetConfig() *Config {
