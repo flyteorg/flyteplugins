@@ -50,6 +50,38 @@ func (_m *TaskExecutionMetadata) GetAnnotations() map[string]string {
 	return r0
 }
 
+type TaskExecutionMetadata_GetInterruptible struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionMetadata_GetInterruptible) Return(_a0 bool) *TaskExecutionMetadata_GetInterruptible {
+	return &TaskExecutionMetadata_GetInterruptible{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionMetadata) OnGetInterruptible() *TaskExecutionMetadata_GetInterruptible {
+	c := _m.On("GetInterruptible")
+	return &TaskExecutionMetadata_GetInterruptible{Call: c}
+}
+
+func (_m *TaskExecutionMetadata) OnGetInterruptibleMatch(matchers ...interface{}) *TaskExecutionMetadata_GetInterruptible {
+	c := _m.On("GetInterruptible", matchers...)
+	return &TaskExecutionMetadata_GetInterruptible{Call: c}
+}
+
+// GetInterruptible provides a mock function with given fields:
+func (_m *TaskExecutionMetadata) GetInterruptible() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 type TaskExecutionMetadata_GetK8sServiceAccount struct {
 	*mock.Call
 }
