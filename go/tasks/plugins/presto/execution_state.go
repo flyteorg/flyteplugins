@@ -110,8 +110,9 @@ func HandleExecutionState(
 
 	case PhaseQuerySucceeded:
 		if currentState.QueryCount < 4 {
-			// If there are still Presto statements to execute, increment the query count, reset the phase to get a new
-			// allocation token, and continue executing the remaining statements
+			// If there are still Presto statements to execute, increment the query count, reset the phase to 'queued'
+			// and continue executing the remaining statements. In this case, we won't request another allocation token
+			// as the 5 statements that get executed are all considered to be part of the same "query"
 			currentState.QueryCount++
 			currentState.Phase = PhaseQueued
 		}
