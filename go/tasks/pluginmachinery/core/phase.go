@@ -180,6 +180,10 @@ func PhaseInfoSuccess(info *TaskInfo) PhaseInfo {
 	return phaseInfo(PhaseSuccess, DefaultPhaseVersion, nil, info)
 }
 
+func PhaseInfoSuccessWithVersion(version uint32, info *TaskInfo) PhaseInfo {
+	return phaseInfo(PhaseSuccess, version, nil, info)
+}
+
 func PhaseInfoFailure(code, reason string, info *TaskInfo) PhaseInfo {
 	return PhaseInfoFailed(PhasePermanentFailure, &core.ExecutionError{Code: code, Message: reason}, info)
 }

@@ -8,9 +8,10 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
+	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/presto/client/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/config"
-	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/svc/mocks"
 	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
+	stdConfig "github.com/lyft/flytestdlib/config"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -248,7 +249,7 @@ func TestAbort(t *testing.T) {
 	t.Run("Terminate called when not in terminal state", func(t *testing.T) {
 		var x = false
 
-		mockPresto := &prestoMocks.ServiceClient{}
+		mockPresto := &prestoMocks.PrestoClient{}
 		mockPresto.On("KillCommand", mock.Anything, mock.MatchedBy(func(commandId string) bool {
 			return commandId == "123456"
 		}), mock.Anything).Run(func(_ mock.Arguments) {
@@ -263,7 +264,7 @@ func TestAbort(t *testing.T) {
 	t.Run("Terminate not called when in terminal state", func(t *testing.T) {
 		var x = false
 
-		mockPresto := &prestoMocks.ServiceClient{}
+		mockPresto := &prestoMocks.PrestoClient{}
 		mockPresto.On("KillCommand", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 			x = true
 		}).Return(nil)
@@ -322,7 +323,7 @@ func TestKickOffQuery(t *testing.T) {
 		ID:     "1234567",
 		Status: client.PrestoStatusQueued,
 	}
-	mockPresto := &prestoMocks.ServiceClient{}
+	mockPresto := &prestoMocks.PrestoClient{}
 	mockPresto.OnExecuteCommandMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		prestoCalled = true
@@ -344,13 +345,18 @@ func TestKickOffQuery(t *testing.T) {
 
 func createMockPrestoCfg() *config.Config {
 	return &config.Config{
-		Environment:         config.URLMustParse("https://prestoproxy-internal.lyft.net:443"),
+		Environment:         config.URLMustParse(""),
 		DefaultRoutingGroup: "adhoc",
-		Workers:             15,
-		LruCacheSize:        2000,
-		AwsS3ShardFormatter: "s3://lyft-modelbuilder/{}/",
+		AwsS3ShardFormatter: "",
 		AwsS3ShardCount:     2,
 		RoutingGroupConfigs: []config.RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
+		RateLimiter: config.RateLimiter{
+			Name:         "presto",
+			SyncPeriod:   stdConfig.Duration{Duration: 3 * time.Second},
+			Workers:      15,
+			LruCacheSize: 2000,
+			MetricScope:  "presto",
+		},
 	}
 }
 

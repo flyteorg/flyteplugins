@@ -2,7 +2,9 @@ package presto
 
 import (
 	"context"
-	"crypto/rand"
+
+	"k8s.io/apimachinery/pkg/util/rand"
+
 	"fmt"
 	"strings"
 
@@ -21,8 +23,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
-
-	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
 )
 
 type ExecutionPhase int
@@ -55,30 +55,30 @@ type ExecutionState struct {
 	Phase ExecutionPhase
 
 	// This will store the command ID from Presto
-	CommandID string `json:"command_id,omitempty"`
+	CommandID string `json:"commandId,omitempty"`
 	URI       string `json:"uri,omitempty"`
 
-	CurrentPrestoQuery Query `json:"current_presto_query,omitempty"`
-	QueryCount         int   `json:"query_count,omitempty"`
+	CurrentPrestoQuery Query `json:"currentPrestoQuery,omitempty"`
+	QueryCount         int   `json:"queryCount,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task
 	// level retries, just errors from hitting the Presto API, inside the sync loop
-	SyncFailureCount int `json:"sync_failure_count,omitempty"`
+	SyncFailureCount int `json:"syncFailureCount,omitempty"`
 
 	// In kicking off the Presto command, this is the number of failures
-	CreationFailureCount int `json:"creation_failure_count,omitempty"`
+	CreationFailureCount int `json:"creationFailureCount,omitempty"`
 
 	// The time the execution first requests for an allocation token
-	AllocationTokenRequestStartTime time.Time `json:"allocation_token_request_start_time,omitempty"`
+	AllocationTokenRequestStartTime time.Time `json:"allocationTokenRequestStartTime,omitempty"`
 }
 
 type Query struct {
 	Statement         string                   `json:"statement,omitempty"`
-	ExtraArgs         client.PrestoExecuteArgs `json:"extra_args,omitempty"`
-	TempTableName     string                   `json:"temp_table_name,omitempty"`
-	ExternalTableName string                   `json:"external_table_name,omitempty"`
-	ExternalLocation  string                   `json:"external_location"`
+	ExtraArgs         client.PrestoExecuteArgs `json:"extraArgs,omitempty"`
+	TempTableName     string                   `json:"tempTableName,omitempty"`
+	ExternalTableName string                   `json:"externalTableName,omitempty"`
+	ExternalLocation  string                   `json:"externalLocation"`
 }
 
 // This is the main state iteration
@@ -86,7 +86,7 @@ func HandleExecutionState(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
 	currentState ExecutionState,
-	prestoClient svc.ServiceClient,
+	prestoClient client.PrestoClient,
 	executionsCache cache.AutoRefresh,
 	metrics ExecutorMetrics) (ExecutionState, error) {
 
@@ -270,7 +270,7 @@ func GetNextQuery(
 	switch currentState.QueryCount {
 	case 0:
 		prestoCfg := config.GetPrestoConfig()
-		tempTableName := generateRandomString(32)
+		tempTableName := rand.String(32)
 		routingGroup, catalog, schema, statement, err := GetQueryInfo(ctx, tCtx)
 		if err != nil {
 			return Query{}, err
@@ -329,43 +329,20 @@ FROM hive.flyte_temporary_tables.%s`
 	}
 }
 
-func generateRandomString(length int) string {
-	const letters = "0123456789abcdefghijklmnopqrstuvwxyz"
-	bytes, err := generateRandomBytes(length)
-	if err != nil {
-		return ""
-	}
-	for i, b := range bytes {
-		bytes[i] = letters[b%byte(len(letters))]
-	}
-	return string(bytes)
-}
-
-func generateRandomBytes(length int) ([]byte, error) {
-	b := make([]byte, length)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
 func getExternalLocation(shardFormatter string, shardLength int) string {
 	shardCount := strings.Count(shardFormatter, "{}")
 	for i := 0; i < shardCount; i++ {
-		shardFormatter = strings.Replace(shardFormatter, "{}", generateRandomString(shardLength), 1)
+		shardFormatter = strings.Replace(shardFormatter, "{}", rand.String(shardLength), 1)
 	}
 
-	return shardFormatter + generateRandomString(32) + "/"
+	return shardFormatter + rand.String(32) + "/"
 }
 
 func KickOffQuery(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
 	currentState ExecutionState,
-	prestoClient svc.ServiceClient,
+	prestoClient client.PrestoClient,
 	cache cache.AutoRefresh) (ExecutionState, error) {
 
 	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
@@ -450,13 +427,13 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 		if state.CreationFailureCount > 5 {
 			phaseInfo = core.PhaseInfoRetryableFailure("PrestoFailure", "Too many creation attempts", nil)
 		} else {
-			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Presto launch")
+			phaseInfo = core.PhaseInfoQueued(t, uint32(state.QueryCount), "Waiting for Presto launch")
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(uint32(state.QueryCount), ConstructTaskInfo(state))
 
 	case PhaseQuerySucceeded:
-		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoSuccessWithVersion(uint32(state.QueryCount), ConstructTaskInfo(state))
 
 	case PhaseQueryFailed:
 		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
@@ -487,7 +464,7 @@ func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	}
 }
 
-func Abort(ctx context.Context, currentState ExecutionState, client svc.ServiceClient) error {
+func Abort(ctx context.Context, currentState ExecutionState, client client.PrestoClient) error {
 	// Cancel Presto query if non-terminal state
 	if !InTerminalState(currentState) && currentState.CommandID != "" {
 		err := client.KillCommand(ctx, currentState.CommandID)

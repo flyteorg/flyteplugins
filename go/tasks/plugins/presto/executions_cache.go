@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
-
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/lyft/flytestdlib/cache"
@@ -28,14 +26,14 @@ const (
 
 type ExecutionsCache struct {
 	cache.AutoRefresh
-	prestoClient svc.ServiceClient
+	prestoClient client.PrestoClient
 	scope        promutils.Scope
 	cfg          *config.Config
 }
 
 func NewPrestoExecutionsCache(
 	ctx context.Context,
-	prestoClient svc.ServiceClient,
+	prestoClient client.PrestoClient,
 	cfg *config.Config,
 	scope promutils.Scope) (ExecutionsCache, error) {
 
@@ -44,7 +42,7 @@ func NewPrestoExecutionsCache(
 		scope:        scope,
 		cfg:          cfg,
 	}
-	autoRefreshCache, err := cache.NewAutoRefreshCache("presto", q.SyncPrestoQuery, workqueue.DefaultControllerRateLimiter(), ResyncDuration, cfg.Workers, cfg.LruCacheSize, scope)
+	autoRefreshCache, err := cache.NewAutoRefreshCache(cfg.RateLimiter.Name, q.SyncPrestoQuery, workqueue.DefaultControllerRateLimiter(), cfg.RateLimiter.SyncPeriod.Duration, cfg.RateLimiter.Workers, cfg.RateLimiter.LruCacheSize, scope.NewSubScope(cfg.RateLimiter.MetricScope))
 	if err != nil {
 		logger.Errorf(ctx, "Could not create AutoRefreshCache in Executor. [%s]", err)
 		return q, errors.Wrapf(errors.CacheFailed, err, "Error creating AutoRefreshCache")
@@ -146,7 +144,7 @@ func (p *ExecutionsCache) SyncPrestoQuery(ctx context.Context, batch cache.Batch
 }
 
 // We need some way to translate results we get from Presto, into a plugin phase
-func StatusToExecutionPhase(s svc.CommandStatus) (ExecutionPhase, error) {
+func StatusToExecutionPhase(s client.PrestoStatus) (ExecutionPhase, error) {
 	switch s {
 	case client.PrestoStatusFinished:
 		return PhaseQuerySucceeded, nil

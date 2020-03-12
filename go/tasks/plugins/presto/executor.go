@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
 
 	"github.com/lyft/flytestdlib/cache"
 
@@ -28,7 +27,7 @@ const prestoTaskType = "presto" // This needs to match the type defined in Flyte
 type Executor struct {
 	id              string
 	metrics         ExecutorMetrics
-	prestoClient    svc.ServiceClient
+	prestoClient    client.PrestoClient
 	executionsCache cache.AutoRefresh
 	cfg             *config.Config
 }
@@ -95,7 +94,7 @@ func (p Executor) GetProperties() core.PluginProperties {
 
 func ExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	cfg := config.GetPrestoConfig()
-	return InitializePrestoExecutor(ctx, iCtx, cfg, BuildResourceConfig(cfg), client.NewPrestoClient(cfg))
+	return InitializePrestoExecutor(ctx, iCtx, cfg, BuildResourceConfig(cfg), client.NewNoopPrestoClient(cfg))
 }
 
 func BuildResourceConfig(cfg *config.Config) map[string]int {
@@ -112,7 +111,7 @@ func InitializePrestoExecutor(
 	iCtx core.SetupContext,
 	cfg *config.Config,
 	resourceConfig map[string]int,
-	prestoClient svc.ServiceClient) (core.Plugin, error) {
+	prestoClient client.PrestoClient) (core.Plugin, error) {
 	logger.Infof(ctx, "Initializing a Presto executor with a resource config [%v]", resourceConfig)
 	q, err := NewPrestoExecutor(ctx, cfg, prestoClient, iCtx.MetricsScope())
 	if err != nil {
@@ -134,7 +133,7 @@ func InitializePrestoExecutor(
 func NewPrestoExecutor(
 	ctx context.Context,
 	cfg *config.Config,
-	prestoClient svc.ServiceClient,
+	prestoClient client.PrestoClient,
 	scope promutils.Scope) (Executor, error) {
 	executionsAutoRefreshCache, err := NewPrestoExecutionsCache(ctx, prestoClient, cfg, scope.NewSubScope(prestoTaskType))
 	if err != nil {

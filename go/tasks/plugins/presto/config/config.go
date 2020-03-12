@@ -5,6 +5,7 @@ package config
 import (
 	"context"
 	"net/url"
+	"time"
 
 	"github.com/lyft/flytestdlib/config"
 	"github.com/lyft/flytestdlib/logger"
@@ -26,21 +27,34 @@ func URLMustParse(s string) config.URL {
 }
 
 type RoutingGroupConfig struct {
-	Name                             string  `json:"primaryLabel" pflag:",The name of a given Presto routing group"`
+	Name                             string  `json:"name" pflag:",The name of a given Presto routing group"`
 	Limit                            int     `json:"limit" pflag:",Resource quota (in the number of outstanding requests) of the routing group"`
 	ProjectScopeQuotaProportionCap   float64 `json:"projectScopeQuotaProportionCap" pflag:",A floating point number between 0 and 1, specifying the maximum proportion of quotas allowed to allocate to a project in the routing group"`
 	NamespaceScopeQuotaProportionCap float64 `json:"namespaceScopeQuotaProportionCap" pflag:",A floating point number between 0 and 1, specifying the maximum proportion of quotas allowed to allocate to a namespace in the routing group"`
 }
 
+type RateLimiter struct {
+	Name         string          `json:"name" pflag:",The name of the rate limiter"`
+	SyncPeriod   config.Duration `json:"syncPeriod" pflag:",The duration to wait before the cache is refreshed again"`
+	Workers      int             `json:"workers" pflag:",Number of parallel workers to refresh the cache"`
+	LruCacheSize int             `json:"lruCacheSize" pflag:",Size of the cache"`
+	MetricScope  string          `json:"metricScope" pflag:",The prefix in Prometheus used to track metrics related to Presto"`
+}
+
 var (
 	defaultConfig = Config{
-		Environment:         URLMustParse("https://prestoproxy-internal.lyft.net:443"),
+		Environment:         URLMustParse(""),
 		DefaultRoutingGroup: "adhoc",
-		Workers:             15,
-		LruCacheSize:        2000,
-		AwsS3ShardFormatter: "s3://lyft-modelbuilder/{}/",
+		AwsS3ShardFormatter: "",
 		AwsS3ShardCount:     2,
 		RoutingGroupConfigs: []RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
+		RateLimiter: RateLimiter{
+			Name:         "presto",
+			SyncPeriod:   config.Duration{Duration: 3 * time.Second},
+			Workers:      15,
+			LruCacheSize: 2000,
+			MetricScope:  "presto",
+		},
 	}
 
 	prestoConfigSection = pluginsConfig.MustRegisterSubSection(prestoConfigSectionKey, &defaultConfig)
@@ -48,13 +62,12 @@ var (
 
 // Presto plugin configs
 type Config struct {
-	Environment         config.URL           `json:"endpoint" pflag:",Endpoint for Presto to use"`
+	Environment         config.URL           `json:"environment" pflag:",Environment endpoint for Presto to use"`
 	DefaultRoutingGroup string               `json:"defaultRoutingGroup" pflag:",Default Presto routing group"`
-	Workers             int                  `json:"workers" pflag:",Number of parallel workers to refresh the cache"`
-	LruCacheSize        int                  `json:"lruCacheSize" pflag:",Size of the AutoRefreshCache"`
 	AwsS3ShardFormatter string               `json:"awsS3ShardFormatter" pflag:", S3 bucket prefix where Presto results will be stored"`
-	AwsS3ShardCount     int                  `json:"awsS3ShardStringLength" pflag:", Number of characters for the S3 bucket shard prefix"`
-	RoutingGroupConfigs []RoutingGroupConfig `json:"clusterConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
+	AwsS3ShardCount     int                  `json:"awsS3ShardCount" pflag:", Number of characters for the S3 bucket shard prefix"`
+	RoutingGroupConfigs []RoutingGroupConfig `json:"routingGroupConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
+	RateLimiter         RateLimiter          `json:"rateLimiter" pflag:"Rate limiter config"`
 }
 
 // Retrieves the current config value or default.
