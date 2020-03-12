@@ -32,5 +32,5 @@ type TaskExecutionMetadata interface {
 	GetLabels() map[string]string
 	GetAnnotations() map[string]string
 	GetK8sServiceAccount() string
-	GetInterruptible() bool
+	IsInterruptible() bool
 }
