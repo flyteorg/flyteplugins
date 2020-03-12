@@ -3,8 +3,8 @@ package presto
 import (
 	"context"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
 
 	"github.com/lyft/flytestdlib/cache"
 

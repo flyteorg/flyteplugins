@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/svc/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/config"
+	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/svc/mocks"
 	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"

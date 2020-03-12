@@ -295,7 +295,7 @@ func GetNextQuery(
 		externalLocation := getExternalLocation(cfg.AwsS3ShardFormatter, cfg.AwsS3ShardCount)
 
 		statement := fmt.Sprintf(`
-CREATE TABLE hive.flyte_temporary_tables.%s (LIKE hive.flyte_temporary_tables.%s)"
+CREATE TABLE hive.flyte_temporary_tables.%s (LIKE hive.flyte_temporary_tables.%s)
 WITH (format = 'PARQUET', external_location = '%s')`,
 			currentState.CurrentPrestoQuery.ExternalTableName,
 			currentState.CurrentPrestoQuery.TempTableName,
@@ -305,13 +305,11 @@ WITH (format = 'PARQUET', external_location = '%s')`,
 		return currentState.CurrentPrestoQuery, nil
 
 	case 2:
-		statement := fmt.Sprintf(`
+		statement := `
 INSERT INTO hive.flyte_temporary_tables.%s
 SELECT *
-FROM hive.flyte_temporary_tables.%s`,
-			currentState.CurrentPrestoQuery.ExternalTableName,
-			currentState.CurrentPrestoQuery.TempTableName,
-		)
+FROM hive.flyte_temporary_tables.%s`
+		statement = fmt.Sprintf(statement, currentState.CurrentPrestoQuery.ExternalTableName, currentState.CurrentPrestoQuery.TempTableName)
 		currentState.CurrentPrestoQuery.Statement = statement
 		return currentState.CurrentPrestoQuery, nil
 
