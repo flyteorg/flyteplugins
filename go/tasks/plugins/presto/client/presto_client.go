@@ -2,9 +2,10 @@ package client
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/cmd"
 	"net/http"
 	"net/url"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
 
 	"time"
 
@@ -37,7 +38,7 @@ type PrestoExecuteArgs struct {
 }
 type PrestoExecuteResponse struct {
 	ID      string
-	Status  cmd.CommandStatus
+	Status  svc.CommandStatus
 	NextURI string
 }
 
@@ -53,11 +54,11 @@ func (p *prestoClient) KillCommand(ctx context.Context, commandID string) error 
 	return nil
 }
 
-func (p *prestoClient) GetCommandStatus(ctx context.Context, commandID string) (cmd.CommandStatus, error) {
+func (p *prestoClient) GetCommandStatus(ctx context.Context, commandID string) (svc.CommandStatus, error) {
 	return NewPrestoStatus(ctx, "UNKNOWN"), nil
 }
 
-func NewPrestoClient(cfg *config.Config) cmd.CommandClient {
+func NewPrestoClient(cfg *config.Config) svc.ServiceClient {
 	return &prestoClient{
 		client:      &http.Client{Timeout: httpRequestTimeoutSecs * time.Second},
 		environment: cfg.Environment.ResolveReference(&cfg.Environment.URL),

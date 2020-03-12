@@ -2,23 +2,24 @@ package client
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/cmd"
-	"github.com/lyft/flytestdlib/logger"
 	"strings"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
+	"github.com/lyft/flytestdlib/logger"
 )
 
 // This type is meant only to encapsulate the response coming from Presto as a type, it is
 // not meant to be stored locally.
 const (
-	PrestoStatusUnknown   cmd.CommandStatus = "UNKNOWN"
-	PrestoStatusQueued    cmd.CommandStatus = "QUEUED"
-	PrestoStatusRunning   cmd.CommandStatus = "RUNNING"
-	PrestoStatusFinished  cmd.CommandStatus = "FINISHED"
-	PrestoStatusFailed    cmd.CommandStatus = "FAILED"
-	PrestoStatusCancelled cmd.CommandStatus = "CANCELLED"
+	PrestoStatusUnknown   svc.CommandStatus = "UNKNOWN"
+	PrestoStatusQueued    svc.CommandStatus = "QUEUED"
+	PrestoStatusRunning   svc.CommandStatus = "RUNNING"
+	PrestoStatusFinished  svc.CommandStatus = "FINISHED"
+	PrestoStatusFailed    svc.CommandStatus = "FAILED"
+	PrestoStatusCancelled svc.CommandStatus = "CANCELLED"
 )
 
-var PrestoStatuses = map[cmd.CommandStatus]struct{}{
+var PrestoStatuses = map[svc.CommandStatus]struct{}{
 	PrestoStatusUnknown:   {},
 	PrestoStatusQueued:    {},
 	PrestoStatusRunning:   {},
@@ -27,12 +28,12 @@ var PrestoStatuses = map[cmd.CommandStatus]struct{}{
 	PrestoStatusCancelled: {},
 }
 
-func NewPrestoStatus(ctx context.Context, state string) cmd.CommandStatus {
+func NewPrestoStatus(ctx context.Context, state string) svc.CommandStatus {
 	upperCased := strings.ToUpper(state)
 	if strings.Contains(upperCased, "FAILED") {
 		return PrestoStatusFailed
-	} else if _, ok := PrestoStatuses[cmd.CommandStatus(upperCased)]; ok {
-		return cmd.CommandStatus(upperCased)
+	} else if _, ok := PrestoStatuses[svc.CommandStatus(upperCased)]; ok {
+		return svc.CommandStatus(upperCased)
 	} else {
 		logger.Warnf(ctx, "Invalid Presto Status found: %v", state)
 		return PrestoStatusUnknown

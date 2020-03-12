@@ -2,17 +2,18 @@ package presto
 
 import (
 	"context"
+	"net/url"
+	"testing"
+	"time"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/cmd/mocks"
+	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/svc/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/config"
 	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
-	"net/url"
-	"testing"
-	"time"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
@@ -246,13 +247,8 @@ func TestAbort(t *testing.T) {
 
 	t.Run("Terminate called when not in terminal state", func(t *testing.T) {
 		var x = false
-		//mockQubole := &quboleMocks.QuboleClient{}
-		mockPresto := &prestoMocks.CommandClient{}
-		//mockQubole.On("KillCommand", mock.Anything, mock.MatchedBy(func(commandId string) bool {
-		//	return commandId == "123456"
-		//}), mock.Anything).Run(func(_ mock.Arguments) {
-		//	x = true
-		//}).Return(nil)
+
+		mockPresto := &prestoMocks.ServiceClient{}
 		mockPresto.On("KillCommand", mock.Anything, mock.MatchedBy(func(commandId string) bool {
 			return commandId == "123456"
 		}), mock.Anything).Run(func(_ mock.Arguments) {
@@ -266,13 +262,13 @@ func TestAbort(t *testing.T) {
 
 	t.Run("Terminate not called when in terminal state", func(t *testing.T) {
 		var x = false
-		//mockQubole := &quboleMocks.QuboleClient{}
-		mockPresto := &prestoMocks.CommandClient{}
+
+		mockPresto := &prestoMocks.ServiceClient{}
 		mockPresto.On("KillCommand", mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 			x = true
 		}).Return(nil)
 
-		err := Abort(ctx, ExecutionState{Phase: PhaseQuerySucceeded, CommandID: "123456",}, mockPresto)
+		err := Abort(ctx, ExecutionState{Phase: PhaseQuerySucceeded, CommandID: "123456"}, mockPresto)
 		assert.NoError(t, err)
 		assert.False(t, x)
 	})
@@ -326,7 +322,7 @@ func TestKickOffQuery(t *testing.T) {
 		ID:     "1234567",
 		Status: client.PrestoStatusQueued,
 	}
-	mockPresto := &prestoMocks.CommandClient{}
+	mockPresto := &prestoMocks.ServiceClient{}
 	mockPresto.OnExecuteCommandMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 		mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		prestoCalled = true

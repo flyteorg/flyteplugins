@@ -4,8 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 	"strings"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 
 	"time"
 
@@ -21,7 +22,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/cmd"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
 )
 
 type ExecutionPhase int
@@ -85,7 +86,7 @@ func HandleExecutionState(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
 	currentState ExecutionState,
-	prestoClient cmd.CommandClient,
+	prestoClient svc.ServiceClient,
 	executionsCache cache.AutoRefresh,
 	metrics ExecutorMetrics) (ExecutionState, error) {
 
@@ -365,7 +366,7 @@ func KickOffQuery(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
 	currentState ExecutionState,
-	prestoClient cmd.CommandClient,
+	prestoClient svc.ServiceClient,
 	cache cache.AutoRefresh) (ExecutionState, error) {
 
 	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
@@ -488,7 +489,7 @@ func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	}
 }
 
-func Abort(ctx context.Context, currentState ExecutionState, client cmd.CommandClient) error {
+func Abort(ctx context.Context, currentState ExecutionState, client svc.ServiceClient) error {
 	// Cancel Presto query if non-terminal state
 	if !InTerminalState(currentState) && currentState.CommandID != "" {
 		err := client.KillCommand(ctx, currentState.CommandID)

@@ -2,8 +2,9 @@ package presto
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/cmd"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/svc"
 
 	"k8s.io/client-go/util/workqueue"
 
@@ -27,14 +28,14 @@ const (
 
 type ExecutionsCache struct {
 	cache.AutoRefresh
-	prestoClient cmd.CommandClient
+	prestoClient svc.ServiceClient
 	scope        promutils.Scope
 	cfg          *config.Config
 }
 
 func NewPrestoExecutionsCache(
 	ctx context.Context,
-	prestoClient cmd.CommandClient,
+	prestoClient svc.ServiceClient,
 	cfg *config.Config,
 	scope promutils.Scope) (ExecutionsCache, error) {
 
@@ -145,7 +146,7 @@ func (p *ExecutionsCache) SyncPrestoQuery(ctx context.Context, batch cache.Batch
 }
 
 // We need some way to translate results we get from Presto, into a plugin phase
-func StatusToExecutionPhase(s cmd.CommandStatus) (ExecutionPhase, error) {
+func StatusToExecutionPhase(s svc.CommandStatus) (ExecutionPhase, error) {
 	switch s {
 	case client.PrestoStatusFinished:
 		return PhaseQuerySucceeded, nil

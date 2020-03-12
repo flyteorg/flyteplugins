@@ -2,8 +2,9 @@ package presto
 
 import (
 	"context"
-	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/cmd/mocks"
 	"testing"
+
+	prestoMocks "github.com/lyft/flyteplugins/go/tasks/plugins/svc/mocks"
 
 	"github.com/lyft/flytestdlib/cache"
 	cacheMocks "github.com/lyft/flytestdlib/cache/mocks"
@@ -22,7 +23,7 @@ func TestPrestoExecutionsCache_SyncQuboleQuery(t *testing.T) {
 
 	t.Run("terminal state return unchanged", func(t *testing.T) {
 		mockCache := &cacheMocks.AutoRefresh{}
-		mockPresto := &prestoMocks.CommandClient{}
+		mockPresto := &prestoMocks.ServiceClient{}
 		testScope := promutils.NewTestScope()
 
 		p := ExecutionsCache{
@@ -52,7 +53,7 @@ func TestPrestoExecutionsCache_SyncQuboleQuery(t *testing.T) {
 
 	t.Run("move to success", func(t *testing.T) {
 		mockCache := &cacheMocks.AutoRefresh{}
-		mockPresto := &prestoMocks.CommandClient{}
+		mockPresto := &prestoMocks.ServiceClient{}
 		mockSecretManager := &mocks.SecretManager{}
 		mockSecretManager.OnGetMatch(mock.Anything, mock.Anything).Return("fake key", nil)
 
