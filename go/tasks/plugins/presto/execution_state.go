@@ -446,7 +446,6 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 	case PhaseNotStarted:
 		phaseInfo = core.PhaseInfoNotReady(t, core.DefaultPhaseVersion, "Haven't received allocation token")
 	case PhaseQueued:
-		// TODO: Turn into config
 		if state.CreationFailureCount > 5 {
 			phaseInfo = core.PhaseInfoRetryableFailure("PrestoFailure", "Too many creation attempts", nil)
 		} else {

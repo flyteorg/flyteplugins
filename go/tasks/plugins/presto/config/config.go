@@ -40,7 +40,7 @@ var (
 		LruCacheSize:        2000,
 		AwsS3ShardFormatter: "s3://lyft-modelbuilder/{}/",
 		AwsS3ShardCount:     2,
-		RoutingGroupConfigs: []RoutingGroupConfig{{Name: "adhoc", Limit: 250}},
+		RoutingGroupConfigs: []RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
 	}
 
 	prestoConfigSection = pluginsConfig.MustRegisterSubSection(prestoConfigSectionKey, &defaultConfig)
