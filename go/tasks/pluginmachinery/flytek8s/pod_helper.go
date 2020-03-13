@@ -11,8 +11,8 @@ import (
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
 
 const PodKind = "pod"

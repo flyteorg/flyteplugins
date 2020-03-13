@@ -144,7 +144,7 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 	}
 
 	// 2. Get the tolerations for interruptible pods
-	if interruptible && config.GetK8sPluginConfig().InterruptibleTolerations != nil{
+	if interruptible && config.GetK8sPluginConfig().InterruptibleTolerations != nil {
 		tolerations = append(tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
 	}
 

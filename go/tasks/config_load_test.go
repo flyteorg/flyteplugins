@@ -33,8 +33,8 @@ func TestLoadConfig(t *testing.T) {
 		k8sConfig := flyteK8sConfig.GetK8sPluginConfig()
 		assert.True(t, k8sConfig.InjectFinalizer)
 		assert.Equal(t, map[string]string{
-			"annotationKey1": "annotationValue1",
-			"annotationKey2": "annotationValue2",
+			"annotationKey1":                                 "annotationValue1",
+			"annotationKey2":                                 "annotationValue2",
 			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 		}, k8sConfig.DefaultAnnotations)
 		assert.Equal(t, map[string]string{
@@ -69,7 +69,7 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, []v1.Toleration{tolStorage}, k8sConfig.ResourceTolerations[v1.ResourceStorage])
 		assert.Equal(t, "1000m", k8sConfig.DefaultCPURequest)
 		assert.Equal(t, "1024Mi", k8sConfig.DefaultMemoryRequest)
-		assert.Equal(t, map[string]string{"x/interruptible":"true"}, k8sConfig.InterruptibleLabels)
+		assert.Equal(t, map[string]string{"x/interruptible": "true"}, k8sConfig.InterruptibleLabels)
 		assert.Equal(t, "x/flyte", k8sConfig.InterruptibleTolerations[0].Key)
 		assert.Equal(t, "interruptible", k8sConfig.InterruptibleTolerations[0].Value)
 	})
@@ -83,5 +83,4 @@ func TestLoadConfig(t *testing.T) {
 		assert.NotNil(t, spark.GetSparkConfig())
 		assert.NotNil(t, spark.GetSparkConfig().DefaultSparkConfig)
 	})
-
 }
