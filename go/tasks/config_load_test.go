@@ -69,8 +69,8 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, []v1.Toleration{tolStorage}, k8sConfig.ResourceTolerations[v1.ResourceStorage])
 		assert.Equal(t, "1000m", k8sConfig.DefaultCPURequest)
 		assert.Equal(t, "1024Mi", k8sConfig.DefaultMemoryRequest)
-		assert.Equal(t, map[string]string{"lyft.net/interruptible":"1"}, k8sConfig.InterruptibleLabels)
-		assert.Equal(t, "lyft.net/flyte", k8sConfig.InterruptibleTolerations[0].Key)
+		assert.Equal(t, map[string]string{"x/interruptible":"true"}, k8sConfig.InterruptibleLabels)
+		assert.Equal(t, "x/flyte", k8sConfig.InterruptibleTolerations[0].Key)
 		assert.Equal(t, "interruptible", k8sConfig.InterruptibleTolerations[0].Value)
 	})
 
