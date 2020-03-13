@@ -56,10 +56,15 @@ type ExecutionState struct {
 
 	// This will store the command ID from Presto
 	CommandID string `json:"commandId,omitempty"`
-	URI       string `json:"uri,omitempty"`
 
+	// This will have the nextUri from Presto which is used to advance the query forward
+	URI string `json:"uri,omitempty"`
+
+	// This is the current Presto query (out of 5) needed to complete a Presto task
 	CurrentPrestoQuery Query `json:"currentPrestoQuery,omitempty"`
-	QueryCount         int   `json:"queryCount,omitempty"`
+
+	// Keeps track of which Presto query we are on. Its values range from 0-4 for the 5 queries that are needed
+	QueryCount int `json:"queryCount,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task
@@ -75,7 +80,7 @@ type ExecutionState struct {
 
 type Query struct {
 	Statement         string                   `json:"statement,omitempty"`
-	ExtraArgs         client.PrestoExecuteArgs `json:"extraArgs,omitempty"`
+	ExecuteArgs       client.PrestoExecuteArgs `json:"executeArgs,omitempty"`
 	TempTableName     string                   `json:"tempTableName,omitempty"`
 	ExternalTableName string                   `json:"externalTableName,omitempty"`
 	ExternalLocation  string                   `json:"externalLocation"`
@@ -280,7 +285,7 @@ func GetNextQuery(
 
 		prestoQuery := Query{
 			Statement: statement,
-			ExtraArgs: client.PrestoExecuteArgs{
+			ExecuteArgs: client.PrestoExecuteArgs{
 				RoutingGroup: resolveRoutingGroup(ctx, routingGroup, prestoCfg),
 				Catalog:      catalog,
 				Schema:       schema,
@@ -348,9 +353,9 @@ func KickOffQuery(
 	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	statement := currentState.CurrentPrestoQuery.Statement
-	extraArgs := currentState.CurrentPrestoQuery.ExtraArgs
+	executeArgs := currentState.CurrentPrestoQuery.ExecuteArgs
 
-	response, err := prestoClient.ExecuteCommand(ctx, statement, extraArgs)
+	response, err := prestoClient.ExecuteCommand(ctx, statement, executeArgs)
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
 		currentState.CreationFailureCount = currentState.CreationFailureCount + 1

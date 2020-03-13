@@ -23,8 +23,8 @@ func (_m PrestoClient_ExecuteCommand) Return(_a0 interface{}, _a1 error) *Presto
 	return &PrestoClient_ExecuteCommand{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *PrestoClient) OnExecuteCommand(ctx context.Context, commandStr string, extraArgs interface{}) *PrestoClient_ExecuteCommand {
-	c := _m.On("ExecuteCommand", ctx, commandStr, extraArgs)
+func (_m *PrestoClient) OnExecuteCommand(ctx context.Context, commandStr string, executeArgs client.PrestoExecuteArgs) *PrestoClient_ExecuteCommand {
+	c := _m.On("ExecuteCommand", ctx, commandStr, executeArgs)
 	return &PrestoClient_ExecuteCommand{Call: c}
 }
 
@@ -33,13 +33,13 @@ func (_m *PrestoClient) OnExecuteCommandMatch(matchers ...interface{}) *PrestoCl
 	return &PrestoClient_ExecuteCommand{Call: c}
 }
 
-// ExecuteCommand provides a mock function with given fields: ctx, commandStr, extraArgs
-func (_m *PrestoClient) ExecuteCommand(ctx context.Context, commandStr string, extraArgs interface{}) (interface{}, error) {
-	ret := _m.Called(ctx, commandStr, extraArgs)
+// ExecuteCommand provides a mock function with given fields: ctx, commandStr, executeArgs
+func (_m *PrestoClient) ExecuteCommand(ctx context.Context, commandStr string, executeArgs client.PrestoExecuteArgs) (interface{}, error) {
+	ret := _m.Called(ctx, commandStr, executeArgs)
 
 	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) interface{}); ok {
-		r0 = rf(ctx, commandStr, extraArgs)
+	if rf, ok := ret.Get(0).(func(context.Context, string, client.PrestoExecuteArgs) interface{}); ok {
+		r0 = rf(ctx, commandStr, executeArgs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(interface{})
@@ -47,8 +47,8 @@ func (_m *PrestoClient) ExecuteCommand(ctx context.Context, commandStr string, e
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, interface{}) error); ok {
-		r1 = rf(ctx, commandStr, extraArgs)
+	if rf, ok := ret.Get(1).(func(context.Context, string, client.PrestoExecuteArgs) error); ok {
+		r1 = rf(ctx, commandStr, executeArgs)
 	} else {
 		r1 = ret.Error(1)
 	}
