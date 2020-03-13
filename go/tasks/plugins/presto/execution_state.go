@@ -436,10 +436,12 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 		}
 	case PhaseSubmitted:
 		phaseInfo = core.PhaseInfoRunning(uint32(state.QueryCount), ConstructTaskInfo(state))
-
 	case PhaseQuerySucceeded:
-		phaseInfo = core.PhaseInfoSuccessWithVersion(uint32(state.QueryCount), ConstructTaskInfo(state))
-
+		if state.QueryCount < 4 {
+			phaseInfo = core.PhaseInfoRunning(uint32(state.QueryCount), ConstructTaskInfo(state))
+		} else {
+			phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
+		}
 	case PhaseQueryFailed:
 		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
 	}
