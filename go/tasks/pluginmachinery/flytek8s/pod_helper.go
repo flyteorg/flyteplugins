@@ -12,6 +12,7 @@ import (
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 )
 
 const PodKind = "pod"
@@ -34,6 +35,16 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 	containers := []v1.Container{
 		*c,
 	}
+	if taskExecutionMetadata.IsInterruptible() && config.GetK8sPluginConfig().InterruptibleLabels != nil {
+		return &v1.PodSpec{
+			// We could specify Scheduler, Affinity, nodename etc
+			RestartPolicy:      v1.RestartPolicyNever,
+			Containers:         containers,
+			Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
+			ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
+			NodeSelector:       config.GetK8sPluginConfig().InterruptibleLabels,
+		}, nil
+	}
 	return &v1.PodSpec{
 		// We could specify Scheduler, Affinity, nodename etc
 		RestartPolicy:      v1.RestartPolicyNever,
@@ -41,6 +52,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
 	}, nil
+
 }
 
 func BuildPodWithSpec(podSpec *v1.PodSpec) *v1.Pod {

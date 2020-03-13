@@ -150,24 +150,3 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 
 	return tolerations
 }
-
-
-func GetTolerationsForResources(resourceRequirements ...v1.ResourceRequirements) []v1.Toleration {
-	var tolerations []v1.Toleration
-	resourceNames := sets.NewString()
-	for _, resources := range resourceRequirements {
-		for r := range resources.Limits {
-			resourceNames.Insert(r.String())
-		}
-		for r := range resources.Requests {
-			resourceNames.Insert(r.String())
-		}
-	}
-	resourceTols := config.GetK8sPluginConfig().ResourceTolerations
-	for _, r := range resourceNames.UnsortedList() {
-		if v, ok := resourceTols[v1.ResourceName(r)]; ok {
-			tolerations = append(tolerations, v...)
-		}
-	}
-	return tolerations
-}
