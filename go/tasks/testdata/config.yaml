@@ -23,6 +23,13 @@ plugins:
           value: special
           operator: Equal
           effect: PreferNoSchedule
+    interruptible-labels:
+      - lyft.net/interruptible: true
+    interruptible-tolerations:
+      - key: lyft.net/flyte
+        value: interruptible
+        operator: Equal
+        effect: NoSchedule
     default-env-vars:
       - AWS_METADATA_SERVICE_TIMEOUT: 5
       - AWS_METADATA_SERVICE_NUM_ATTEMPTS: 20

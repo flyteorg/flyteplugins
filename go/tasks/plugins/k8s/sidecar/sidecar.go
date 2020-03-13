@@ -60,7 +60,7 @@ func validateAndFinalizeContainers(
 
 	}
 	pod.Spec.Containers = finalizedContainers
-	pod.Spec.Tolerations = flytek8s.GetTolerationsForResources(resReqs...)
+	pod.Spec.Tolerations = flytek8s.GetPodTolerations(taskCtx.TaskExecutionMetadata().IsInterruptible(), resReqs...)
 	return &pod, nil
 }
 

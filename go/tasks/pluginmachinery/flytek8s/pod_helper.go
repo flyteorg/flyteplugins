@@ -16,6 +16,8 @@ import (
 
 const PodKind = "pod"
 const OOMKilled = "OOMKilled"
+const Interrupted = "Interrupted"
+const SIGKILL = 137
 
 func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
 	inputs io.InputReader, outputPaths io.OutputFilePaths) (*v1.PodSpec, error) {
@@ -36,7 +38,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 		// We could specify Scheduler, Affinity, nodename etc
 		RestartPolicy:      v1.RestartPolicyNever,
 		Containers:         containers,
-		Tolerations:        GetTolerationsForResources(c.Resources),
+		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
 	}, nil
 }
@@ -180,9 +182,9 @@ func DemystifySuccess(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 	return pluginsCore.PhaseInfoSuccess(&info), nil
 }
 
-func ConvertPodFailureToError(status v1.PodStatus) (string, string) {
-	code := "UnknownError"
-	message := "Container/Pod failed. No message received from kubernetes."
+func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
+	code = "UnknownError"
+	message = "Container/Pod failed. No message received from kubernetes."
 	if len(status.Reason) > 0 {
 		code = status.Reason
 	}
@@ -202,7 +204,10 @@ func ConvertPodFailureToError(status v1.PodStatus) (string, string) {
 		if containerState.Terminated != nil {
 			if strings.Contains(c.State.Terminated.Reason, OOMKilled) {
 				code = OOMKilled
+			} else if containerState.Terminated.ExitCode == SIGKILL {
+				code = Interrupted
 			}
+
 			message += fmt.Sprintf("\r\nContainer [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
 				c.Name,
 				containerState.Terminated.ExitCode,

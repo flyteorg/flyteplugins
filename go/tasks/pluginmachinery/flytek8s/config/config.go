@@ -43,6 +43,10 @@ type K8sPluginConfig struct {
 	DefaultCPURequest string `json:"default-cpus" pflag:",Defines a default value for cpu for containers if not specified."`
 	// default memory requests for a container
 	DefaultMemoryRequest string `json:"default-memory" pflag:",Defines a default value for memory for containers if not specified."`
+	// Tolerations for interruptible pods
+	InterruptibleTolerations []v1.Toleration `json:"interruptible-tolerations"  pflag:"-,Tolerations to be applied for interruptible pods"`
+	// Node Labels for interruptible pods
+	InterruptibleLabels map[string]string `json:"interruptible-labels" pflag:"-,Defines a set of labels to add to the interruptible pods."`
 }
 
 // Retrieves the current k8s plugin config or default.
