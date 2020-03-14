@@ -8,6 +8,7 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
@@ -17,7 +18,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	k8sv1 "k8s.io/api/core/v1"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 )
 
 const (
