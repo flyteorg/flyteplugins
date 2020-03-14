@@ -17,6 +17,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	k8sv1 "k8s.io/api/core/v1"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 )
 
 const (
@@ -61,6 +62,10 @@ func validateAndFinalizeContainers(
 	}
 	pod.Spec.Containers = finalizedContainers
 	pod.Spec.Tolerations = flytek8s.GetPodTolerations(taskCtx.TaskExecutionMetadata().IsInterruptible(), resReqs...)
+	if taskCtx.TaskExecutionMetadata().IsInterruptible() && len(config.GetK8sPluginConfig().InterruptibleNodeSelector) > 0 {
+		pod.Spec.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
+	}
+
 	return &pod, nil
 }
 

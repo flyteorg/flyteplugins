@@ -23,7 +23,7 @@ plugins:
           value: special
           operator: Equal
           effect: PreferNoSchedule
-    interruptible-labels:
+    interruptible-node-selector:
       - x/interruptible: "true"
     interruptible-tolerations:
       - key: x/flyte

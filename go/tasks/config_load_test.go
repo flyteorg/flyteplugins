@@ -69,7 +69,7 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, []v1.Toleration{tolStorage}, k8sConfig.ResourceTolerations[v1.ResourceStorage])
 		assert.Equal(t, "1000m", k8sConfig.DefaultCPURequest)
 		assert.Equal(t, "1024Mi", k8sConfig.DefaultMemoryRequest)
-		assert.Equal(t, map[string]string{"x/interruptible": "true"}, k8sConfig.InterruptibleLabels)
+		assert.Equal(t, map[string]string{"x/interruptible": "true"}, k8sConfig.InterruptibleNodeSelector)
 		assert.Equal(t, "x/flyte", k8sConfig.InterruptibleTolerations[0].Key)
 		assert.Equal(t, "interruptible", k8sConfig.InterruptibleTolerations[0].Value)
 	})

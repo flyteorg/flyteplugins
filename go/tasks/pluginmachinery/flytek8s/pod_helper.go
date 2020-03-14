@@ -35,14 +35,14 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 	containers := []v1.Container{
 		*c,
 	}
-	if taskExecutionMetadata.IsInterruptible() && config.GetK8sPluginConfig().InterruptibleLabels != nil {
+	if taskExecutionMetadata.IsInterruptible() && len(config.GetK8sPluginConfig().InterruptibleNodeSelector) > 0 {
 		return &v1.PodSpec{
 			// We could specify Scheduler, Affinity, nodename etc
 			RestartPolicy:      v1.RestartPolicyNever,
 			Containers:         containers,
 			Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 			ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
-			NodeSelector:       config.GetK8sPluginConfig().InterruptibleLabels,
+			NodeSelector:       config.GetK8sPluginConfig().InterruptibleNodeSelector,
 		}, nil
 	}
 	return &v1.PodSpec{
@@ -217,6 +217,8 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 			if strings.Contains(c.State.Terminated.Reason, OOMKilled) {
 				code = OOMKilled
 			} else if containerState.Terminated.ExitCode == SIGKILL {
+				// in some setups, node termination sends SIGKILL to all the containers running on that node. Capturing and
+				// tagging that correctly.
 				code = Interrupted
 			}
 
