@@ -43,8 +43,6 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "environment"), defaultConfig.Environment.String(), "Environment endpoint for Presto to use")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "defaultRoutingGroup"), defaultConfig.DefaultRoutingGroup, "Default Presto routing group")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "awsS3ShardFormatter"), defaultConfig.AwsS3ShardFormatter, " S3 bucket prefix where Presto results will be stored")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "awsS3ShardCount"), defaultConfig.AwsS3ShardCount, " Number of characters for the S3 bucket shard prefix")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "rateLimiter.name"), defaultConfig.RateLimiter.Name, "The name of the rate limiter")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "rateLimiter.syncPeriod"), defaultConfig.RateLimiter.SyncPeriod.String(), "The duration to wait before the cache is refreshed again")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "rateLimiter.workers"), defaultConfig.RateLimiter.Workers, "Number of parallel workers to refresh the cache")

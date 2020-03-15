@@ -147,7 +147,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 			CreationFailureCount: 0,
 		}
 		phaseInfo := MapExecutionStateToPhaseInfo(e)
-		assert.Equal(t, core.PhaseQueued, phaseInfo.Phase())
+		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 
 		e = ExecutionState{
 			Phase:                PhaseQueued,
@@ -347,8 +347,6 @@ func createMockPrestoCfg() *config.Config {
 	return &config.Config{
 		Environment:         config.URLMustParse(""),
 		DefaultRoutingGroup: "adhoc",
-		AwsS3ShardFormatter: "",
-		AwsS3ShardCount:     2,
 		RoutingGroupConfigs: []config.RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
 		RateLimiter: config.RateLimiter{
 			Name:         "presto",

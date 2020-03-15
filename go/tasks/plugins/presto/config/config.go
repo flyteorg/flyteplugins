@@ -45,8 +45,6 @@ var (
 	defaultConfig = Config{
 		Environment:         URLMustParse(""),
 		DefaultRoutingGroup: "adhoc",
-		AwsS3ShardFormatter: "",
-		AwsS3ShardCount:     2,
 		RoutingGroupConfigs: []RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
 		RateLimiter: RateLimiter{
 			Name:         "presto",
@@ -64,8 +62,6 @@ var (
 type Config struct {
 	Environment         config.URL           `json:"environment" pflag:",Environment endpoint for Presto to use"`
 	DefaultRoutingGroup string               `json:"defaultRoutingGroup" pflag:",Default Presto routing group"`
-	AwsS3ShardFormatter string               `json:"awsS3ShardFormatter" pflag:", S3 bucket prefix where Presto results will be stored"`
-	AwsS3ShardCount     int                  `json:"awsS3ShardCount" pflag:", Number of characters for the S3 bucket shard prefix"`
 	RoutingGroupConfigs []RoutingGroupConfig `json:"routingGroupConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
 	RateLimiter         RateLimiter          `json:"rateLimiter" pflag:"Rate limiter config"`
 }

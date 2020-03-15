@@ -57,6 +57,9 @@ type TaskExecutionContext interface {
 
 	// Returns a handle to the Task events recorder, which get stored in the Admin.
 	EventsRecorder() EventsRecorder
+
+	//// Returns a reference to a data location
+	//DataLocation() io.OutputWriter
 }
 
 // A simple fire-and-forget func

@@ -6,7 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"fmt"
-	"strings"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/presto/client"
 
@@ -297,9 +296,7 @@ func GetNextQuery(
 		return prestoQuery, nil
 
 	case 1:
-		cfg := config.GetPrestoConfig()
-		externalLocation := getExternalLocation(cfg.AwsS3ShardFormatter, cfg.AwsS3ShardCount)
-
+		externalLocation := "TODO - use sandbox ref"
 		statement := fmt.Sprintf(`
 CREATE TABLE hive.flyte_temporary_tables.%s (LIKE hive.flyte_temporary_tables.%s)
 WITH (format = 'PARQUET', external_location = '%s')`,
@@ -334,15 +331,6 @@ FROM hive.flyte_temporary_tables.%s`
 	}
 }
 
-func getExternalLocation(shardFormatter string, shardLength int) string {
-	shardCount := strings.Count(shardFormatter, "{}")
-	for i := 0; i < shardCount; i++ {
-		shardFormatter = strings.Replace(shardFormatter, "{}", rand.String(shardLength), 1)
-	}
-
-	return shardFormatter + rand.String(32) + "/"
-}
-
 func KickOffQuery(
 	ctx context.Context,
 	tCtx core.TaskExecutionContext,
@@ -361,15 +349,13 @@ func KickOffQuery(
 		currentState.CreationFailureCount = currentState.CreationFailureCount + 1
 		logger.Warnf(ctx, "Error creating Presto query for %s, failure counts %d. Error: %s", uniqueID, currentState.CreationFailureCount, err)
 	} else {
-		executeResponse := response.(client.PrestoExecuteResponse)
-
 		// If we succeed, then store the command id returned from Presto, and update our state. Also, add to the
 		// AutoRefreshCache so we start getting updates for its status.
-		commandID := executeResponse.ID
+		commandID := response.ID
 		logger.Infof(ctx, "Created Presto ID [%s] for token %s", commandID, uniqueID)
 		currentState.CommandID = commandID
 		currentState.Phase = PhaseSubmitted
-		currentState.URI = executeResponse.NextURI
+		currentState.URI = response.NextURI
 
 		executionStateCacheItem := ExecutionStateCacheItem{
 			ExecutionState: currentState,
@@ -421,6 +407,8 @@ func MonitorQuery(
 	return cachedExecutionState.ExecutionState, nil
 }
 
+// The 'PhaseInfoRunning' occurs 15 times (3 for each of the 5 Presto queries that get run for every Presto task) which
+// are differentiated by the version (1-15)
 func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
@@ -432,13 +420,13 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 		if state.CreationFailureCount > 5 {
 			phaseInfo = core.PhaseInfoRetryableFailure("PrestoFailure", "Too many creation attempts", nil)
 		} else {
-			phaseInfo = core.PhaseInfoQueued(t, uint32(state.QueryCount), "Waiting for Presto launch")
+			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+1), ConstructTaskInfo(state))
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(uint32(state.QueryCount), ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+2), ConstructTaskInfo(state))
 	case PhaseQuerySucceeded:
 		if state.QueryCount < 4 {
-			phaseInfo = core.PhaseInfoRunning(uint32(state.QueryCount), ConstructTaskInfo(state))
+			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+3), ConstructTaskInfo(state))
 		} else {
 			phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
 		}

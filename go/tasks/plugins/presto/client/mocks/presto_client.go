@@ -19,7 +19,7 @@ type PrestoClient_ExecuteCommand struct {
 	*mock.Call
 }
 
-func (_m PrestoClient_ExecuteCommand) Return(_a0 interface{}, _a1 error) *PrestoClient_ExecuteCommand {
+func (_m PrestoClient_ExecuteCommand) Return(_a0 client.PrestoExecuteResponse, _a1 error) *PrestoClient_ExecuteCommand {
 	return &PrestoClient_ExecuteCommand{Call: _m.Call.Return(_a0, _a1)}
 }
 
@@ -34,16 +34,14 @@ func (_m *PrestoClient) OnExecuteCommandMatch(matchers ...interface{}) *PrestoCl
 }
 
 // ExecuteCommand provides a mock function with given fields: ctx, commandStr, executeArgs
-func (_m *PrestoClient) ExecuteCommand(ctx context.Context, commandStr string, executeArgs client.PrestoExecuteArgs) (interface{}, error) {
+func (_m *PrestoClient) ExecuteCommand(ctx context.Context, commandStr string, executeArgs client.PrestoExecuteArgs) (client.PrestoExecuteResponse, error) {
 	ret := _m.Called(ctx, commandStr, executeArgs)
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(context.Context, string, client.PrestoExecuteArgs) interface{}); ok {
+	var r0 client.PrestoExecuteResponse
+	if rf, ok := ret.Get(0).(func(context.Context, string, client.PrestoExecuteArgs) client.PrestoExecuteResponse); ok {
 		r0 = rf(ctx, commandStr, executeArgs)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
+		r0 = ret.Get(0).(client.PrestoExecuteResponse)
 	}
 
 	var r1 error
