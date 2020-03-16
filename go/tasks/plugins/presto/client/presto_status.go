@@ -13,7 +13,7 @@ type PrestoStatus string
 // not meant to be stored locally.
 const (
 	PrestoStatusUnknown   PrestoStatus = "UNKNOWN"
-	PrestoStatusQueued    PrestoStatus = "QUEUED"
+	PrestoStatusWaiting   PrestoStatus = "WAITING"
 	PrestoStatusRunning   PrestoStatus = "RUNNING"
 	PrestoStatusFinished  PrestoStatus = "FINISHED"
 	PrestoStatusFailed    PrestoStatus = "FAILED"
@@ -22,7 +22,7 @@ const (
 
 var PrestoStatuses = map[PrestoStatus]struct{}{
 	PrestoStatusUnknown:   {},
-	PrestoStatusQueued:    {},
+	PrestoStatusWaiting:   {},
 	PrestoStatusRunning:   {},
 	PrestoStatusFinished:  {},
 	PrestoStatusFailed:    {},

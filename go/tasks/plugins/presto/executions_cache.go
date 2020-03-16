@@ -152,7 +152,7 @@ func StatusToExecutionPhase(s client.PrestoStatus) (ExecutionPhase, error) {
 		return PhaseQueryFailed, nil
 	case client.PrestoStatusFailed:
 		return PhaseQueryFailed, nil
-	case client.PrestoStatusQueued:
+	case client.PrestoStatusWaiting:
 		return PhaseSubmitted, nil
 	case client.PrestoStatusRunning:
 		return PhaseSubmitted, nil
