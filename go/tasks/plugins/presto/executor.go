@@ -94,35 +94,25 @@ func (p Executor) GetProperties() core.PluginProperties {
 
 func ExecutorLoader(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	cfg := config.GetPrestoConfig()
-	return InitializePrestoExecutor(ctx, iCtx, cfg, BuildResourceConfig(cfg), client.NewNoopPrestoClient(cfg))
-}
-
-func BuildResourceConfig(cfg *config.Config) map[string]int {
-	resourceConfig := make(map[string]int, len(cfg.RoutingGroupConfigs))
-
-	for _, routingGroupCfg := range cfg.RoutingGroupConfigs {
-		resourceConfig[routingGroupCfg.Name] = routingGroupCfg.Limit
-	}
-	return resourceConfig
+	return InitializePrestoExecutor(ctx, iCtx, cfg, client.NewNoopPrestoClient(cfg))
 }
 
 func InitializePrestoExecutor(
 	ctx context.Context,
 	iCtx core.SetupContext,
 	cfg *config.Config,
-	resourceConfig map[string]int,
 	prestoClient client.PrestoClient) (core.Plugin, error) {
-	logger.Infof(ctx, "Initializing a Presto executor with a resource config [%v]", resourceConfig)
+	logger.Infof(ctx, "Initializing a Presto executo")
 	q, err := NewPrestoExecutor(ctx, cfg, prestoClient, iCtx.MetricsScope())
 	if err != nil {
 		logger.Errorf(ctx, "Failed to create a new Executor due to error: [%v]", err)
 		return nil, err
 	}
 
-	for routingGroupName, routingGroupLimit := range resourceConfig {
-		logger.Infof(ctx, "Registering resource quota for cluster [%v]", routingGroupName)
-		if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(routingGroupName), routingGroupLimit); err != nil {
-			logger.Errorf(ctx, "Resource quota registration for [%v] failed due to error [%v]", routingGroupName, err)
+	for _, routingGroup := range cfg.RoutingGroupConfigs {
+		logger.Infof(ctx, "Registering resource quota for routing group [%v]", routingGroup.Name)
+		if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(routingGroup.Name), routingGroup.Limit); err != nil {
+			logger.Errorf(ctx, "Resource quota registration for [%v] failed due to error [%v]", routingGroup.Name, err)
 			return nil, err
 		}
 	}
