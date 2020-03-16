@@ -8,6 +8,7 @@ type PrestoExecuteArgs struct {
 	Catalog      string `json:"catalog,omitempty"`
 	Schema       string `json:"schema,omitempty"`
 	Source       string `json:"source,omitempty"`
+	User         string `json:"user,omitempty"`
 }
 
 // Representation of a response after submitting a query to Presto

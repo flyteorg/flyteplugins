@@ -3,6 +3,8 @@ package presto
 import (
 	"context"
 
+	"github.com/lyft/flytestdlib/contextutils"
+
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"fmt"
@@ -32,6 +34,8 @@ const (
 	PhaseSubmitted                 // Sent off to Presto
 	PhaseQuerySucceeded
 	PhaseQueryFailed
+
+	PrincipalContextKey contextutils.Key = "principal"
 )
 
 func (p ExecutionPhase) String() string {
@@ -288,6 +292,7 @@ func GetNextQuery(
 				RoutingGroup: resolveRoutingGroup(ctx, routingGroup, prestoCfg),
 				Catalog:      catalog,
 				Schema:       schema,
+				User:         getUser(ctx),
 			},
 			TempTableName:     tempTableName + "_temp",
 			ExternalTableName: tempTableName + "_external",
@@ -329,6 +334,14 @@ FROM hive.flyte_temporary_tables.%s`
 	default:
 		return currentState.CurrentPrestoQuery, nil
 	}
+}
+
+func getUser(ctx context.Context) string {
+	principalContextUser := ctx.Value(PrincipalContextKey)
+	if principalContextUser != nil {
+		return fmt.Sprintf("%v", principalContextUser)
+	}
+	return ""
 }
 
 func KickOffQuery(
