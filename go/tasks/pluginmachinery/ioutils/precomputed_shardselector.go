@@ -35,7 +35,7 @@ type PrecomputedShardSelector struct {
 }
 
 // Generates deterministic shard id for the given string s
-func (d *PrecomputedShardSelector) GetShardPrefix(ctx context.Context, s []byte) (string, error) {
+func (d *PrecomputedShardSelector) GetShardPrefix(_ context.Context, s []byte) (string, error) {
 	h := fnv.New32a()
 	_, err := h.Write(s)
 	if err != nil {
