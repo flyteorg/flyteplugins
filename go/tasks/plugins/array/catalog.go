@@ -411,11 +411,7 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 	outputReaders := make([]io.OutputReader, 0, size)
 
 	for i := 0; i < size; i++ {
-		outputSandbox, err := dataStore.ConstructReference(ctx, baseOutputSandbox, strconv.Itoa(i))
-		if err != nil {
-			return nil, err
-		}
-		reader, err := ConstructOutputReader(ctx, dataStore, outputPrefix, outputSandbox, i)
+		reader, err := ConstructOutputReader(ctx, dataStore, outputPrefix, baseOutputSandbox, i)
 		if err != nil {
 			return nil, err
 		}
@@ -426,9 +422,15 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 	return outputReaders, nil
 }
 
-func ConstructOutputReader(ctx context.Context, dataStore *storage.DataStore, outputPrefix, outputSandbox storage.DataReference,
+func ConstructOutputReader(ctx context.Context, dataStore *storage.DataStore, outputPrefix, baseOutputSandbox storage.DataReference,
 	index int) (io.OutputReader, error) {
-	dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(index))
+	strIndex := strconv.Itoa(index)
+	dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	outputSandbox, err := dataStore.ConstructReference(ctx, baseOutputSandbox, strIndex)
 	if err != nil {
 		return nil, err
 	}
