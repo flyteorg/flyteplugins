@@ -74,8 +74,8 @@ func (w RemoteFileOutputWriter) Put(ctx context.Context, reader io.OutputReader)
 
 func NewRemoteFileOutputPaths(_ context.Context, store storage.ReferenceConstructor, outputPrefix storage.DataReference, sandbox io.OutputDataSandbox) RemoteFileOutputPaths {
 	return RemoteFileOutputPaths{
-		store:        store,
-		outputPrefix: outputPrefix,
+		store:             store,
+		outputPrefix:      outputPrefix,
 		OutputDataSandbox: sandbox,
 	}
 }

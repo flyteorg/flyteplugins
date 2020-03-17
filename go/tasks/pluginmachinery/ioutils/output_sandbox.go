@@ -2,7 +2,7 @@ package ioutils
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 
 	"github.com/lyft/flytestdlib/storage"
@@ -28,8 +28,10 @@ func NewRandomPrefixShardedOutputSandbox(ctx context.Context, sharder ShardSelec
 	if err != nil {
 		return nil, err
 	}
-	m := md5.New()
-	m.Write(o)
+	m := sha256.New()
+	if _, err := m.Write(o); err != nil {
+		return nil, err
+	}
 	path, err := store.ConstructReference(ctx, basePath, prefix, hex.EncodeToString(m.Sum(nil)))
 	if err != nil {
 		return nil, err

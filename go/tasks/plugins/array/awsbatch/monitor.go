@@ -102,7 +102,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 				msg.Collect(childIdx, "Job failed")
 			}
 		} else if subJob.Status.Phase.IsSuccess() {
-			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputSandbox,  childIdx, originalIdx)
+			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputSandbox, childIdx, originalIdx)
 			if err != nil {
 				return nil, err
 			}
