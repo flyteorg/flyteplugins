@@ -2,7 +2,7 @@ package ioutils
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/sha1" // #nosec
 	"encoding/hex"
 
 	"github.com/lyft/flytestdlib/storage"
@@ -28,7 +28,9 @@ func NewRandomPrefixShardedOutputSandbox(ctx context.Context, sharder ShardSelec
 	if err != nil {
 		return nil, err
 	}
-	m := sha256.New()
+	/* #nosec */
+	// We use SHA1 for sheer speed instead of no collisions. As because of the shard Prefix + hash is pretty unique :)
+	m := sha1.New()
 	if _, err := m.Write(o); err != nil {
 		return nil, err
 	}
