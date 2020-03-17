@@ -47,3 +47,20 @@ func NewRandomPrefixShardedOutputSandbox(ctx context.Context, sharder ShardSelec
 func NewOutputSandbox(_ context.Context, outputSandboxPath storage.DataReference) io.OutputDataSandbox {
 	return precomputedOutputSandbox{path: outputSandboxPath}
 }
+
+// Creates an OutputSandbox in the basePath using the uniqueID and a sharder
+// This implementation is faster than the Randomized strategy
+func NewShardedOutputSandbox(ctx context.Context, sharder ShardSelector, basePath storage.DataReference, uniqueID string, store storage.ReferenceConstructor) (io.OutputDataSandbox, error) {
+	o := []byte(uniqueID)
+	prefix, err := sharder.GetShardPrefix(ctx, o)
+	if err != nil {
+		return nil, err
+	}
+	path, err := store.ConstructReference(ctx, basePath, prefix, uniqueID)
+	if err != nil {
+		return nil, err
+	}
+	return precomputedOutputSandbox{
+		path: path,
+	}, nil
+}

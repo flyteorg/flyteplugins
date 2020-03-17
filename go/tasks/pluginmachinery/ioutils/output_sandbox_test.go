@@ -28,3 +28,19 @@ func TestNewRandomPrefixShardedOutputSandbox(t *testing.T) {
 		assert.Error(t, err, "%s", sd)
 	})
 }
+
+func TestNewShardedOutputSandbox(t *testing.T) {
+	ctx := context.TODO()
+	t.Run("", func(t *testing.T) {
+		ss := NewConstantShardSelector([]string{"x"})
+		sd, err := NewShardedOutputSandbox(ctx, ss, "s3://flyte", "unique", storage.URLPathConstructor{})
+		assert.NoError(t, err)
+		assert.Equal(t, storage.DataReference("s3://flyte/x/unique"), sd.GetOutputDataSandboxPath())
+	})
+
+	t.Run("error", func(t *testing.T) {
+		ss := NewConstantShardSelector([]string{"s3:// abc"})
+		sd, err := NewShardedOutputSandbox(ctx, ss, "s3://bucket", "m", storage.URLPathConstructor{})
+		assert.Error(t, err, "%s", sd)
+	})
+}
