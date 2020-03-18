@@ -2,6 +2,8 @@ package client
 
 import "context"
 
+type PrestoStatus string
+
 // Contains information needed to execute a Presto query
 type PrestoExecuteArgs struct {
 	RoutingGroup string `json:"routingGroup,omitempty"`

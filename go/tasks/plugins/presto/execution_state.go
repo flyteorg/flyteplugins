@@ -2,8 +2,9 @@ package presto
 
 import (
 	"context"
+	"strings"
 
-	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"k8s.io/apimachinery/pkg/util/rand"
 
@@ -24,6 +25,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flytestdlib/logger"
+
+	pb "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 type ExecutionPhase int
@@ -34,8 +37,6 @@ const (
 	PhaseSubmitted                 // Sent off to Presto
 	PhaseQuerySucceeded
 	PhaseQueryFailed
-
-	PrincipalContextKey contextutils.Key = "principal"
 )
 
 func (p ExecutionPhase) String() string {
@@ -65,6 +66,9 @@ type ExecutionState struct {
 
 	// This is the current Presto query (out of 5) needed to complete a Presto task
 	CurrentPrestoQuery Query `json:"currentPrestoQuery,omitempty"`
+
+	// This is an id to keep track of the current query. Every query's id should be unique for caching purposes
+	CurrentPrestoQueryUUID string `json:"currentPrestoQueryUUID,omitempty"`
 
 	// Keeps track of which Presto query we are on. Its values range from 0-4 for the 5 queries that are needed
 	QueryCount int `json:"queryCount,omitempty"`
@@ -121,11 +125,12 @@ func HandleExecutionState(
 			// If there are still Presto statements to execute, increment the query count, reset the phase to 'queued'
 			// and continue executing the remaining statements. In this case, we won't request another allocation token
 			// as the 5 statements that get executed are all considered to be part of the same "query"
-			currentState.QueryCount++
 			currentState.Phase = PhaseQueued
+		} else {
+			transformError = writeOutput(ctx, tCtx, currentState.CurrentPrestoQuery.ExternalLocation)
 		}
+		currentState.QueryCount++
 		newState = currentState
-		transformError = nil
 
 	case PhaseQueryFailed:
 		newState = currentState
@@ -284,7 +289,7 @@ func GetNextQuery(
 			return Query{}, err
 		}
 
-		statement = fmt.Sprintf(`CREATE TABLE hive.flyte_temporary_tables.%s_temp AS %s`, tempTableName, statement)
+		statement = fmt.Sprintf(`CREATE TABLE hive.flyte_temporary_tables."%s_temp" AS %s`, tempTableName, statement)
 
 		prestoQuery := Query{
 			Statement: statement,
@@ -292,7 +297,8 @@ func GetNextQuery(
 				RoutingGroup: resolveRoutingGroup(ctx, routingGroup, prestoCfg),
 				Catalog:      catalog,
 				Schema:       schema,
-				User:         getUser(ctx),
+				Source:       "flyte",
+				User:         getUser(ctx, prestoCfg.DefaultUser),
 			},
 			TempTableName:     tempTableName + "_temp",
 			ExternalTableName: tempTableName + "_external",
@@ -301,33 +307,35 @@ func GetNextQuery(
 		return prestoQuery, nil
 
 	case 1:
-		externalLocation := "TODO - use sandbox ref"
+		// TODO
+		externalLocation := getExternalLocation("s3://lyft-modelbuilder/{}/", 2)
 		statement := fmt.Sprintf(`
-CREATE TABLE hive.flyte_temporary_tables.%s (LIKE hive.flyte_temporary_tables.%s)
+CREATE TABLE hive.flyte_temporary_tables."%s" (LIKE hive.flyte_temporary_tables."%s")
 WITH (format = 'PARQUET', external_location = '%s')`,
 			currentState.CurrentPrestoQuery.ExternalTableName,
 			currentState.CurrentPrestoQuery.TempTableName,
 			externalLocation,
 		)
 		currentState.CurrentPrestoQuery.Statement = statement
+		currentState.CurrentPrestoQuery.ExternalLocation = externalLocation
 		return currentState.CurrentPrestoQuery, nil
 
 	case 2:
 		statement := `
-INSERT INTO hive.flyte_temporary_tables.%s
+INSERT INTO hive.flyte_temporary_tables."%s"
 SELECT *
-FROM hive.flyte_temporary_tables.%s`
+FROM hive.flyte_temporary_tables."%s"`
 		statement = fmt.Sprintf(statement, currentState.CurrentPrestoQuery.ExternalTableName, currentState.CurrentPrestoQuery.TempTableName)
 		currentState.CurrentPrestoQuery.Statement = statement
 		return currentState.CurrentPrestoQuery, nil
 
 	case 3:
-		statement := fmt.Sprintf(`DROP TABLE %s`, currentState.CurrentPrestoQuery.TempTableName)
+		statement := fmt.Sprintf(`DROP TABLE hive.flyte_temporary_tables."%s"`, currentState.CurrentPrestoQuery.TempTableName)
 		currentState.CurrentPrestoQuery.Statement = statement
 		return currentState.CurrentPrestoQuery, nil
 
 	case 4:
-		statement := fmt.Sprintf(`DROP TABLE %s`, currentState.CurrentPrestoQuery.ExternalTableName)
+		statement := fmt.Sprintf(`DROP TABLE hive.flyte_temporary_tables."%s"`, currentState.CurrentPrestoQuery.ExternalTableName)
 		currentState.CurrentPrestoQuery.Statement = statement
 		return currentState.CurrentPrestoQuery, nil
 
@@ -336,12 +344,21 @@ FROM hive.flyte_temporary_tables.%s`
 	}
 }
 
-func getUser(ctx context.Context) string {
-	principalContextUser := ctx.Value(PrincipalContextKey)
+func getExternalLocation(shardFormatter string, shardLength int) string {
+	shardCount := strings.Count(shardFormatter, "{}")
+	for i := 0; i < shardCount; i++ {
+		shardFormatter = strings.Replace(shardFormatter, "{}", rand.String(shardLength), 1)
+	}
+
+	return shardFormatter + rand.String(32) + "/"
+}
+
+func getUser(ctx context.Context, defaultUser string) string {
+	principalContextUser := ctx.Value("principal")
 	if principalContextUser != nil {
 		return fmt.Sprintf("%v", principalContextUser)
 	}
-	return ""
+	return defaultUser
 }
 
 func KickOffQuery(
@@ -351,7 +368,7 @@ func KickOffQuery(
 	prestoClient client.PrestoClient,
 	cache cache.AutoRefresh) (ExecutionState, error) {
 
-	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName() + "_" + rand.String(32)
 
 	statement := currentState.CurrentPrestoQuery.Statement
 	executeArgs := currentState.CurrentPrestoQuery.ExecuteArgs
@@ -369,6 +386,7 @@ func KickOffQuery(
 		currentState.CommandID = commandID
 		currentState.Phase = PhaseSubmitted
 		currentState.URI = response.NextURI
+		currentState.CurrentPrestoQueryUUID = uniqueID
 
 		executionStateCacheItem := ExecutionStateCacheItem{
 			ExecutionState: currentState,
@@ -395,17 +413,17 @@ func MonitorQuery(
 	currentState ExecutionState,
 	cache cache.AutoRefresh) (ExecutionState, error) {
 
-	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	uniqueQueryID := currentState.CurrentPrestoQueryUUID
 	executionStateCacheItem := ExecutionStateCacheItem{
 		ExecutionState: currentState,
-		Identifier:     uniqueID,
+		Identifier:     uniqueQueryID,
 	}
 
-	cachedItem, err := cache.GetOrCreate(uniqueID, executionStateCacheItem)
+	cachedItem, err := cache.GetOrCreate(uniqueQueryID, executionStateCacheItem)
 	if err != nil {
 		// This means that our cache has fundamentally broken... return a system error
 		logger.Errorf(ctx, "Cache is broken on execution [%s] cache key [%s], owner [%s]. Error %s",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID,
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueQueryID,
 			tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 		return currentState, errors.Wrapf(errors.CacheFailed, err, "Error when GetOrCreate while monitoring")
 	}
@@ -418,6 +436,32 @@ func MonitorQuery(
 
 	// If there were updates made to the state, we'll have picked them up automatically. Nothing more to do.
 	return cachedExecutionState.ExecutionState, nil
+}
+
+func writeOutput(ctx context.Context, tCtx core.TaskExecutionContext, externalLocation string) error {
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return err
+	}
+
+	results := taskTemplate.Interface.Outputs.Variables["results"]
+
+	return tCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(
+		&pb.LiteralMap{
+			Literals: map[string]*pb.Literal{
+				"results": {
+					Value: &pb.Literal_Scalar{
+						Scalar: &pb.Scalar{Value: &pb.Scalar_Schema{
+							Schema: &pb.Schema{
+								Uri:  externalLocation,
+								Type: results.GetType().GetSchema(),
+							},
+						},
+						},
+					},
+				},
+			},
+		}, nil))
 }
 
 // The 'PhaseInfoRunning' occurs 15 times (3 for each of the 5 Presto queries that get run for every Presto task) which
@@ -438,7 +482,7 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 	case PhaseSubmitted:
 		phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+2), ConstructTaskInfo(state))
 	case PhaseQuerySucceeded:
-		if state.QueryCount < 4 {
+		if state.QueryCount < 5 {
 			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+3), ConstructTaskInfo(state))
 		} else {
 			phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))

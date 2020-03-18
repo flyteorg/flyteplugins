@@ -45,6 +45,7 @@ var (
 	defaultConfig = Config{
 		Environment:         URLMustParse(""),
 		DefaultRoutingGroup: "adhoc",
+		DefaultUser:         "flyte-default-user@lyft.com",
 		RoutingGroupConfigs: []RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
 		RateLimiter: RateLimiter{
 			Name:         "presto",
@@ -62,6 +63,7 @@ var (
 type Config struct {
 	Environment         config.URL           `json:"environment" pflag:",Environment endpoint for Presto to use"`
 	DefaultRoutingGroup string               `json:"defaultRoutingGroup" pflag:",Default Presto routing group"`
+	DefaultUser         string               `json:"defaultUser" pflag:",Default Presto user"`
 	RoutingGroupConfigs []RoutingGroupConfig `json:"routingGroupConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
 	RateLimiter         RateLimiter          `json:"rateLimiter" pflag:"Rate limiter config"`
 }

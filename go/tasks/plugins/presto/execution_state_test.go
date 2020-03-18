@@ -300,7 +300,7 @@ func TestMonitorQuery(t *testing.T) {
 	}
 	var getOrCreateCalled = false
 	mockCache := &mocks2.AutoRefresh{}
-	mockCache.OnGetOrCreateMatch("my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name", mock.Anything).Return(ExecutionStateCacheItem{
+	mockCache.OnGetOrCreateMatch(mock.AnythingOfType("string"), mock.Anything).Return(ExecutionStateCacheItem{
 		ExecutionState: ExecutionState{Phase: PhaseQuerySucceeded},
 		Identifier:     "my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name",
 	}, nil).Run(func(_ mock.Arguments) {

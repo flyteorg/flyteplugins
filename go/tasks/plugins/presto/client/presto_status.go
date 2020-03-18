@@ -7,8 +7,6 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 )
 
-type PrestoStatus string
-
 // This type is meant only to encapsulate the response coming from Presto as a type, it is
 // not meant to be stored locally.
 const (

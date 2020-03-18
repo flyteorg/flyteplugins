@@ -21,13 +21,14 @@ var (
 func getPrestoExecutorMetrics(scope promutils.Scope) ExecutorMetrics {
 	return ExecutorMetrics{
 		Scope: scope,
-		ReleaseResourceFailed: labeled.NewCounter("released_resource_failed",
-			"Error releasing allocation token", scope),
-		AllocationGranted: labeled.NewCounter("allocation_granted",
-			"Allocation request granted", scope),
-		AllocationNotGranted: labeled.NewCounter("allocation_not_granted",
-			"Allocation request did not fail but not granted", scope),
-		ResourceWaitTime: scope.MustNewSummaryWithOptions("resource_wait_time", "Duration the execution has been waiting for a resource allocation token",
+		ReleaseResourceFailed: labeled.NewCounter("presto_released_resource_failed",
+			"Error releasing allocation token for Presto", scope),
+		AllocationGranted: labeled.NewCounter("presto_allocation_granted",
+			"Allocation request granted for Presto", scope),
+		AllocationNotGranted: labeled.NewCounter("presto_allocation_not_granted",
+			"Allocation request did not fail but not granted for Presto", scope),
+		ResourceWaitTime: scope.MustNewSummaryWithOptions("presto_resource_wait_time",
+			"Duration the execution has been waiting for a resource allocation token for Presto",
 			promutils.SummaryOptions{Objectives: tokenAgeObjectives}),
 	}
 }

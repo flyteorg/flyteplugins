@@ -2,7 +2,6 @@ package presto
 
 import (
 	"context"
-	"time"
 
 	"k8s.io/client-go/util/workqueue"
 
@@ -17,8 +16,6 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/promutils"
 )
-
-const ResyncDuration = 3 * time.Second
 
 const (
 	BadPrestoReturnCodeError stdErrors.ErrorCode = "PRESTO_RETURNED_UNKNOWN"

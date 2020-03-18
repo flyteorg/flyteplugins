@@ -16,7 +16,7 @@ import (
 )
 
 // This is the name of this plugin effectively. In Flyte plugin configuration, use this string to enable this plugin.
-const prestoExecutorID = "presto-executor"
+const prestoPluginID = "presto"
 
 // Version of the custom state this plugin stores.  Useful for backwards compatibility if you one day need to update
 // the structure of the stored state
@@ -137,7 +137,7 @@ func NewPrestoExecutor(
 	}
 
 	return Executor{
-		id:              prestoExecutorID,
+		id:              prestoPluginID,
 		cfg:             cfg,
 		metrics:         getPrestoExecutorMetrics(scope),
 		prestoClient:    prestoClient,
@@ -148,7 +148,7 @@ func NewPrestoExecutor(
 func init() {
 	pluginMachinery.PluginRegistry().RegisterCorePlugin(
 		core.PluginEntry{
-			ID:                  prestoExecutorID,
+			ID:                  prestoPluginID,
 			RegisteredTaskTypes: []core.TaskType{prestoTaskType},
 			LoadPlugin:          ExecutorLoader,
 			IsDefault:           false,
