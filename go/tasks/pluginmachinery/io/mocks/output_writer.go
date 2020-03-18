@@ -48,38 +48,6 @@ func (_m *OutputWriter) GetErrorPath() storage.DataReference {
 	return r0
 }
 
-type OutputWriter_GetOutputDataSandboxPath struct {
-	*mock.Call
-}
-
-func (_m OutputWriter_GetOutputDataSandboxPath) Return(_a0 storage.DataReference) *OutputWriter_GetOutputDataSandboxPath {
-	return &OutputWriter_GetOutputDataSandboxPath{Call: _m.Call.Return(_a0)}
-}
-
-func (_m *OutputWriter) OnGetOutputDataSandboxPath() *OutputWriter_GetOutputDataSandboxPath {
-	c := _m.On("GetOutputDataSandboxPath")
-	return &OutputWriter_GetOutputDataSandboxPath{Call: c}
-}
-
-func (_m *OutputWriter) OnGetOutputDataSandboxPathMatch(matchers ...interface{}) *OutputWriter_GetOutputDataSandboxPath {
-	c := _m.On("GetOutputDataSandboxPath", matchers...)
-	return &OutputWriter_GetOutputDataSandboxPath{Call: c}
-}
-
-// GetOutputDataSandboxPath provides a mock function with given fields:
-func (_m *OutputWriter) GetOutputDataSandboxPath() storage.DataReference {
-	ret := _m.Called()
-
-	var r0 storage.DataReference
-	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(storage.DataReference)
-	}
-
-	return r0
-}
-
 type OutputWriter_GetOutputPath struct {
 	*mock.Call
 }
@@ -132,6 +100,38 @@ func (_m *OutputWriter) OnGetOutputPrefixPathMatch(matchers ...interface{}) *Out
 
 // GetOutputPrefixPath provides a mock function with given fields:
 func (_m *OutputWriter) GetOutputPrefixPath() storage.DataReference {
+	ret := _m.Called()
+
+	var r0 storage.DataReference
+	if rf, ok := ret.Get(0).(func() storage.DataReference); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(storage.DataReference)
+	}
+
+	return r0
+}
+
+type OutputWriter_GetRawOutputPrefix struct {
+	*mock.Call
+}
+
+func (_m OutputWriter_GetRawOutputPrefix) Return(_a0 storage.DataReference) *OutputWriter_GetRawOutputPrefix {
+	return &OutputWriter_GetRawOutputPrefix{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *OutputWriter) OnGetRawOutputPrefix() *OutputWriter_GetRawOutputPrefix {
+	c := _m.On("GetRawOutputPrefix")
+	return &OutputWriter_GetRawOutputPrefix{Call: c}
+}
+
+func (_m *OutputWriter) OnGetRawOutputPrefixMatch(matchers ...interface{}) *OutputWriter_GetRawOutputPrefix {
+	c := _m.On("GetRawOutputPrefix", matchers...)
+	return &OutputWriter_GetRawOutputPrefix{Call: c}
+}
+
+// GetRawOutputPrefix provides a mock function with given fields:
+func (_m *OutputWriter) GetRawOutputPrefix() storage.DataReference {
 	ret := _m.Called()
 
 	var r0 storage.DataReference

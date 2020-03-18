@@ -10,19 +10,19 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 )
 
-type precomputedOutputSandbox struct {
+type precomputedRawOutputPaths struct {
 	path storage.DataReference
 }
 
-func (r precomputedOutputSandbox) GetOutputDataSandboxPath() storage.DataReference {
+func (r precomputedRawOutputPaths) GetRawOutputPrefix() storage.DataReference {
 	return r.path
 }
 
-// Creates a deterministic OutputSandbox whose path is distributed based on the ShardSelector passed in.
+// Creates a deterministic RawOutputPath whose path is distributed based on the ShardSelector passed in.
 // Determinism depends on the outputMetadataPath
-// Potential performance problem, as creating anew randomprefixShardedOutput Sandbox may be expensive as it hashes the outputMetadataPath
-// the final OutputSandbox is created in the shard selected by the sharder at the basePath and then appended by a hashed value of the outputMetadata
-func NewRandomPrefixShardedOutputSandbox(ctx context.Context, sharder ShardSelector, basePath, outputMetadataPath storage.DataReference, store storage.ReferenceConstructor) (io.OutputDataSandbox, error) {
+// Potential performance problem, as creating a new RawPath creation may be expensive as it hashes the outputMetadataPath
+// the final RawOutputPath is created in the shard selected by the sharder at the basePath and then appended by a hashed value of the outputMetadata
+func NewShardedDeterministicRawOutputPath(ctx context.Context, sharder ShardSelector, basePath, outputMetadataPath storage.DataReference, store storage.ReferenceConstructor) (io.RawOutputPaths, error) {
 	o := []byte(outputMetadataPath)
 	prefix, err := sharder.GetShardPrefix(ctx, o)
 	if err != nil {
@@ -38,19 +38,19 @@ func NewRandomPrefixShardedOutputSandbox(ctx context.Context, sharder ShardSelec
 	if err != nil {
 		return nil, err
 	}
-	return precomputedOutputSandbox{
+	return precomputedRawOutputPaths{
 		path: path,
 	}, nil
 }
 
 // A simple Output sandbox at a given path
-func NewOutputSandbox(_ context.Context, outputSandboxPath storage.DataReference) io.OutputDataSandbox {
-	return precomputedOutputSandbox{path: outputSandboxPath}
+func NewRawOutputPath(_ context.Context, outputSandboxPath storage.DataReference) io.RawOutputPaths {
+	return precomputedRawOutputPaths{path: outputSandboxPath}
 }
 
 // Creates an OutputSandbox in the basePath using the uniqueID and a sharder
 // This implementation is faster than the Randomized strategy
-func NewShardedOutputSandbox(ctx context.Context, sharder ShardSelector, basePath storage.DataReference, uniqueID string, store storage.ReferenceConstructor) (io.OutputDataSandbox, error) {
+func NewShardedRawOutputPath(ctx context.Context, sharder ShardSelector, basePath storage.DataReference, uniqueID string, store storage.ReferenceConstructor) (io.RawOutputPaths, error) {
 	o := []byte(uniqueID)
 	prefix, err := sharder.GetShardPrefix(ctx, o)
 	if err != nil {
@@ -60,7 +60,7 @@ func NewShardedOutputSandbox(ctx context.Context, sharder ShardSelector, basePat
 	if err != nil {
 		return nil, err
 	}
-	return precomputedOutputSandbox{
+	return precomputedRawOutputPaths{
 		path: path,
 	}, nil
 }

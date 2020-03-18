@@ -78,7 +78,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
 		pluginState, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(),
-			tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetOutputDataSandboxPath(),
+			tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(),
 			e.jobStore, tCtx.DataStore(), pluginConfig, pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:

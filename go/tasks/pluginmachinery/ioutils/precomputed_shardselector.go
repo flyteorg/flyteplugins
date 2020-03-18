@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Generates the entire latin alphabet and appends it to the passed in array and returns the new array
 func GenerateAlphabet(b []rune) []rune {
 	for i := 'a'; i <= 'z'; i++ {
 		b = append(b, i)
@@ -15,6 +16,7 @@ func GenerateAlphabet(b []rune) []rune {
 	return b
 }
 
+// Generates all arabic numerals and appends to the passed in array and returns the new array/slice
 func GenerateArabicNumerals(b []rune) []rune {
 	for i := '0'; i <= '9'; i++ {
 		b = append(b, i)

@@ -41,19 +41,22 @@ type OutputReader interface {
 	Read(ctx context.Context) (*core.LiteralMap, *ExecutionError, error)
 }
 
-// Data sandbox is the actual path where the data produced by a task can be placed. It is completely optional. The advantage
+// RawOutputPaths is the actual path where the data produced by a task can be placed. It is completely optional. The advantage
 // of using this path is to provide exactly once semantics. It is guaranteed that this path is unique for every new execution
 // of a task (across retries etc) and is constant for a specific execution.
 // As of 02/20/2020 Flytekit generates this path randomly for S3. This structure proposes migration of this logic to
 // FlytePluginMachinery so that it can be used more universally outside of Flytekit.
-type OutputDataSandbox interface {
+type RawOutputPaths interface {
 	// This is prefix (blob store prefix or directory) where all data produced can be stored.
-	GetOutputDataSandboxPath() storage.DataReference
+	GetRawOutputPrefix() storage.DataReference
 }
 
 // All paths where various meta outputs produced by the task can be placed, such that the framework can directly access them.
 // All paths are reperesented using storage.DataReference -> an URN for the configured storage backend
 type OutputFilePaths interface {
+	// RawOutputPaths are available with OutputFilePaths
+	RawOutputPaths
+
 	// A path to a directory or prefix that contains all execution metadata for this execution
 	GetOutputPrefixPath() storage.DataReference
 	// A fully qualified path (URN) to where the framework expects the output to exist in the configured storage backend
@@ -61,8 +64,6 @@ type OutputFilePaths interface {
 	// A Fully qualified path (URN) where the error information should be placed as a protobuf core.ErrorDocument. It is not directly
 	// used by the framework, but could be used in the future
 	GetErrorPath() storage.DataReference
-
-	OutputDataSandbox
 }
 
 // Framework Output writing interface.

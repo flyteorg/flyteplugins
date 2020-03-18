@@ -18,7 +18,7 @@ type RemoteFileOutputWriter struct {
 type RemoteFileOutputPaths struct {
 	outputPrefix storage.DataReference
 	store        storage.ReferenceConstructor
-	io.OutputDataSandbox
+	io.RawOutputPaths
 }
 
 var (
@@ -72,11 +72,11 @@ func (w RemoteFileOutputWriter) Put(ctx context.Context, reader io.OutputReader)
 	return fmt.Errorf("no data found to write")
 }
 
-func NewRemoteFileOutputPaths(_ context.Context, store storage.ReferenceConstructor, outputPrefix storage.DataReference, sandbox io.OutputDataSandbox) RemoteFileOutputPaths {
+func NewRemoteFileOutputPaths(_ context.Context, store storage.ReferenceConstructor, outputPrefix storage.DataReference, sandbox io.RawOutputPaths) RemoteFileOutputPaths {
 	return RemoteFileOutputPaths{
-		store:             store,
-		outputPrefix:      outputPrefix,
-		OutputDataSandbox: sandbox,
+		store:          store,
+		outputPrefix:   outputPrefix,
+		RawOutputPaths: sandbox,
 	}
 }
 

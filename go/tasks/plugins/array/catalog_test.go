@@ -69,7 +69,7 @@ func runDetermineDiscoverabilityTest(t testing.TB, taskTemplate *core.TaskTempla
 
 	ow := &ioMocks.OutputWriter{}
 	ow.OnGetOutputPrefixPath().Return("/prefix/")
-	ow.OnGetOutputDataSandboxPath().Return("/sandbox/")
+	ow.OnGetRawOutputPrefix().Return("/sandbox/")
 	ow.OnGetOutputPath().Return("/prefix/outputs.pb")
 	ow.On("Put", mock.Anything, mock.Anything).Return(func(ctx context.Context, or io.OutputReader) error {
 		m, ee, err := or.Read(ctx)

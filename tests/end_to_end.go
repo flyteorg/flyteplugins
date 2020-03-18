@@ -85,7 +85,7 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 	inputReader.OnGetInputPath().Return(basePrefix + "/inputs.pb")
 
 	outputWriter := &ioMocks.OutputWriter{}
-	outputWriter.OnGetOutputDataSandboxPath().Return("/sandbox/")
+	outputWriter.OnGetRawOutputPrefix().Return("/sandbox/")
 	outputWriter.OnGetOutputPrefixPath().Return(basePrefix)
 	outputWriter.OnGetErrorPath().Return(basePrefix + "/error.pb")
 	outputWriter.OnGetOutputPath().Return(basePrefix + "/outputs.pb")

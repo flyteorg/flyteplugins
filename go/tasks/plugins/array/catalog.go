@@ -64,7 +64,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// build output writers
-	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetOutputDataSandboxPath(), int(arrayJob.Size))
+	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), int(arrayJob.Size))
 	if err != nil {
 		return state, err
 	}
@@ -164,7 +164,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	// output reader
-	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetOutputDataSandboxPath(), int(arrayJob.Size))
+	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), int(arrayJob.Size))
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +401,7 @@ func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, ou
 		return nil, err
 	}
 
-	p := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewOutputSandbox(ctx, outputSandbox))
+	p := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPath(ctx, outputSandbox))
 	return ioutils.NewRemoteFileOutputWriter(ctx, dataStore, p), nil
 }
 
@@ -435,6 +435,6 @@ func ConstructOutputReader(ctx context.Context, dataStore *storage.DataStore, ou
 		return nil, err
 	}
 
-	outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewOutputSandbox(ctx, outputSandbox))
+	outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPath(ctx, outputSandbox))
 	return ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999)), nil
 }
