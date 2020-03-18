@@ -49,7 +49,7 @@ var (
 		RoutingGroupConfigs: []RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
 		RateLimiter: RateLimiter{
 			Name:         "presto",
-			SyncPeriod:   config.Duration{Duration: 3 * time.Second},
+			SyncPeriod:   config.Duration{Duration: 5 * time.Second},
 			Workers:      15,
 			LruCacheSize: 2000,
 			MetricScope:  "presto",
