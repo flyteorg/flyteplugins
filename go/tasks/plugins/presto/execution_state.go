@@ -226,6 +226,16 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 	schema = prestoQuery.Schema
 	statement = prestoQuery.Statement
 
+	inputs, err := tCtx.InputReader().Get(ctx)
+	if err != nil {
+		return "", "", "", "", err
+	}
+
+	statement, routingGroup, catalog, schema, err = presto.InterpolateInputs(ctx, *inputs, statement, routingGroup, catalog, schema)
+	if err != nil {
+		return "", "", "", "", err
+	}
+
 	logger.Debugf(ctx, "QueryInfo: query: [%v], routingGroup: [%v], catalog: [%v], schema: [%v]", statement, routingGroup, catalog, schema)
 	return
 }
@@ -287,16 +297,6 @@ func GetNextQuery(
 		prestoCfg := config.GetPrestoConfig()
 		tempTableName := rand.String(32)
 		routingGroup, catalog, schema, statement, err := GetQueryInfo(ctx, tCtx)
-		if err != nil {
-			return Query{}, err
-		}
-
-		inputs, err := tCtx.InputReader().Get(ctx)
-		if err != nil {
-			return Query{}, err
-		}
-
-		statement, routingGroup, catalog, schema, err = presto.InterpolateInputs(ctx, *inputs, statement, routingGroup, catalog, schema)
 		if err != nil {
 			return Query{}, err
 		}
