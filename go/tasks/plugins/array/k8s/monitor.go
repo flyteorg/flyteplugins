@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	ErrCheckPodStatus errors.ErrorCode = "CHECK_POD_FAILED"
+	ErrCheckPodStatus errors2.ErrorCode = "CHECK_POD_FAILED"
 )
 
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
