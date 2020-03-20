@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	presto "github.com/lyft/flyteplugins/go/tasks/plugins/presto/utils"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -285,6 +287,16 @@ func GetNextQuery(
 		prestoCfg := config.GetPrestoConfig()
 		tempTableName := rand.String(32)
 		routingGroup, catalog, schema, statement, err := GetQueryInfo(ctx, tCtx)
+		if err != nil {
+			return Query{}, err
+		}
+
+		inputs, err := tCtx.InputReader().Get(ctx)
+		if err != nil {
+			return Query{}, err
+		}
+
+		statement, routingGroup, catalog, schema, err = presto.InterpolateInputs(ctx, *inputs, statement, routingGroup, catalog, schema)
 		if err != nil {
 			return Query{}, err
 		}
