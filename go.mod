@@ -3,36 +3,44 @@ module github.com/lyft/flyteplugins
 go 1.13
 
 require (
-	github.com/Azure/azure-sdk-for-go v39.0.0+incompatible // indirect
+	cloud.google.com/go v0.55.0 // indirect
+	github.com/Azure/azure-sdk-for-go v40.4.0+incompatible // indirect
+	github.com/Azure/go-autorest/autorest v0.10.0 // indirect
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
-	github.com/aws/aws-sdk-go v1.28.11
+	github.com/aws/aws-sdk-go v1.29.29
 	github.com/coocood/freecache v1.1.0
+	github.com/coreos/etcd v3.3.15+incompatible // indirect
 	github.com/go-test/deep v1.0.5
-	github.com/golang/protobuf v1.3.3
+	github.com/golang/protobuf v1.3.5
 	github.com/googleapis/gnostic v0.4.1 // indirect
+	github.com/graymeta/stow v0.2.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/lyft/flyteidl v0.17.6
-	github.com/lyft/flytestdlib v0.3.2
+	github.com/jmespath/go-jmespath v0.3.0 // indirect
+	github.com/lyft/flyteidl v0.17.20
+	github.com/lyft/flytestdlib v0.3.3
 	github.com/magiconair/properties v1.8.1
+	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/ncw/swift v1.0.50 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.4.0
+	github.com/prometheus/client_golang v1.5.1
+	github.com/prometheus/procfs v0.0.11 // indirect
+	github.com/spf13/cobra v0.0.6 // indirect
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.4.0
-	go.opencensus.io v0.22.3 // indirect
-	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72 // indirect
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
-	golang.org/x/tools v0.0.0-20200124170513-3f4d10fc73b4
-	google.golang.org/api v0.16.0 // indirect
-	google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67 // indirect
-	google.golang.org/grpc v1.27.1
-	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.2
+	github.com/stretchr/testify v1.5.1
+	golang.org/x/crypto v0.0.0-20200320181102-891825fb96df // indirect
+	golang.org/x/net v0.0.0-20200320181208-1c781a10960a
+	golang.org/x/sys v0.0.0-20200320181252-af34d8274f85 // indirect
+	golang.org/x/tools v0.0.0-20200317043434-63da46f3035e
+	google.golang.org/genproto v0.0.0-20200319113533-08878b785e9c // indirect
+	google.golang.org/grpc v1.28.0
+	gopkg.in/inf.v0 v0.9.1 // indirect
+	k8s.io/api v0.17.4
+	k8s.io/apimachinery v0.17.4
 	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/klog v1.0.0 // indirect
-	k8s.io/utils v0.0.0-20200124190032-861946025e34 // indirect
-	sigs.k8s.io/controller-runtime v0.4.0
+	k8s.io/utils v0.0.0-20200320200009-4a6ff033650d // indirect
+	sigs.k8s.io/controller-runtime v0.5.1
+	sigs.k8s.io/testing_frameworks v0.1.2 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
