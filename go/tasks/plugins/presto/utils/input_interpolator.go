@@ -47,9 +47,9 @@ func InterpolateInputs(
 	}
 
 	// Remove implicit inputs from the rest of the inputs used for interpolation
-	delete(inputsAsStrings, "implicit_routing_group")
-	delete(inputsAsStrings, "implicit_catalog")
-	delete(inputsAsStrings, "implicit_schema")
+	delete(inputsAsStrings, "__implicit_routing_group")
+	delete(inputsAsStrings, "__implicit_catalog")
+	delete(inputsAsStrings, "__implicit_schema")
 
 	statement = interpolate(inputsAsStrings, statement)
 	routingGroup = interpolate(inputsAsStrings, routingGroup)
