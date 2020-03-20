@@ -36,10 +36,10 @@ var inputVarNameRegex = regexp.MustCompile(`([^{{\s}}]+)`)
 func InterpolateInputs(
 	ctx context.Context,
 	inputs pb.LiteralMap,
-	statement string,
 	routingGroup string,
 	catalog string,
-	schema string) (string, string, string, string, error) {
+	schema string,
+	statement string) (string, string, string, string, error) {
 
 	inputsAsStrings, err := literalMapToStringMap(ctx, inputs)
 	if err != nil {
@@ -56,7 +56,7 @@ func InterpolateInputs(
 	catalog = interpolate(inputsAsStrings, catalog)
 	schema = interpolate(inputsAsStrings, schema)
 
-	return statement, routingGroup, catalog, schema, nil
+	return routingGroup, catalog, schema, statement, nil
 }
 
 func interpolate(inputs map[string]string, s string) string {

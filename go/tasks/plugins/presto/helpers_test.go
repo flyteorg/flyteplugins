@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func GetSingleHiveQueryTaskTemplate() idlCore.TaskTemplate {
+func GetPrestoQueryTaskTemplate() idlCore.TaskTemplate {
 	prestoQuery := plugins.PrestoQuery{
 		RoutingGroup: "adhoc",
 		Catalog:      "hive",
@@ -82,7 +82,7 @@ func GetMockTaskExecutionMetadata() core.TaskExecutionMetadata {
 }
 
 func GetMockTaskExecutionContext() core.TaskExecutionContext {
-	tt := GetSingleHiveQueryTaskTemplate()
+	tt := GetPrestoQueryTaskTemplate()
 
 	dummyTaskMetadata := GetMockTaskExecutionMetadata()
 	taskCtx := &coreMock.TaskExecutionContext{}

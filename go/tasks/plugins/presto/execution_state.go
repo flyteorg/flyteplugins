@@ -200,13 +200,7 @@ func composeResourceNamespaceWithRoutingGroup(ctx context.Context, tCtx core.Tas
 
 // This function is the link between the output written by the SDK, and the execution side. It extracts the query
 // out of the task template.
-func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
-	routingGroup string,
-	catalog string,
-	schema string,
-	statement string,
-	err error) {
-
+func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (string, string, string, string, error) {
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return "", "", "", "", err
@@ -221,23 +215,23 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 		return "", "", "", "", err
 	}
 
-	routingGroup = prestoQuery.RoutingGroup
-	catalog = prestoQuery.Catalog
-	schema = prestoQuery.Schema
-	statement = prestoQuery.Statement
+	routingGroup := prestoQuery.RoutingGroup
+	catalog := prestoQuery.Catalog
+	schema := prestoQuery.Schema
+	statement := prestoQuery.Statement
 
 	inputs, err := tCtx.InputReader().Get(ctx)
 	if err != nil {
 		return "", "", "", "", err
 	}
 
-	statement, routingGroup, catalog, schema, err = presto.InterpolateInputs(ctx, *inputs, statement, routingGroup, catalog, schema)
+	routingGroup, catalog, schema, statement, err = presto.InterpolateInputs(ctx, *inputs, routingGroup, catalog, schema, statement)
 	if err != nil {
 		return "", "", "", "", err
 	}
 
 	logger.Debugf(ctx, "QueryInfo: query: [%v], routingGroup: [%v], catalog: [%v], schema: [%v]", statement, routingGroup, catalog, schema)
-	return
+	return routingGroup, catalog, schema, statement, err
 }
 
 func validatePrestoStatement(prestoJob plugins.PrestoQuery) error {
@@ -380,6 +374,9 @@ func KickOffQuery(
 	prestoClient client.PrestoClient,
 	cache cache.AutoRefresh) (ExecutionState, error) {
 
+	// For the caching id, we can't rely simply on the task execution id since we have to run 5 consecutive queries and
+	// the ids used for each of these has to be unique. Because of this, we append a random postfix to the task
+	// execution id.
 	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName() + "_" + rand.String(32)
 
 	statement := currentState.CurrentPrestoQuery.Statement

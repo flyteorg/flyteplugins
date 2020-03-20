@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
-	pluginsCoreMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 )
 
 func init() {
@@ -69,29 +68,6 @@ func TestIsNotYetSubmitted(t *testing.T) {
 			assert.Equal(t, tt.isNotYetSubmitted, res)
 		})
 	}
-}
-
-func TestGetQueryInfo(t *testing.T) {
-	ctx := context.Background()
-
-	taskTemplate := GetSingleHiveQueryTaskTemplate()
-	mockTaskReader := &mocks.TaskReader{}
-	mockTaskReader.On("Read", mock.Anything).Return(&taskTemplate, nil)
-
-	mockTaskExecutionContext := mocks.TaskExecutionContext{}
-	mockTaskExecutionContext.On("TaskReader").Return(mockTaskReader)
-
-	taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
-	taskMetadata.On("GetNamespace").Return("myproject-staging")
-	taskMetadata.On("GetLabels").Return(map[string]string{"sample": "label"})
-	mockTaskExecutionContext.On("TaskExecutionMetadata").Return(taskMetadata)
-
-	routingGroup, catalog, schema, statement, err := GetQueryInfo(ctx, &mockTaskExecutionContext)
-	assert.NoError(t, err)
-	assert.Equal(t, "adhoc", routingGroup)
-	assert.Equal(t, "hive", catalog)
-	assert.Equal(t, "city", schema)
-	assert.Equal(t, "select * from hive.city.fact_airport_sessions limit 10", statement)
 }
 
 func TestValidatePrestoStatement(t *testing.T) {
