@@ -29,6 +29,9 @@ var PrestoStatuses = map[PrestoStatus]struct{}{
 
 func NewPrestoStatus(ctx context.Context, state string) PrestoStatus {
 	upperCased := strings.ToUpper(state)
+
+	// Presto has different failure modes so this maps them all to a single Failure on the
+	// Flyte side
 	if strings.Contains(upperCased, "FAILED") {
 		return PrestoStatusFailed
 	} else if _, ok := PrestoStatuses[PrestoStatus(upperCased)]; ok {
