@@ -3,10 +3,12 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"strconv"
-	"time"
 
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
@@ -19,6 +21,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 	"github.com/lyft/flytestdlib/bitarray"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
@@ -85,7 +88,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 		pod.Name = podName
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
-			Name: FlyteK8sArrayIndexVarName,
+			Name:  FlyteK8sArrayIndexVarName,
 			Value: indexStr,
 		})
 
@@ -105,7 +108,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
 			return newState, logLinks, errors2.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", podName)
 		}
-		if allocationStatus  != core.AllocationStatusGranted {
+		if allocationStatus != core.AllocationStatusGranted {
 			continue
 		}
 		logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
@@ -130,7 +133,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		phaseInfo, err := CheckPodStatus(ctx, kubeClient,
 			k8sTypes.NamespacedName{
-				Name: podName,
+				Name:      podName,
 				Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
 			})
 		if err != nil {
