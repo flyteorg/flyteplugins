@@ -2,9 +2,13 @@ package flytek8s
 
 import (
 	"context"
+	"testing"
+
+	config1 "github.com/lyft/flytestdlib/config"
+	"github.com/lyft/flytestdlib/config/viper"
+
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
-	"testing"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -46,7 +50,7 @@ func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	to := &pluginsCoreMock.TaskOverrides{}
 	to.On("GetResources").Return(resources)
 	taskExecutionMetadata.On("GetOverrides").Return(to)
-
+	taskExecutionMetadata.On("IsInterruptible").Return(true)
 	return taskExecutionMetadata
 }
 
@@ -71,6 +75,39 @@ func dummyInputReader() io.InputReader {
 	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("test-data-reference-prefix"))
 	inputReader.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
 	return inputReader
+}
+
+func TestToK8sPodIterruptible(t *testing.T) {
+	ctx := context.TODO()
+	configAccessor := viper.NewAccessor(config1.Options{
+		StrictMode:  true,
+		SearchPaths: []string{"testdata/config.yaml"},
+	})
+	err := configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	op := &pluginsIOMock.OutputFilePaths{}
+	op.On("GetOutputPrefixPath").Return(storage.DataReference(""))
+
+	x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+			ResourceNvidiaGPU:  resource.MustParse("1"),
+		},
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+		},
+	})
+
+	p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(p.Tolerations))
+	assert.Equal(t, "x/flyte", p.Tolerations[1].Key)
+	assert.Equal(t, "interruptible", p.Tolerations[1].Value)
+	assert.Equal(t, 1, len(p.NodeSelector))
+	assert.Equal(t, "true", p.NodeSelector["x/interruptible"])
 }
 
 func TestToK8sPod(t *testing.T) {

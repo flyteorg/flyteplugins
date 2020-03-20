@@ -19,7 +19,7 @@ import (
 
 var isAcceptableK8sName, _ = regexp.Compile("[a-z0-9]([-a-z0-9]*[a-z0-9])?")
 
-const resourceGPU = "GPU"
+const resourceGPU = "gpu"
 
 // ResourceNvidiaGPU is the name of the Nvidia GPU resource.
 // Copied from: k8s.io/autoscaler/cluster-autoscaler/utils/gpu/gpu.go
@@ -40,7 +40,7 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 		if _, limitSet := resources.Limits[v1.ResourceCPU]; limitSet {
 			resources.Requests[v1.ResourceCPU] = resources.Limits[v1.ResourceCPU]
 		} else {
-			resources.Requests[v1.ResourceCPU] = resource.MustParse(config.GetK8sPluginConfig().DefaultCpuRequest)
+			resources.Requests[v1.ResourceCPU] = resource.MustParse(config.GetK8sPluginConfig().DefaultCPURequest)
 		}
 	}
 

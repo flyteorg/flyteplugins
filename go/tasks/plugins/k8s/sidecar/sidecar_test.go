@@ -64,6 +64,7 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 		Kind: "node",
 		Name: "blah",
 	})
+	taskMetadata.On("IsInterruptible").Return(true)
 	taskMetadata.On("GetK8sServiceAccount").Return("service-account")
 	taskMetadata.On("GetOwnerID").Return(types.NamespacedName{
 		Namespace: "test-namespace",
@@ -156,6 +157,17 @@ func TestBuildSidecarResource(t *testing.T) {
 		primaryContainerKey: "a container",
 	}, res.GetAnnotations())
 	assert.Contains(t, res.(*v1.Pod).Spec.Tolerations, tolGPU)
+
+	// Test GPU overrides
+	expectedGpuRequest := resource.NewQuantity(2, resource.DecimalSI)
+	actualGpuRequest, ok := res.(*v1.Pod).Spec.Containers[0].Resources.Requests[ResourceNvidiaGPU]
+	assert.True(t, ok)
+	assert.True(t, expectedGpuRequest.Equal(actualGpuRequest))
+
+	expectedGpuLimit := resource.NewQuantity(3, resource.DecimalSI)
+	actualGpuLimit, ok := res.(*v1.Pod).Spec.Containers[0].Resources.Limits[ResourceNvidiaGPU]
+	assert.True(t, ok)
+	assert.True(t, expectedGpuLimit.Equal(actualGpuLimit))
 }
 
 func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
