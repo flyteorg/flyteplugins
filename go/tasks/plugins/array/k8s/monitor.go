@@ -105,6 +105,9 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
 			return newState, logLinks, errors2.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", podName)
 		}
+		if allocationStatus  != core.AllocationStatusGranted {
+			continue
+		}
 		logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
 
 		err = kubeClient.GetClient().Create(ctx, pod)
