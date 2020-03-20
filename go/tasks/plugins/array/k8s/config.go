@@ -32,9 +32,9 @@ var (
 	configSection = config.MustRegisterSection(configSectionKey, defaultConfig)
 )
 
-type TokenConfig struct {
-	primaryLabel string
-	limit        int
+type ResourceConfig struct {
+	PrimaryLabel string `json:"primaryLabel" pflag:",PrimaryLabel of a given service cluster"`
+	Limit        int    `json:"limit" pflag:",Resource quota (in the number of outstanding requests) of the service cluster"`
 }
 
 // Defines custom config for K8s Array plugin
@@ -44,7 +44,7 @@ type Config struct {
 	MaxArrayJobSize      int64  `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
-	TokenConfigs         TokenConfig
+	ResourcesConfig      ResourceConfig
 }
 
 func GetConfig() *Config {

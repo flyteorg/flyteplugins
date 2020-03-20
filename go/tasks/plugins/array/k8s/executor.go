@@ -77,11 +77,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case arrayCore.PhaseWaitingForResources:
 		fallthrough
 
-	case arrayCore.PhaseLaunch:
-		nextState, err = LaunchSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
-
-	case arrayCore.PhaseCheckingSubTaskExecutions:
-		nextState, logLinks, err = CheckSubTasksState(ctx, tCtx, e.kubeClient, tCtx.DataStore(),
+	case arrayCore.PhaseLaunchAndMonitor:
+		nextState, logLinks, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, tCtx.DataStore(),
 			tCtx.OutputWriter().GetOutputPrefixPath(), pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
@@ -129,7 +126,7 @@ func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) 
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	return TerminateSubTasks(ctx, tCtx.TaskExecutionMetadata(), e.kubeClient, pluginConfig.MaxErrorStringLength,
+	return TerminateSubTasks(ctx, tCtx, e.kubeClient, pluginConfig.MaxErrorStringLength,
 		pluginState)
 }
 
@@ -165,10 +162,10 @@ func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plu
 		return nil, err
 	}
 
-	primaryLabel := GetConfig().TokenConfigs.primaryLabel
-	tokenLimit := GetConfig().TokenConfigs.limit
+	primaryLabel := GetConfig().ResourcesConfig.PrimaryLabel
+	resourceLimit := GetConfig().ResourcesConfig.Limit
 
-	if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(primaryLabel), tokenLimit); err != nil {
+	if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(primaryLabel), resourceLimit); err != nil {
 		logger.Errorf(ctx, "Token Resource registration for [%v] failed due to error [%v]", primaryLabel, err)
 		return nil, err
 	}

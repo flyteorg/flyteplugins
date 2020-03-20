@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/errors"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"strconv"
 	"time"
 
@@ -24,7 +26,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/errors"
+	errors2 "github.com/lyft/flytestdlib/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/lyft/flyteplugins/go/tasks/logs"
@@ -35,7 +37,7 @@ const (
 	ErrCheckPodStatus errors.ErrorCode = "CHECK_POD_FAILED"
 )
 
-func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
+func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	dataStore *storage.DataStore, outputPrefix storage.DataReference, currentState *arrayCore.State) (
 	newState *arrayCore.State, logLinks []*idlCore.TaskLog, err error) {
 
@@ -48,11 +50,29 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
+	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
+	if err != nil {
+		return newState, logLinks, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
+	}
+
+	var args []string
+	if len(podTemplate.Spec.Containers) > 0 {
+		args = append(podTemplate.Spec.Containers[0].Command, podTemplate.Spec.Containers[0].Args...)
+		podTemplate.Spec.Containers[0].Command = []string{}
+	}
+
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
+
+			// Deallocate Resource
+			err = tCtx.ResourceManager().ReleaseResource(ctx, resourceNamespace, podName)
+			if err != nil {
+				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
+				return currentState, logLinks, errors2.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")
+			}
 			newArrayStatus.Summary.Inc(existingPhase)
 			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 
@@ -60,14 +80,58 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 			continue
 		}
 
-		generatedName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), strconv.Itoa(childIdx))
+		pod := podTemplate.DeepCopy()
+		indexStr := strconv.Itoa(childIdx)
+		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
+		pod.Name = podName
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+			Name: FlyteK8sArrayIndexVarName,
+			Value: indexStr,
+		})
+
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].env, arrayJobEnvVars...)
+
+		pod.Spec.Containers[0].Args, err = utils.ReplaceTemplateCommandArgs(ctx, args, arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
+		if err != nil {
+			return newState, logLinks, error2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
+		}
+
+		pod = ApplyPodPolicies(ctx, config, pod)
+
+		resourceNamespace := core.ResourceNamespace(pod.Namespace)
+		allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, core.ResourceConstraintsSpec{})
+		if err != nil {
+			logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
+				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
+			return newState, logLinks, errors2.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", podName)
+		}
+		logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
+
+		err = kubeClient.GetClient().Create(ctx, pod)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			if k8serrors.IsForbidden(err) {
+				if strings.Contains(err.Error(), "exceeded quota") {
+					// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
+					logger.Infof(ctx, "Failed to launch job, resource quota exceeded. Err: %v", err)
+					newState = newState.SetPhase(arrayCore.PhaseWaitingForResources, 0).SetReason("Not enough resources to launch job.")
+				} else {
+					newState = newState.SetPhase(arrayCore.PhaseRetryableFailure, 0).SetReason("Failed to launch job.")
+				}
+
+				newState = newState.SetReason(err.Error())
+				return newState, logLinks, nil
+			}
+
+			return newState, logLinks, errors2.Wrapf(ErrSubmitJob, err, "Failed to submit job")
+		}
+
 		phaseInfo, err := CheckPodStatus(ctx, kubeClient,
 			k8sTypes.NamespacedName{
-				Name:      generatedName,
+				Name: podName,
 				Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
 			})
 		if err != nil {
-			return currentState, logLinks, errors.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status")
+			return currentState, logLinks, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status")
 		}
 
 		if phaseInfo.Info() != nil {
@@ -80,15 +144,6 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 
 		actualPhase := phaseInfo.Phase()
 		if phaseInfo.Phase().IsSuccess() {
-
-			// Release token
-			resourceNamespace := core.ResourceNamespace(tCtx.TaskExecutionMetadata().GetOwnerID().Namespace)
-			err = tCtx.ResourceManager().ReleaseResource(ctx, resourceNamespace, generatedName)
-			if err != nil {
-				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueID, err)
-				return currentState, logLinks, errors.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")
-			}
-
 			originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, childIdx, originalIdx)
 			if err != nil {
@@ -98,6 +153,7 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 
 		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(actualPhase))
 		newArrayStatus.Summary.Inc(actualPhase)
+
 	}
 
 	newState = newState.SetArrayStatus(newArrayStatus)
@@ -116,8 +172,9 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kub
 		newState = newState.SetReason(errorMsg)
 	}
 
-	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
+	if phase == arrayCore.PhaseLaunchAndMonitor {
 		newPhaseVersion := uint32(0)
+
 		// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
 		for phase, count := range newState.GetArrayStatus().Summary {
 			newPhaseVersion += uint32(phase) * uint32(count)

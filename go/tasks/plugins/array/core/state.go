@@ -27,6 +27,7 @@ const (
 	PhaseStart Phase = iota
 	PhasePreLaunch
 	PhaseLaunch
+	PhaseLaunchAndMonitor
 	PhaseWaitingForResources
 	PhaseCheckingSubTaskExecutions
 	PhaseAssembleFinalOutput

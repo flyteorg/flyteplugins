@@ -32,7 +32,7 @@ const (
 	ErrSubmitJob              errors2.ErrorCode = "SUBMIT_JOB_FAILED"
 	JobIndexVarName           string            = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	FlyteK8sArrayIndexVarName string            = "FLYTE_K8S_ARRAY_INDEX"
-	TokenPrimaryLabel         string            = "token"
+	ResourcesPrimaryLabel     string            = "token"
 )
 
 var arrayJobEnvVars = []corev1.EnvVar{
@@ -138,14 +138,14 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 	return currentState, nil
 }
 
-func TerminateSubTasks(ctx context.Context, tMeta core.TaskExecutionMetadata, kubeClient core.KubeClient,
+func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	errsMaxLength int, currentState *arrayCore.State) error {
 
 	size := currentState.GetExecutionArraySize()
 	errs := errorcollector.NewErrorMessageCollector()
 	for i := 0; i < size; i++ {
 		indexStr := strconv.Itoa(i)
-		podName := formatSubTaskName(ctx, tMeta.GetTaskExecutionID().GetGeneratedName(), indexStr)
+		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 		pod := &corev1.Pod{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       PodKind,
@@ -153,7 +153,7 @@ func TerminateSubTasks(ctx context.Context, tMeta core.TaskExecutionMetadata, ku
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      podName,
-				Namespace: tMeta.GetNamespace(),
+				Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
 			},
 		}
 
@@ -163,6 +163,13 @@ func TerminateSubTasks(ctx context.Context, tMeta core.TaskExecutionMetadata, ku
 				continue
 			}
 
+			errs.Collect(i, err.Error())
+		}
+
+		// Deallocate Resource
+		err = tCtx.ResourceManager().ReleaseResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), podName)
+		if err != nil {
+			logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
 			errs.Collect(i, err.Error())
 		}
 	}
