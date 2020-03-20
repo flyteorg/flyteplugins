@@ -78,8 +78,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		fallthrough
 
 	case arrayCore.PhaseLaunchAndMonitor:
-		nextState, logLinks, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, tCtx.DataStore(),
-			tCtx.OutputWriter().GetOutputPrefixPath(), pluginState)
+		nextState, logLinks, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
+			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, pluginState)

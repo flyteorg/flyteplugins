@@ -41,7 +41,7 @@ const (
 )
 
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	dataStore *storage.DataStore, outputPrefix storage.DataReference, currentState *arrayCore.State) (
+	config *Config, dataStore *storage.DataStore, outputPrefix storage.DataReference, currentState *arrayCore.State) (
 	newState *arrayCore.State, logLinks []*idlCore.TaskLog, err error) {
 
 	logLinks = make([]*idlCore.TaskLog, 0, 4)
@@ -66,12 +66,14 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
+		indexStr := strconv.Itoa(childIdx)
+		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
 
 			// Deallocate Resource
-			err = tCtx.ResourceManager().ReleaseResource(ctx, resourceNamespace, podName)
+			err = tCtx.ResourceManager().ReleaseResource(ctx, core.ResourceNamespace(ResourcesPrimaryLabel), podName)
 			if err != nil {
 				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
 				return currentState, logLinks, errors2.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")
@@ -84,19 +86,17 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		pod := podTemplate.DeepCopy()
-		indexStr := strconv.Itoa(childIdx)
-		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 		pod.Name = podName
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:  FlyteK8sArrayIndexVarName,
 			Value: indexStr,
 		})
 
-		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].env, arrayJobEnvVars...)
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
 
 		pod.Spec.Containers[0].Args, err = utils.ReplaceTemplateCommandArgs(ctx, args, arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
 		if err != nil {
-			return newState, logLinks, error2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
+			return newState, logLinks, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
 		}
 
 		pod = ApplyPodPolicies(ctx, config, pod)

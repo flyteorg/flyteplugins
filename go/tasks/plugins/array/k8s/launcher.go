@@ -167,7 +167,7 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		}
 
 		// Deallocate Resource
-		err = tCtx.ResourceManager().ReleaseResource(ctx, tCtx.TaskExecutionMetadata().GetNamespace(), podName)
+		err = tCtx.ResourceManager().ReleaseResource(ctx, core.ResourceNamespace(ResourcesPrimaryLabel), podName)
 		if err != nil {
 			logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
 			errs.Collect(i, err.Error())
