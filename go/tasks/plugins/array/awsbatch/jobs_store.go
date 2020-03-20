@@ -123,68 +123,82 @@ func updateJob(ctx context.Context, source *batch.JobDetail, target *Job) (updat
 	target.Attempts = make([]Attempt, 0, len(source.Attempts))
 	lastStatusReason := ""
 	for _, attempt := range source.Attempts {
-		a := Attempt{}
-		if attempt.StartedAt != nil {
-			a.StartedAt = time.Unix(*attempt.StartedAt, 0)
-		}
-
-		if attempt.StoppedAt != nil {
-			a.StoppedAt = time.Unix(*attempt.StoppedAt, 0)
-		}
-
-		if container := attempt.Container; container != nil {
-			if container.LogStreamName != nil {
-				a.LogStream = *container.LogStreamName
-				uniqueLogStreams.Insert(a.LogStream)
-			}
-
-			if container.Reason != nil {
-				lastStatusReason = *container.Reason
-			}
-
-			if container.ExitCode != nil {
-				lastStatusReason += fmt.Sprintf(" exit(%v)", *container.ExitCode)
-			}
+		var a Attempt
+		a, lastStatusReason = convertBatchAttemptToAttempt(attempt)
+		if len(a.LogStream) > 0 {
+			uniqueLogStreams.Insert(a.LogStream)
 		}
 
 		target.Attempts = append(target.Attempts, a)
 	}
 
 	// Add the "current" log stream to log links if one exists.
-	{
-		a := Attempt{}
-		if source.StartedAt != nil {
-			a.StartedAt = time.Unix(*source.StartedAt, 0)
-		}
+	attempt, exitReason := createAttemptFromJobDetail(ctx, source)
+	if !uniqueLogStreams.Has(attempt.LogStream) {
+		target.Attempts = append(target.Attempts, attempt)
+	}
 
-		if source.StoppedAt != nil {
-			a.StoppedAt = time.Unix(*source.StoppedAt, 0)
-		}
-
-		if container := source.Container; container != nil {
-			if container.LogStreamName != nil {
-				logger.Debug(ctx, "Using log stream from container info.")
-				a.LogStream = *container.LogStreamName
-			}
-
-			if container.Reason != nil {
-				lastStatusReason = *container.Reason
-			}
-
-			if container.ExitCode != nil {
-				lastStatusReason += fmt.Sprintf(" exit(%v)", *container.ExitCode)
-			}
-		}
-
-		if !uniqueLogStreams.Has(a.LogStream) {
-			target.Attempts = append(target.Attempts, a)
-		}
+	if len(lastStatusReason) == 0 {
+		lastStatusReason = exitReason
 	}
 
 	msg = append(msg, lastStatusReason)
 
 	target.Status.Message = strings.Join(msg, " - ")
 	return updated, nil
+}
+
+func convertBatchAttemptToAttempt(attempt *batch.AttemptDetail) (a Attempt, exitReason string) {
+	if attempt.StartedAt != nil {
+		a.StartedAt = time.Unix(*attempt.StartedAt, 0)
+	}
+
+	if attempt.StoppedAt != nil {
+		a.StoppedAt = time.Unix(*attempt.StoppedAt, 0)
+	}
+
+	if container := attempt.Container; container != nil {
+		if container.LogStreamName != nil {
+			a.LogStream = *container.LogStreamName
+		}
+
+		if container.Reason != nil {
+			exitReason = *container.Reason
+		}
+
+		if container.ExitCode != nil {
+			exitReason += fmt.Sprintf(" exit(%v)", *container.ExitCode)
+		}
+	}
+
+	return a, exitReason
+}
+
+func createAttemptFromJobDetail(ctx context.Context, source *batch.JobDetail) (a Attempt, exitReason string) {
+	if source.StartedAt != nil {
+		a.StartedAt = time.Unix(*source.StartedAt, 0)
+	}
+
+	if source.StoppedAt != nil {
+		a.StoppedAt = time.Unix(*source.StoppedAt, 0)
+	}
+
+	if container := source.Container; container != nil {
+		if container.LogStreamName != nil {
+			logger.Debug(ctx, "Using log stream from container info.")
+			a.LogStream = *container.LogStreamName
+		}
+
+		if container.Reason != nil {
+			exitReason = *container.Reason
+		}
+
+		if container.ExitCode != nil {
+			exitReason += fmt.Sprintf(" exit(%v)", *container.ExitCode)
+		}
+	}
+
+	return a, exitReason
 }
 
 func minInt(a, b int) int {
