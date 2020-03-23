@@ -32,6 +32,11 @@ var (
 	configSection = config.MustRegisterSection(configSectionKey, defaultConfig)
 )
 
+type NodeSelectorConfig struct {
+	key   string `json:"key", pflag:",Node Selector key.`
+	value string `json:"value", pflag:",Node Selector value."`
+}
+
 // Defines custom config for K8s Array plugin
 type Config struct {
 	DefaultScheduler     string `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
@@ -39,6 +44,7 @@ type Config struct {
 	MaxArrayJobSize      int64  `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
+	NodeSelectorConfig   NodeSelectorConfig
 }
 
 func GetConfig() *Config {
