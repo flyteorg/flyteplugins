@@ -178,6 +178,10 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
+	case PhaseLaunchAndMonitor:
+		version := GetPhaseVersionOffset(p, 1) + version
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+
 	case PhaseWaitingForResources:
 		phaseInfo = core.PhaseInfoWaitingForResources(t, version, state.GetReason())
 

@@ -71,7 +71,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
 	case arrayCore.PhasePreLaunch:
-		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
+		nextState = pluginState.SetPhase(arrayCore.PhaseLaunchAndMonitor, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
 		err = nil
 
 	case arrayCore.PhaseWaitingForResources:
