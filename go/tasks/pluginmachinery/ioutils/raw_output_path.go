@@ -44,7 +44,7 @@ func NewShardedDeterministicRawOutputPath(ctx context.Context, sharder ShardSele
 }
 
 // A simple Output sandbox at a given path
-func NewRawOutputPath(_ context.Context, outputSandboxPath storage.DataReference) io.RawOutputPaths {
+func NewRawOutputPaths(_ context.Context, outputSandboxPath storage.DataReference) io.RawOutputPaths {
 	return precomputedRawOutputPaths{path: outputSandboxPath}
 }
 
