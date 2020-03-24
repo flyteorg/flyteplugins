@@ -109,6 +109,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			return newState, logLinks, errors2.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", podName)
 		}
 		if allocationStatus != core.AllocationStatusGranted {
+			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseWaitingForResources))
+			newArrayStatus.Summary.Inc(core.PhaseWaitingForResources)
 			continue
 		}
 		logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
@@ -178,7 +180,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		newState = newState.SetReason(errorMsg)
 	}
 
-	if phase == arrayCore.PhaseLaunchAndMonitor {
+	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
 
 		// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.

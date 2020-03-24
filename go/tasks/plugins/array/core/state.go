@@ -27,7 +27,6 @@ const (
 	PhaseStart Phase = iota
 	PhasePreLaunch
 	PhaseLaunch
-	PhaseLaunchAndMonitor
 	PhaseWaitingForResources
 	PhaseCheckingSubTaskExecutions
 	PhaseAssembleFinalOutput
@@ -178,10 +177,6 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
-	case PhaseLaunchAndMonitor:
-		version := GetPhaseVersionOffset(p, 1) + version
-		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
-
 	case PhaseWaitingForResources:
 		phaseInfo = core.PhaseInfoWaitingForResources(t, version, state.GetReason())
 
@@ -231,6 +226,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	totalSuccesses := int64(0)
 	totalFailures := int64(0)
 	totalRunning := int64(0)
+	totalWaitingForResources := int64(0)
 	for phase, count := range summary {
 		totalCount += count
 		if phase.IsTerminal() {
@@ -243,9 +239,16 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 				// TODO: preferable to auto-combine to array tasks for now.
 				totalFailures += count
 			}
+		} else if phase.IsWaitingForResources() {
+			totalWaitingForResources += count
 		} else {
 			totalRunning += count
 		}
+	}
+
+	if totalWaitingForResources > 0 {
+		logger.Infof(ctx, "Array is still running and waiting for resources totalWaitingForResources[%v]", totalWaitingForResources)
+		return PhaseCheckingSubTaskExecutions
 	}
 
 	if totalCount < minSuccesses {
