@@ -170,8 +170,6 @@ func GetAllocationToken(
 	} else {
 		newState.AllocationTokenRequestStartTime = currentState.AllocationTokenRequestStartTime
 	}
-	waitTime := time.Since(newState.AllocationTokenRequestStartTime)
-	metric.ResourceWaitTime.Observe(waitTime.Seconds())
 
 	if allocationStatus == core.AllocationStatusGranted {
 		newState.Phase = PhaseQueued
