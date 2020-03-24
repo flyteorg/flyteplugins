@@ -165,11 +165,11 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_rateLimiter.name", func(t *testing.T) {
+	t.Run("Test_refreshCacheConfig.name", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("rateLimiter.name"); err == nil {
-				assert.Equal(t, string(defaultConfig.RateLimiter.Name), vString)
+			if vString, err := cmdFlags.GetString("refreshCacheConfig.name"); err == nil {
+				assert.Equal(t, string(defaultConfig.RefreshCacheConfig.Name), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -178,64 +178,42 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("rateLimiter.name", testValue)
-			if vString, err := cmdFlags.GetString("rateLimiter.name"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RateLimiter.Name)
+			cmdFlags.Set("refreshCacheConfig.name", testValue)
+			if vString, err := cmdFlags.GetString("refreshCacheConfig.name"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RefreshCacheConfig.Name)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_rateLimiter.syncPeriod", func(t *testing.T) {
+	t.Run("Test_refreshCacheConfig.syncPeriod", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("rateLimiter.syncPeriod"); err == nil {
-				assert.Equal(t, string(defaultConfig.RateLimiter.SyncPeriod.String()), vString)
+			if vString, err := cmdFlags.GetString("refreshCacheConfig.syncPeriod"); err == nil {
+				assert.Equal(t, string(defaultConfig.RefreshCacheConfig.SyncPeriod.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := defaultConfig.RateLimiter.SyncPeriod.String()
+			testValue := defaultConfig.RefreshCacheConfig.SyncPeriod.String()
 
-			cmdFlags.Set("rateLimiter.syncPeriod", testValue)
-			if vString, err := cmdFlags.GetString("rateLimiter.syncPeriod"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RateLimiter.SyncPeriod)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_rateLimiter.workers", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("rateLimiter.workers"); err == nil {
-				assert.Equal(t, int(defaultConfig.RateLimiter.Workers), vInt)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("rateLimiter.workers", testValue)
-			if vInt, err := cmdFlags.GetInt("rateLimiter.workers"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.RateLimiter.Workers)
+			cmdFlags.Set("refreshCacheConfig.syncPeriod", testValue)
+			if vString, err := cmdFlags.GetString("refreshCacheConfig.syncPeriod"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RefreshCacheConfig.SyncPeriod)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_rateLimiter.lruCacheSize", func(t *testing.T) {
+	t.Run("Test_refreshCacheConfig.workers", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("rateLimiter.lruCacheSize"); err == nil {
-				assert.Equal(t, int(defaultConfig.RateLimiter.LruCacheSize), vInt)
+			if vInt, err := cmdFlags.GetInt("refreshCacheConfig.workers"); err == nil {
+				assert.Equal(t, int(defaultConfig.RefreshCacheConfig.Workers), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -244,20 +222,20 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("rateLimiter.lruCacheSize", testValue)
-			if vInt, err := cmdFlags.GetInt("rateLimiter.lruCacheSize"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.RateLimiter.LruCacheSize)
+			cmdFlags.Set("refreshCacheConfig.workers", testValue)
+			if vInt, err := cmdFlags.GetInt("refreshCacheConfig.workers"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.RefreshCacheConfig.Workers)
 
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 	})
-	t.Run("Test_rateLimiter.metricScope", func(t *testing.T) {
+	t.Run("Test_refreshCacheConfig.lruCacheSize", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("rateLimiter.metricScope"); err == nil {
-				assert.Equal(t, string(defaultConfig.RateLimiter.MetricScope), vString)
+			if vInt, err := cmdFlags.GetInt("refreshCacheConfig.lruCacheSize"); err == nil {
+				assert.Equal(t, int(defaultConfig.RefreshCacheConfig.LruCacheSize), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -266,9 +244,9 @@ func TestConfig_SetFlags(t *testing.T) {
 		t.Run("Override", func(t *testing.T) {
 			testValue := "1"
 
-			cmdFlags.Set("rateLimiter.metricScope", testValue)
-			if vString, err := cmdFlags.GetString("rateLimiter.metricScope"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.RateLimiter.MetricScope)
+			cmdFlags.Set("refreshCacheConfig.lruCacheSize", testValue)
+			if vInt, err := cmdFlags.GetInt("refreshCacheConfig.lruCacheSize"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.RefreshCacheConfig.LruCacheSize)
 
 			} else {
 				assert.FailNow(t, err.Error())

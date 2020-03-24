@@ -33,26 +33,24 @@ type RoutingGroupConfig struct {
 	NamespaceScopeQuotaProportionCap float64 `json:"namespaceScopeQuotaProportionCap" pflag:",A floating point number between 0 and 1, specifying the maximum proportion of quotas allowed to allocate to a namespace in the routing group"`
 }
 
-type RateLimiter struct {
+type RefreshCacheConfig struct {
 	Name         string          `json:"name" pflag:",The name of the rate limiter"`
 	SyncPeriod   config.Duration `json:"syncPeriod" pflag:",The duration to wait before the cache is refreshed again"`
 	Workers      int             `json:"workers" pflag:",Number of parallel workers to refresh the cache"`
 	LruCacheSize int             `json:"lruCacheSize" pflag:",Size of the cache"`
-	MetricScope  string          `json:"metricScope" pflag:",The prefix in Prometheus used to track metrics related to Presto"`
 }
 
 var (
 	defaultConfig = Config{
 		Environment:         URLMustParse(""),
 		DefaultRoutingGroup: "adhoc",
-		DefaultUser:         "flyte-default-user@lyft.com",
+		DefaultUser:         "flyte-default-user",
 		RoutingGroupConfigs: []RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
-		RateLimiter: RateLimiter{
+		RefreshCacheConfig: RefreshCacheConfig{
 			Name:         "presto",
 			SyncPeriod:   config.Duration{Duration: 5 * time.Second},
 			Workers:      15,
-			LruCacheSize: 2000,
-			MetricScope:  "presto",
+			LruCacheSize: 10000,
 		},
 	}
 
@@ -65,7 +63,7 @@ type Config struct {
 	DefaultRoutingGroup string               `json:"defaultRoutingGroup" pflag:",Default Presto routing group"`
 	DefaultUser         string               `json:"defaultUser" pflag:",Default Presto user"`
 	RoutingGroupConfigs []RoutingGroupConfig `json:"routingGroupConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
-	RateLimiter         RateLimiter          `json:"rateLimiter" pflag:"Rate limiter config"`
+	RefreshCacheConfig  RefreshCacheConfig   `json:"refreshCacheConfig" pflag:"Rate limiter config"`
 }
 
 // Retrieves the current config value or default.

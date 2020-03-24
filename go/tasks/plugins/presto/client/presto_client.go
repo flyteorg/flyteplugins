@@ -15,9 +15,9 @@ type PrestoExecuteArgs struct {
 
 // Representation of a response after submitting a query to Presto
 type PrestoExecuteResponse struct {
-	ID      string
-	Status  PrestoStatus
-	NextURI string
+	ID      string       `json:"id,omitempty"`
+	Status  PrestoStatus `json:"status,omitempty"`
+	NextURI string       `json:"nextUri,omitempty"`
 }
 
 //go:generate mockery -all -case=snake

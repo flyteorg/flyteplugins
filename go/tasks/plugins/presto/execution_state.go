@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 
-	presto "github.com/lyft/flyteplugins/go/tasks/plugins/presto/utils"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -215,20 +213,20 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (string, 
 		return "", "", "", "", err
 	}
 
-	routingGroup := prestoQuery.RoutingGroup
-	catalog := prestoQuery.Catalog
-	schema := prestoQuery.Schema
-	statement := prestoQuery.Statement
-
-	inputs, err := tCtx.InputReader().Get(ctx)
+	outputs, err := utils.ReplaceTemplateCommandArgs(ctx, []string{
+		prestoQuery.RoutingGroup,
+		prestoQuery.Catalog,
+		prestoQuery.Schema,
+		prestoQuery.Statement,
+	}, tCtx.InputReader(), tCtx.OutputWriter())
 	if err != nil {
 		return "", "", "", "", err
 	}
 
-	routingGroup, catalog, schema, statement, err = presto.InterpolateInputs(ctx, *inputs, routingGroup, catalog, schema, statement)
-	if err != nil {
-		return "", "", "", "", err
-	}
+	routingGroup := outputs[0]
+	catalog := outputs[1]
+	schema := outputs[2]
+	statement := outputs[3]
 
 	logger.Debugf(ctx, "QueryInfo: query: [%v], routingGroup: [%v], catalog: [%v], schema: [%v]", statement, routingGroup, catalog, schema)
 	return routingGroup, catalog, schema, statement, err

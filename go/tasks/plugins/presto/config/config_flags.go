@@ -44,10 +44,9 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "environment"), defaultConfig.Environment.String(), "Environment endpoint for Presto to use")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "defaultRoutingGroup"), defaultConfig.DefaultRoutingGroup, "Default Presto routing group")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "defaultUser"), defaultConfig.DefaultUser, "Default Presto user")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "rateLimiter.name"), defaultConfig.RateLimiter.Name, "The name of the rate limiter")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "rateLimiter.syncPeriod"), defaultConfig.RateLimiter.SyncPeriod.String(), "The duration to wait before the cache is refreshed again")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "rateLimiter.workers"), defaultConfig.RateLimiter.Workers, "Number of parallel workers to refresh the cache")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "rateLimiter.lruCacheSize"), defaultConfig.RateLimiter.LruCacheSize, "Size of the cache")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "rateLimiter.metricScope"), defaultConfig.RateLimiter.MetricScope, "The prefix in Prometheus used to track metrics related to Presto")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "refreshCacheConfig.name"), defaultConfig.RefreshCacheConfig.Name, "The name of the rate limiter")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "refreshCacheConfig.syncPeriod"), defaultConfig.RefreshCacheConfig.SyncPeriod.String(), "The duration to wait before the cache is refreshed again")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "refreshCacheConfig.workers"), defaultConfig.RefreshCacheConfig.Workers, "Number of parallel workers to refresh the cache")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "refreshCacheConfig.lruCacheSize"), defaultConfig.RefreshCacheConfig.LruCacheSize, "Size of the cache")
 	return cmdFlags
 }

@@ -324,12 +324,11 @@ func createMockPrestoCfg() *config.Config {
 		Environment:         config.URLMustParse(""),
 		DefaultRoutingGroup: "adhoc",
 		RoutingGroupConfigs: []config.RoutingGroupConfig{{Name: "adhoc", Limit: 250}, {Name: "etl", Limit: 100}},
-		RateLimiter: config.RateLimiter{
+		RefreshCacheConfig: config.RefreshCacheConfig{
 			Name:         "presto",
 			SyncPeriod:   stdConfig.Duration{Duration: 3 * time.Second},
 			Workers:      15,
 			LruCacheSize: 2000,
-			MetricScope:  "presto",
 		},
 	}
 }
