@@ -71,15 +71,19 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
 	case arrayCore.PhasePreLaunch:
-		nextState = pluginState.SetPhase(arrayCore.PhaseLaunchAndMonitor, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
+		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
 		err = nil
 
-	case arrayCore.PhaseWaitingForResources:
-		fallthrough
+	case arrayCore.PhaseLaunch:
+		nextState = pluginState.SetPhase(arrayCore.PhaseLaunchAndMonitor, core.DefaultPhaseVersion).SetReason("Nothing to do in Launch phase.")
+		err = nil
 
 	case arrayCore.PhaseLaunchAndMonitor:
 		nextState, logLinks, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), pluginState)
+
+	case arrayCore.PhaseWaitingForResources:
+		fallthrough
 
 	case arrayCore.PhaseAssembleFinalOutput:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, pluginState)
