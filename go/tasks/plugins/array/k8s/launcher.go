@@ -53,8 +53,8 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 }
 
 func applyNodeSelectorLabels(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
-	if len(cfg.NodeSelectorConfig.key) > 0 && len(cfg.NodeSelectorConfig.value) > 0 {
-		pod.Spec.NodeSelector[cfg.NodeSelectorConfig.key] = cfg.NodeSelectorConfig.value
+	if len(cfg.NodeSelector) != 0 {
+		pod.Spec.NodeSelector = cfg.NodeSelector
 	}
 
 	return pod

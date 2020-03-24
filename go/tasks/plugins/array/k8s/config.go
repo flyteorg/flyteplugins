@@ -27,25 +27,19 @@ var (
 			MaxRetries:         5,
 			Workers:            10,
 		},
-		NodeSelectorConfig: NodeSelectorConfig{},
 	}
 
 	configSection = config.MustRegisterSection(configSectionKey, defaultConfig)
 )
 
-type NodeSelectorConfig struct {
-	key   string `json:"key" pflag:",Node Selector key."`
-	value string `json:"value" pflag:",Node Selector value."`
-}
-
 // Defines custom config for K8s Array plugin
 type Config struct {
-	DefaultScheduler     string `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
-	MaxErrorStringLength int    `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
-	MaxArrayJobSize      int64  `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
+	DefaultScheduler     string            `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
+	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
+	MaxArrayJobSize      int64             `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
+	NodeSelector         map[string]string `json:"node-selector" pflag:"-,Defines a set of node selector labels to add to the interruptible pods."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
-	NodeSelectorConfig   NodeSelectorConfig
 }
 
 func GetConfig() *Config {
