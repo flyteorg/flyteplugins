@@ -37,7 +37,7 @@ type Config struct {
 	DefaultScheduler     string            `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
 	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	MaxArrayJobSize      int64             `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
-	NodeSelector         map[string]string `json:"node-selector" pflag:"-,Defines a set of node selector labels to add to the interruptible pods."`
+	NodeSelector         map[string]string `json:"node-selector" pflag:"-,Defines a set of node selector labels to add to the pod."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
 }
