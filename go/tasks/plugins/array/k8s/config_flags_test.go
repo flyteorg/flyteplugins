@@ -297,4 +297,48 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_NodeSelectorConfig.key", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("NodeSelectorConfig.key"); err == nil {
+				assert.Equal(t, string(defaultConfig.NodeSelectorConfig.key), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("NodeSelectorConfig.key", testValue)
+			if vString, err := cmdFlags.GetString("NodeSelectorConfig.key"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.NodeSelectorConfig.key)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_NodeSelectorConfig.value", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("NodeSelectorConfig.value"); err == nil {
+				assert.Equal(t, string(defaultConfig.NodeSelectorConfig.value), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("NodeSelectorConfig.value", testValue)
+			if vString, err := cmdFlags.GetString("NodeSelectorConfig.value"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.NodeSelectorConfig.value)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

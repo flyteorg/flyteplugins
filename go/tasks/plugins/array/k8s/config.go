@@ -27,14 +27,15 @@ var (
 			MaxRetries:         5,
 			Workers:            10,
 		},
+		NodeSelectorConfig: NodeSelectorConfig{},
 	}
 
 	configSection = config.MustRegisterSection(configSectionKey, defaultConfig)
 )
 
 type NodeSelectorConfig struct {
-	key   string `json:"key", pflag:",Node Selector key.`
-	value string `json:"value", pflag:",Node Selector value."`
+	key   string `json:"key" pflag:",Node Selector key."`
+	value string `json:"value" pflag:",Node Selector value."`
 }
 
 // Defines custom config for K8s Array plugin
