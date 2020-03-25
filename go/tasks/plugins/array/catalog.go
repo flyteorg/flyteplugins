@@ -401,7 +401,7 @@ func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, ou
 		return nil, err
 	}
 
-	p := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPath(ctx, outputSandbox))
+	p := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPaths(ctx, outputSandbox))
 	return ioutils.NewRemoteFileOutputWriter(ctx, dataStore, p), nil
 }
 
@@ -435,6 +435,6 @@ func ConstructOutputReader(ctx context.Context, dataStore *storage.DataStore, ou
 		return nil, err
 	}
 
-	outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPath(ctx, outputSandbox))
+	outputPath := ioutils.NewRemoteFileOutputPaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPaths(ctx, outputSandbox))
 	return ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999)), nil
 }
