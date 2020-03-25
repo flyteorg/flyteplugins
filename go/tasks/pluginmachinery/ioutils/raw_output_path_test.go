@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewOutputSandbox(t *testing.T) {
-	assert.Equal(t, NewRawOutputPath(context.TODO(), "x").GetRawOutputPrefix(), storage.DataReference("x"))
+	assert.Equal(t, NewRawOutputPaths(context.TODO(), "x").GetRawOutputPrefix(), storage.DataReference("x"))
 }
 
 func TestNewRandomPrefixShardedOutputSandbox(t *testing.T) {

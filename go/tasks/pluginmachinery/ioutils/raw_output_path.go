@@ -23,7 +23,7 @@ func (r precomputedRawOutputPaths) GetRawOutputPrefix() storage.DataReference {
 // Potential performance problem, as creating a new RawPath creation may be expensive as it hashes the outputMetadataPath
 // the final RawOutputPath is created in the shard selected by the sharder at the basePath and then appended by a hashed value of the outputMetadata
 func NewShardedDeterministicRawOutputPath(ctx context.Context, sharder ShardSelector, basePrefix, outputMetadataPrefix storage.DataReference, store storage.ReferenceConstructor) (io.RawOutputPaths, error) {
-	o := []byte(outputMetadataPath)
+	o := []byte(outputMetadataPrefix)
 	prefix, err := sharder.GetShardPrefix(ctx, o)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func NewShardedDeterministicRawOutputPath(ctx context.Context, sharder ShardSele
 	if _, err := m.Write(o); err != nil {
 		return nil, err
 	}
-	path, err := store.ConstructReference(ctx, basePath, prefix, hex.EncodeToString(m.Sum(nil)))
+	path, err := store.ConstructReference(ctx, basePrefix, prefix, hex.EncodeToString(m.Sum(nil)))
 	if err != nil {
 		return nil, err
 	}
