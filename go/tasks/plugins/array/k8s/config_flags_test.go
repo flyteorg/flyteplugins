@@ -297,4 +297,48 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_ResourcesConfig.primaryLabel", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("ResourcesConfig.primaryLabel"); err == nil {
+				assert.Equal(t, string(defaultConfig.ResourcesConfig.PrimaryLabel), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("ResourcesConfig.primaryLabel", testValue)
+			if vString, err := cmdFlags.GetString("ResourcesConfig.primaryLabel"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.ResourcesConfig.PrimaryLabel)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_ResourcesConfig.limit", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("ResourcesConfig.limit"); err == nil {
+				assert.Equal(t, int(defaultConfig.ResourcesConfig.Limit), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("ResourcesConfig.limit", testValue)
+			if vInt, err := cmdFlags.GetInt("ResourcesConfig.limit"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ResourcesConfig.Limit)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

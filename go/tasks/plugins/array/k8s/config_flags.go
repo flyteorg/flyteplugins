@@ -50,5 +50,7 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.workers"), defaultConfig.ErrorAssembler.Workers, "Number of concurrent workers to start processing the queue.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxRetries"), defaultConfig.ErrorAssembler.MaxRetries, "Maximum number of retries per item.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxItems"), defaultConfig.ErrorAssembler.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "ResourcesConfig.primaryLabel"), defaultConfig.ResourcesConfig.PrimaryLabel, "PrimaryLabel of a given service cluster")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ResourcesConfig.limit"), defaultConfig.ResourcesConfig.Limit, "Resource quota (in the number of outstanding requests) of the service cluster")
 	return cmdFlags
 }
