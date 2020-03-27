@@ -17,9 +17,10 @@ import (
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
+	"github.com/lyft/flytestdlib/bitarray"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
-	"github.com/lyft/flytestdlib/bitarray"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -41,7 +42,7 @@ const (
 )
 
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, dataStore *storage.DataStore, outputPrefix storage.DataReference, currentState *arrayCore.State) (
+	config *Config, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference, currentState *arrayCore.State) (
 	newState *arrayCore.State, logLinks []*idlCore.TaskLog, err error) {
 
 	logLinks = make([]*idlCore.TaskLog, 0, 4)
@@ -165,7 +166,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		actualPhase := phaseInfo.Phase()
 		if phaseInfo.Phase().IsSuccess() {
 			originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, childIdx, originalIdx)
+			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputDataSandbox, childIdx, originalIdx)
 			if err != nil {
 				return nil, nil, err
 			}

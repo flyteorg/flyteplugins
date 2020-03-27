@@ -1,4 +1,4 @@
-package hive
+package presto
 
 import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -16,33 +16,20 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func GetSingleHiveQueryTaskTemplate() idlCore.TaskTemplate {
-	hiveJob := plugins.QuboleHiveJob{
-		ClusterLabel: "default",
-		Tags:         []string{"flyte_plugin_test"},
-		Query: &plugins.HiveQuery{
-			TimeoutSec: 500,
-			Query:      "select 'one'",
-			RetryCount: 0,
-		},
-		// Even though it's deprecated, we might have one element in the query collection for backwards compatibility
-		QueryCollection: &plugins.HiveQueryCollection{
-			Queries: []*plugins.HiveQuery{
-				{
-					TimeoutSec: 500,
-					Query:      "select 'one'",
-					RetryCount: 0,
-				},
-			},
-		},
+func GetPrestoQueryTaskTemplate() idlCore.TaskTemplate {
+	prestoQuery := plugins.PrestoQuery{
+		RoutingGroup: "adhoc",
+		Catalog:      "hive",
+		Schema:       "city",
+		Statement:    "select * from hive.city.fact_airport_sessions limit 10",
 	}
 	stObj := &structpb.Struct{}
-	_ = utils.MarshalStruct(&hiveJob, stObj)
+	_ = utils.MarshalStruct(&prestoQuery, stObj)
 	tt := idlCore.TaskTemplate{
-		Type:   "hive",
+		Type:   "presto",
 		Custom: stObj,
 		Id: &idlCore.Identifier{
-			Name:         "sample_hive_task_test_name",
+			Name:         "sample_presto_task_test_name",
 			Project:      "flyteplugins",
 			Version:      "1",
 			ResourceType: idlCore.ResourceType_TASK,
@@ -68,7 +55,6 @@ func GetMockTaskExecutionMetadata() core.TaskExecutionMetadata {
 		Kind: "node",
 		Name: "blah",
 	})
-	taskMetadata.On("IsInterruptible").Return(true)
 	taskMetadata.On("GetK8sServiceAccount").Return("service-account")
 	taskMetadata.On("GetOwnerID").Return(types.NamespacedName{
 		Namespace: "test-namespace",
@@ -96,13 +82,14 @@ func GetMockTaskExecutionMetadata() core.TaskExecutionMetadata {
 }
 
 func GetMockTaskExecutionContext() core.TaskExecutionContext {
-	tt := GetSingleHiveQueryTaskTemplate()
+	tt := GetPrestoQueryTaskTemplate()
 
 	dummyTaskMetadata := GetMockTaskExecutionMetadata()
 	taskCtx := &coreMock.TaskExecutionContext{}
 	inputReader := &ioMock.InputReader{}
 	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
 	inputReader.On("Get", mock.Anything).Return(&idlCore.LiteralMap{}, nil)
+	inputReader.On("GetInputPrefixPath").Return(storage.DataReference("/data"))
 	taskCtx.On("InputReader").Return(inputReader)
 
 	outputReader := &ioMock.OutputWriter{}
