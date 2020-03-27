@@ -110,6 +110,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 
 		pod = ApplyPodPolicies(ctx, config, pod)
 		pod = applyNodeSelectorLabels(ctx, config, pod)
+		pod = applyPodTolerations(ctx, config, pod)
 
 		err = kubeClient.GetClient().Create(ctx, pod)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
