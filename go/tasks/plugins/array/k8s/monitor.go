@@ -47,10 +47,22 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	logLinks = make([]*idlCore.TaskLog, 0, 4)
 	newState = currentState
 
+	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
+		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
+		logger.Info(ctx, ee)
+		currentState = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
+		return currentState, logLinks, nil
+	}
+
 	msg := errorcollector.NewErrorMessageCollector()
+
 	newArrayStatus := arraystatus.ArrayStatus{
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
+	}
+
+	if len(currentState.GetArrayStatus().Detailed.GetItems()) == 0 {
+		currentState.ArrayStatus = newArrayStatus
 	}
 
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
@@ -76,7 +88,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			err = tCtx.ResourceManager().ReleaseResource(ctx, core.ResourceNamespace(ResourcesPrimaryLabel), podName)
 			if err != nil {
 				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
-				return currentState, logLinks, errors2.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")
+				return newState, logLinks, errors2.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")
 			}
 			newArrayStatus.Summary.Inc(existingPhase)
 			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
