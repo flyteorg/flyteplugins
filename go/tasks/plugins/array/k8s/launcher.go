@@ -60,6 +60,14 @@ func applyNodeSelectorLabels(_ context.Context, cfg *Config, pod *corev1.Pod) *c
 	return pod
 }
 
+func applyPodTolerations(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
+	if len(cfg.Tolerations) != 0 {
+		pod.Spec.Tolerations = cfg.Tolerations
+	}
+
+	return pod
+}
+
 // Launches subtasks
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, currentState *arrayCore.State) (newState *arrayCore.State, err error) {
