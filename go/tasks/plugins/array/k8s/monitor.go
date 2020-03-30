@@ -115,7 +115,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		pod = ApplyPodPolicies(ctx, config, pod)
 
 		resourceNamespace := core.ResourceNamespace(pod.Namespace)
-		allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, core.ResourceConstraintsSpec{})
+		resourceConstrainSpec := createResourceConstraintsSpec(ctx, tCtx, config, core.ResourceNamespace(ResourcesPrimaryLabel))
+		allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, resourceConstrainSpec)
 		if err != nil {
 			logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
@@ -266,4 +267,22 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 	}
 	return core.PhaseInfoRunning(core.DefaultPhaseVersion, &taskInfo), nil
 
+}
+
+func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionContext, config *Config, primaryLabel core.ResourceNamespace) core.ResourceConstraintsSpec {
+	constraintsSpec := core.ResourceConstraintsSpec{
+		ProjectScopeResourceConstraint:   nil,
+		NamespaceScopeResourceConstraint: nil,
+	}
+
+	if config.ResourcesConfig == (ResourceConfig{}) {
+		logger.Infof(ctx, "No Resource config is found. Returning an empty resource constraints spec")
+		return constraintsSpec
+	}
+
+	constraintsSpec.ProjectScopeResourceConstraint = &core.ResourceConstraint{Value: int64(1)}
+	constraintsSpec.NamespaceScopeResourceConstraint = &core.ResourceConstraint{Value: int64(1)}
+
+	logger.Infof(ctx, "Created a resource constraints spec: [%v]", constraintsSpec)
+	return constraintsSpec
 }
