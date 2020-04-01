@@ -118,7 +118,7 @@ func (p *ExecutionsCache) SyncPrestoQuery(ctx context.Context, batch cache.Batch
 			continue
 		}
 
-		newExecutionPhase, err := StatusToExecutionPhase(commandStatus)
+		newExecutionPhase, err := StatusToExecutionPhase(ctx, commandStatus)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +141,7 @@ func (p *ExecutionsCache) SyncPrestoQuery(ctx context.Context, batch cache.Batch
 }
 
 // We need some way to translate results we get from Presto, into a plugin phase
-func StatusToExecutionPhase(s client.PrestoStatus) (ExecutionPhase, error) {
+func StatusToExecutionPhase(ctx context.Context, s client.PrestoStatus) (ExecutionPhase, error) {
 	switch s {
 	case client.PrestoStatusFinished:
 		return PhaseQuerySucceeded, nil
@@ -156,6 +156,7 @@ func StatusToExecutionPhase(s client.PrestoStatus) (ExecutionPhase, error) {
 	case client.PrestoStatusUnknown:
 		return PhaseQueryFailed, errors.Errorf(BadPrestoReturnCodeError, "Presto returned status Unknown")
 	default:
+		logger.Infof(ctx, "PrestoStatusFinished:  %s, PrestoStatusFinished == s: %s", client.PrestoStatusFinished, client.PrestoStatusFinished == s)
 		return PhaseQueryFailed, errors.Errorf(BadPrestoReturnCodeError, "default fallthrough case: %s", s)
 	}
 }
