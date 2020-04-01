@@ -114,8 +114,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		pod = ApplyPodPolicies(ctx, config, pod)
 
-		resourceNamespace := core.ResourceNamespace(pod.Namespace)
-		resourceConstrainSpec := createResourceConstraintsSpec(ctx, tCtx, config, core.ResourceNamespace(ResourcesPrimaryLabel))
+		resourceNamespace := core.ResourceNamespace(ResourcesPrimaryLabel)
+		resourceConstrainSpec := createResourceConstraintsSpec(ctx, tCtx, config)
 		allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, resourceConstrainSpec)
 		if err != nil {
 			logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
@@ -269,7 +269,7 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 
 }
 
-func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionContext, config *Config, primaryLabel core.ResourceNamespace) core.ResourceConstraintsSpec {
+func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionContext, config *Config) core.ResourceConstraintsSpec {
 	constraintsSpec := core.ResourceConstraintsSpec{
 		ProjectScopeResourceConstraint:   nil,
 		NamespaceScopeResourceConstraint: nil,

@@ -42,7 +42,7 @@ type Config struct {
 	DefaultScheduler     string         `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
 	MaxErrorStringLength int            `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	MaxArrayJobSize      int64          `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
-	ResourcesConfig      ResourceConfig `json:"resourceConfig" pflag:"-,ResourceConfiguration to be used with Resource Manager.`
+	ResourcesConfig      ResourceConfig `json:"resourceConfig" pflag:"-,ResourceConfiguration to be used with Resource Manager."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
 }
