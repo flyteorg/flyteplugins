@@ -157,6 +157,6 @@ func StatusToExecutionPhase(ctx context.Context, s client.PrestoStatus) (Executi
 		return PhaseQueryFailed, errors.Errorf(BadPrestoReturnCodeError, "Presto returned status Unknown")
 	default:
 		logger.Infof(ctx, "PrestoStatusFinished:  %s, PrestoStatusFinished == s: %s", client.PrestoStatusFinished, client.PrestoStatusFinished == s)
-		return PhaseQueryFailed, errors.Errorf(BadPrestoReturnCodeError, "default fallthrough case: %s", s)
+		return PhaseQueryFailed, errors.Errorf(BadPrestoReturnCodeError, "default fallthrough case: %d", s)
 	}
 }
