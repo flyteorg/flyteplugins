@@ -47,6 +47,11 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 	logLinks = make([]*idlCore.TaskLog, 0, 4)
 	newState = currentState
+	msg := errorcollector.NewErrorMessageCollector()
+	newArrayStatus := arraystatus.ArrayStatus{
+		Summary:  arraystatus.ArraySummary{},
+		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
+	}
 
 	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
 		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
@@ -55,13 +60,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		return currentState, logLinks, nil
 	}
 
-	msg := errorcollector.NewErrorMessageCollector()
-
-	newArrayStatus := arraystatus.ArrayStatus{
-		Summary:  arraystatus.ArraySummary{},
-		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
-	}
-
+	// If we have arrived at this state for the first time then currentState has not been
+	// initialized with number of sub tasks.
 	if len(currentState.GetArrayStatus().Detailed.GetItems()) == 0 {
 		currentState.ArrayStatus = newArrayStatus
 	}
@@ -114,20 +114,14 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		pod = ApplyPodPolicies(ctx, config, pod)
 
-		resourceNamespace := core.ResourceNamespace(ResourcesPrimaryLabel)
-		resourceConstrainSpec := createResourceConstraintsSpec(ctx, tCtx, config)
-		allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, resourceConstrainSpec)
+		success, err := allocateResource(ctx, tCtx, config, podName, childIdx, &newArrayStatus)
 		if err != nil {
-			logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
-				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
 			return newState, logLinks, errors2.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", podName)
 		}
-		if allocationStatus != core.AllocationStatusGranted {
-			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseWaitingForResources))
-			newArrayStatus.Summary.Inc(core.PhaseWaitingForResources)
+
+		if !success {
 			continue
 		}
-		logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
 
 		err = kubeClient.GetClient().Create(ctx, pod)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
@@ -269,20 +263,45 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 
 }
 
-func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionContext, config *Config) core.ResourceConstraintsSpec {
+func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionContext) core.ResourceConstraintsSpec {
 	constraintsSpec := core.ResourceConstraintsSpec{
 		ProjectScopeResourceConstraint:   nil,
 		NamespaceScopeResourceConstraint: nil,
 	}
 
-	if config.ResourcesConfig == (ResourceConfig{}) {
+	if !IsResourceConfigSet() {
 		logger.Infof(ctx, "No Resource config is found. Returning an empty resource constraints spec")
 		return constraintsSpec
 	}
 
 	constraintsSpec.ProjectScopeResourceConstraint = &core.ResourceConstraint{Value: int64(1)}
 	constraintsSpec.NamespaceScopeResourceConstraint = &core.ResourceConstraint{Value: int64(1)}
-
 	logger.Infof(ctx, "Created a resource constraints spec: [%v]", constraintsSpec)
+
 	return constraintsSpec
+}
+
+func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string, childIdx int, arrayStatus *arraystatus.ArrayStatus) (bool, error) {
+	if !IsResourceConfigSet() {
+		return true, nil
+	}
+
+	resourceNamespace := core.ResourceNamespace(config.ResourceConfig.PrimaryLabel)
+	resourceConstraintSpec := createResourceConstraintsSpec(ctx, tCtx)
+
+	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, resourceConstraintSpec)
+	if err != nil {
+		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
+		return false, err
+	}
+
+	if allocationStatus != core.AllocationStatusGranted {
+		arrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseWaitingForResources))
+		arrayStatus.Summary.Inc(core.PhaseWaitingForResources)
+		return false, nil
+	}
+
+	logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
+	return true, nil
 }

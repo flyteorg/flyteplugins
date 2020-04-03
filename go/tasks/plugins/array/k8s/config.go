@@ -34,7 +34,7 @@ var (
 
 type ResourceConfig struct {
 	PrimaryLabel string `json:"primaryLabel" pflag:",PrimaryLabel of a given service cluster"`
-	Limit        int    `json:"limit" pflag:",Resource quota (in the number of outstanding requests) of the service cluster"`
+	Limit        int    `json:"limit" pflag:",Resource quota (in the number of outstanding requests) for the cluster"`
 }
 
 // Defines custom config for K8s Array plugin
@@ -42,11 +42,15 @@ type Config struct {
 	DefaultScheduler     string         `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
 	MaxErrorStringLength int            `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	MaxArrayJobSize      int64          `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
-	ResourcesConfig      ResourceConfig `json:"resourceConfig" pflag:"-,ResourceConfiguration to be used with Resource Manager."`
+	ResourceConfig       ResourceConfig `json:"resourceConfig" pflag:"-,ResourceConfiguration to limit number of resources used by k8s-array."`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
 }
 
 func GetConfig() *Config {
 	return configSection.GetConfig().(*Config)
+}
+
+func IsResourceConfigSet() bool {
+	return GetConfig().ResourceConfig != (ResourceConfig{})
 }

@@ -169,12 +169,13 @@ func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plu
 		return nil, err
 	}
 
-	primaryLabel := GetConfig().ResourcesConfig.PrimaryLabel
-	resourceLimit := GetConfig().ResourcesConfig.Limit
-
-	if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(primaryLabel), resourceLimit); err != nil {
-		logger.Errorf(ctx, "Token Resource registration for [%v] failed due to error [%v]", primaryLabel, err)
-		return nil, err
+	if IsResourceConfigSet() {
+		primaryLabel := GetConfig().ResourceConfig.PrimaryLabel
+		limit := GetConfig().ResourceConfig.Limit
+		if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(primaryLabel), limit); err != nil {
+			logger.Errorf(ctx, "Token Resource registration for [%v] failed due to error [%v]", primaryLabel, err)
+			return nil, err
+		}
 	}
 
 	return exec, nil
