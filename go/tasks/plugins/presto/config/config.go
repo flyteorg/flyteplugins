@@ -72,7 +72,7 @@ type Config struct {
 	DefaultRoutingGroup string               `json:"defaultRoutingGroup" pflag:",Default Presto routing group"`
 	DefaultUser         string               `json:"defaultUser" pflag:",Default Presto user"`
 	RoutingGroupConfigs []RoutingGroupConfig `json:"routingGroupConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
-	RefreshCacheConfig  RefreshCacheConfig   `json:"refreshCacheConfig" pflag:"Rate limiter config"`
+	RefreshCacheConfig  RefreshCacheConfig   `json:"refreshCacheConfig" pflag:"Refresh cache config"`
 	RateLimiterConfig   RateLimiterConfig    `json:"rateLimiterConfig" pflag:"Rate limiter config"`
 }
 
