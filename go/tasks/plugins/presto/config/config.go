@@ -42,7 +42,7 @@ type RefreshCacheConfig struct {
 
 type RateLimiterConfig struct {
 	Rate  int64 `json:"rate" pflag:",Allowed rate of calls per second."`
-	Burst int   `json:"burst" pflag:",Allowed burst rate of calls."`
+	Burst int   `json:"burst" pflag:",Allowed burst rate of calls per second."`
 }
 
 var (
