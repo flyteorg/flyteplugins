@@ -315,8 +315,6 @@ func GetNextQuery(
 	case 1:
 		// TODO
 		externalLocation := getExternalLocation("s3://lyft-modelbuilder/{}/", 2)
-
-		//externalLocation := tCtx.OutputWriter().GetRawOutputPrefix().String()
 		statement := fmt.Sprintf(`
 CREATE TABLE hive.flyte_temporary_tables."%s" (LIKE hive.flyte_temporary_tables."%s")
 WITH (format = 'PARQUET', external_location = '%s')`,
