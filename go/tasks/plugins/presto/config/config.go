@@ -40,6 +40,11 @@ type RefreshCacheConfig struct {
 	LruCacheSize int             `json:"lruCacheSize" pflag:",Size of the cache"`
 }
 
+type RateLimiterConfig struct {
+	Rate  int64 `json:"rate" pflag:",Allowed rate of calls per second."`
+	Burst int   `json:"burst" pflag:",Allowed burst rate of calls."`
+}
+
 var (
 	defaultConfig = Config{
 		Environment:         URLMustParse(""),
@@ -51,6 +56,10 @@ var (
 			SyncPeriod:   config.Duration{Duration: 5 * time.Second},
 			Workers:      15,
 			LruCacheSize: 10000,
+		},
+		RateLimiterConfig: RateLimiterConfig{
+			Rate:  15,
+			Burst: 20,
 		},
 	}
 
@@ -64,6 +73,7 @@ type Config struct {
 	DefaultUser         string               `json:"defaultUser" pflag:",Default Presto user"`
 	RoutingGroupConfigs []RoutingGroupConfig `json:"routingGroupConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
 	RefreshCacheConfig  RefreshCacheConfig   `json:"refreshCacheConfig" pflag:"Rate limiter config"`
+	RateLimiterConfig   RateLimiterConfig    `json:"rateLimiterConfig" pflag:"Rate limiter config"`
 }
 
 // Retrieves the current config value or default.
