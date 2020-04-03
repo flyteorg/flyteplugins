@@ -2,7 +2,6 @@ package presto
 
 import (
 	"context"
-	"strings"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
@@ -355,15 +354,6 @@ FROM hive.flyte_temporary_tables."%s"`
 	default:
 		return currentState.CurrentPrestoQuery, nil
 	}
-}
-
-func getExternalLocation(shardFormatter string, shardLength int) string {
-	shardCount := strings.Count(shardFormatter, "{}")
-	for i := 0; i < shardCount; i++ {
-		shardFormatter = strings.Replace(shardFormatter, "{}", rand.String(shardLength), 1)
-	}
-
-	return shardFormatter + rand.String(32) + "/"
 }
 
 func getUser(ctx context.Context, defaultUser string) string {
