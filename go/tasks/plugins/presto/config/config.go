@@ -50,11 +50,11 @@ type RefreshCacheConfig struct {
 // configurations for the Presto plugin. This means means that at most, Flyte will be working on this
 // number of user Presto queries at a time for each of the configured Presto routing groups.
 //
-// This rate limiter will control the rate at which requests are sent to Presto for ALL requests coming
-// from this client. This includes requests to execute queries, requests to get the status of a query
-// (through the auto-refresh cache), and even requests to cancel queries. Together with allocation
-// tokens, this rate limiter will ensure that the rate of requests and the number of concurrent requests
-// going to Presto don't overload the cluster.
+// These 2 rate limiters will control the rate at which requests are sent to Presto for read and write
+// requests coming from this client. This includes requests to execute queries (write), requests to get
+// the status of a query through the auto-refresh cache (read), and requests to cancel queries (write).
+// Together with allocation tokens, these rate limiters will ensure that the rate of requests and the
+// number of concurrent requests going to Presto don't overload the cluster.
 type RateLimiterConfig struct {
 	Rate  int64 `json:"rate" pflag:",Allowed rate of calls per second."`
 	Burst int   `json:"burst" pflag:",Allowed burst rate of calls per second."`
