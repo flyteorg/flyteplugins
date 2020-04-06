@@ -78,7 +78,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		fallthrough
 
 	case arrayCore.PhaseLaunch:
-		// This is a hack. In order to maintain backwards compatibility with the state transitions
+		// In order to maintain backwards compatibility with the state transitions
 		// in the aws batch plugin. Forward to PhaseCheckingSubTasksExecutions where the launching
 		// is actually occurring.
 		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, core.DefaultPhaseVersion).SetReason("Nothing to do in Launch phase.")
