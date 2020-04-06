@@ -124,6 +124,9 @@ func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeC
 	if phaseInfo.Phase().IsSuccess() {
 		originalIdx := arrayCore.CalculateOriginalIndex(t.ChildIdx, t.State.GetIndexesToCache())
 		actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputDataSandbox, t.ChildIdx, originalIdx)
+		if err != nil {
+			return Error, err
+		}
 	}
 
 	t.NewArrayStatus.Detailed.SetItem(t.ChildIdx, bitarray.Item(actualPhase))
@@ -157,7 +160,7 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		return err
 	}
 
-	// Deallocate Resouce
+	// Deallocate Resource
 	err = deallocateResource(ctx, tCtx, t.Config, t.ChildIdx)
 	if err != nil {
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
