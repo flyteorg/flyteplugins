@@ -313,8 +313,11 @@ func GetNextQuery(
 		return prestoQuery, nil
 
 	case 1:
-		// TODO
-		externalLocation := getExternalLocation("s3://lyft-modelbuilder/{}/", 2)
+		externalLocation, err := tCtx.DataStore().ConstructReference(ctx, tCtx.OutputWriter().GetRawOutputPrefix(), "")
+		if err != nil {
+			return Query{}, err
+		}
+
 		statement := fmt.Sprintf(`
 CREATE TABLE hive.flyte_temporary_tables."%s" (LIKE hive.flyte_temporary_tables."%s")
 WITH (format = 'PARQUET', external_location = '%s')`,
@@ -323,7 +326,7 @@ WITH (format = 'PARQUET', external_location = '%s')`,
 			externalLocation,
 		)
 		currentState.CurrentPrestoQuery.Statement = statement
-		currentState.CurrentPrestoQuery.ExternalLocation = externalLocation
+		currentState.CurrentPrestoQuery.ExternalLocation = externalLocation.String()
 		return currentState.CurrentPrestoQuery, nil
 
 	case 2:

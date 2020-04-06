@@ -50,11 +50,22 @@ type RefreshCacheConfig struct {
 // configurations for the Presto plugin. This means means that at most, Flyte will be working on this
 // number of user Presto queries at a time for each of the configured Presto routing groups.
 //
-// These 2 rate limiters will control the rate at which requests are sent to Presto for read and write
-// requests coming from this client. This includes requests to execute queries (write), requests to get
-// the status of a query through the auto-refresh cache (read), and requests to cancel queries (write).
-// Together with allocation tokens, these rate limiters will ensure that the rate of requests and the
-// number of concurrent requests going to Presto don't overload the cluster.
+// In addition, these 2 rate limiters control the rate at which requests are sent to Presto for
+// read and write requests coming from this client. This includes requests to execute queries (write),
+// requests to get the status of a query through the auto-refresh cache (read), and requests to cancel
+// queries (write). Together with allocation tokens, these rate limiters will ensure that the rate of
+// requests and the number of concurrent requests going to Presto don't overload the cluster.
+//
+// There is also another important aspect to consider in terms of how the resource manager (where
+// allocation tokens get created from) interplays with the rate limiters. From the write side of things
+// (e.g. executing a query), if the write rate limiter is low then it will block executing queries until
+// the rate falls below the limit. Even if the rate is below the limit, if queries take a long time to
+// execute, then you  will be blocked at the resource manager level which only allows a certain number
+// of concurrent queries to execute at any given time. Similarly, in more extreme cases, if both the
+// resource manager and the write limiter are configured to support a large number of queries but the
+// auto refresh cache size is small, then the cache will fill up and items will gets evicted due to the
+// cache's LRU nature before the Flyte propeller workers get a chance to update the status of these
+// items.
 type RateLimiterConfig struct {
 	Rate  int64 `json:"rate" pflag:",Allowed rate of calls per second."`
 	Burst int   `json:"burst" pflag:",Allowed burst rate of calls per second."`
