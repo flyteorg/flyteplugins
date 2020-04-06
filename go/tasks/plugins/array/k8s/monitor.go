@@ -103,7 +103,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			return currentState, logLinks, err
 		// If Resource manager is enabled and there are currently not enough resources we can skip this round
 		// for a subtask and wait until there are enough resources.
-		case Skip:
+		case Waiting:
 			continue
 		case ReturnState:
 			return currentState, logLinks, nil

@@ -36,7 +36,7 @@ type TaskStatus int8
 const (
 	Success TaskStatus = iota
 	Error
-	Skip
+	Waiting
 	ReturnState
 )
 
@@ -76,7 +76,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	}
 
 	if !succeeded {
-		return Skip, nil
+		return Waiting, nil
 	}
 
 	err = kubeClient.GetClient().Create(ctx, pod)
