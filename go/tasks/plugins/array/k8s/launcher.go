@@ -9,8 +9,6 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
 	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
@@ -138,44 +136,25 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 	return currentState, nil
 }
 
-func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	errsMaxLength int, currentState *arrayCore.State) error {
+func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, config *Config,
+	currentState *arrayCore.State) error {
 
 	size := currentState.GetExecutionArraySize()
 	errs := errorcollector.NewErrorMessageCollector()
-	for i := 0; i < size; i++ {
-		indexStr := strconv.Itoa(i)
-		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
-		pod := &corev1.Pod{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       PodKind,
-				APIVersion: metav1.SchemeGroupVersion.String(),
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      podName,
-				Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
-			},
+	for childIdx := 0; childIdx < size; childIdx++ {
+		task := Task{
+			ChildIdx: childIdx,
+			Config:   config,
+			State:    currentState,
 		}
-
-		err := kubeClient.GetClient().Delete(ctx, pod)
+		err := task.Finalize(ctx, tCtx, kubeClient)
 		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				continue
-			}
-
-			errs.Collect(i, err.Error())
-		}
-
-		// Deallocate Resource
-		err = tCtx.ResourceManager().ReleaseResource(ctx, core.ResourceNamespace(ResourcesPrimaryLabel), podName)
-		if err != nil {
-			logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
-			errs.Collect(i, err.Error())
+			errs.Collect(childIdx, err.Error())
 		}
 	}
 
 	if errs.Length() > 0 {
-		return fmt.Errorf(errs.Summary(errsMaxLength))
+		return fmt.Errorf(errs.Summary(config.MaxErrorStringLength))
 	}
 
 	return nil

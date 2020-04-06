@@ -133,8 +133,7 @@ func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) 
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	return TerminateSubTasks(ctx, tCtx, e.kubeClient, pluginConfig.MaxErrorStringLength,
-		pluginState)
+	return TerminateSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
 }
 
 func (e Executor) Start(ctx context.Context) error {

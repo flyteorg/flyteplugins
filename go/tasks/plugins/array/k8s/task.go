@@ -41,7 +41,6 @@ const (
 )
 
 func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (TaskStatus, error) {
-	newState := t.State
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
 		return Error, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for a task")
@@ -135,7 +134,7 @@ func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeC
 
 func (t Task) Abort() {}
 
-func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (TaskStatus, error) {
+func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) error {
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	pod := &corev1.Pod{
@@ -152,24 +151,20 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	err := kubeClient.GetClient().Delete(ctx, pod)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			return Success, nil
+			return nil
 		}
 
-		return Error, err
-	}
-
-	if !IsResourceConfigSet() {
-		return Success, nil
+		return err
 	}
 
 	// Deallocate Resouce
 	err = deallocateResource(ctx, tCtx, t.Config, t.ChildIdx)
 	if err != nil {
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
-		return Error, err
+		return err
 	}
 
-	return Success, nil
+	return nil
 
 }
 
