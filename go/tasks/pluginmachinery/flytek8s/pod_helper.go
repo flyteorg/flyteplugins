@@ -43,6 +43,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 			Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 			ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
 			NodeSelector:       config.GetK8sPluginConfig().InterruptibleNodeSelector,
+			SchedulerName:       config.GetK8sPluginConfig().SchedulerName,
 		}, nil
 	}
 	return &v1.PodSpec{
