@@ -62,7 +62,6 @@ func validateAndFinalizeContainers(
 	}
 	pod.Spec.Containers = finalizedContainers
 	pod.Spec.Tolerations = flytek8s.GetPodTolerations(taskCtx.TaskExecutionMetadata().IsInterruptible(), resReqs...)
-	pod.Spec.SchedulerName = flytek8s.GetPodTolerations(taskCtx.TaskExecutionMetadata().SchedulerName(), resReqs...)
 	if taskCtx.TaskExecutionMetadata().IsInterruptible() && len(config.GetK8sPluginConfig().InterruptibleNodeSelector) > 0 {
 		pod.Spec.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
 	}
