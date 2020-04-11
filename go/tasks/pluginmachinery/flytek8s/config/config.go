@@ -50,7 +50,7 @@ type K8sPluginConfig struct {
 	// eviction.
 	InterruptibleNodeSelector map[string]string `json:"interruptible-node-selector" pflag:"-,Defines a set of node selector labels to add to the interruptible pods."`
         // Scheduler name.
-        SchdulerName string `json:"scheduler-name" pflag:",Defines scheduler name."`
+        SchedulerName string `json:"scheduler-name" pflag:",Defines scheduler name."`
 }
 
 // Retrieves the current k8s plugin config or default.

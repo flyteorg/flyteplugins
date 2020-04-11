@@ -180,7 +180,7 @@ func TestK8sPluginConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("scheduler-name", testValue)
 			if vString, err := cmdFlags.GetString("scheduler-name"); err == nil {
-				testDecodeJson_K8sPluginConfig(t, fmt.Sprintf("%v", vString), &actual.SchdulerName)
+				testDecodeJson_K8sPluginConfig(t, fmt.Sprintf("%v", vString), &actual.SchedulerName)
 
 			} else {
 				assert.FailNow(t, err.Error())
