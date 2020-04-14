@@ -248,7 +248,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 
 	if totalWaitingForResources > 0 {
 		logger.Infof(ctx, "Array is still running and waiting for resources totalWaitingForResources[%v]", totalWaitingForResources)
-		return PhaseCheckingSubTaskExecutions
+		return PhaseWaitingForResources
 	}
 
 	if totalCount < minSuccesses {

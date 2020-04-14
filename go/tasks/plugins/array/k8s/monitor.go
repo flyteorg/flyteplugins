@@ -37,19 +37,19 @@ const (
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference, currentState *arrayCore.State) (
 	newState *arrayCore.State, logLinks []*idlCore.TaskLog, err error) {
+	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
+		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
+		logger.Info(ctx, ee)
+		currentState = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
+		return currentState, logLinks, nil
+	}
+
 	logLinks = make([]*idlCore.TaskLog, 0, 4)
 	newState = currentState
 	msg := errorcollector.NewErrorMessageCollector()
 	newArrayStatus := &arraystatus.ArrayStatus{
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
-	}
-
-	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
-		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
-		logger.Info(ctx, ee)
-		currentState = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
-		return currentState, logLinks, nil
 	}
 
 	// If we have arrived at this state for the first time then currentState has not been
