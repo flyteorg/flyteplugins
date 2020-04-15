@@ -50,6 +50,8 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	if len(podTemplate.Spec.Containers) > 0 {
 		args = append(podTemplate.Spec.Containers[0].Command, podTemplate.Spec.Containers[0].Args...)
 		podTemplate.Spec.Containers[0].Command = []string{}
+	} else {
+		return Error, errors2.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
 	}
 
 	indexStr := strconv.Itoa(t.ChildIdx)
@@ -70,12 +72,13 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 
 	pod = ApplyPodPolicies(ctx, t.Config, pod)
 
-	succeeded, err := allocateResource(ctx, tCtx, t.Config, podName, t.ChildIdx, t.NewArrayStatus)
+	allocationStatus, err := allocateResource(ctx, tCtx, t.Config, podName, t.ChildIdx, t.NewArrayStatus)
 	if err != nil {
 		return Error, err
 	}
-
-	if !succeeded {
+	if allocationStatus != core.AllocationStatusGranted {
+		t.NewArrayStatus.Detailed.SetItem(t.ChildIdx, bitarray.Item(core.PhaseWaitingForResources))
+		t.NewArrayStatus.Summary.Inc(core.PhaseWaitingForResources)
 		return Waiting, nil
 	}
 
@@ -177,9 +180,9 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 
 }
 
-func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string, childIdx int, arrayStatus *arraystatus.ArrayStatus) (bool, error) {
+func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string, childIdx int, arrayStatus *arraystatus.ArrayStatus) (core.AllocationStatus, error) {
 	if !IsResourceConfigSet() {
-		return true, nil
+		return core.AllocationStatusGranted, nil
 	}
 
 	resourceNamespace := core.ResourceNamespace(config.ResourceConfig.PrimaryLabel)
@@ -189,17 +192,11 @@ func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, confi
 	if err != nil {
 		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
-		return false, err
-	}
-
-	if allocationStatus != core.AllocationStatusGranted {
-		arrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseWaitingForResources))
-		arrayStatus.Summary.Inc(core.PhaseWaitingForResources)
-		return false, nil
+		return core.AllocationUndefined, err
 	}
 
 	logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
-	return true, nil
+	return allocationStatus, nil
 }
 
 func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, childIdx int) error {
