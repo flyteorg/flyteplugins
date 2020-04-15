@@ -74,7 +74,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	pod = applyNodeSelectorLabels(ctx, t.Config, pod)
 	pod = applyPodTolerations(ctx, t.Config, pod)
 
-	allocationStatus, err := allocateResource(ctx, tCtx, t.Config, podName, t.ChildIdx, t.NewArrayStatus)
+	allocationStatus, err := allocateResource(ctx, tCtx, t.Config, podName)
 	if err != nil {
 		return Error, err
 	}
@@ -182,7 +182,7 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 
 }
 
-func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string, childIdx int, arrayStatus *arraystatus.ArrayStatus) (core.AllocationStatus, error) {
+func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string) (core.AllocationStatus, error) {
 	if !IsResourceConfigSet() {
 		return core.AllocationStatusGranted, nil
 	}
