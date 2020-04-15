@@ -17,23 +17,23 @@ type CachingProperties struct {
 	ResyncInterval time.Duration
 }
 
-type MissingResourceSemantics uint8
+type MissingResourcePolicy uint8
 
 const (
-	MissingResourceFailIfMissing MissingResourceSemantics = iota
-	MissingResourceRetryIfMissing
+	MissingResourceFail MissingResourcePolicy = iota
+	MissingResourceRetry
 )
 
 // Properties that indicate if the Batch API can be invoked. This indicates that GetBatch() can be used instead of Get
 type BatchingProperties struct {
-	BatchAPISupported        bool
-	MaxBatchSize             int
-	MissingResourceSemantics MissingResourceSemantics
+	MaxBatchSize int
 }
 
 // Properties that help the system optimize itself to handle the specific plugin
 type PluginProperties struct {
-	RateLimiterProperties RateLimiterProperties
-	CachingProperties     CachingProperties
-	BatchingProperties    BatchingProperties
+	ReadRateLimiterProperties  RateLimiterProperties
+	WriteRateLimiterProperties RateLimiterProperties
+	CachingProperties          CachingProperties
+	BatchingProperties         BatchingProperties
+	MissingResourcePolicy      MissingResourcePolicy
 }
