@@ -71,6 +71,8 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	}
 
 	pod = ApplyPodPolicies(ctx, t.Config, pod)
+	pod = applyNodeSelectorLabels(ctx, t.Config, pod)
+	pod = applyPodTolerations(ctx, t.Config, pod)
 
 	allocationStatus, err := allocateResource(ctx, tCtx, t.Config, podName, t.ChildIdx, t.NewArrayStatus)
 	if err != nil {

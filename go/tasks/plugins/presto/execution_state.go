@@ -2,7 +2,6 @@ package presto
 
 import (
 	"context"
-	"strings"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
@@ -56,7 +55,8 @@ func (p ExecutionPhase) String() string {
 }
 
 type ExecutionState struct {
-	Phase ExecutionPhase
+	CurrentPhase  ExecutionPhase
+	PreviousPhase ExecutionPhase
 
 	// This will store the command ID from Presto
 	CommandID string `json:"commandId,omitempty"`
@@ -105,7 +105,7 @@ func HandleExecutionState(
 	var transformError error
 	var newState ExecutionState
 
-	switch currentState.Phase {
+	switch currentState.CurrentPhase {
 	case PhaseNotStarted:
 		newState, transformError = GetAllocationToken(ctx, tCtx, currentState, metrics)
 
@@ -125,8 +125,11 @@ func HandleExecutionState(
 			// If there are still Presto statements to execute, increment the query count, reset the phase to 'queued'
 			// and continue executing the remaining statements. In this case, we won't request another allocation token
 			// as the 5 statements that get executed are all considered to be part of the same "query"
-			currentState.Phase = PhaseQueued
+			currentState.PreviousPhase = currentState.CurrentPhase
+			currentState.CurrentPhase = PhaseQueued
 		} else {
+			//currentState.Phase = PhaseQuerySucceeded
+			currentState.PreviousPhase = currentState.CurrentPhase
 			transformError = writeOutput(ctx, tCtx, currentState.CurrentPrestoQuery.ExternalLocation)
 		}
 		currentState.QueryCount++
@@ -172,11 +175,11 @@ func GetAllocationToken(
 	}
 
 	if allocationStatus == core.AllocationStatusGranted {
-		newState.Phase = PhaseQueued
+		newState.CurrentPhase = PhaseQueued
 	} else if allocationStatus == core.AllocationStatusExhausted {
-		newState.Phase = PhaseNotStarted
+		newState.CurrentPhase = PhaseNotStarted
 	} else if allocationStatus == core.AllocationStatusNamespaceQuotaExceeded {
-		newState.Phase = PhaseNotStarted
+		newState.CurrentPhase = PhaseNotStarted
 	} else {
 		return newState, errors.Errorf(errors.ResourceManagerFailure, "Got bad allocation result [%s] for token [%s]",
 			allocationStatus, uniqueID)
@@ -309,8 +312,11 @@ func GetNextQuery(
 		return prestoQuery, nil
 
 	case 1:
-		// TODO
-		externalLocation := getExternalLocation("s3://lyft-modelbuilder/{}/", 2)
+		externalLocation, err := tCtx.DataStore().ConstructReference(ctx, tCtx.OutputWriter().GetRawOutputPrefix(), "")
+		if err != nil {
+			return Query{}, err
+		}
+
 		statement := fmt.Sprintf(`
 CREATE TABLE hive.flyte_temporary_tables."%s" (LIKE hive.flyte_temporary_tables."%s")
 WITH (format = 'PARQUET', external_location = '%s')`,
@@ -319,7 +325,7 @@ WITH (format = 'PARQUET', external_location = '%s')`,
 			externalLocation,
 		)
 		currentState.CurrentPrestoQuery.Statement = statement
-		currentState.CurrentPrestoQuery.ExternalLocation = externalLocation
+		currentState.CurrentPrestoQuery.ExternalLocation = externalLocation.String()
 		return currentState.CurrentPrestoQuery, nil
 
 	case 2:
@@ -344,15 +350,6 @@ FROM hive.flyte_temporary_tables."%s"`
 	default:
 		return currentState.CurrentPrestoQuery, nil
 	}
-}
-
-func getExternalLocation(shardFormatter string, shardLength int) string {
-	shardCount := strings.Count(shardFormatter, "{}")
-	for i := 0; i < shardCount; i++ {
-		shardFormatter = strings.Replace(shardFormatter, "{}", rand.String(shardLength), 1)
-	}
-
-	return shardFormatter + rand.String(32) + "/"
 }
 
 func getUser(ctx context.Context, defaultUser string) string {
@@ -389,7 +386,8 @@ func KickOffQuery(
 		commandID := response.ID
 		logger.Infof(ctx, "Created Presto ID [%s] for token %s", commandID, uniqueID)
 		currentState.CommandID = commandID
-		currentState.Phase = PhaseSubmitted
+		currentState.PreviousPhase = currentState.CurrentPhase
+		currentState.CurrentPhase = PhaseSubmitted
 		currentState.URI = response.NextURI
 		currentState.CurrentPrestoQueryUUID = uniqueID
 
@@ -475,7 +473,8 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 
-	switch state.Phase {
+	//switch state.Phase {
+	switch state.CurrentPhase {
 	case PhaseNotStarted:
 		phaseInfo = core.PhaseInfoNotReady(t, core.DefaultPhaseVersion, "Haven't received allocation token")
 	case PhaseQueued:
@@ -515,7 +514,7 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 
 func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	return &idlCore.TaskLog{
-		Name:          fmt.Sprintf("Status: %s [%s]", e.Phase, e.CommandID),
+		Name:          fmt.Sprintf("Status: %s [%s]", e.PreviousPhase, e.CommandID),
 		MessageFormat: idlCore.TaskLog_UNKNOWN,
 		Uri:           e.URI,
 	}
@@ -551,11 +550,11 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionSt
 }
 
 func InTerminalState(e ExecutionState) bool {
-	return e.Phase == PhaseQuerySucceeded || e.Phase == PhaseQueryFailed
+	return e.CurrentPhase == PhaseQuerySucceeded || e.CurrentPhase == PhaseQueryFailed
 }
 
 func IsNotYetSubmitted(e ExecutionState) bool {
-	if e.Phase == PhaseNotStarted || e.Phase == PhaseQueued {
+	if e.CurrentPhase == PhaseNotStarted || e.CurrentPhase == PhaseQueued {
 		return true
 	}
 	return false

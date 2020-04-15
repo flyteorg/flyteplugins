@@ -3,23 +3,14 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 
-	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array/errorcollector"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
 
-	arraystatus2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
 	errors2 "github.com/lyft/flytestdlib/errors"
 
-	"github.com/lyft/flytestdlib/logger"
-
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
@@ -52,88 +43,20 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 	return pod
 }
 
-// Launches subtasks
-func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
-	config *Config, currentState *arrayCore.State) (newState *arrayCore.State, err error) {
-
-	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
-		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
-		logger.Info(ctx, ee)
-		currentState = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
-		return currentState, nil
+func applyNodeSelectorLabels(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
+	if len(cfg.NodeSelector) != 0 {
+		pod.Spec.NodeSelector = cfg.NodeSelector
 	}
 
-	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
-	if err != nil {
-		return currentState, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for task")
+	return pod
+}
+
+func applyPodTolerations(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
+	if len(cfg.Tolerations) != 0 {
+		pod.Spec.Tolerations = cfg.Tolerations
 	}
 
-	var args []string
-	if len(podTemplate.Spec.Containers) > 0 {
-		args = append(podTemplate.Spec.Containers[0].Command, podTemplate.Spec.Containers[0].Args...)
-		podTemplate.Spec.Containers[0].Command = []string{}
-	}
-
-	size := currentState.GetExecutionArraySize()
-	// TODO: Respect parallelism param
-	for i := 0; i < size; i++ {
-		pod := podTemplate.DeepCopy()
-		indexStr := strconv.Itoa(i)
-		pod.Name = formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
-		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  FlyteK8sArrayIndexVarName,
-			Value: indexStr,
-		})
-
-		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
-
-		pod.Spec.Containers[0].Args, err = utils.ReplaceTemplateCommandArgs(ctx, args, arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
-		if err != nil {
-			return currentState, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
-		}
-
-		pod = ApplyPodPolicies(ctx, config, pod)
-
-		// Allocate Token
-		resourceNamespace := core.ResourceNamespace(pod.Namespace)
-		allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, pod.Name, core.ResourceConstraintsSpec{})
-		if err != nil {
-			logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
-				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), pod.Name, err)
-			return newState, errors.Wrapf(errors.ResourceManagerFailure, err, "Error requesting allocation token %s", pod.Name)
-		}
-		logger.Infof(ctx, "Allocation result for [%s] is [%s]", pod.Name, allocationStatus)
-
-		err = kubeClient.GetClient().Create(ctx, pod)
-		if err != nil && !k8serrors.IsAlreadyExists(err) {
-			if k8serrors.IsForbidden(err) {
-				if strings.Contains(err.Error(), "exceeded quota") {
-					// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
-					logger.Infof(ctx, "Failed to launch job, resource quota exceeded. Err: %v", err)
-					currentState = currentState.SetPhase(arrayCore.PhaseWaitingForResources, 0).SetReason("Not enough resources to launch job.")
-				} else {
-					currentState = currentState.SetPhase(arrayCore.PhaseRetryableFailure, 0).SetReason("Failed to launch job.")
-				}
-
-				currentState = currentState.SetReason(err.Error())
-				return currentState, nil
-			}
-
-			return currentState, errors2.Wrapf(ErrSubmitJob, err, "Failed to submit job")
-		}
-	}
-
-	logger.Infof(ctx, "Successfully submitted Job(s) with Prefix:[%v], Count:[%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), size)
-
-	arrayStatus := arraystatus2.ArrayStatus{
-		Summary:  arraystatus2.ArraySummary{},
-		Detailed: arrayCore.NewPhasesCompactArray(uint(size)),
-	}
-
-	currentState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0).SetReason("Job launched.")
-	currentState.SetArrayStatus(arrayStatus)
-
-	return currentState, nil
+	return pod
 }
 
 func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, config *Config,
