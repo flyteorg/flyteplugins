@@ -90,27 +90,28 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		// The first time we enter this state we will launch every subtask. On subsequent rounds, the pod
 		// has already been created so we return a Success value and continue with the Monitor step.
-		var status TaskStatus
-		status, err = task.Launch(ctx, tCtx, kubeClient)
+		var launchResult LaunchResult
+		launchResult, err = task.Launch(ctx, tCtx, kubeClient)
 		if err != nil {
 			return currentState, logLinks, err
 		}
 
-		switch status {
-		case Success:
+		switch launchResult {
+		case LaunchSuccess:
 			// Continue with execution if successful
-		case Error:
+		case LaunchError:
 			return currentState, logLinks, err
 		// If Resource manager is enabled and there are currently not enough resources we can skip this round
 		// for a subtask and wait until there are enough resources.
-		case Waiting:
+		case LaunchWaiting:
 			continue
-		case ReturnState:
+		case LaunchReturnState:
 			return currentState, logLinks, nil
 		}
 
-		status, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
-		if status != Success {
+		var monitorResult MonitorResult
+		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
+		if monitorResult != MonitorSuccess {
 			return currentState, logLinks, err
 		}
 

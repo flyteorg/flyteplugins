@@ -31,19 +31,25 @@ type Task struct {
 	MessageCollector *errorcollector.ErrorMessageCollector
 }
 
-type TaskStatus int8
+type LaunchResult int8
+type MonitorResult int8
 
 const (
-	Success TaskStatus = iota
-	Error
-	Waiting
-	ReturnState
+	LaunchSuccess LaunchResult = iota
+	LaunchError
+	LaunchWaiting
+	LaunchReturnState
 )
 
-func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (TaskStatus, error) {
+const (
+	MonitorSuccess MonitorResult = iota
+	MonitorError
+)
+
+func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (LaunchResult, error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
 	if err != nil {
-		return Error, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for a task")
+		return LaunchError, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for a task")
 	}
 
 	var args []string
@@ -51,7 +57,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 		args = append(podTemplate.Spec.Containers[0].Command, podTemplate.Spec.Containers[0].Args...)
 		podTemplate.Spec.Containers[0].Command = []string{}
 	} else {
-		return Error, errors2.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
+		return LaunchError, errors2.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
 	}
 
 	indexStr := strconv.Itoa(t.ChildIdx)
@@ -67,7 +73,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
 	pod.Spec.Containers[0].Args, err = utils.ReplaceTemplateCommandArgs(ctx, args, arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
 	if err != nil {
-		return Error, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
+		return LaunchError, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
 	}
 
 	pod = ApplyPodPolicies(ctx, t.Config, pod)
@@ -76,12 +82,12 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 
 	allocationStatus, err := allocateResource(ctx, tCtx, t.Config, podName)
 	if err != nil {
-		return Error, err
+		return LaunchError, err
 	}
 	if allocationStatus != core.AllocationStatusGranted {
 		t.NewArrayStatus.Detailed.SetItem(t.ChildIdx, bitarray.Item(core.PhaseWaitingForResources))
 		t.NewArrayStatus.Summary.Inc(core.PhaseWaitingForResources)
-		return Waiting, nil
+		return LaunchWaiting, nil
 	}
 
 	err = kubeClient.GetClient().Create(ctx, pod)
@@ -96,16 +102,16 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 			}
 
 			t.State = t.State.SetReason(err.Error())
-			return ReturnState, nil
+			return LaunchReturnState, nil
 		}
 
-		return Error, errors2.Wrapf(ErrSubmitJob, err, "Failed to submit job.")
+		return LaunchError, errors2.Wrapf(ErrSubmitJob, err, "Failed to submit job.")
 	}
 
-	return Success, nil
+	return LaunchSuccess, nil
 }
 
-func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference) (TaskStatus, error) {
+func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference) (MonitorResult, error) {
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	phaseInfo, err := CheckPodStatus(ctx, kubeClient,
@@ -114,7 +120,7 @@ func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeC
 			Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
 		})
 	if err != nil {
-		return Error, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
+		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
 	}
 
 	if phaseInfo.Info() != nil {
@@ -130,19 +136,17 @@ func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeC
 		originalIdx := arrayCore.CalculateOriginalIndex(t.ChildIdx, t.State.GetIndexesToCache())
 		actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputDataSandbox, t.ChildIdx, originalIdx)
 		if err != nil {
-			return Error, err
+			return MonitorError, err
 		}
 	}
 
 	t.NewArrayStatus.Detailed.SetItem(t.ChildIdx, bitarray.Item(actualPhase))
 	t.NewArrayStatus.Summary.Inc(actualPhase)
 
-	return Success, nil
+	return MonitorSuccess, nil
 }
 
-func (t Task) Abort() {}
-
-func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) error {
+func (t Task) Abort(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) error {
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	pod := &corev1.Pod{
@@ -173,6 +177,21 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 
 	// Deallocate Resource
 	err = deallocateResource(ctx, tCtx, t.Config, t.ChildIdx)
+	if err != nil {
+		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
+		return err
+	}
+
+	return nil
+
+}
+
+func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) error {
+	indexStr := strconv.Itoa(t.ChildIdx)
+	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
+
+	// Deallocate Resource
+	err := deallocateResource(ctx, tCtx, t.Config, t.ChildIdx)
 	if err != nil {
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
 		return err
