@@ -16,9 +16,9 @@ import (
 )
 
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, pluginConfig *config.Config,
-	currentState *State) (nextState *State, err error) {
-
-	if int64(currentState.GetExecutionArraySize()) > pluginConfig.MaxArrayJobSize {
+	currentState *State, metrics ExecutorMetrics) (nextState *State, err error) {
+	size := currentState.GetExecutionArraySize()
+	if int64(size) > pluginConfig.MaxArrayJobSize {
 		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), pluginConfig.MaxArrayJobSize)
 		logger.Info(ctx, ee)
 		currentState.State = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
@@ -35,7 +35,6 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		return nil, err
 	}
 
-	size := currentState.GetExecutionArraySize()
 	t, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, err
@@ -53,6 +52,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		return nil, err
 	}
 
+	metrics.BatchTasksStarted.Add(ctx, float64(size))
 	parentState := currentState.
 		SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0).
 		SetArrayStatus(arraystatus.ArrayStatus{
