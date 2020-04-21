@@ -121,13 +121,21 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	arraySize := GetExecutionArraySize(tCtx)
+	arraySize, err := GetExecutionArraySize(tCtx)
+	if err != nil {
+		logger.Error(ctx, "Unable to get execution array size [%v]", err)
+		return err
+	}
 	e.metrics.BatchTasksTerminated.Add(ctx, float64(arraySize))
 	return TerminateSubTasks(ctx, tCtx, e.jobStore.Client, "Aborted")
 }
 
 func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	arraySize := GetExecutionArraySize(tCtx)
+	arraySize, err := GetExecutionArraySize(tCtx)
+	if err != nil {
+		logger.Error(ctx, "Unable to get execution array size [%v]", err)
+		return err
+	}
 	e.metrics.BatchTasksTerminated.Add(ctx, float64(arraySize))
 	return TerminateSubTasks(ctx, tCtx, e.jobStore.Client, "Finalized")
 }

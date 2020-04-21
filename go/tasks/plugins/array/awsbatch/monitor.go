@@ -3,6 +3,8 @@ package awsbatch
 import (
 	"context"
 
+	"github.com/lyft/flyteplugins/go/tasks/errors"
+
 	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -34,20 +36,19 @@ func createSubJobList(count int) []*Job {
 	return res
 }
 
-func GetExecutionArraySize(tCtx core.TaskExecutionContext) int {
+func GetExecutionArraySize(tCtx core.TaskExecutionContext) (int, error) {
 	pluginState := &State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
-		return 1
+		return 0, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
-	return pluginState.GetExecutionArraySize()
+	return pluginState.GetExecutionArraySize(), nil
 }
 
 func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, outputPrefix, baseOutputSandbox storage.DataReference, jobStore *JobStore,
 	dataStore *storage.DataStore, cfg *config.Config, currentState *State, metrics ExecutorMetrics) (newState *State, err error) {
-
+	logger.Debugf(ctx, "Entering CheckSubTasksState ")
 	newState = currentState
 	parentState := currentState.State
-
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
 	job := jobStore.Get(jobName)
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
@@ -72,13 +73,11 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
-	totalSuccesses := int64(0)
-	totalFailures := int64(0)
+
 	for childIdx, subJob := range job.SubJobs {
 		actualPhase := subJob.Status.Phase
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 		if subJob.Status.Phase.IsFailure() {
-			totalFailures++
 			if len(subJob.Status.Message) > 0 {
 				// If the service reported an error but there is no error.pb written, write one with the
 				// service-provided error message.
@@ -112,7 +111,6 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 				msg.Collect(childIdx, "Job failed")
 			}
 		} else if subJob.Status.Phase.IsSuccess() {
-			totalSuccesses++
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputSandbox, childIdx, originalIdx)
 			if err != nil {
 				return nil, err
@@ -128,8 +126,9 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
 
 	if phase != arrayCore.PhaseCheckingSubTaskExecutions {
-		metrics.BatchTasksSuccess.Add(ctx, float64(totalSuccesses))
-		metrics.BatchTasksFailure.Add(ctx, float64(totalFailures))
+		metrics.SubTasksSucceeded.Add(ctx, float64(newArrayStatus.Summary[core.PhaseSuccess]))
+		totalFailed := newArrayStatus.Summary[core.PhasePermanentFailure] + newArrayStatus.Summary[core.PhaseRetryableFailure]
+		metrics.SubTasksFailed.Add(ctx, float64(totalFailed))
 	}
 	if phase == arrayCore.PhaseWriteToDiscoveryThenFail {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)

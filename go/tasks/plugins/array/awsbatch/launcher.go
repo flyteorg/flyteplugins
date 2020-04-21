@@ -17,6 +17,7 @@ import (
 
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, pluginConfig *config.Config,
 	currentState *State, metrics ExecutorMetrics) (nextState *State, err error) {
+	logger.Debugf(ctx, "Entering LaunchSubTasks ")
 	size := currentState.GetExecutionArraySize()
 	if int64(size) > pluginConfig.MaxArrayJobSize {
 		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), pluginConfig.MaxArrayJobSize)
@@ -51,8 +52,9 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		logger.Errorf(ctx, "Failed to submit job [%+v]. Error: %v", batchInput, err)
 		return nil, err
 	}
+	logger.Debugf(ctx, "BatchTasks submitted")
 
-	metrics.BatchTasksStarted.Add(ctx, float64(size))
+	metrics.SubTasksSubmitted.Add(ctx, float64(size))
 	parentState := currentState.
 		SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0).
 		SetArrayStatus(arraystatus.ArrayStatus{
