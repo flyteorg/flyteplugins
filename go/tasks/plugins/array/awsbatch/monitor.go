@@ -3,8 +3,6 @@ package awsbatch
 import (
 	"context"
 
-	"github.com/lyft/flyteplugins/go/tasks/errors"
-
 	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
 
@@ -34,14 +32,6 @@ func createSubJobList(count int) []*Job {
 	}
 
 	return res
-}
-
-func GetExecutionArraySize(tCtx core.TaskExecutionContext) (int, error) {
-	pluginState := &State{}
-	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
-		return 0, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
-	}
-	return pluginState.GetExecutionArraySize(), nil
 }
 
 func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, outputPrefix, baseOutputSandbox storage.DataReference, jobStore *JobStore,

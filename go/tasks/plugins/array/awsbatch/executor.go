@@ -121,23 +121,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	arraySize, err := GetExecutionArraySize(tCtx)
-	if err != nil {
-		logger.Error(ctx, "Unable to get execution array size [%v]", err)
-		return err
-	}
-	e.metrics.BatchTasksTerminated.Add(ctx, float64(arraySize))
-	return TerminateSubTasks(ctx, tCtx, e.jobStore.Client, "Aborted")
+	return TerminateSubTasks(ctx, tCtx, e.jobStore.Client, "Aborted", e.metrics)
 }
 
 func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	arraySize, err := GetExecutionArraySize(tCtx)
-	if err != nil {
-		logger.Error(ctx, "Unable to get execution array size [%v]", err)
-		return err
-	}
-	e.metrics.BatchTasksTerminated.Add(ctx, float64(arraySize))
-	return TerminateSubTasks(ctx, tCtx, e.jobStore.Client, "Finalized")
+	return TerminateSubTasks(ctx, tCtx, e.jobStore.Client, "Finalized", e.metrics)
 }
 
 func NewExecutor(ctx context.Context, awsClient aws.Client, cfg *batchConfig.Config,

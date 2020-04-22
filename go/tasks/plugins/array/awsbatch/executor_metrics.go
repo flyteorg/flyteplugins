@@ -6,11 +6,11 @@ import (
 )
 
 type ExecutorMetrics struct {
-	Scope                promutils.Scope
-	SubTasksSubmitted    labeled.Counter
-	SubTasksSucceeded    labeled.Counter
-	SubTasksFailed       labeled.Counter
-	BatchTasksTerminated labeled.Counter
+	Scope              promutils.Scope
+	SubTasksSubmitted  labeled.Counter
+	SubTasksSucceeded  labeled.Counter
+	SubTasksFailed     labeled.Counter
+	BatchJobTerminated labeled.Counter
 }
 
 func getAwsBatchExecutorMetrics(scope promutils.Scope) ExecutorMetrics {
@@ -22,7 +22,7 @@ func getAwsBatchExecutorMetrics(scope promutils.Scope) ExecutorMetrics {
 			"Batch tasks successful", scope),
 		SubTasksFailed: labeled.NewCounter("batch_task_failure",
 			"Batch tasks failure", scope),
-		BatchTasksTerminated: labeled.NewCounter("batch_task_terminated",
-			"Batch tasks terminated", scope),
+		BatchJobTerminated: labeled.NewCounter("batch_job_terminated",
+			"Batch job terminated", scope),
 	}
 }

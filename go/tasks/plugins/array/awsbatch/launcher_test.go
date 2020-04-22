@@ -145,7 +145,7 @@ func TestTerminateSubTasks(t *testing.T) {
 	batchClient.OnTerminateJob(ctx, "abc-123", "Test terminate").Return(nil).Once()
 
 	t.Run("Simple", func(t *testing.T) {
-		assert.NoError(t, TerminateSubTasks(ctx, tCtx, batchClient, "Test terminate"))
+		assert.NoError(t, TerminateSubTasks(ctx, tCtx, batchClient, "Test terminate", getAwsBatchExecutorMetrics(promutils.NewTestScope())))
 	})
 
 	batchClient.AssertExpectations(t)
