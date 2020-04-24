@@ -70,11 +70,12 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 			Config:   config,
 			State:    currentState,
 		}
-		err := task.Finalize(ctx, tCtx, kubeClient)
+
+		err := task.Abort(ctx, tCtx, kubeClient)
 		if err != nil {
 			errs.Collect(childIdx, err.Error())
 		}
-		err = task.Abort(ctx, tCtx, kubeClient)
+		err = task.Finalize(ctx, tCtx, kubeClient)
 		if err != nil {
 			errs.Collect(childIdx, err.Error())
 		}
