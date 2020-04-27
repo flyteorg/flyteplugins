@@ -163,15 +163,9 @@ func (t Task) Abort(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 	err := kubeClient.GetClient().Delete(ctx, pod)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			// Deallocate Resource
-			err = deallocateResource(ctx, tCtx, t.Config, t.ChildIdx)
-			if err != nil {
-				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
-				return err
-			}
+
 			return nil
 		}
-
 		return err
 	}
 

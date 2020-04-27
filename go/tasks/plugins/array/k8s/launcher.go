@@ -21,7 +21,6 @@ const (
 	ErrSubmitJob              errors2.ErrorCode = "SUBMIT_JOB_FAILED"
 	JobIndexVarName           string            = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	FlyteK8sArrayIndexVarName string            = "FLYTE_K8S_ARRAY_INDEX"
-	ResourcesPrimaryLabel     string            = "token"
 )
 
 var arrayJobEnvVars = []corev1.EnvVar{
