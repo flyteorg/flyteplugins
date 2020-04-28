@@ -175,8 +175,8 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								// reasons, then we will assume a failure reason, and fail instantly
 								t := c.LastTransitionTime.Time
 								return pluginsCore.PhaseInfoSystemRetryableFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
-								OccurredAt: &t,
-							}), nil
+									OccurredAt: &t,
+								}), nil
 							}
 
 						}
