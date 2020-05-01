@@ -4,6 +4,9 @@ import (
 	"context"
 	"sync"
 
+	internalRemote "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/internal/remote"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -14,6 +17,7 @@ type taskPluginRegistry struct {
 	m          sync.Mutex
 	k8sPlugin  []k8s.PluginEntry
 	corePlugin []core.PluginEntry
+	//remotePlugins []
 }
 
 // A singleton variable that maintains a registry of all plugins. The framework uses this to access all plugins
@@ -21,6 +25,25 @@ var pluginRegistry = &taskPluginRegistry{}
 
 func PluginRegistry() TaskPluginRegistry {
 	return pluginRegistry
+}
+
+func (p *taskPluginRegistry) RegisterRemotePlugins(info remote.PluginEntry) {
+	ctx := context.Background()
+	if info.ID == "" {
+		logger.Panicf(ctx, "ID is required attribute for k8s plugin")
+	}
+
+	if len(info.SupportedTaskTypes) == 0 {
+		logger.Panicf(ctx, "Plugin should be registered to handle at least one task type")
+	}
+
+	if info.PluginLoader == nil {
+		logger.Panicf(ctx, "PluginLoader cannot be nil")
+	}
+
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.corePlugin = append(p.corePlugin, internalRemote.CreateRemotePlugin(info))
 }
 
 // Use this method to register Kubernetes Plugins
