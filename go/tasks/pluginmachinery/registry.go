@@ -103,6 +103,7 @@ func (p *taskPluginRegistry) GetK8sPlugins() []k8s.PluginEntry {
 type TaskPluginRegistry interface {
 	RegisterK8sPlugin(info k8s.PluginEntry)
 	RegisterCorePlugin(info core.PluginEntry)
+	RegisterRemotePlugin(info remote.PluginEntry)
 	GetCorePlugins() []core.PluginEntry
 	GetK8sPlugins() []k8s.PluginEntry
 }
