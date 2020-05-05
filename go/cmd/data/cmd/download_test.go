@@ -15,8 +15,8 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lyft/flytepropeller/data"
-	"github.com/lyft/flytepropeller/pkg/utils"
+	"github.com/lyft/flyteplugins/go/data"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
 
 func TestDownloadOptions_Download(t *testing.T) {

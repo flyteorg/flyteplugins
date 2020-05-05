@@ -10,3 +10,17 @@ generate: download_tooling
 
 clean:
 	rm -rf bin
+
+.PHONY: linux_compile
+linux_compile:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./artifacts/flyte-copilot ./go/cmd/data/main.go
+
+.PHONY: compile
+compile:
+	mkdir -p ./artifacts
+	go build -o ./artifacts/flyte-copilot ./go/cmd/data/main.go
+
+cross_compile:
+	@glide install
+	@mkdir -p ./artifacts/cross
+	GOOS=linux GOARCH=amd64 go build -o ./artifacts/flyte-copilot ./go/cmd/data/main.go

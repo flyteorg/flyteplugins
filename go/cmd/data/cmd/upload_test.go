@@ -14,8 +14,8 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lyft/flytepropeller/cmd/data/cmd/containerwatcher"
-	"github.com/lyft/flytepropeller/data"
+	"github.com/lyft/flyteplugins/go/cmd/data/cmd/containerwatcher"
+	"github.com/lyft/flyteplugins/go/data"
 )
 
 func TestUploadOptions_Upload_SuccessFile(t *testing.T) {
@@ -27,7 +27,7 @@ func TestUploadOptions_Upload_SuccessFile(t *testing.T) {
 	uopts := UploadOptions{
 		remoteOutputsPrefix: outputPath,
 		outputFormat:        data.FormatJSON,
-		watcherType:         containerwatcher.WatcherTypeSuccessFile,
+		startWatcherType:         containerwatcher.WatcherTypeFile,
 	}
 
 	t.Run("uploadNoOutputs", func(t *testing.T) {
