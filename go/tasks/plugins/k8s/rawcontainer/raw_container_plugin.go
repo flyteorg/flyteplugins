@@ -6,16 +6,17 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/logger"
+	"github.com/lyft/flytestdlib/storage"
+	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/storage"
-	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -149,7 +150,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 		RestartPolicy:         v1.RestartPolicyNever,
 		Containers:            containers,
 		InitContainers:        initContainers,
-		Tolerations:           flytek8s.GetTolerationsForResources(c.Resources),
+		Tolerations:           flytek8s.GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 		ServiceAccountName:    taskExecutionMetadata.GetK8sServiceAccount(),
 		ShareProcessNamespace: &shareProcessNamespaceEnabled,
 		Volumes: []v1.Volume{
