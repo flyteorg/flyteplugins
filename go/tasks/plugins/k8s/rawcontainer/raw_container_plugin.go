@@ -34,9 +34,9 @@ var pTraceCapability = v1.Capability("SYS_PTRACE")
 func FlyteDataContainer() v1.Container {
 
 	return v1.Container{
-		Name:       "flytedata",
+		Name:       "flyte-copilot",
 		Image:      flyteDataDockerImage,
-		Command:    []string{"/bin/flytedata", "--config", "/etc/flyte/config**/*"},
+		Command:    []string{"/bin/flyte-copilot", "--config", "/etc/flyte/config**/*"},
 		Args:       nil,
 		WorkingDir: "/",
 		Resources:  v1.ResourceRequirements{},
