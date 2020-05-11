@@ -56,7 +56,7 @@ func UploadCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage
 		"upload",
 		"--start-timeout",
 		"30s",
-		"--to-sandbox",
+		"--to-raw-output",
 		rawOutputPath.String(),
 		"--to-output-prefix",
 		outputPrefix.String(),
@@ -208,7 +208,7 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 		}
 	}
 
-	coPilotPod.Containers = append(coPilotPod.Containers, c)
+	coPilotPod.Containers = append(coPilotPod.Containers, *c)
 
 	return coPilotPod, nil
 }

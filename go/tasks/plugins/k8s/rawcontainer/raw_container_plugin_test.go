@@ -8,7 +8,9 @@ import (
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/config"
+	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils"
+	"github.com/lyft/flytestdlib/promutils/labeled"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -34,21 +36,22 @@ var resourceRequirements = &v1.ResourceRequirements{
 
 func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
 	taskMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
-	taskMetadata.On("GetNamespace").Return("test-namespace")
-	taskMetadata.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
-	taskMetadata.On("GetLabels").Return(map[string]string{"label-1": "val1"})
-	taskMetadata.On("GetOwnerReference").Return(metav1.OwnerReference{
+	taskMetadata.OnGetNamespace().Return("test-namespace")
+	taskMetadata.OnGetAnnotations().Return(map[string]string{"annotation-1": "val1"})
+	taskMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
+	taskMetadata.OnGetOwnerReference().Return(metav1.OwnerReference{
 		Kind: "node",
 		Name: "blah",
 	})
 	taskMetadata.OnGetK8sServiceAccount().Return("")
-	taskMetadata.On("GetOwnerID").Return(types.NamespacedName{
+	taskMetadata.OnGetOwnerID().Return(types.NamespacedName{
 		Namespace: "test-namespace",
 		Name:      "test-owner-name",
 	})
+	taskMetadata.OnIsInterruptible().Return(false)
 
 	tID := &pluginsCoreMock.TaskExecutionID{}
-	tID.On("GetID").Return(core.TaskExecutionIdentifier{
+	tID.OnGetID().Return(core.TaskExecutionIdentifier{
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
 				Name:    "my_name",
@@ -57,12 +60,12 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 			},
 		},
 	})
-	tID.On("GetGeneratedName").Return("name")
-	taskMetadata.On("GetTaskExecutionID").Return(tID)
+	tID.OnGetGeneratedName().Return("name")
+	taskMetadata.OnGetTaskExecutionID().Return(tID)
 
 	to := &pluginsCoreMock.TaskOverrides{}
-	to.On("GetResources").Return(resources)
-	taskMetadata.On("GetOverrides").Return(to)
+	to.OnGetResources().Return(resources)
+	taskMetadata.OnGetOverrides().Return(to)
 
 	return taskMetadata
 }
@@ -93,13 +96,14 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, args []string
 	outputs := basePath + "/outputs"
 	outputReader.OnGetOutputPath().Return(storage.DataReference(outputs + "/outputs.pb"))
 	outputReader.OnGetOutputPrefixPath().Return(storage.DataReference(outputs))
+	outputReader.OnGetRawOutputPrefix().Return(storage.DataReference(outputs + "/raw-outputs/"))
 	taskCtx.OnOutputWriter().Return(outputReader)
 
 	taskReader := &pluginsCoreMock.TaskReader{}
 	taskReader.OnReadMatch(mock.Anything).Return(task, nil)
-	taskCtx.On("TaskReader").Return(taskReader)
+	taskCtx.OnTaskReader().Return(taskReader)
 
-	taskCtx.On("TaskExecutionMetadata").Return(dummyTaskMetadata)
+	taskCtx.OnTaskExecutionMetadata().Return(dummyTaskMetadata)
 	return taskCtx
 }
 
@@ -132,7 +136,7 @@ func TestBuildResource(t *testing.T) {
 			"y": utils.MustMakeLiteral(1),
 		},
 	}
-	taskExecCtx := dummyContainerTaskContext(resourceRequirements, []string{"cd /var/flyte/data; mkdir outputs; paste ./inputs/x ./inputs/y | awk '{print ($1 + $2)}' > ./outputs/o"}, iface, "s3://my-s3-bucket/data/test1")
+	taskExecCtx := dummyContainerTaskContext(resourceRequirements, []string{"cd /var/flyte; mkdir outputs; paste ./inputs/x ./inputs/y | awk '{print ($1 + $2)}' > ./outputs/o"}, iface, "s3://my-s3-bucket/data/test1")
 
 	u, _ := url.Parse("http://localhost:9000")
 	store, err := storage.NewDataStore(&storage.Config{
@@ -160,4 +164,8 @@ func TestBuildResource(t *testing.T) {
 	pod.Namespace = "default"
 	_, err = kubeClient.CoreV1().Pods("default").Create(pod)
 	assert.NoError(t, err)
+}
+
+func init()  {
+	labeled.SetMetricKeys(contextutils.RoutineLabelKey)
 }
