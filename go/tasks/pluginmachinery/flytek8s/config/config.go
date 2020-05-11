@@ -26,9 +26,8 @@ var (
 			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 		},
 		CoPilot: FlyteCoPilotConfig{
-			NamePrefix: "flyte-copilot-",
-			// Image:                "docker.pkg.github.com/lyft/flyteplugins/operator:v0.4.0",
-			Image:                "flyteplugins:5df5c285f357ed985ded924d41d58f2906fec090",
+			NamePrefix:           "flyte-copilot-",
+			Image:                "docker.pkg.github.com/lyft/flyteplugins/operator:v0.4.0",
 			DefaultInputDataPath: "/var/flyte/inputs",
 			InputVolumeName:      "flyte-inputs",
 			DefaultOutputPath:    "/var/flyte/outputs",
