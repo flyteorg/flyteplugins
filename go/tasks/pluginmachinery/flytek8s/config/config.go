@@ -6,6 +6,9 @@
 package config
 
 import (
+	"time"
+
+	config2 "github.com/lyft/flytestdlib/config"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/lyft/flyteplugins/go/tasks/config"
@@ -23,13 +26,18 @@ var (
 			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 		},
 		CoPilot: FlyteCoPilotConfig{
-			NamePrefix:           "flyte-copilot-",
-			//Image:                "docker.pkg.github.com/lyft/flyteplugins/operator:v0.4.0",
-			Image: "flyteplugins:5df5c285f357ed985ded924d41d58f2906fec090",
+			NamePrefix: "flyte-copilot-",
+			// Image:                "docker.pkg.github.com/lyft/flyteplugins/operator:v0.4.0",
+			Image:                "flyteplugins:5df5c285f357ed985ded924d41d58f2906fec090",
 			DefaultInputDataPath: "/var/flyte/inputs",
 			InputVolumeName:      "flyte-inputs",
 			DefaultOutputPath:    "/var/flyte/outputs",
 			OutputVolumeName:     "flyte-outputs",
+			CPU:                  "500m",
+			Memory:               "128Mi",
+			StartTimeout: config2.Duration{
+				Duration: time.Second * 60,
+			},
 		},
 		DefaultCPURequest:    defaultCPURequest,
 		DefaultMemoryRequest: defaultMemoryRequest,
@@ -84,6 +92,12 @@ type FlyteCoPilotConfig struct {
 	InputVolumeName string `json:"input-vol-name" pflag:",Name of the data volume that is created for storing inputs"`
 	// Name of the output volume
 	OutputVolumeName string `json:"output-vol-name" pflag:",Name of the data volume that is created for storing outputs"`
+	// Time for which the sidecar container should wait after starting up, for the primary process to appear. If it does not show up in this time
+	// the process will be assumed to be dead or in a terminal condition and will trigger an abort.
+	StartTimeout config2.Duration `json:"start-timeout" pflag:",Time for which the sidecar should wait on startup before assuming the primary container to have failed startup."`
+	// Resources for CoPilot Containers
+	CPU    string `json:"cpu" pflag:",Used to set cpu for co-pilot containers"`
+	Memory string `json:"memory" pflag:",Used to set memory for co-pilot containers"`
 }
 
 // Retrieves the current k8s plugin config or default.

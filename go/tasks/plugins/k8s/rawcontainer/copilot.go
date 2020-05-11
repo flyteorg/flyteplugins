@@ -3,6 +3,7 @@ package raw_container
 import (
 	"context"
 	"encoding/base64"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -10,6 +11,7 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	core2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -33,29 +35,44 @@ type CustomInfo struct {
 
 var pTraceCapability = v1.Capability("SYS_PTRACE")
 
-func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) v1.Container {
+func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) (v1.Container, error) {
 	volumeMounts = append(volumeMounts, v1.VolumeMount{
 		Name:      flyteDataConfigVolume,
 		MountPath: flyteDataConfigPath,
 	})
+	cpu, err := resource.ParseQuantity(cfg.CPU)
+	if err != nil {
+		return v1.Container{}, err
+	}
+
+	mem, err := resource.ParseQuantity(cfg.Memory)
+	if err != nil {
+		return v1.Container{}, err
+	}
+
 	return v1.Container{
-		Name:                     cfg.NamePrefix + name,
-		Image:                    cfg.Image,
-		Command:                  []string{"/bin/flyte-copilot", "--config", "/etc/flyte/config**/*"},
-		Args:                     args,
-		WorkingDir:               "/",
-		Resources:                v1.ResourceRequirements{},
+		Name:       cfg.NamePrefix + name,
+		Image:      cfg.Image,
+		Command:    []string{"/bin/flyte-copilot", "--config", "/etc/flyte/config**/*"},
+		Args:       args,
+		WorkingDir: "/",
+		Resources: v1.ResourceRequirements{
+			Limits: v1.ResourceList{
+				v1.ResourceCPU:    cpu,
+				v1.ResourceMemory: mem,
+			},
+		},
 		VolumeMounts:             volumeMounts,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          v1.PullIfNotPresent,
-	}
+	}, nil
 }
 
-func UploadCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, outputInterface *core.VariableMap) ([]string, error) {
+func UploadCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, outputInterface *core.VariableMap) ([]string, error) {
 	args := []string{
 		"upload",
 		"--start-timeout",
-		"30s",
+		startTimeout.String(),
 		"--to-raw-output",
 		rawOutputPath.String(),
 		"--to-output-prefix",
@@ -84,7 +101,6 @@ func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toL
 		toLocalPath,
 		"--format",
 		format,
-
 	}
 	if inputInterface != nil {
 		b, err := proto.Marshal(inputInterface)
@@ -116,9 +132,6 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 		c.SecurityContext.Capabilities = &v1.Capabilities{}
 	}
 	c.SecurityContext.Capabilities.Add = append(c.SecurityContext.Capabilities.Add, pTraceCapability)
-
-	// TODO we want to increase resource requirements maybe?
-	c.Resources = v1.ResourceRequirements{}
 
 	shareProcessNamespaceEnabled := true
 	coPilotPod := &v1.PodSpec{
@@ -174,7 +187,10 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 			if err != nil {
 				return nil, err
 			}
-			downloader := FlyteCoPilotContainer("downloader", cfg, args, inputsVolumeMount)
+			downloader, err := FlyteCoPilotContainer("downloader", cfg, args, inputsVolumeMount)
+			if err != nil {
+				return nil, err
+			}
 			coPilotPod.InitContainers = append(coPilotPod.InitContainers, downloader)
 		}
 
@@ -199,12 +215,15 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 			})
 
 			// Lets add the Inputs init container
-			args, err := UploadCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), task.Interface.Outputs)
+			args, err := UploadCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, task.Interface.Outputs)
 			if err != nil {
 				return nil, err
 			}
-			downloader := FlyteCoPilotContainer("sidecar", cfg, args, outputsVolumeMount)
-			coPilotPod.Containers = append(coPilotPod.Containers, downloader)
+			sidecar, err := FlyteCoPilotContainer("sidecar", cfg, args, outputsVolumeMount)
+			if err != nil {
+				return nil, err
+			}
+			coPilotPod.Containers = append(coPilotPod.Containers, sidecar)
 		}
 	}
 
