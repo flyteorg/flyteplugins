@@ -232,7 +232,7 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 	}
 }
 
-func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, metadataPath, dataSandbox storage.DataReference) error {
+func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, metadataPath, dataRawPath storage.DataReference) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -262,9 +262,9 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 			var varOutputPath storage.DataReference
 			var err error
 			if varName == u.aggregateOutputFileName {
-				varOutputPath, err = u.store.ConstructReference(ctx, dataSandbox, "_"+varName)
+				varOutputPath, err = u.store.ConstructReference(ctx, dataRawPath, "_"+varName)
 			} else {
-				varOutputPath, err = u.store.ConstructReference(ctx, dataSandbox, varName)
+				varOutputPath, err = u.store.ConstructReference(ctx, dataRawPath, varName)
 			}
 			if err != nil {
 				return err

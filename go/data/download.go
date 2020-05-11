@@ -23,13 +23,15 @@ import (
 type Format = string
 
 const (
-	FormatJSON Format = "json"
-	FormatYAML Format = "yaml"
+	FormatJSON  Format = "json"
+	FormatYAML  Format = "yaml"
+	FormatProto Format = "proto"
 )
 
 var AllOutputFormats = []Format{
 	FormatJSON,
 	FormatYAML,
+	FormatProto,
 }
 
 type VarMap map[string]interface{}
@@ -212,6 +214,7 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 		return errors.Wrapf(err, "failed to download input variable from remote store")
 	}
 
+	// TODO replace this with proto or other marshal
 	m, err := d.marshal(varMap)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal out inputs")

@@ -17,6 +17,7 @@ type DownloadOptions struct {
 	remoteInputsPath    string
 	remoteOutputsPrefix string
 	localDirectoryPath  string
+	inputInterface      []byte
 	// Non primitive types will be dumped in this output format
 	outputFormat data.Format
 	timeout      time.Duration
@@ -69,5 +70,6 @@ func NewDownloadCommand(opts *RootOptions) *cobra.Command {
 	downloadCmd.Flags().StringVarP(&downloadOpts.localDirectoryPath, "to-local-dir", "d", "", "The local directory on disk where data should be downloaded.")
 	downloadCmd.Flags().StringVarP(&downloadOpts.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
 	downloadCmd.Flags().DurationVarP(&downloadOpts.timeout, "timeout", "t", time.Hour*1, "Max time to allow for downloads to complete, default is 1H")
+	downloadCmd.Flags().BytesBase64VarP(&downloadOpts.inputInterface, "input-interface", "i", nil, "Intput interface proto message - core.VariableMap, base64 encoced string")
 	return downloadCmd
 }

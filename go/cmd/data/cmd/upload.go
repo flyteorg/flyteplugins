@@ -24,9 +24,9 @@ const (
 
 type UploadOptions struct {
 	*RootOptions
-	remoteOutputsPrefix  string
-	remoteOutputsSandbox string
-	localDirectoryPath   string
+	remoteOutputsPrefix    string
+	remoteOutputsRawPrefix string
+	localDirectoryPath     string
 	// Non primitive types will be dumped in this output format
 	outputFormat          data.Format
 	timeout               time.Duration
@@ -103,7 +103,7 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 
 	dl := data.NewUploader(ctx, u.Store, u.outputFormat, ErrorFile)
 	childCtx, _ = context.WithTimeout(ctx, u.timeout)
-	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix), storage.DataReference(u.remoteOutputsSandbox)); err != nil {
+	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix), storage.DataReference(u.remoteOutputsRawPrefix)); err != nil {
 		logger.Errorf(ctx, "Uploading failed, err %s", err)
 		return err
 	}
@@ -141,7 +141,7 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	}
 
 	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsPrefix, "to-output-prefix", "p", "", "The remote path/key prefix for output metadata in stow store.")
-	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsSandbox, "to-sandbox", "x", "", "The remote path/key prefix for outputs in stow store. This is a sandbox directory and all data will be uploaded here.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsRawPrefix, "to-raw-output", "x", "", "The remote path/key prefix for outputs in remote store. This is a sandbox directory and all data will be uploaded here.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.localDirectoryPath, "from-local-dir", "d", "", "The local directory on disk where data will be available for upload.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for uploads to complete, default is 1H")
