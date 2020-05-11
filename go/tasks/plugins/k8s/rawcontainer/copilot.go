@@ -33,7 +33,7 @@ type CustomInfo struct {
 
 var pTraceCapability = v1.Capability("SYS_PTRACE")
 
-func FlyteCoPilotContainer(name string, cfg *config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) v1.Container {
+func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) v1.Container {
 	volumeMounts = append(volumeMounts, v1.VolumeMount{
 		Name:      flyteDataConfigVolume,
 		MountPath: flyteDataConfigPath,
