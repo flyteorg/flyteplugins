@@ -2,14 +2,10 @@ package raw_container
 
 import (
 	"context"
-	"net/url"
-	"os"
 	"testing"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/config"
 	"github.com/lyft/flytestdlib/contextutils"
-	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
@@ -18,13 +14,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
 
 var resourceRequirements = &v1.ResourceRequirements{
@@ -76,7 +69,7 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, args []string
 		Interface: iface,
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
-				Image: "busybox",
+				Image:   "busybox",
 				Command: []string{"/bin/sh", "-c"},
 				Args:    args,
 			},
@@ -107,15 +100,8 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, args []string
 	return taskCtx
 }
 
-
 func TestBuildResource(t *testing.T) {
 	ctx := context.TODO()
-
-	kubeConfigPath := os.ExpandEnv("$HOME/.kube/config")
-	kubecfg, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-	assert.NoError(t, err)
-	kubeClient, err := kubernetes.NewForConfig(kubecfg)
-	assert.NoError(t, err)
 
 	iface := &core.TypedInterface{
 		Inputs: &core.VariableMap{
@@ -130,42 +116,19 @@ func TestBuildResource(t *testing.T) {
 			},
 		},
 	}
-	input := &core.LiteralMap{
-		Literals: map[string]*core.Literal{
-			"x": utils.MustMakeLiteral(1),
-			"y": utils.MustMakeLiteral(1),
-		},
-	}
 	taskExecCtx := dummyContainerTaskContext(resourceRequirements, []string{"cd /var/flyte; mkdir outputs; paste ./inputs/x ./inputs/y | awk '{print ($1 + $2)}' > ./outputs/o"}, iface, "s3://my-s3-bucket/data/test1")
-
-	u, _ := url.Parse("http://localhost:9000")
-	store, err := storage.NewDataStore(&storage.Config{
-		Type:          storage.TypeMinio,
-		InitContainer: "my-s3-bucket",
-		Connection: storage.ConnectionConfig{
-			Endpoint:   config.URL{
-				URL: *u,
-			},
-			AuthType:   "accesskey",
-			AccessKey:  "minio",
-			SecretKey:  "miniostorage",
-			Region:     "us-east-1",
-			DisableSSL: true,
-		},
-	}, promutils.NewTestScope())
-	assert.NoError(t, err)
-	assert.NoError(t, store.WriteProtobuf(ctx, taskExecCtx.InputReader().GetInputPath(), storage.Options{}, input))
 	taskExecCtx.InputReader().GetInputPath()
 	p := rawContainerPlugin{}
 	r, err := p.BuildResource(ctx, taskExecCtx)
 	assert.NoError(t, err)
-	pod := r.(*v1.Pod)
-	pod.Name = "data-test"
-	pod.Namespace = "default"
-	_, err = kubeClient.CoreV1().Pods("default").Create(pod)
-	assert.NoError(t, err)
+	assert.NotNil(t, r)
+	pod, ok := r.(*v1.Pod)
+	assert.True(t, ok)
+	assert.Equal(t, 2, len(pod.Spec.Containers))
+	assert.Equal(t, 1, len(pod.Spec.InitContainers))
+	assert.Equal(t, 3, len(pod.Spec.Volumes))
 }
 
-func init()  {
+func init() {
 	labeled.SetMetricKeys(contextutils.RoutineLabelKey)
 }

@@ -3,6 +3,7 @@ package raw_container
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -36,10 +37,6 @@ type CustomInfo struct {
 var pTraceCapability = v1.Capability("SYS_PTRACE")
 
 func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) (v1.Container, error) {
-	volumeMounts = append(volumeMounts, v1.VolumeMount{
-		Name:      flyteDataConfigVolume,
-		MountPath: flyteDataConfigPath,
-	})
 	cpu, err := resource.ParseQuantity(cfg.CPU)
 	if err != nil {
 		return v1.Container{}, err
@@ -61,6 +58,10 @@ func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []st
 				v1.ResourceCPU:    cpu,
 				v1.ResourceMemory: mem,
 			},
+			Requests: v1.ResourceList{
+				v1.ResourceCPU:    cpu,
+				v1.ResourceMemory: mem,
+			},
 		},
 		VolumeMounts:             volumeMounts,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
@@ -68,8 +69,15 @@ func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []st
 	}, nil
 }
 
-func UploadCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, outputInterface *core.VariableMap) ([]string, error) {
-	args := []string{
+func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, outputInterface *core.VariableMap) ([]string, error) {
+	if outputInterface == nil {
+		return nil, fmt.Errorf("output Interface is required for CoPilot Sidecar")
+	}
+	b, err := proto.Marshal(outputInterface)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal given output interface")
+	}
+	return []string{
 		"upload",
 		"--start-timeout",
 		startTimeout.String(),
@@ -79,19 +87,20 @@ func UploadCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage
 		outputPrefix.String(),
 		"--from-local-dir",
 		fromLocalPath,
-	}
-	if outputInterface != nil {
-		b, err := proto.Marshal(outputInterface)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to marshal given output interface")
-		}
-		args = append(args, "--output-interface", base64.StdEncoding.EncodeToString(b))
-	}
-	return args, nil
+		"--output-interface",
+		base64.StdEncoding.EncodeToString(b),
+	}, nil
 }
 
 func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format MetadataFormat, inputInterface *core.VariableMap) ([]string, error) {
-	args := []string{
+	if inputInterface == nil {
+		return nil, fmt.Errorf("input Interface is required for CoPilot Downloader")
+	}
+	b, err := proto.Marshal(inputInterface)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal given input interface")
+	}
+	return []string{
 		"download",
 		"--from-remote",
 		fromInputsPath.String(),
@@ -101,15 +110,9 @@ func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toL
 		toLocalPath,
 		"--format",
 		format,
-	}
-	if inputInterface != nil {
-		b, err := proto.Marshal(inputInterface)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to marshal given input interface")
-		}
-		args = append(args, "--input-interface", base64.StdEncoding.EncodeToString(b))
-	}
-	return args, nil
+		"--input-interface",
+		base64.StdEncoding.EncodeToString(b),
+	}, nil
 }
 
 func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecutionMetadata core2.TaskExecutionMetadata, taskReader core2.TaskReader,
@@ -142,9 +145,18 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 		Tolerations:           flytek8s.GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 		ServiceAccountName:    taskExecutionMetadata.GetK8sServiceAccount(),
 		ShareProcessNamespace: &shareProcessNamespaceEnabled,
-		Volumes: []v1.Volume{
-			{
-				// TODO Remove the data configuration requirements
+		Volumes:               []v1.Volume{},
+	}
+
+	if task.Interface != nil {
+		// TODO think about MountPropagationMode. Maybe we want to use that for acceleration in the future
+		// TODO CustomInfo to be added
+		info := CustomInfo{Format: MetadataFormatJSON}
+
+		if task.Interface.Inputs != nil || task.Interface.Outputs != nil {
+			// This is temporary. we have to mount the flyte data configuration into the pod
+			// TODO Remove the data configuration requirements
+			coPilotPod.Volumes = append(coPilotPod.Volumes, v1.Volume{
 				Name: flyteDataConfigVolume,
 				VolumeSource: v1.VolumeSource{
 					ConfigMap: &v1.ConfigMapVolumeSource{
@@ -153,14 +165,12 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 						},
 					},
 				},
-			},
-		},
-	}
-
-	if task.Interface != nil {
-		// TODO think about MountPropagationMode. Maybe we want to use that for acceleration in the future
-		// TODO CustomInfo to be added
-		info := CustomInfo{Format: MetadataFormatJSON}
+			})
+		}
+		cfgVMount := v1.VolumeMount{
+			Name:      flyteDataConfigVolume,
+			MountPath: flyteDataConfigPath,
+		}
 
 		if task.Interface.Inputs != nil {
 			inPath := cfg.DefaultInputDataPath
@@ -187,7 +197,7 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 			if err != nil {
 				return nil, err
 			}
-			downloader, err := FlyteCoPilotContainer("downloader", cfg, args, inputsVolumeMount)
+			downloader, err := FlyteCoPilotContainer("downloader", cfg, args, inputsVolumeMount, cfgVMount)
 			if err != nil {
 				return nil, err
 			}
@@ -215,11 +225,11 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 			})
 
 			// Lets add the Inputs init container
-			args, err := UploadCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, task.Interface.Outputs)
+			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, task.Interface.Outputs)
 			if err != nil {
 				return nil, err
 			}
-			sidecar, err := FlyteCoPilotContainer("sidecar", cfg, args, outputsVolumeMount)
+			sidecar, err := FlyteCoPilotContainer("sidecar", cfg, args, outputsVolumeMount, cfgVMount)
 			if err != nil {
 				return nil, err
 			}

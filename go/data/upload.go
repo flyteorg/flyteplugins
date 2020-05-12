@@ -242,7 +242,7 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 			return err
 		}
 	} else if info.Size() > 1024*1024 {
-		return fmt.Errorf("error file too large %s", info.Size())
+		return fmt.Errorf("error file too large %d", info.Size())
 	} else if info.IsDir() {
 		return fmt.Errorf("error file is a directory")
 	} else {
