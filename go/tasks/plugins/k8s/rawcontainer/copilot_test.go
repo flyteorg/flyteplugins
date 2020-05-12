@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	config2 "github.com/lyft/flytestdlib/config"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -68,7 +69,7 @@ func TestFlyteCoPilotContainer(t *testing.T) {
 }
 
 func TestDownloadCommandArgs(t *testing.T) {
-	_, err := DownloadCommandArgs("", "", "", MetadataFormatJSON, nil)
+	_, err := DownloadCommandArgs("", "", "", plugins.CoPilot_YAML, nil)
 	assert.Error(t, err)
 
 	iFace := &core.VariableMap{
@@ -77,7 +78,7 @@ func TestDownloadCommandArgs(t *testing.T) {
 			"y": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
 		},
 	}
-	d, err := DownloadCommandArgs("s3://from", "s3://output-meta", "/to", MetadataFormatJSON, iFace)
+	d, err := DownloadCommandArgs("s3://from", "s3://output-meta", "/to", plugins.CoPilot_JSON, iFace)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "json", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}, d)
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
@@ -18,21 +19,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
-
-type MetadataFormat = string
-
-const (
-	MetadataFormatProto MetadataFormat = "proto"
-	MetadataFormatJSON                 = "json"
-	MetadataFormatYAML                 = "yaml"
-)
-
-type CustomInfo struct {
-	Format         MetadataFormat
-	InputDataPath  string
-	OutputDataPath string
-}
 
 var pTraceCapability = v1.Capability("SYS_PTRACE")
 
@@ -92,7 +80,7 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 	}, nil
 }
 
-func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format MetadataFormat, inputInterface *core.VariableMap) ([]string, error) {
+func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format plugins.CoPilot_MetadataFormat, inputInterface *core.VariableMap) ([]string, error) {
 	if inputInterface == nil {
 		return nil, fmt.Errorf("input Interface is required for CoPilot Downloader")
 	}
@@ -109,7 +97,7 @@ func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toL
 		"--to-local-dir",
 		toLocalPath,
 		"--format",
-		format,
+		format.String(),
 		"--input-interface",
 		base64.StdEncoding.EncodeToString(b),
 	}, nil
@@ -150,8 +138,10 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 
 	if task.Interface != nil {
 		// TODO think about MountPropagationMode. Maybe we want to use that for acceleration in the future
-		// TODO CustomInfo to be added
-		info := CustomInfo{Format: MetadataFormatJSON}
+		info := &plugins.CoPilot{}
+		if err := utils.UnmarshalStruct(task.Custom, info); err != nil {
+			return nil, errors.Wrap(err, "error decoding custom information")
+		}
 
 		if task.Interface.Inputs != nil || task.Interface.Outputs != nil {
 			// This is temporary. we have to mount the flyte data configuration into the pod
@@ -174,8 +164,8 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 
 		if task.Interface.Inputs != nil {
 			inPath := cfg.DefaultInputDataPath
-			if info.InputDataPath != "" {
-				inPath = info.InputDataPath
+			if info.GetInputPath() != "" {
+				inPath = info.GetInputPath()
 			}
 			inputsVolumeMount := v1.VolumeMount{
 				Name:      cfg.InputVolumeName,
@@ -206,8 +196,8 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 
 		if task.Interface.Outputs != nil {
 			outPath := cfg.DefaultOutputPath
-			if info.OutputDataPath != "" {
-				outPath = info.OutputDataPath
+			if info.GetOutputPath() != "" {
+				outPath = info.GetOutputPath()
 			}
 			outputsVolumeMount := v1.VolumeMount{
 				Name:      cfg.OutputVolumeName,

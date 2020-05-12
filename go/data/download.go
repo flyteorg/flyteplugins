@@ -11,6 +11,7 @@ import (
 	"path"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -225,6 +226,7 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 }
 
 func NewDownloader(_ context.Context, store *storage.DataStore, format Format) Downloader {
+	format = strings.ToLower(format)
 	m := json.Marshal
 	if format == FormatYAML {
 		m = yaml.Marshal
