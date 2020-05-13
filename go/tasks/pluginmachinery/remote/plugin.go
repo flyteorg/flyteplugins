@@ -39,7 +39,7 @@ type PluginSetupContext interface {
 	SecretManager() pluginsCore.SecretManager
 }
 
-type PluginContext interface {
+type TaskExecutionContext interface {
 	// Returns a TaskReader, to retrieve task details
 	TaskReader() pluginsCore.TaskReader
 
@@ -68,12 +68,12 @@ type Plugin interface {
 
 	// Analyzes the task to execute and determines the ResourceNamespace to be used when allocating
 	// tokens.
-	ResourceRequirements(ctx context.Context, tCtx PluginContext) (
+	ResourceRequirements(ctx context.Context, tCtx TaskExecutionContext) (
 		namespace pluginsCore.ResourceNamespace, constraints pluginsCore.ResourceConstraintsSpec, err error)
 
-	// Create a new resource using the PluginContext provided. Ideally, the remote service uses the name in the
+	// Create a new resource using the TaskExecutionContext provided. Ideally, the remote service uses the name in the
 	// TaskExecutionMetadata to launch the resource in an idempotent fashion.
-	Create(ctx context.Context, tCtx PluginContext) (createdResources ResourceKey, err error)
+	Create(ctx context.Context, tCtx TaskExecutionContext) (createdResources ResourceKey, err error)
 
 	// Get multiple resources that match all the keys. If the plugin hits any failure, it should stop and return
 	// the failure. This batch will not be processed further.
