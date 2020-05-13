@@ -202,7 +202,7 @@ func DemystifySuccess(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 
 func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 	code = "UnknownError"
-	message = "Container/Pod failed. No message received from kubernetes."
+	message = "Pod failed. No message received from kubernetes."
 	if len(status.Reason) > 0 {
 		code = status.Reason
 	}
@@ -228,11 +228,15 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 				code = Interrupted
 			}
 
-			message += fmt.Sprintf("\r\nContainer [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
-				c.Name,
-				containerState.Terminated.ExitCode,
-				containerState.Terminated.Reason,
-				containerState.Terminated.Message)
+			if containerState.Terminated.ExitCode == 0 {
+				message += fmt.Sprintf("\r\n[%v] terminated with ExitCode 0.", c.Name)
+			} else {
+				message += fmt.Sprintf("\r\n[%v] terminated with exit code (%v). Reason [%v]. Message: \n%v.",
+					c.Name,
+					containerState.Terminated.ExitCode,
+					containerState.Terminated.Reason,
+					containerState.Terminated.Message)
+			}
 		}
 	}
 	return code, message
