@@ -127,7 +127,7 @@ func MakeLiteralForBlob(_ context.Context, path storage.DataReference, isDir boo
 	}
 }
 
-func IsFileReadable(fpath string, ignoreExtension bool) (os.FileInfo, error) {
+func IsFileReadable(fpath string, ignoreExtension bool) (string, os.FileInfo, error) {
 	info, err := os.Stat(fpath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -136,22 +136,22 @@ func IsFileReadable(fpath string, ignoreExtension bool) (os.FileInfo, error) {
 				if err == nil && len(matches) == 1{
 					info, err = os.Stat(matches[0])
 					if err == nil {
-						return info, nil
+						return matches[0], info, nil
 					}
 				}
 			}
-			return nil, errors.Wrapf(err, "file not found at path [%s]", fpath)
+			return "", nil, errors.Wrapf(err, "file not found at path [%s]", fpath)
 		}
 		if os.IsPermission(err) {
-			return nil, errors.Wrapf(err, "unable to read file [%s], Flyte does not have permissions", fpath)
+			return "", nil, errors.Wrapf(err, "unable to read file [%s], Flyte does not have permissions", fpath)
 		}
-		return nil, errors.Wrapf(err, "failed to read file")
+		return "", nil, errors.Wrapf(err, "failed to read file")
 	}
-	return info, nil
+	return fpath, info, nil
 }
 
 func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, filePath string) (*core.Literal, error) {
-	if info, err := IsFileReadable(filePath, true); err != nil {
+	if fpath, info, err := IsFileReadable(filePath, true); err != nil {
 		return nil, err
 	} else {
 		if info.IsDir() {
@@ -160,6 +160,7 @@ func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, fileP
 		if info.Size() > maxPrimitiveSize {
 			return nil, fmt.Errorf("maximum allowed filesize is [%d], but found [%d]", maxPrimitiveSize, info.Size())
 		}
+		filePath = fpath
 	}
 	b, err := ioutil.ReadFile(filePath)
 	if err != nil {
