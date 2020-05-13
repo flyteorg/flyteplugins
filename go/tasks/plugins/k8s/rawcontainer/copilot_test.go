@@ -109,7 +109,7 @@ func TestDataVolume(t *testing.T) {
 	assert.Equal(t, "x", v.Name)
 	assert.NotNil(t, v.EmptyDir)
 	assert.Nil(t, v.EmptyDir.SizeLimit)
-	assert.Equal(t, v1.StorageMediumHugePages, v.EmptyDir.Medium)
+	assert.Equal(t, v1.StorageMediumDefault, v.EmptyDir.Medium)
 
 	q := resource.MustParse("1024Mi")
 	v = DataVolume("x", &q)

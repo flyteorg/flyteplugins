@@ -109,7 +109,7 @@ func DataVolume(name string, size *resource.Quantity) v1.Volume {
 		Name: name,
 		VolumeSource: v1.VolumeSource{
 			EmptyDir: &v1.EmptyDirVolumeSource{
-				Medium:    v1.StorageMediumHugePages,
+				Medium:    v1.StorageMediumDefault,
 				SizeLimit: size,
 			},
 		},
