@@ -24,7 +24,7 @@ func (_m Plugin_Create) Return(_a0 service.ResourceKey, _a1 error) *Plugin_Creat
 	return &Plugin_Create{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *Plugin) OnCreate(ctx context.Context, tCtx service.PluginContext) *Plugin_Create {
+func (_m *Plugin) OnCreate(ctx context.Context, tCtx service.TaskExecutionContext) *Plugin_Create {
 	c := _m.On("Create", ctx, tCtx)
 	return &Plugin_Create{Call: c}
 }
@@ -35,18 +35,18 @@ func (_m *Plugin) OnCreateMatch(matchers ...interface{}) *Plugin_Create {
 }
 
 // Create provides a mock function with given fields: ctx, tCtx
-func (_m *Plugin) Create(ctx context.Context, tCtx service.PluginContext) (service.ResourceKey, error) {
+func (_m *Plugin) Create(ctx context.Context, tCtx service.TaskExecutionContext) (service.ResourceKey, error) {
 	ret := _m.Called(ctx, tCtx)
 
 	var r0 service.ResourceKey
-	if rf, ok := ret.Get(0).(func(context.Context, service.PluginContext) service.ResourceKey); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, service.TaskExecutionContext) service.ResourceKey); ok {
 		r0 = rf(ctx, tCtx)
 	} else {
 		r0 = ret.Get(0).(service.ResourceKey)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, service.PluginContext) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, service.TaskExecutionContext) error); ok {
 		r1 = rf(ctx, tCtx)
 	} else {
 		r1 = ret.Error(1)
@@ -216,7 +216,7 @@ func (_m Plugin_GetStatus) Return(_a0 core.PhaseInfo, _a1 error) *Plugin_GetStat
 	return &Plugin_GetStatus{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *Plugin) OnGetStatus(ctx context.Context, tCtx service.PluginContext, resource service.Resource) *Plugin_GetStatus {
+func (_m *Plugin) OnGetStatus(ctx context.Context, tCtx service.TaskExecutionContext, resource service.Resource) *Plugin_GetStatus {
 	c := _m.On("GetStatus", ctx, tCtx, resource)
 	return &Plugin_GetStatus{Call: c}
 }
@@ -227,18 +227,18 @@ func (_m *Plugin) OnGetStatusMatch(matchers ...interface{}) *Plugin_GetStatus {
 }
 
 // GetStatus provides a mock function with given fields: ctx, tCtx, resource
-func (_m *Plugin) GetStatus(ctx context.Context, tCtx service.PluginContext, resource service.Resource) (core.PhaseInfo, error) {
+func (_m *Plugin) GetStatus(ctx context.Context, tCtx service.TaskExecutionContext, resource service.Resource) (core.PhaseInfo, error) {
 	ret := _m.Called(ctx, tCtx, resource)
 
 	var r0 core.PhaseInfo
-	if rf, ok := ret.Get(0).(func(context.Context, service.PluginContext, service.Resource) core.PhaseInfo); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, service.TaskExecutionContext, service.Resource) core.PhaseInfo); ok {
 		r0 = rf(ctx, tCtx, resource)
 	} else {
 		r0 = ret.Get(0).(core.PhaseInfo)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, service.PluginContext, service.Resource) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, service.TaskExecutionContext, service.Resource) error); ok {
 		r1 = rf(ctx, tCtx, resource)
 	} else {
 		r1 = ret.Error(1)
