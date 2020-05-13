@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+
 	"github.com/lyft/flytestdlib/cache"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -144,7 +146,7 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 	return nil
 }
 
-func composeResourceNamespaceWithClusterPrimaryLabel(ctx context.Context, tCtx core.TaskExecutionContext) (core.ResourceNamespace, error) {
+func composeResourceNamespaceWithClusterPrimaryLabel(ctx context.Context, tCtx remote.TaskExecutionContext) (core.ResourceNamespace, error) {
 	_, clusterLabelOverride, _, _, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return "", err
@@ -153,7 +155,7 @@ func composeResourceNamespaceWithClusterPrimaryLabel(ctx context.Context, tCtx c
 	return core.ResourceNamespace(clusterPrimaryLabel), nil
 }
 
-func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionContext, targetClusterPrimaryLabel core.ResourceNamespace) core.ResourceConstraintsSpec {
+func createResourceConstraintsSpec(ctx context.Context, _ remote.TaskExecutionContext, targetClusterPrimaryLabel core.ResourceNamespace) core.ResourceConstraintsSpec {
 	cfg := config.GetQuboleConfig()
 	constraintsSpec := core.ResourceConstraintsSpec{
 		ProjectScopeResourceConstraint:   nil,
@@ -229,7 +231,7 @@ func validateQuboleHiveJob(hiveJob plugins.QuboleHiveJob) error {
 
 // This function is the link between the output written by the SDK, and the execution side. It extracts the query
 // out of the task template.
-func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
+func GetQueryInfo(ctx context.Context, tCtx remote.TaskExecutionContext) (
 	query string, cluster string, tags []string, timeoutSec uint32, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -288,7 +290,7 @@ func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label
 	return primaryLabel, found
 }
 
-func mapProjectDomainToDestinationClusterLabel(ctx context.Context, tCtx core.TaskExecutionContext, quboleCfg *config.Config) (string, bool) {
+func mapProjectDomainToDestinationClusterLabel(ctx context.Context, tCtx remote.TaskExecutionContext, quboleCfg *config.Config) (string, bool) {
 	tExecID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	project := tExecID.NodeExecutionId.GetExecutionId().GetProject()
 	domain := tExecID.NodeExecutionId.GetExecutionId().GetDomain()
@@ -305,7 +307,7 @@ func mapProjectDomainToDestinationClusterLabel(ctx context.Context, tCtx core.Ta
 	return "", false
 }
 
-func getClusterPrimaryLabel(ctx context.Context, tCtx core.TaskExecutionContext, clusterLabelOverride string) string {
+func getClusterPrimaryLabel(ctx context.Context, tCtx remote.TaskExecutionContext, clusterLabelOverride string) string {
 	cfg := config.GetQuboleConfig()
 
 	// If override is not empty and if it has a mapping, we return the mapped primary label
