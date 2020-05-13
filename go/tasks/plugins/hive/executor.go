@@ -111,6 +111,7 @@ func BuildResourceConfig(cfg []config.ClusterConfig) map[core.ResourceNamespace]
 	for _, clusterCfg := range cfg {
 		resourceConfig[core.ResourceNamespace(clusterCfg.PrimaryLabel)] = clusterCfg.Limit
 	}
+
 	return resourceConfig
 }
 
