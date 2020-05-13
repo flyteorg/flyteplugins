@@ -118,7 +118,7 @@ func TestBuildResource(t *testing.T) {
 	}
 	taskExecCtx := dummyContainerTaskContext(resourceRequirements, []string{"cd /var/flyte; mkdir outputs; paste ./inputs/x ./inputs/y | awk '{print ($1 + $2)}' > ./outputs/o"}, iface, "s3://my-s3-bucket/data/test1")
 	taskExecCtx.InputReader().GetInputPath()
-	p := rawContainerPlugin{}
+	p := Plugin{}
 	r, err := p.BuildResource(ctx, taskExecCtx)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)

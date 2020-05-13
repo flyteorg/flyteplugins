@@ -101,7 +101,7 @@ func TestSidecarCommandArgs(t *testing.T) {
 	}
 	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, iFace)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"upload", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--output-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}, d)
+	assert.ElementsMatch(t, []string{"upload", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--output-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}, d)
 }
 
 func TestDataVolume(t *testing.T) {
