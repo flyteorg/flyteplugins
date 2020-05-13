@@ -95,8 +95,9 @@ type FlyteCoPilotConfig struct {
 	// the process will be assumed to be dead or in a terminal condition and will trigger an abort.
 	StartTimeout config2.Duration `json:"start-timeout" pflag:",Time for which the sidecar should wait on startup before assuming the primary container to have failed startup."`
 	// Resources for CoPilot Containers
-	CPU    string `json:"cpu" pflag:",Used to set cpu for co-pilot containers"`
-	Memory string `json:"memory" pflag:",Used to set memory for co-pilot containers"`
+	CPU     string `json:"cpu" pflag:",Used to set cpu for co-pilot containers"`
+	Memory  string `json:"memory" pflag:",Used to set memory for co-pilot containers"`
+	Storage string `json:"storage" pflag:",Default storage limit for individual inputs / outputs"`
 }
 
 // Retrieves the current k8s plugin config or default.

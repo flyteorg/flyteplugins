@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -97,10 +98,37 @@ func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toL
 		"--to-local-dir",
 		toLocalPath,
 		"--format",
-		format.String(),
+		strings.ToLower(format.String()),
 		"--input-interface",
 		base64.StdEncoding.EncodeToString(b),
 	}, nil
+}
+
+func DataVolume(name string, size *resource.Quantity) v1.Volume {
+	return v1.Volume{
+		Name: name,
+		VolumeSource: v1.VolumeSource{
+			EmptyDir: &v1.EmptyDirVolumeSource{
+				Medium:    v1.StorageMediumHugePages,
+				SizeLimit: size,
+			},
+		},
+	}
+}
+
+func CalculateStorageSize(requirements *v1.ResourceRequirements) *resource.Quantity {
+	if requirements == nil {
+		return nil
+	}
+	s, ok := requirements.Limits[v1.ResourceStorage]
+	if ok {
+		return &s
+	}
+	s, ok = requirements.Requests[v1.ResourceStorage]
+	if ok {
+		return &s
+	}
+	return nil
 }
 
 func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecutionMetadata core2.TaskExecutionMetadata, taskReader core2.TaskReader,
@@ -139,8 +167,10 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 	if task.Interface != nil {
 		// TODO think about MountPropagationMode. Maybe we want to use that for acceleration in the future
 		info := &plugins.CoPilot{}
-		if err := utils.UnmarshalStruct(task.Custom, info); err != nil {
-			return nil, errors.Wrap(err, "error decoding custom information")
+		if task.Custom != nil {
+			if err := utils.UnmarshalStruct(task.Custom, info); err != nil {
+				return nil, errors.Wrap(err, "error decoding custom information")
+			}
 		}
 
 		if task.Interface.Inputs != nil || task.Interface.Outputs != nil {
@@ -174,13 +204,10 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 			// Add the inputs volume to the container
 			c.VolumeMounts = append(c.VolumeMounts, inputsVolumeMount)
 
+			task.GetContainer().GetResources().GetLimits()
 			// Lets add the InputsVolume
-			coPilotPod.Volumes = append(coPilotPod.Volumes, v1.Volume{
-				Name: cfg.InputVolumeName,
-				VolumeSource: v1.VolumeSource{
-					EmptyDir: &v1.EmptyDirVolumeSource{},
-				},
-			})
+			// TODO we should calculate input volume size based on the size of the inputs which is known ahead of time. We should store that as part of the metadata
+			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.InputVolumeName, CalculateStorageSize(taskExecutionMetadata.GetOverrides().GetResources())))
 
 			// Lets add the Inputs init container
 			args, err := DownloadCommandArgs(inputs.GetInputPath(), outputPaths.GetOutputPrefixPath(), inPath, info.Format, task.Interface.Inputs)
@@ -207,12 +234,7 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 			c.VolumeMounts = append(c.VolumeMounts, outputsVolumeMount)
 
 			// Lets add the InputsVolume
-			coPilotPod.Volumes = append(coPilotPod.Volumes, v1.Volume{
-				Name: cfg.OutputVolumeName,
-				VolumeSource: v1.VolumeSource{
-					EmptyDir: &v1.EmptyDirVolumeSource{},
-				},
-			})
+			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, CalculateStorageSize(taskExecutionMetadata.GetOverrides().GetResources())))
 
 			// Lets add the Inputs init container
 			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, task.Interface.Outputs)
