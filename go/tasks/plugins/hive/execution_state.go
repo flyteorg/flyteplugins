@@ -203,10 +203,13 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext, cur
 	metric.ResourceWaitTime.Observe(waitTime.Seconds())
 
 	if allocationStatus == core.AllocationStatusGranted {
+		metric.AllocationGranted.Inc(ctx)
 		newState.Phase = PhaseQueued
 	} else if allocationStatus == core.AllocationStatusExhausted {
+		metric.AllocationNotGranted.Inc(ctx)
 		newState.Phase = PhaseNotStarted
 	} else if allocationStatus == core.AllocationStatusNamespaceQuotaExceeded {
+		metric.AllocationNotGranted.Inc(ctx)
 		newState.Phase = PhaseNotStarted
 	} else {
 		return newState, errors.Errorf(errors.ResourceManagerFailure, "Got bad allocation result [%s] for token [%s]",
@@ -256,13 +259,13 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 	return
 }
 
-func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label string) (string, bool) {
-	primaryLabel := DefaultClusterPrimaryLabel
-	found := false
+func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label string) (primaryLabel string, found bool) {
+	primaryLabel = quboleCfg.DefaultClusterLabel
+	found = false
 
 	if label == "" {
-		logger.Debugf(ctx, "Input cluster label is an empty string; falling back to using the default primary label [%v]", label, DefaultClusterPrimaryLabel)
-		return primaryLabel, found
+		logger.Debugf(ctx, "Input cluster label is an empty string; falling back to using the default primary label [%v]", label, primaryLabel)
+		return
 	}
 
 	// Using a linear search because N is small and because of ClusterConfig's struct definition
@@ -277,8 +280,11 @@ func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label
 		}
 	}
 
-	logger.Debugf(ctx, "Cannot find the primary cluster label for label [%v] in configmap; "+
-		"falling back to using the default primary label [%v]", label, DefaultClusterPrimaryLabel)
+	if !found {
+		logger.Debugf(ctx, "Cannot find the primary cluster label for label [%v] in configmap; "+
+			"falling back to using the default primary label [%v]", label, primaryLabel)
+	}
+
 	return primaryLabel, found
 }
 
@@ -316,7 +322,7 @@ func getClusterPrimaryLabel(ctx context.Context, tCtx core.TaskExecutionContext,
 	}
 
 	// Else we return the default primary label
-	return DefaultClusterPrimaryLabel
+	return cfg.DefaultClusterLabel
 }
 
 func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
@@ -411,7 +417,7 @@ func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState Exe
 	return nil
 }
 
-func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState) error {
+func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState, metrics QuboleHiveExecutorMetrics) error {
 	// Release allocation token
 	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	clusterPrimaryLabel, err := composeResourceNamespaceWithClusterPrimaryLabel(ctx, tCtx)
@@ -422,9 +428,11 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionSt
 	err = tCtx.ResourceManager().ReleaseResource(ctx, clusterPrimaryLabel, uniqueID)
 
 	if err != nil {
+		metrics.ResourceReleaseFailed.Inc(ctx)
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueID, err)
 		return err
 	}
+	metrics.ResourceReleased.Inc(ctx)
 	return nil
 }
 

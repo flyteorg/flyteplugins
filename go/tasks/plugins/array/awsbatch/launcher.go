@@ -16,8 +16,8 @@ import (
 )
 
 func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, pluginConfig *config.Config,
-	currentState *State) (nextState *State, err error) {
-
+	currentState *State, metrics ExecutorMetrics) (nextState *State, err error) {
+	size := currentState.GetExecutionArraySize()
 	if int64(currentState.GetExecutionArraySize()) > pluginConfig.MaxArrayJobSize {
 		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), pluginConfig.MaxArrayJobSize)
 		logger.Info(ctx, ee)
@@ -35,7 +35,6 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		return nil, err
 	}
 
-	size := currentState.GetExecutionArraySize()
 	t, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, err
@@ -53,6 +52,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 		return nil, err
 	}
 
+	metrics.SubTasksSubmitted.Add(ctx, float64(size))
 	parentState := currentState.
 		SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, 0).
 		SetArrayStatus(arraystatus.ArrayStatus{
@@ -71,7 +71,7 @@ func LaunchSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchCl
 
 // Attempts to terminate the AWS Job if one is recorded in the pluginState. This API is idempotent and should be safe
 // to call multiple times on the same job. It'll result in multiple calls to AWS Batch in that case, however.
-func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, reason string) error {
+func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batchClient Client, reason string, metrics ExecutorMetrics) error {
 	pluginState := &State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to unmarshal custom state")
@@ -89,7 +89,11 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, batc
 	if pluginState.GetExternalJobID() != nil {
 		jobID := *pluginState.GetExternalJobID()
 		logger.Infof(ctx, "Cancelling AWS Job [%v] because [%v].", jobID, reason)
-		return batchClient.TerminateJob(ctx, jobID, reason)
+		err := batchClient.TerminateJob(ctx, jobID, reason)
+		if err != nil {
+			return err
+		}
+		metrics.BatchJobTerminated.Inc(ctx)
 	}
 
 	return nil

@@ -43,6 +43,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 			Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 			ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
 			NodeSelector:       config.GetK8sPluginConfig().InterruptibleNodeSelector,
+			SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
 		}, nil
 	}
 	return &v1.PodSpec{
@@ -51,6 +52,7 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 		Containers:         containers,
 		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
+		SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
 	}, nil
 
 }
@@ -161,8 +163,10 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								}), nil
 
 							case "ImagePullBackOff":
-								// TODO once we implement timeouts, this should probably be PhaseInitializing with version 1, so that user can see the reason
-								fallthrough
+								t := c.LastTransitionTime.Time
+								return pluginsCore.PhaseInfoRetryableFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
+									OccurredAt: &t,
+								}), nil
 							default:
 								// Since we are not checking for all error states, we may end up perpetually
 								// in the queued state returned at the bottom of this function, until the Pod is reaped
