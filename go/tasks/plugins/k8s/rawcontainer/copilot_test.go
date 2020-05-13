@@ -86,7 +86,7 @@ func TestDownloadCommandArgs(t *testing.T) {
 	}
 	d, err := DownloadCommandArgs("s3://from", "s3://output-meta", "/to", plugins.CoPilot_JSON, iFace)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "json", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}, d)
+	assert.ElementsMatch(t, []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "json", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}, d)
 }
 
 func TestSidecarCommandArgs(t *testing.T) {
