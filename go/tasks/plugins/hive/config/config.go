@@ -48,12 +48,13 @@ var (
 		CommandAPIPath:            MustParse("/api/v1.2/commands/"),
 		AnalyzeLinkPath:           MustParse("/v2/analyze"),
 		TokenKey:                  "FLYTE_QUBOLE_CLIENT_TOKEN",
+		DefaultClusterLabel:       "default",
 		ClusterConfigs:            []ClusterConfig{{PrimaryLabel: "default", Labels: []string{"default"}, Limit: 100, ProjectScopeQuotaProportionCap: 0.7, NamespaceScopeQuotaProportionCap: 0.7}},
 		DestinationClusterConfigs: []DestinationClusterConfig{},
 		Caching: remote.CachingProperties{
 			Size:           2000,
 			ResyncInterval: config.Duration{Duration: 20 * time.Second},
-			Workers:        10,
+			Workers:        15,
 		},
 		WriteRateLimiter: remote.RateLimiterProperties{
 			QPS:   100,
@@ -75,6 +76,7 @@ type Config struct {
 	AnalyzeLinkPath           config.URL                   `json:"analyzeLinkPath" pflag:",URL path where queries can be visualized on qubole website. Should be a valid url."`
 	TokenKey                  string                       `json:"quboleTokenKey" pflag:",Name of the key where to find Qubole token in the secret manager."`
 	ClusterConfigs            []ClusterConfig              `json:"clusterConfigs" pflag:"-,A list of cluster configs. Each of the configs corresponds to a service cluster"`
+	DefaultClusterLabel       string                       `json:"defaultClusterLabel" pflag:",The default cluster label. This will be used if label is not specified on the hive job."`
 	DestinationClusterConfigs []DestinationClusterConfig   `json:"destinationClusterConfigs" pflag:"-,A list configs specifying the destination service cluster for (project, domain)"`
 	ReadRateLimiter           remote.RateLimiterProperties `json:"readRateLimiter" pflag:",Defines rate limiter properties for read actions (e.g. retrieve status)."`
 	WriteRateLimiter          remote.RateLimiterProperties `json:"writeRateLimiter" pflag:",Defines rate limiter properties for write actions."`
