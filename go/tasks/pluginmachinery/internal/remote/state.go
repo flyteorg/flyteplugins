@@ -28,7 +28,7 @@ type State struct {
 
 	// ResourceKeys contain the resource keys of the launched resources. If this is empty, it means
 	// the job used the default (preferred) name from tCtx.GetGeneratedName()
-	ResourceKey remote.ResourceKey `json:"resourceKeys,omitempty"`
+	ResourceMeta remote.ResourceMeta `json:"resourceMeta,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task

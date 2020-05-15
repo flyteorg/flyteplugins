@@ -20,8 +20,8 @@ type Plugin_Create struct {
 	*mock.Call
 }
 
-func (_m Plugin_Create) Return(createdResources remote.ResourceKey, err error) *Plugin_Create {
-	return &Plugin_Create{Call: _m.Call.Return(createdResources, err)}
+func (_m Plugin_Create) Return(resource remote.Resource, err error) *Plugin_Create {
+	return &Plugin_Create{Call: _m.Call.Return(resource, err)}
 }
 
 func (_m *Plugin) OnCreate(ctx context.Context, tCtx remote.TaskExecutionContext) *Plugin_Create {
@@ -35,14 +35,16 @@ func (_m *Plugin) OnCreateMatch(matchers ...interface{}) *Plugin_Create {
 }
 
 // Create provides a mock function with given fields: ctx, tCtx
-func (_m *Plugin) Create(ctx context.Context, tCtx remote.TaskExecutionContext) (remote.ResourceKey, error) {
+func (_m *Plugin) Create(ctx context.Context, tCtx remote.TaskExecutionContext) (remote.Resource, error) {
 	ret := _m.Called(ctx, tCtx)
 
-	var r0 remote.ResourceKey
-	if rf, ok := ret.Get(0).(func(context.Context, remote.TaskExecutionContext) remote.ResourceKey); ok {
+	var r0 remote.Resource
+	if rf, ok := ret.Get(0).(func(context.Context, remote.TaskExecutionContext) remote.Resource); ok {
 		r0 = rf(ctx, tCtx)
 	} else {
-		r0 = ret.Get(0).(remote.ResourceKey)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(remote.Resource)
+		}
 	}
 
 	var r1 error
@@ -63,8 +65,8 @@ func (_m Plugin_Delete) Return(_a0 error) *Plugin_Delete {
 	return &Plugin_Delete{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *Plugin) OnDelete(ctx context.Context, key remote.ResourceKey) *Plugin_Delete {
-	c := _m.On("Delete", ctx, key)
+func (_m *Plugin) OnDelete(ctx context.Context, cached remote.Resource) *Plugin_Delete {
+	c := _m.On("Delete", ctx, cached)
 	return &Plugin_Delete{Call: c}
 }
 
@@ -73,13 +75,13 @@ func (_m *Plugin) OnDeleteMatch(matchers ...interface{}) *Plugin_Delete {
 	return &Plugin_Delete{Call: c}
 }
 
-// Delete provides a mock function with given fields: ctx, key
-func (_m *Plugin) Delete(ctx context.Context, key remote.ResourceKey) error {
-	ret := _m.Called(ctx, key)
+// Delete provides a mock function with given fields: ctx, cached
+func (_m *Plugin) Delete(ctx context.Context, cached remote.Resource) error {
+	ret := _m.Called(ctx, cached)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, remote.ResourceKey) error); ok {
-		r0 = rf(ctx, key)
+	if rf, ok := ret.Get(0).(func(context.Context, remote.Resource) error); ok {
+		r0 = rf(ctx, cached)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -91,12 +93,12 @@ type Plugin_Get struct {
 	*mock.Call
 }
 
-func (_m Plugin_Get) Return(resource remote.Resource, err error) *Plugin_Get {
-	return &Plugin_Get{Call: _m.Call.Return(resource, err)}
+func (_m Plugin_Get) Return(latest remote.Resource, err error) *Plugin_Get {
+	return &Plugin_Get{Call: _m.Call.Return(latest, err)}
 }
 
-func (_m *Plugin) OnGet(ctx context.Context, key remote.ResourceKey) *Plugin_Get {
-	c := _m.On("Get", ctx, key)
+func (_m *Plugin) OnGet(ctx context.Context, cached remote.Resource) *Plugin_Get {
+	c := _m.On("Get", ctx, cached)
 	return &Plugin_Get{Call: c}
 }
 
@@ -105,13 +107,13 @@ func (_m *Plugin) OnGetMatch(matchers ...interface{}) *Plugin_Get {
 	return &Plugin_Get{Call: c}
 }
 
-// Get provides a mock function with given fields: ctx, key
-func (_m *Plugin) Get(ctx context.Context, key remote.ResourceKey) (remote.Resource, error) {
-	ret := _m.Called(ctx, key)
+// Get provides a mock function with given fields: ctx, cached
+func (_m *Plugin) Get(ctx context.Context, cached remote.Resource) (remote.Resource, error) {
+	ret := _m.Called(ctx, cached)
 
 	var r0 remote.Resource
-	if rf, ok := ret.Get(0).(func(context.Context, remote.ResourceKey) remote.Resource); ok {
-		r0 = rf(ctx, key)
+	if rf, ok := ret.Get(0).(func(context.Context, remote.Resource) remote.Resource); ok {
+		r0 = rf(ctx, cached)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(remote.Resource)
@@ -119,8 +121,8 @@ func (_m *Plugin) Get(ctx context.Context, key remote.ResourceKey) (remote.Resou
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, remote.ResourceKey) error); ok {
-		r1 = rf(ctx, key)
+	if rf, ok := ret.Get(1).(func(context.Context, remote.Resource) error); ok {
+		r1 = rf(ctx, cached)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -204,43 +206,4 @@ func (_m *Plugin) ResourceRequirements(ctx context.Context, tCtx remote.TaskExec
 	}
 
 	return r0, r1, r2
-}
-
-type Plugin_Status struct {
-	*mock.Call
-}
-
-func (_m Plugin_Status) Return(phase core.PhaseInfo, err error) *Plugin_Status {
-	return &Plugin_Status{Call: _m.Call.Return(phase, err)}
-}
-
-func (_m *Plugin) OnStatus(ctx context.Context, resource remote.Resource) *Plugin_Status {
-	c := _m.On("Status", ctx, resource)
-	return &Plugin_Status{Call: c}
-}
-
-func (_m *Plugin) OnStatusMatch(matchers ...interface{}) *Plugin_Status {
-	c := _m.On("Status", matchers...)
-	return &Plugin_Status{Call: c}
-}
-
-// Status provides a mock function with given fields: ctx, resource
-func (_m *Plugin) Status(ctx context.Context, resource remote.Resource) (core.PhaseInfo, error) {
-	ret := _m.Called(ctx, resource)
-
-	var r0 core.PhaseInfo
-	if rf, ok := ret.Get(0).(func(context.Context, remote.Resource) core.PhaseInfo); ok {
-		r0 = rf(ctx, resource)
-	} else {
-		r0 = ret.Get(0).(core.PhaseInfo)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, remote.Resource) error); ok {
-		r1 = rf(ctx, resource)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }
