@@ -17,7 +17,6 @@ type taskPluginRegistry struct {
 	m          sync.Mutex
 	k8sPlugin  []k8s.PluginEntry
 	corePlugin []core.PluginEntry
-	//remotePlugins []
 }
 
 // A singleton variable that maintains a registry of all plugins. The framework uses this to access all plugins
@@ -27,7 +26,7 @@ func PluginRegistry() TaskPluginRegistry {
 	return pluginRegistry
 }
 
-func (p *taskPluginRegistry) RegisterRemotePlugins(info remote.PluginEntry) {
+func (p *taskPluginRegistry) RegisterRemotePlugin(info remote.PluginEntry) {
 	ctx := context.Background()
 	if info.ID == "" {
 		logger.Panicf(ctx, "ID is required attribute for k8s plugin")
