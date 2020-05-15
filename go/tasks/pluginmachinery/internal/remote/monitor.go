@@ -8,10 +8,9 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
 )
 
-func monitor(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, cache cache.AutoRefresh, state *State) (
+func monitor(ctx context.Context, tCtx core.TaskExecutionContext, cache cache.AutoRefresh, state *State) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
 	incomingState := State{}
 	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
@@ -24,11 +23,10 @@ func monitor(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContex
 	}
 
 	cacheItem := CacheItem{
-		State:      *state,
-		Identifier: incomingState.ResourceKey.Name,
+		State: *state,
 	}
 
-	item, err := cache.GetOrCreate(incomingState.ResourceKey.Name, cacheItem)
+	item, err := cache.GetOrCreate(incomingState.ResourceMeta.Name, cacheItem)
 	if err != nil {
 		return nil, core.PhaseInfo{}, err
 	}
@@ -42,4 +40,12 @@ func monitor(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContex
 
 	// If there were updates made to the state, we'll have picked them up automatically. Nothing more to do.
 	return &cacheItem.State, cacheItem.LatestPhaseInfo, nil
+}
+
+func getUniqueResourceName(resourceMetaName string, tCtx core.TaskExecutionContext) string {
+	if len(resourceMetaName) == 0 {
+		return tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	}
+
+	return resourceMetaName
 }

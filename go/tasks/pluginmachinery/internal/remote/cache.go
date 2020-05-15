@@ -42,7 +42,7 @@ func NewResourceCache(ctx context.Context, name string, client remote.Plugin, cf
 	}
 
 	autoRefreshCache, err := cache.NewAutoRefreshCache(name, q.SyncResource,
-		workqueue.DefaultControllerRateLimiter(), cfg.ResyncInterval, cfg.Workers, cfg.Size, scope.NewSubScope("cache"))
+		workqueue.DefaultControllerRateLimiter(), cfg.ResyncInterval.Duration, cfg.Workers, cfg.Size, scope.NewSubScope("cache"))
 	if err != nil {
 		logger.Errorf(ctx, "Could not create AutoRefreshCache in QuboleHiveExecutor. [%s]", err)
 		return q, errors.Wrapf(errors.CacheFailed, err, "Error creating AutoRefreshCache")
@@ -54,15 +54,6 @@ func NewResourceCache(ctx context.Context, name string, client remote.Plugin, cf
 
 type CacheItem struct {
 	State
-
-	// This ID is the cache key and so will need to be unique across all objects in the cache (it will probably be
-	// unique across all of Flyte) and needs to be deterministic.
-	// This will also be used as the allocation token for now.
-	Identifier string `json:"id"`
-}
-
-func (e CacheItem) ID() string {
-	return e.Identifier
 }
 
 // This basically grab an updated status from the Qubole API and store it in the cache
@@ -79,8 +70,8 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 			return nil, errors.Errorf(errors.CacheFailed, "Failed to cast [%v]", batch[0].GetID())
 		}
 
-		if len(cacheItem.ResourceKey.Name) == 0 {
-			logger.Warnf(ctx, "Sync loop - ResourceKey is blank for [%s] skipping", cacheItem.Identifier)
+		if len(resource.GetID()) == 0 {
+			logger.Warnf(ctx, "Sync loop - ResourceKey is blank for [%s] skipping", resource.GetID())
 			resp = append(resp, cache.ItemSyncResponse{
 				ID:     resource.GetID(),
 				Item:   resource.GetItem(),
@@ -90,12 +81,12 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 			continue
 		}
 
-		logger.Debugf(ctx, "Sync loop - processing resource [%s] - cache key [%s]",
-			cacheItem.ResourceKey.Name, cacheItem.Identifier)
+		logger.Debugf(ctx, "Sync loop - processing resource with cache key [%s]",
+			resource.GetID())
 
 		if cacheItem.State.Phase.IsTerminal() {
-			logger.Debugf(ctx, "Sync loop - resource key [%s] in terminal state [%s]",
-				cacheItem.ResourceKey.Name, cacheItem.Identifier)
+			logger.Debugf(ctx, "Sync loop - resource cache key [%v] in terminal state [%s]",
+				resource.GetID())
 
 			resp = append(resp, cache.ItemSyncResponse{
 				ID:     resource.GetID(),
@@ -107,15 +98,15 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		}
 
 		// Get an updated status
-		logger.Debugf(ctx, "Querying Qubole for %s - %s", cacheItem.ResourceKey.Name,
-			cacheItem.Identifier)
-		resource, err := q.client.Get(ctx, cacheItem.ResourceKey)
+		logger.Debugf(ctx, "Querying Qubole for %s - %s", cacheItem.ResourceMeta.Name,
+			resource.GetID())
+		newResource, err := q.client.Get(ctx, cacheItem.ResourceMeta)
 		if err != nil {
-			logger.Errorf(ctx, "Error retrieving resource [%s]. Error: %v", cacheItem.ResourceKey.Name, err)
+			logger.Errorf(ctx, "Error retrieving resource [%s]. Error: %v", cacheItem.ResourceMeta.Name, err)
 			cacheItem.SyncFailureCount++
 			// Make sure we don't return nil for the first argument, because that deletes it from the cache.
 			resp = append(resp, cache.ItemSyncResponse{
-				ID:     cacheItem.ResourceKey.Name,
+				ID:     cacheItem.ResourceMeta.Name,
 				Item:   cacheItem,
 				Action: cache.Update,
 			})
@@ -123,7 +114,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 			continue
 		}
 
-		newPhase, err := q.client.Status(ctx, resource)
+		newPhase, err := q.client.Status(ctx, newResource)
 		if err != nil {
 			return nil, err
 		}
@@ -136,14 +127,15 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 				return nil, err
 			}
 
-			logger.Infof(ctx, "Moving Phase for %s %s from %s to %s", cacheItem.ResourceKey.Name,
-				cacheItem.Identifier, cacheItem.Phase, newPluginPhase)
+			logger.Infof(ctx, "Moving Phase for %s %s from %s to %s", cacheItem.ResourceMeta.Name,
+				resource.GetID(), cacheItem.Phase, newPluginPhase)
 
 			cacheItem.LatestPhaseInfo = newPhase
 			cacheItem.Phase = newPluginPhase
+			cacheItem.ResourceMeta = newResource
 
 			resp = append(resp, cache.ItemSyncResponse{
-				ID:     cacheItem.ResourceKey.Name,
+				ID:     cacheItem.ResourceMeta.Name,
 				Item:   cacheItem,
 				Action: cache.Update,
 			})

@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"encoding/gob"
 
 	"github.com/lyft/flytestdlib/cache"
 
@@ -52,7 +53,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	case PhaseAllocationTokenAcquired:
 		nextState, phaseInfo, err = launch(ctx, c.p, tCtx, c.cache, &incomingState)
 	case PhaseResourcesCreated:
-		nextState, phaseInfo, err = monitor(ctx, c.p, tCtx, c.cache, &incomingState)
+		nextState, phaseInfo, err = monitor(ctx, tCtx, c.cache, &incomingState)
 	}
 
 	if err != nil {
@@ -76,11 +77,11 @@ func (c CorePlugin) Abort(ctx context.Context, tCtx core.TaskExecutionContext) e
 			"Failed to unmarshal custom state in Handle")
 	}
 
-	logger.Infof(ctx, "Attempting to abort resource [%v].", incomingState.ResourceKey.Name)
+	logger.Infof(ctx, "Attempting to abort resource [%v].", incomingState.ResourceMeta.Name)
 
-	err := c.p.Delete(ctx, incomingState.ResourceKey)
+	err := c.p.Delete(ctx, incomingState.ResourceMeta)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to abort some resources [%v]. Error: %v", incomingState.ResourceKey.Name, err)
+		logger.Errorf(ctx, "Failed to abort some resources [%v]. Error: %v", incomingState.ResourceMeta.Name, err)
 		return err
 	}
 
@@ -97,7 +98,7 @@ func (c CorePlugin) Finalize(ctx context.Context, tCtx core.TaskExecutionContext
 			"Failed to unmarshal custom state in Handle")
 	}
 
-	logger.Infof(ctx, "Attempting to finalize resource [%v].", incomingState.ResourceKey.Name)
+	logger.Infof(ctx, "Attempting to finalize resource [%v].", incomingState.ResourceMeta.Name)
 	return releaseToken(ctx, c.p, tCtx, &incomingState)
 }
 
@@ -110,6 +111,12 @@ func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
 			p, err := pluginEntry.PluginLoader(ctx, iCtx)
 			if err != nil {
 				return nil, err
+			}
+
+			// If the plugin will use a custom state, register it to be able to
+			// serialize/deserialize interfaces later.
+			if customState := p.GetPluginProperties().CustomState; customState != nil {
+				gob.Register(customState)
 			}
 
 			if quotas := p.GetPluginProperties().ResourceQuotas; len(quotas) > 0 {

@@ -53,14 +53,19 @@ type TaskExecutionContext interface {
 	OutputWriter() io.OutputWriter
 }
 
-// Name/Identifier of the resource in the remote service.
-type ResourceKey struct {
-	// Optional resourceName, ideally this name is generated using the TaskExecutionMetadata
-	Name string
-}
+type CustomState = interface{}
 
 // The resource to be sycned from the remote
-type Resource interface{}
+type ResourceMeta struct {
+	// Name/Identifier of the resource in the remote service.
+	// Optional resourceName, ideally this name is generated using the TaskExecutionMetadata
+	Name string
+
+	// Custom information about the resource that will be marshaled into
+	// task state. This should only contain minimal information needed to
+	// interact with the resource.
+	Custom CustomState
+}
 
 // Defines a simplified interface to author plugins for k8s resources.
 type Plugin interface {
@@ -73,15 +78,15 @@ type Plugin interface {
 
 	// Create a new resource using the TaskExecutionContext provided. Ideally, the remote service uses the name in the
 	// TaskExecutionMetadata to launch the resource in an idempotent fashion.
-	Create(ctx context.Context, tCtx TaskExecutionContext) (createdResources ResourceKey, err error)
+	Create(ctx context.Context, tCtx TaskExecutionContext) (resource ResourceMeta, err error)
 
 	// Get multiple resources that match all the keys. If the plugin hits any failure, it should stop and return
 	// the failure. This batch will not be processed further.
-	Get(ctx context.Context, key ResourceKey) (resource Resource, err error)
+	Get(ctx context.Context, cached ResourceMeta) (latest ResourceMeta, err error)
 
 	// Delete the object in the remote API using the resource key
-	Delete(ctx context.Context, key ResourceKey) error
+	Delete(ctx context.Context, cached ResourceMeta) error
 
 	// Status checks the status of a given resource and translates it to a Flyte-understandable PhaseInfo.
-	Status(ctx context.Context, resource Resource) (phase pluginsCore.PhaseInfo, err error)
+	Status(ctx context.Context, resource ResourceMeta) (phase pluginsCore.PhaseInfo, err error)
 }
