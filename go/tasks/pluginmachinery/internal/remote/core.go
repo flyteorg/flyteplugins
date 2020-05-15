@@ -18,9 +18,10 @@ const (
 )
 
 type CorePlugin struct {
-	id    string
-	p     remote.Plugin
-	cache cache.AutoRefresh
+	id      string
+	p       remote.Plugin
+	cache   cache.AutoRefresh
+	metrics Metrics
 }
 
 func (c CorePlugin) GetID() string {
@@ -49,7 +50,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	var err error
 	switch incomingState.Phase {
 	case PhaseNotStarted:
-		nextState, phaseInfo, err = allocateToken(ctx, c.p, tCtx, &incomingState)
+		nextState, phaseInfo, err = allocateToken(ctx, c.p, tCtx, &incomingState, c.metrics)
 	case PhaseAllocationTokenAcquired:
 		nextState, phaseInfo, err = launch(ctx, c.p, tCtx, c.cache, &incomingState)
 	case PhaseResourcesCreated:
@@ -101,7 +102,7 @@ func (c CorePlugin) Finalize(ctx context.Context, tCtx core.TaskExecutionContext
 
 	logger.Infof(ctx, "Attempting to finalize resource [%v].",
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
-	return releaseToken(ctx, c.p, tCtx, &incomingState)
+	return releaseToken(ctx, c.p, tCtx, c.metrics)
 }
 
 func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
@@ -138,9 +139,10 @@ func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
 			}
 
 			return CorePlugin{
-				id:    pluginEntry.ID,
-				p:     p,
-				cache: resourceCache,
+				id:      pluginEntry.ID,
+				p:       p,
+				cache:   resourceCache,
+				metrics: newMetrics(iCtx.MetricsScope()),
 			}, nil
 		},
 	}
