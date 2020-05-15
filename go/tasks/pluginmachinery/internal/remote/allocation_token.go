@@ -12,7 +12,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, state *State) (
+func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
 	if len(p.GetPluginProperties().ResourceQuotas) == 0 {
 		// No quota, return success
@@ -37,12 +37,15 @@ func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecution
 
 	switch allocationStatus {
 	case core.AllocationStatusGranted:
+		metrics.AllocationGranted.Inc(ctx)
+		metrics.ResourceWaitTime.Observe(float64(time.Since(state.AllocationTokenRequestStartTime).Milliseconds()))
 		return &State{
 			AllocationTokenRequestStartTime: time.Now(),
 			Phase:                           PhaseAllocationTokenAcquired,
 		}, core.PhaseInfo{}, nil
 	case core.AllocationStatusNamespaceQuotaExceeded:
 	case core.AllocationStatusExhausted:
+		metrics.AllocationNotGranted.Inc(ctx)
 		logger.Infof(ctx, "Couldn't allocate token because allocation status is [%v].", allocationStatus.String())
 		startTime := state.AllocationTokenRequestStartTime
 		if startTime.IsZero() {
@@ -60,7 +63,7 @@ func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecution
 	return state, core.PhaseInfo{}, nil
 }
 
-func releaseToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, state *State) error {
+func releaseToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, metrics Metrics) error {
 	if len(p.GetPluginProperties().ResourceQuotas) == 0 {
 		// No quota, return success
 		return nil
@@ -75,9 +78,11 @@ func releaseToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionC
 	token := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	err = tCtx.ResourceManager().ReleaseResource(ctx, ns, token)
 	if err != nil {
+		metrics.ResourceReleaseFailed.Inc(ctx)
 		logger.Errorf(ctx, "Failed to release resources for task. Error: %v", err)
 		return err
 	}
 
+	metrics.ResourceReleased.Inc(ctx)
 	return nil
 }
