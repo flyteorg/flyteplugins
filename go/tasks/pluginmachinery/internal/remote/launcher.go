@@ -33,5 +33,7 @@ func launch(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext
 		return nil, core.PhaseInfo{}, err
 	}
 
+	state.ResourceMeta = r
+
 	return state, core.PhaseInfoQueued(time.Now(), 1, "launched"), nil
 }
