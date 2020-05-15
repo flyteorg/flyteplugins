@@ -98,15 +98,15 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		}
 
 		// Get an updated status
-		logger.Debugf(ctx, "Querying Qubole for %s - %s", cacheItem.ResourceMeta.Name,
+		logger.Debugf(ctx, "Querying Plugin for %s - %s", resource.GetID(),
 			resource.GetID())
 		newResource, err := q.client.Get(ctx, cacheItem.ResourceMeta)
 		if err != nil {
-			logger.Errorf(ctx, "Error retrieving resource [%s]. Error: %v", cacheItem.ResourceMeta.Name, err)
+			logger.Errorf(ctx, "Error retrieving resource [%s]. Error: %v", resource.GetID(), err)
 			cacheItem.SyncFailureCount++
 			// Make sure we don't return nil for the first argument, because that deletes it from the cache.
 			resp = append(resp, cache.ItemSyncResponse{
-				ID:     cacheItem.ResourceMeta.Name,
+				ID:     resource.GetID(),
 				Item:   cacheItem,
 				Action: cache.Update,
 			})
@@ -127,7 +127,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 				return nil, err
 			}
 
-			logger.Infof(ctx, "Moving Phase for %s %s from %s to %s", cacheItem.ResourceMeta.Name,
+			logger.Infof(ctx, "Moving Phase for %s %s from %s to %s", resource.GetID(),
 				resource.GetID(), cacheItem.Phase, newPluginPhase)
 
 			cacheItem.LatestPhaseInfo = newPhase
@@ -135,7 +135,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 			cacheItem.ResourceMeta = newResource
 
 			resp = append(resp, cache.ItemSyncResponse{
-				ID:     cacheItem.ResourceMeta.Name,
+				ID:     resource.GetID(),
 				Item:   cacheItem,
 				Action: cache.Update,
 			})
