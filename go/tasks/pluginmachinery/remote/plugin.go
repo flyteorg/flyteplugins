@@ -53,19 +53,8 @@ type TaskExecutionContext interface {
 	OutputWriter() io.OutputWriter
 }
 
-type CustomState = interface{}
-
 // The resource to be sycned from the remote
-type ResourceMeta struct {
-	// Name/Identifier of the resource in the remote service.
-	// Optional resourceName, ideally this name is generated using the TaskExecutionMetadata
-	Name string
-
-	// Custom information about the resource that will be marshaled into
-	// task state. This should only contain minimal information needed to
-	// interact with the resource.
-	Custom CustomState
-}
+type ResourceMeta = interface{}
 
 // Defines a simplified interface to author plugins for k8s resources.
 type Plugin interface {
