@@ -26,7 +26,8 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, cache cache.Au
 		State: *state,
 	}
 
-	item, err := cache.GetOrCreate(incomingState.ResourceMeta.Name, cacheItem)
+	item, err := cache.GetOrCreate(
+		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), cacheItem)
 	if err != nil {
 		return nil, core.PhaseInfo{}, err
 	}

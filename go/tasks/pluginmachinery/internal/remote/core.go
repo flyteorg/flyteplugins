@@ -77,11 +77,12 @@ func (c CorePlugin) Abort(ctx context.Context, tCtx core.TaskExecutionContext) e
 			"Failed to unmarshal custom state in Handle")
 	}
 
-	logger.Infof(ctx, "Attempting to abort resource [%v].", incomingState.ResourceMeta.Name)
+	logger.Infof(ctx, "Attempting to abort resource [%v].", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID())
 
 	err := c.p.Delete(ctx, incomingState.ResourceMeta)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to abort some resources [%v]. Error: %v", incomingState.ResourceMeta.Name, err)
+		logger.Errorf(ctx, "Failed to abort some resources [%v]. Error: %v",
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
 		return err
 	}
 
@@ -98,7 +99,8 @@ func (c CorePlugin) Finalize(ctx context.Context, tCtx core.TaskExecutionContext
 			"Failed to unmarshal custom state in Handle")
 	}
 
-	logger.Infof(ctx, "Attempting to finalize resource [%v].", incomingState.ResourceMeta.Name)
+	logger.Infof(ctx, "Attempting to finalize resource [%v].",
+		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 	return releaseToken(ctx, c.p, tCtx, &incomingState)
 }
 
@@ -115,7 +117,7 @@ func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
 
 			// If the plugin will use a custom state, register it to be able to
 			// serialize/deserialize interfaces later.
-			if customState := p.GetPluginProperties().CustomState; customState != nil {
+			if customState := p.GetPluginProperties().ResourceMeta; customState != nil {
 				gob.Register(customState)
 			}
 
