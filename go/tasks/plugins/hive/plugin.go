@@ -18,6 +18,11 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
 )
 
+const (
+	quboleHiveExecutorID = ""
+	hiveTaskType         = ""
+)
+
 type QuboleHivePlugin struct {
 	client         client.QuboleClient
 	apiKey         string

@@ -3,6 +3,7 @@ package hive
 import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 )
 
 func QuboleStatusToPhase(status client.QuboleStatus) core.Phase {
@@ -20,4 +21,14 @@ func QuboleStatusToPhase(status client.QuboleStatus) core.Phase {
 	default:
 		return core.PhaseRetryableFailure
 	}
+}
+
+func BuildResourceConfig(cfg []config.ClusterConfig) map[core.ResourceNamespace]int {
+	resourceConfig := make(map[core.ResourceNamespace]int, len(cfg))
+
+	for _, clusterCfg := range cfg {
+		resourceConfig[core.ResourceNamespace(clusterCfg.PrimaryLabel)] = clusterCfg.Limit
+	}
+
+	return resourceConfig
 }
