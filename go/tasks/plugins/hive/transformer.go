@@ -9,27 +9,9 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/config"
 	"github.com/lyft/flytestdlib/logger"
 )
-
-func QuboleStatusToPhase(status client.QuboleStatus) core.Phase {
-	switch status {
-	case client.QuboleStatusWaiting:
-		return core.PhaseNotReady
-	case client.QuboleStatusDone:
-		return core.PhaseSuccess
-	case client.QuboleStatusRunning:
-		return core.PhaseRunning
-	case client.QuboleStatusCancelled:
-		fallthrough
-	case client.QuboleStatusError:
-		fallthrough
-	default:
-		return core.PhaseRetryableFailure
-	}
-}
 
 func BuildResourceConfig(cfg []config.ClusterConfig) map[core.ResourceNamespace]int {
 	resourceConfig := make(map[core.ResourceNamespace]int, len(cfg))
