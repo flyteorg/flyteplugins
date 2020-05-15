@@ -50,16 +50,6 @@ type CachingProperties struct {
 	Workers int `json:"workers" pflag:",Defines the number of workers to start up to process items."`
 }
 
-type MissingResourcePolicy uint8
-
-const (
-	// MissingResourceFail indicate the task should fail if any of the resources are missing
-	MissingResourceFail MissingResourcePolicy = iota
-
-	// MissingResourceRetry indicate the task should keep retrying in case any of the resources were not found
-	MissingResourceRetry
-)
-
 type ResourceQuotas map[core.ResourceNamespace]int
 
 // Properties that help the system optimize itself to handle the specific plugin
@@ -70,5 +60,7 @@ type PluginProperties struct {
 	ReadRateLimiter  RateLimiterProperties `json:"readRateLimiter" pflag:",Defines rate limiter properties for read actions (e.g. retrieve status)."`
 	WriteRateLimiter RateLimiterProperties `json:"writeRateLimiter" pflag:",Defines rate limiter properties for write actions."`
 	Caching          CachingProperties     `json:"caching" pflag:",Defines caching characteristics."`
-	//MissingResourcePolicy MissingResourcePolicy
+	// Gets an empty copy for the custom state that can be used in ResourceMeta when
+	// interacting with the remote service.
+	CustomState CustomState `json:"customState"`
 }

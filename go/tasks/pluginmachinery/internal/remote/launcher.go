@@ -19,16 +19,18 @@ func launch(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext
 		return nil, core.PhaseInfo{}, err
 	}
 
+	resourceKey := getUniqueResourceName(r.Name, tCtx)
+
 	// If we succeed, then store the created resource name, and update our state. Also, add to the
 	// AutoRefreshCache so we start getting updates.
-	logger.Infof(ctx, "Created Resource Name [%s]", r.Name)
+	logger.Infof(ctx, "Created Resource Name [%s]", resourceKey)
 	cacheItem := CacheItem{
 		State:      *state,
-		Identifier: r.Name,
+		Identifier: resourceKey,
 	}
 
 	// The first time we put it in the cache, we know it won't have succeeded so we don't need to look at it
-	_, err = cache.GetOrCreate(r.Name, cacheItem)
+	_, err = cache.GetOrCreate(resourceKey, cacheItem)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to add item to cache. Error: %v", err)
 		return nil, core.PhaseInfo{}, err
