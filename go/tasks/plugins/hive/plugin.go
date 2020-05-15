@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	quboleHiveExecutorID = ""
-	hiveTaskType         = ""
+	quboleHiveExecutorID = "qubole-hive-executor"
+	hiveTaskType         = "hive"
 )
 
 type QuboleHivePlugin struct {
