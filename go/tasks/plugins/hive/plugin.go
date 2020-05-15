@@ -43,10 +43,10 @@ func (q QuboleHivePlugin) ResourceRequirements(ctx context.Context, tCtx remote.
 }
 
 func (q QuboleHivePlugin) Create(ctx context.Context, tCtx remote.TaskExecutionContext) (
-	createdResources remote.ResourceKey, err error) {
+	createdResources remote.ResourceMeta, err error) {
 	query, clusterLabelOverride, tags, timeoutSec, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
-		return remote.ResourceKey{}, err
+		return remote.ResourceMeta{}, err
 	}
 
 	clusterPrimaryLabel := getClusterPrimaryLabel(ctx, tCtx, clusterLabelOverride)
@@ -54,7 +54,7 @@ func (q QuboleHivePlugin) Create(ctx context.Context, tCtx remote.TaskExecutionC
 	cmdDetails, err := q.client.ExecuteHiveCommand(ctx, query, timeoutSec,
 		clusterPrimaryLabel, q.apiKey, tags)
 	if err != nil {
-		return remote.ResourceKey{}, err
+		return remote.ResourceMeta{}, err
 	}
 
 	// If we succeed, then store the command id returned from Qubole, and update our state. Also, add to the
@@ -62,13 +62,13 @@ func (q QuboleHivePlugin) Create(ctx context.Context, tCtx remote.TaskExecutionC
 	commandID := strconv.FormatInt(cmdDetails.ID, 10)
 	logger.Infof(ctx, "Created Qubole ID [%s]", commandID)
 
-	return remote.ResourceKey{
+	return remote.ResourceMeta{
 		Name: commandID,
 	}, nil
 }
 
-func (q QuboleHivePlugin) Get(ctx context.Context, key remote.ResourceKey) (
-	resource remote.Resource, err error) {
+func (q QuboleHivePlugin) Get(ctx context.Context, key remote.ResourceMeta) (
+	resource remote.ResourceMeta, err error) {
 
 	logger.Debugf(ctx, "Retrieving Hive job [%s]", key.Name)
 
@@ -76,20 +76,22 @@ func (q QuboleHivePlugin) Get(ctx context.Context, key remote.ResourceKey) (
 	commandStatus, err := q.client.GetCommandStatus(ctx, key.Name, q.apiKey)
 	if err != nil {
 		logger.Errorf(ctx, "Error from Qubole command %s. Error: %v", key.Name, err)
-		return nil, err
+		return remote.ResourceMeta{}, err
 	}
 
 	newExecutionPhase, err := QuboleStatusToExecutionPhase(commandStatus)
 	if err != nil {
-		return nil, err
+		return remote.ResourceMeta{}, err
 	}
 
-	return Resource{
-		Phase: newExecutionPhase,
+	return remote.ResourceMeta{
+		Custom: Resource{
+			Phase: newExecutionPhase,
+		},
 	}, nil
 }
 
-func (q QuboleHivePlugin) Delete(ctx context.Context, key remote.ResourceKey) error {
+func (q QuboleHivePlugin) Delete(ctx context.Context, key remote.ResourceMeta) error {
 	err := q.client.KillCommand(ctx, key.Name, q.apiKey)
 	if err != nil {
 		logger.Errorf(ctx, "Error terminating Qubole command [%s]. Error: %v", key.Name, err)
@@ -99,10 +101,10 @@ func (q QuboleHivePlugin) Delete(ctx context.Context, key remote.ResourceKey) er
 	return nil
 }
 
-func (q QuboleHivePlugin) Status(ctx context.Context, resource remote.Resource) (
+func (q QuboleHivePlugin) Status(_ context.Context, resource remote.ResourceMeta) (
 	phase core.PhaseInfo, err error) {
 
-	r, casted := resource.(Resource)
+	r, casted := resource.Custom.(Resource)
 	if !casted {
 		return core.PhaseInfo{}, fmt.Errorf("failed to cast resource to the expected type. Input type: %v",
 			reflect.TypeOf(resource))
@@ -128,6 +130,7 @@ func QuboleHivePluginLoader(ctx context.Context, iCtx remote.PluginSetupContext)
 			ReadRateLimiter:  cfg.ReadRateLimiter,
 			WriteRateLimiter: cfg.WriteRateLimiter,
 			Caching:          cfg.Caching,
+			CustomState:      Resource{},
 		},
 	}, nil
 }
