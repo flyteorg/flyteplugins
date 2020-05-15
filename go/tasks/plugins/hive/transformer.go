@@ -1,23 +1,23 @@
 package hive
 
 import (
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 )
 
 func QuboleStatusToPhase(status client.QuboleStatus) core.Phase {
 	switch status {
-	case client.QuboleStatusUnknown:
-		fallthrough
 	case client.QuboleStatusWaiting:
-		fallthrough
-	case client.QuboleStatusCancelled:
-		fallthrough
+		return core.PhaseNotReady
 	case client.QuboleStatusDone:
+		return core.PhaseSuccess
+	case client.QuboleStatusRunning:
+		return core.PhaseRunning
+	case client.QuboleStatusCancelled:
 		fallthrough
 	case client.QuboleStatusError:
 		fallthrough
-	case client.QuboleStatusRunning:
-		fallthrough
+	default:
+		return core.PhaseRetryableFailure
 	}
 }

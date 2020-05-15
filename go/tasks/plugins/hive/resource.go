@@ -12,7 +12,7 @@ import (
 
 type Resource struct {
 	CommandID string
-	Phase     ExecutionPhase
+	Phase     core.Phase
 	URI       string
 }
 
@@ -37,15 +37,15 @@ func (r Resource) GetPhaseInfo() core.PhaseInfo {
 	t := time.Now()
 
 	switch r.Phase {
-	case PhaseNotStarted:
+	case core.PhaseNotReady:
 		phaseInfo = core.PhaseInfoNotReady(t, core.DefaultPhaseVersion, "Haven't received allocation token")
-	case PhaseQueued:
+	case core.PhaseQueued:
 		phaseInfo = core.PhaseInfoQueued(t, core.DefaultPhaseVersion, "Waiting for Qubole launch")
-	case PhaseSubmitted:
+	case core.PhaseRunning:
 		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, r.ConstructTaskInfo())
-	case PhaseQuerySucceeded:
+	case core.PhaseSuccess:
 		phaseInfo = core.PhaseInfoSuccess(r.ConstructTaskInfo())
-	case PhaseQueryFailed:
+	case core.PhaseRetryableFailure:
 		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", r.ConstructTaskInfo())
 	}
 

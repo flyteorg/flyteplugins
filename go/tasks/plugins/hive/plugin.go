@@ -80,13 +80,8 @@ func (q QuboleHivePlugin) Get(ctx context.Context, meta remote.ResourceMeta) (
 		return nil, err
 	}
 
-	newExecutionPhase, err := QuboleStatusToPhase(commandStatus)
-	if err != nil {
-		return nil, err
-	}
-
 	return Resource{
-		Phase:     newExecutionPhase,
+		Phase:     QuboleStatusToPhase(commandStatus),
 		CommandID: r.CommandID,
 		URI:       r.URI,
 	}, nil
