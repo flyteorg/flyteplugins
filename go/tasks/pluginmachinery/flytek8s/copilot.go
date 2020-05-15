@@ -1,4 +1,4 @@
-package raw_container
+package flytek8s
 
 import (
 	"context"
@@ -9,18 +9,22 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	core2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+)
+
+const (
+	flyteDataConfigVolume     = "data-config-volume"
+	flyteDataConfigPath       = "/etc/flyte/config-data"
+	flyteDataConfigMap        = "flyte-data-config"
+	flyteSidecarContainerName = "sidecar"
+	flyteInitContainerName    = "downloader"
 )
 
 var pTraceCapability = v1.Capability("SYS_PTRACE")
@@ -81,7 +85,7 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 	}, nil
 }
 
-func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format plugins.CoPilot_MetadataFormat, inputInterface *core.VariableMap) ([]string, error) {
+func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format core.DataLoadingConfig_MetadataFormat, inputInterface *core.VariableMap) ([]string, error) {
 	if inputInterface == nil {
 		return nil, fmt.Errorf("input Interface is required for CoPilot Downloader")
 	}
@@ -131,19 +135,10 @@ func CalculateStorageSize(requirements *v1.ResourceRequirements) *resource.Quant
 	return nil
 }
 
-func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecutionMetadata core2.TaskExecutionMetadata, taskReader core2.TaskReader,
-	inputs io.InputReader, outputPaths io.OutputFilePaths) (*v1.PodSpec, error) {
-	task, err := taskReader.Read(ctx)
-	if err != nil {
-		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
-		return nil, err
+func AddCoPilotToContainer(cfg config.FlyteCoPilotConfig, c *v1.Container, iFace *core.TypedInterface, pilot *core.DataLoadingConfig) error {
+	if pilot == nil || !pilot.Enabled {
+		return nil
 	}
-
-	c, err := flytek8s.ToK8sContainer(ctx, taskExecutionMetadata, task.GetContainer(), inputs, outputPaths)
-	if err != nil {
-		return nil, err
-	}
-
 	if c.SecurityContext == nil {
 		c.SecurityContext = &v1.SecurityContext{}
 	}
@@ -152,28 +147,43 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 	}
 	c.SecurityContext.Capabilities.Add = append(c.SecurityContext.Capabilities.Add, pTraceCapability)
 
-	shareProcessNamespaceEnabled := true
-	coPilotPod := &v1.PodSpec{
-		// We could specify Scheduler, Affinity, nodename etc
-		RestartPolicy:         v1.RestartPolicyNever,
-		Containers:            []v1.Container{},
-		InitContainers:        []v1.Container{},
-		Tolerations:           flytek8s.GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
-		ServiceAccountName:    taskExecutionMetadata.GetK8sServiceAccount(),
-		ShareProcessNamespace: &shareProcessNamespaceEnabled,
-		Volumes:               []v1.Volume{},
-	}
-
-	if task.Interface != nil {
-		// TODO think about MountPropagationMode. Maybe we want to use that for acceleration in the future
-		info := &plugins.CoPilot{}
-		if task.Custom != nil {
-			if err := utils.UnmarshalStruct(task.Custom, info); err != nil {
-				return nil, errors.Wrap(err, "error decoding custom information")
+	if iFace != nil {
+		if iFace.Inputs != nil {
+			inPath := cfg.DefaultInputDataPath
+			if pilot.GetInputPath() != "" {
+				inPath = pilot.GetInputPath()
 			}
+
+			c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
+				Name:      cfg.InputVolumeName,
+				MountPath: inPath,
+			})
 		}
 
-		if task.Interface.Inputs != nil || task.Interface.Outputs != nil {
+		if iFace.Outputs != nil {
+			outPath := cfg.DefaultOutputPath
+			if pilot.GetOutputPath() != "" {
+				outPath = pilot.GetOutputPath()
+			}
+			c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
+				Name:      cfg.OutputVolumeName,
+				MountPath: outPath,
+			})
+		}
+	}
+	return nil
+}
+
+func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPod *v1.PodSpec, iFace *core.TypedInterface, taskExecMetadata core2.TaskExecutionMetadata, inputPaths io.InputFilePaths, outputPaths io.OutputFilePaths, pilot *core.DataLoadingConfig) error {
+	if pilot == nil || !pilot.Enabled {
+		return nil
+	}
+
+	shareProcessNamespaceEnabled := true
+	coPilotPod.ShareProcessNamespace = &shareProcessNamespaceEnabled
+	if iFace != nil {
+		// TODO think about MountPropagationMode. Maybe we want to use that for acceleration in the future
+		if iFace.Inputs != nil || iFace.Outputs != nil {
 			// This is temporary. we have to mount the flyte data configuration into the pod
 			// TODO Remove the data configuration requirements
 			coPilotPod.Volumes = append(coPilotPod.Volumes, v1.Volume{
@@ -192,64 +202,63 @@ func ToK8sPodSpec(ctx context.Context, cfg config.FlyteCoPilotConfig, taskExecut
 			MountPath: flyteDataConfigPath,
 		}
 
-		if task.Interface.Inputs != nil {
+		if iFace.Inputs != nil {
 			inPath := cfg.DefaultInputDataPath
-			if info.GetInputPath() != "" {
-				inPath = info.GetInputPath()
+			if pilot != nil && pilot.GetInputPath() != "" {
+				inPath = pilot.GetInputPath()
 			}
+
 			inputsVolumeMount := v1.VolumeMount{
 				Name:      cfg.InputVolumeName,
 				MountPath: inPath,
 			}
-			// Add the inputs volume to the container
-			c.VolumeMounts = append(c.VolumeMounts, inputsVolumeMount)
 
-			task.GetContainer().GetResources().GetLimits()
+			format := core.DataLoadingConfig_JSON
+			if pilot != nil {
+				format = pilot.Format
+			}
 			// Lets add the InputsVolume
 			// TODO we should calculate input volume size based on the size of the inputs which is known ahead of time. We should store that as part of the metadata
-			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.InputVolumeName, CalculateStorageSize(taskExecutionMetadata.GetOverrides().GetResources())))
+			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.InputVolumeName, CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())))
 
 			// Lets add the Inputs init container
-			args, err := DownloadCommandArgs(inputs.GetInputPath(), outputPaths.GetOutputPrefixPath(), inPath, info.Format, task.Interface.Inputs)
+			args, err := DownloadCommandArgs(inputPaths.GetInputPath(), outputPaths.GetOutputPrefixPath(), inPath, format, iFace.Inputs)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			downloader, err := FlyteCoPilotContainer("downloader", cfg, args, inputsVolumeMount, cfgVMount)
+			downloader, err := FlyteCoPilotContainer(flyteInitContainerName, cfg, args, inputsVolumeMount, cfgVMount)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			coPilotPod.InitContainers = append(coPilotPod.InitContainers, downloader)
 		}
 
-		if task.Interface.Outputs != nil {
+		if iFace.Outputs != nil {
 			outPath := cfg.DefaultOutputPath
-			if info.GetOutputPath() != "" {
-				outPath = info.GetOutputPath()
+			if pilot != nil && pilot.GetOutputPath() != "" {
+				outPath = pilot.GetOutputPath()
 			}
 			outputsVolumeMount := v1.VolumeMount{
 				Name:      cfg.OutputVolumeName,
 				MountPath: outPath,
 			}
-			// Add the outputs Volume to the container
-			c.VolumeMounts = append(c.VolumeMounts, outputsVolumeMount)
 
 			// Lets add the InputsVolume
-			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, CalculateStorageSize(taskExecutionMetadata.GetOverrides().GetResources())))
+			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())))
 
 			// Lets add the Inputs init container
-			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, task.Interface.Outputs)
+			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, iFace.Outputs)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			sidecar, err := FlyteCoPilotContainer("sidecar", cfg, args, outputsVolumeMount, cfgVMount)
+			sidecar, err := FlyteCoPilotContainer(flyteSidecarContainerName, cfg, args, outputsVolumeMount, cfgVMount)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			coPilotPod.Containers = append(coPilotPod.Containers, sidecar)
 		}
+
 	}
 
-	coPilotPod.Containers = append(coPilotPod.Containers, *c)
-
-	return coPilotPod, nil
+	return nil
 }

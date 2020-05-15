@@ -132,12 +132,16 @@ func IsFileReadable(fpath string, ignoreExtension bool) (string, os.FileInfo, er
 	if err != nil {
 		if os.IsNotExist(err) {
 			if ignoreExtension {
+				logger.Infof(context.TODO(), "looking for any extensions")
 				matches, err := filepath.Glob(fpath + ".*")
-				if err == nil && len(matches) == 1{
+				if err == nil && len(matches) == 1 {
+					logger.Infof(context.TODO(), "Extension match found [%s]", matches[0])
 					info, err = os.Stat(matches[0])
 					if err == nil {
 						return matches[0], info, nil
 					}
+				} else {
+					logger.Errorf(context.TODO(), "Extension match not found [%v,%v]", err, matches)
 				}
 			}
 			return "", nil, errors.Wrapf(err, "file not found at path [%s]", fpath)
@@ -184,7 +188,7 @@ func UploadFile(ctx context.Context, filePath string, toPath storage.DataReferen
 }
 
 func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath storage.DataReference) (*core.Literal, error) {
-	if info, err := IsFileReadable(localPath); err != nil {
+	if fpath, info, err := IsFileReadable(localPath, true); err != nil {
 		return nil, err
 	} else {
 		if info.IsDir() {
@@ -237,7 +241,7 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 		} else {
 			size := info.Size()
 			// Should we make this a go routine as well, so that we can introduce timeouts
-			return MakeLiteralForBlob(ctx, toPath, false, ""), UploadFile(ctx, localPath, toPath, size, u.store)
+			return MakeLiteralForBlob(ctx, toPath, false, ""), UploadFile(ctx, fpath, toPath, size, u.store)
 		}
 	}
 }
