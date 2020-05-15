@@ -62,5 +62,5 @@ type PluginProperties struct {
 	Caching          CachingProperties     `json:"caching" pflag:",Defines caching characteristics."`
 	// Gets an empty copy for the custom state that can be used in ResourceMeta when
 	// interacting with the remote service.
-	CustomState CustomState `json:"customState"`
+	ResourceMeta ResourceMeta `json:"resourceMeta"`
 }
