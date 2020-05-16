@@ -13,7 +13,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
@@ -40,7 +43,6 @@ type FutureMap map[string]Future
 
 type Downloader struct {
 	format  Format
-	marshal func(v interface{}) ([]byte, error)
 	// TODO support multiple buckets
 	store *storage.DataStore
 }
@@ -102,7 +104,9 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 	}()
 
 	writer, err := os.Create(toFilePath)
-	// handle err
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open file at path %s", toFilePath)
+	}
 	defer func() {
 		err := writer.Close()
 		if err != nil {
@@ -122,79 +126,227 @@ func (d Downloader) handleSchema(ctx context.Context, schema *core.Schema, toFil
 	return d.handleBlob(ctx, &core.Blob{Uri: schema.Uri, Metadata: &core.BlobMetadata{Type: &core.BlobType{Dimensionality: core.BlobType_MULTIPART}}}, toFilePath)
 }
 
-func (d Downloader) handlePrimitive(primitive *core.Primitive, toFilePath string) (interface{}, error) {
+func (d Downloader) handleBinary(ctx context.Context, b *core.Binary, toFilePath string, writeToFile bool) (interface{}, error) {
+	// maybe we should return a map
+	v := b.GetValue()
+	if writeToFile {
+		return v, ioutil.WriteFile(toFilePath, v, os.ModePerm)
+	}
+	return v, nil
+}
+
+func (d Downloader) handleError(ctx context.Context, b *core.Error, toFilePath string, writeToFile bool) (interface{}, error) {
+	// maybe we should return a map
+	return b.Message, nil
+}
+
+func (d Downloader) handleGeneric(ctx context.Context, b *structpb.Struct, toFilePath string, writeToFile bool) (interface{}, error) {
+	if writeToFile && b != nil {
+		m := jsonpb.Marshaler{}
+		writer, err := os.Create(toFilePath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to open file at path %s", toFilePath)
+		}
+		defer func() {
+			err := writer.Close()
+			if err != nil {
+				logger.Errorf(ctx, "failed to close File write stream. Error: %s", err)
+			}
+		}()
+		return b, m.Marshal(writer, b)
+	}
+	return b, nil
+}
+
+// Returns the primitive value in Golang native format and if the filePath is not empty, then writes the value to the given file path.
+func (d Downloader) handlePrimitive(primitive *core.Primitive, toFilePath string, writeToFile bool) (interface{}, error) {
+
+	var toByteArray func() ([]byte, error)
+	var v interface{}
+	var err error
 
 	switch primitive.Value.(type) {
 	case *core.Primitive_StringValue:
-		return primitive.GetStringValue(), ioutil.WriteFile(toFilePath, []byte(primitive.GetStringValue()), os.ModePerm)
+		v = primitive.GetStringValue()
+		toByteArray = func() ([]byte, error) {
+			return []byte(primitive.GetStringValue()), nil
+		}
 	case *core.Primitive_Boolean:
-		return primitive.GetBoolean(), ioutil.WriteFile(toFilePath, []byte(strconv.FormatBool(primitive.GetBoolean())), os.ModePerm)
+		v = primitive.GetBoolean()
+		toByteArray = func() ([]byte, error) {
+			return []byte(strconv.FormatBool(primitive.GetBoolean())), nil
+		}
 	case *core.Primitive_Integer:
-		return primitive.GetInteger(), ioutil.WriteFile(toFilePath, []byte(strconv.FormatInt(primitive.GetInteger(), 10)), os.ModePerm)
+		v = primitive.GetInteger()
+		toByteArray = func() ([]byte, error) {
+			return []byte(strconv.FormatInt(primitive.GetInteger(), 10)), nil
+		}
 	case *core.Primitive_FloatValue:
-		return primitive.GetFloatValue(), ioutil.WriteFile(toFilePath, []byte(strconv.FormatFloat(primitive.GetFloatValue(), 'f', -1, 64)), os.ModePerm)
+		v = primitive.GetFloatValue()
+		toByteArray = func() ([]byte, error) {
+			return []byte(strconv.FormatFloat(primitive.GetFloatValue(), 'f', -1, 64)), nil
+		}
 	case *core.Primitive_Datetime:
-		return primitive.GetDatetime(), ioutil.WriteFile(toFilePath, []byte(ptypes.TimestampString(primitive.GetDatetime())), os.ModePerm)
-	case *core.Primitive_Duration:
-		d, err := ptypes.Duration(primitive.GetDuration())
+		v, err = ptypes.Timestamp(primitive.GetDatetime())
 		if err != nil {
 			return nil, err
 		}
-		return primitive.GetDuration(), ioutil.WriteFile(toFilePath, []byte(d.String()), os.ModePerm)
+		toByteArray = func() ([]byte, error) {
+			return []byte(ptypes.TimestampString(primitive.GetDatetime())), nil
+		}
+	case *core.Primitive_Duration:
+		v, err := ptypes.Duration(primitive.GetDuration())
+		if err != nil {
+			return nil, err
+		}
+		toByteArray = func() ([]byte, error) {
+			return []byte(v.String()), nil
+		}
+	default:
+		v = nil
+		toByteArray = func() ([]byte, error) {
+			return []byte("null"), nil
+		}
 	}
-	return nil, ioutil.WriteFile(toFilePath, []byte("null"), os.ModePerm)
+	if writeToFile {
+		b, err := toByteArray()
+		if err != nil {
+			return nil, err
+		}
+		return v, ioutil.WriteFile(toFilePath, b, os.ModePerm)
+	}
+	return v, nil
 }
 
-func (d Downloader) handleScalar(ctx context.Context, scalar *core.Scalar, toFilePath string) Future {
+func (d Downloader) handleScalar(ctx context.Context, scalar *core.Scalar, toFilePath string, writeToFile bool) (interface{}, *core.Scalar, error) {
 	switch scalar.GetValue().(type) {
 	case *core.Scalar_Primitive:
 		p := scalar.GetPrimitive()
-		pth := toFilePath
-		return NewAsyncFuture(ctx, func(ctx2 context.Context) (interface{}, error) {
-			return d.handlePrimitive(p, pth)
-		})
+		i, err := d.handlePrimitive(p, toFilePath, writeToFile)
+		return i, scalar, err
 	case *core.Scalar_Blob:
 		b := scalar.GetBlob()
-		p := toFilePath
-		return NewAsyncFuture(ctx, func(ctx2 context.Context) (interface{}, error) {
-			return d.handleBlob(ctx2, b, p)
-		})
+		i, err := d.handleBlob(ctx, b, toFilePath)
+		return i, &core.Scalar{Value: &core.Scalar_Blob{Blob: &core.Blob{Metadata: b.Metadata, Uri: toFilePath}}}, err
 	case *core.Scalar_Schema:
 		b := scalar.GetSchema()
-		p := toFilePath
-		return NewAsyncFuture(ctx, func(ctx2 context.Context) (interface{}, error) {
-			return d.handleSchema(ctx2, b, p)
-		})
+		i, err := d.handleSchema(ctx, b, toFilePath)
+		return i, &core.Scalar{Value: &core.Scalar_Schema{Schema: &core.Schema{Type: b.Type, Uri: toFilePath}}}, err
+	case *core.Scalar_Binary:
+		b := scalar.GetBinary()
+		i, err := d.handleBinary(ctx, b, toFilePath, writeToFile)
+		return i, scalar, err
+	case *core.Scalar_Error:
+		b := scalar.GetError()
+		i, err := d.handleError(ctx, b, toFilePath, writeToFile)
+		return i, scalar, err
+	case *core.Scalar_Generic:
+		b := scalar.GetGeneric()
+		i, err := d.handleGeneric(ctx, b, toFilePath, writeToFile)
+		return i, scalar, err
+	case *core.Scalar_NoneType:
+		if writeToFile {
+			return nil, scalar, ioutil.WriteFile(toFilePath, []byte("null"), os.ModePerm)
+		}
+		return nil, scalar, nil
+	default:
+		return nil, nil, fmt.Errorf("unsupported scalar type [%v]", reflect.TypeOf(scalar.GetValue()))
 	}
-	return NewSyncFuture(nil, fmt.Errorf("unsupported scalar type [%v]", reflect.TypeOf(scalar.GetValue())))
 }
 
-func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralMap, dir string) (VarMap, error) {
+func (d Downloader) handleLiteral(ctx context.Context, lit *core.Literal, filePath string, writeToFile bool) (interface{}, *core.Literal, error) {
+	switch lit.GetValue().(type) {
+	case *core.Literal_Scalar:
+		v, s, err := d.handleScalar(ctx, lit.GetScalar(), filePath, writeToFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		return v, &core.Literal{Value: &core.Literal_Scalar{
+			Scalar: s,
+		}}, nil
+	case *core.Literal_Collection:
+		v, c2, err := d.handleCollection(ctx, lit.GetCollection(), filePath, writeToFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		return v, &core.Literal{Value: &core.Literal_Collection{
+			Collection: c2,
+		}}, nil
+	case *core.Literal_Map:
+		v, m, err := d.RecursiveDownload(ctx, lit.GetMap(), filePath, writeToFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		return v, &core.Literal{Value: &core.Literal_Map{
+			Map: m,
+		}}, nil
+	default:
+		return nil, nil, fmt.Errorf("unsupported literal type [%v]", reflect.TypeOf(lit.GetValue()))
+	}
+}
+
+// Collection should be stored as a top level list file and may have accompanying files?
+func (d Downloader) handleCollection(ctx context.Context, c *core.LiteralCollection, dir string, writePrimitiveToFile bool) ([]interface{}, *core.LiteralCollection, error) {
+	if c == nil || len(c.Literals) == 0 {
+		return []interface{}{}, c, nil
+	}
+	var collection []interface{}
+	litCollection := &core.LiteralCollection{}
+	for i, lit := range c.Literals {
+		filePath := path.Join(dir, strconv.Itoa(i))
+		v, lit, err := d.handleLiteral(ctx, lit, filePath, writePrimitiveToFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		collection = append(collection, v)
+		litCollection.Literals = append(litCollection.Literals, lit)
+	}
+	return collection, litCollection, nil
+}
+
+type downloadedResult struct {
+	lit *core.Literal
+	v   interface{}
+}
+
+func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralMap, dir string, writePrimitiveToFile bool) (VarMap, *core.LiteralMap, error) {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	if inputs == nil || len(inputs.Literals) == 0 {
+		return VarMap{}, nil, nil
+	}
 	f := make(FutureMap, len(inputs.Literals))
 	for variable, literal := range inputs.Literals {
-		switch literal.GetValue().(type) {
-		case *core.Literal_Scalar:
-			f[variable] = d.handleScalar(childCtx, literal.GetScalar(), path.Join(dir, variable))
-		default:
-			return nil, fmt.Errorf("received unsupported literal type [%s]", reflect.TypeOf(literal.GetValue()))
-		}
+		varPath := path.Join(dir, variable)
+		lit := literal
+		f[variable] = NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
+			v, lit, err := d.handleLiteral(ctx2, lit, varPath, writePrimitiveToFile)
+			if err != nil {
+				return nil, err
+			}
+			return downloadedResult{lit: lit, v: v}, nil
+		})
 	}
 
+	m := &core.LiteralMap{}
 	vmap := make(VarMap, len(f))
 	for variable, future := range f {
 		logger.Infof(ctx, "Waiting for [%s] to be persisted", variable)
 		v, err := future.Get(childCtx)
-		if err != nil && err != AsyncFutureCanceledErr {
-			logger.Infof(ctx, "Failed to persist [%s]", variable)
-			return nil, errors.Wrapf(err, "variable [%s] download/store failed", variable)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to persist [%s], err %s", variable, err)
+			if err == AsyncFutureCanceledErr {
+				logger.Errorf(ctx, "Future was canceled, possibly Timeout!")
+			}
+			return nil, nil, errors.Wrapf(err, "variable [%s] download/store failed", variable)
 		}
-		vmap[variable] = v
+		dr := v.(downloadedResult)
+		vmap[variable] = dr.v
+		m.Literals[variable] = dr.lit
 		logger.Infof(ctx, "Completed persisting [%s]", variable)
 	}
 
-	return vmap, nil
+	return vmap, m, nil
 }
 
 func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataReference, outputDir string) error {
@@ -210,19 +362,35 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 		logger.Errorf(ctx, "Failed to download inputs from [%s], err [%s]", inputRef, err)
 		return errors.Wrapf(err, "failed to download input metadata message from remote store")
 	}
-	varMap, err := d.RecursiveDownload(ctx, inputs, outputDir)
+	varMap, lMap, err := d.RecursiveDownload(ctx, inputs, outputDir, true)
 	if err != nil {
 		return errors.Wrapf(err, "failed to download input variable from remote store")
 	}
 
-	// TODO replace this with proto or other marshal
-	m, err := d.marshal(varMap)
+	// We will always write the protobuf
+	b, err := proto.Marshal(lMap)
 	if err != nil {
-		return errors.Wrapf(err, "failed to marshal out inputs")
+		return err
+	}
+	if err := ioutil.WriteFile(path.Join(outputDir, "inputs.pb"), b, os.ModePerm); err != nil {
+		return err
 	}
 
-	aggregatePath := path.Join(outputDir, "inputs")
-	return ioutil.WriteFile(aggregatePath, m, os.ModePerm)
+	if d.format == FormatJSON {
+		m, err := json.Marshal(varMap)
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal out inputs")
+		}
+		return ioutil.WriteFile(path.Join(outputDir, "inputs.json"), m, os.ModePerm)
+	}
+	if d.format == FormatYAML {
+		m, err := yaml.Marshal(varMap)
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal out inputs")
+		}
+		return ioutil.WriteFile(path.Join(outputDir, "inputs.yaml"), m, os.ModePerm)
+	}
+	return nil
 }
 
 func NewDownloader(_ context.Context, store *storage.DataStore, format Format) Downloader {
@@ -233,7 +401,6 @@ func NewDownloader(_ context.Context, store *storage.DataStore, format Format) D
 	}
 	return Downloader{
 		format:  format,
-		marshal: m,
 		store:   store,
 	}
 }

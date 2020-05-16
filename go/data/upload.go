@@ -290,6 +290,8 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 			varFutures[varName] = NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
 				return u.handleSimpleType(ctx2, varType.GetSimple(), varPath)
 			})
+		default:
+			return fmt.Errorf("currently CoPilot uploader does not support [%s], system error", varType)
 		}
 	}
 
