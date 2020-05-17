@@ -27,6 +27,10 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
 		return nil, err
 	}
+	if task.GetContainer() == nil {
+		logger.Errorf(ctx, "Default Pod creation logic works for default container in the task template only.")
+		return nil, fmt.Errorf("container not specified in task template")
+	}
 	c, err := ToK8sContainer(ctx, taskExecutionMetadata, task.GetContainer(), task.Interface, inputs, outputPaths)
 	if err != nil {
 		return nil, err
@@ -46,15 +50,20 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 			SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
 		}, nil
 	}
-	return &v1.PodSpec{
+	pod := &v1.PodSpec{
 		// We could specify Scheduler, Affinity, nodename etc
 		RestartPolicy:      v1.RestartPolicyNever,
 		Containers:         containers,
 		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
 		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
 		SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
-	}, nil
+	}
 
+	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), taskExecutionMetadata, inputs, outputPaths, task.GetContainer().GetDataConfig()); err != nil {
+		return nil, err
+	}
+
+	return pod, nil
 }
 
 func BuildPodWithSpec(podSpec *v1.PodSpec) *v1.Pod {

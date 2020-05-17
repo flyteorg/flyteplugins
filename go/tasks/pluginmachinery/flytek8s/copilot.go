@@ -204,7 +204,7 @@ func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPo
 
 		if iFace.Inputs != nil {
 			inPath := cfg.DefaultInputDataPath
-			if pilot != nil && pilot.GetInputPath() != "" {
+			if pilot.GetInputPath() != "" {
 				inPath = pilot.GetInputPath()
 			}
 
@@ -213,10 +213,7 @@ func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPo
 				MountPath: inPath,
 			}
 
-			format := core.DataLoadingConfig_JSON
-			if pilot != nil {
-				format = pilot.Format
-			}
+			format := pilot.Format
 			// Lets add the InputsVolume
 			// TODO we should calculate input volume size based on the size of the inputs which is known ahead of time. We should store that as part of the metadata
 			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.InputVolumeName, CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())))
@@ -235,7 +232,7 @@ func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPo
 
 		if iFace.Outputs != nil {
 			outPath := cfg.DefaultOutputPath
-			if pilot != nil && pilot.GetOutputPath() != "" {
+			if pilot.GetOutputPath() != "" {
 				outPath = pilot.GetOutputPath()
 			}
 			outputsVolumeMount := v1.VolumeMount{
