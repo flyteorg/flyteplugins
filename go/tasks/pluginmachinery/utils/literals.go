@@ -1,11 +1,17 @@
 package utils
 
 import (
+	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/ptypes"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
 )
 
@@ -167,6 +173,32 @@ func MakeLiteral(v interface{}) (*core.Literal, error) {
 	}
 }
 
+func MustMakeLiteral(v interface{}) *core.Literal {
+	p, err := MakeLiteral(v)
+	if err != nil {
+		panic(err)
+	}
+
+	return p
+}
+
+func MakeLiteralMap(v map[string]interface{}) (*core.LiteralMap, error) {
+
+	literals := make(map[string]*core.Literal, len(v))
+	for key, val := range v {
+		l, err := MakeLiteral(val)
+		if err != nil {
+			return nil, err
+		}
+
+		literals[key] = l
+	}
+
+	return &core.LiteralMap{
+		Literals: literals,
+	}, nil
+}
+
 func MustMakeDefaultLiteralForType(typ *core.LiteralType) *core.Literal {
 	if res, err := MakeDefaultLiteralForType(typ); err != nil {
 		panic(err)
@@ -196,8 +228,28 @@ func MakeDefaultLiteralForType(typ *core.LiteralType) (*core.Literal, error) {
 				return MakeLiteral(time.Second)
 			case core.SimpleType_BINARY:
 				return MakeLiteral([]byte{})
-				// case core.SimpleType_ERROR:
-				// case core.SimpleType_STRUCT:
+			case core.SimpleType_ERROR:
+				return &core.Literal{
+					Value: &core.Literal_Scalar{
+						Scalar: &core.Scalar{
+							Value: &core.Scalar_Error{
+								Error: &core.Error{
+									Message: "Default Error message",
+								},
+							},
+						},
+					},
+				}, nil
+			case core.SimpleType_STRUCT:
+				return &core.Literal{
+					Value: &core.Literal_Scalar{
+						Scalar: &core.Scalar{
+							Value: &core.Scalar_Generic{
+								Generic: &structpb.Struct{},
+							},
+						},
+					},
+				}, nil
 			}
 			return nil, errors.Errorf("Not yet implemented. Default creation is not yet implemented. ")
 
@@ -250,28 +302,116 @@ func MakeDefaultLiteralForType(typ *core.LiteralType) (*core.Literal, error) {
 	return nil, errors.Errorf("Failed to convert to a known Literal. Input Type [%v] not supported", typ.String())
 }
 
-func MustMakeLiteral(v interface{}) *core.Literal {
-	p, err := MakeLiteral(v)
-	if err != nil {
-		panic(err)
+func MakePrimitiveForType(t core.SimpleType, s string) (*core.Primitive, error) {
+	p := &core.Primitive{}
+	switch t {
+	case core.SimpleType_INTEGER:
+		v, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse integer value")
+		}
+		p.Value = &core.Primitive_Integer{Integer: v}
+	case core.SimpleType_FLOAT:
+		v, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse Float value")
+		}
+		p.Value = &core.Primitive_FloatValue{FloatValue: v}
+	case core.SimpleType_BOOLEAN:
+		v, err := strconv.ParseBool(s)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse Bool value")
+		}
+		p.Value = &core.Primitive_Boolean{Boolean: v}
+	case core.SimpleType_STRING:
+		p.Value = &core.Primitive_StringValue{StringValue: s}
+	case core.SimpleType_DURATION:
+		v, err := time.ParseDuration(s)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse Duration, valid formats: e.g. 300ms, -1.5h, 2h45m")
+		}
+		p.Value = &core.Primitive_Duration{Duration: ptypes.DurationProto(v)}
+	case core.SimpleType_DATETIME:
+		v, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse Datetime in RFC3339 format")
+		}
+		ts, err := ptypes.TimestampProto(v)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert datetime to proto")
+		}
+		p.Value = &core.Primitive_Datetime{Datetime: ts}
+	default:
+		return nil, fmt.Errorf("unsupported type %s", t.String())
 	}
-
-	return p
+	return p, nil
 }
 
-func MakeLiteralMap(v map[string]interface{}) (*core.LiteralMap, error) {
-
-	literals := make(map[string]*core.Literal, len(v))
-	for key, val := range v {
-		l, err := MakeLiteral(val)
+func MakeLiteralForSimpleType(t core.SimpleType, s string) (*core.Literal, error) {
+	s = strings.Trim(s, " \n\t")
+	scalar := &core.Scalar{}
+	switch t {
+	case core.SimpleType_STRUCT:
+		st := &structpb.Struct{}
+		err := jsonpb.UnmarshalString(s, st)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to load generic type as json.")
+		}
+		scalar.Value = &core.Scalar_Generic{
+			Generic: st,
+		}
+	case core.SimpleType_BINARY:
+		scalar.Value = &core.Scalar_Binary{
+			Binary: &core.Binary{
+				Value: []byte(s),
+				// TODO Tag not supported at the moment
+			},
+		}
+		return nil, nil
+	case core.SimpleType_ERROR:
+		scalar.Value = &core.Scalar_Error{
+			Error: &core.Error{
+				Message: s,
+			},
+		}
+	case core.SimpleType_NONE:
+		scalar.Value = &core.Scalar_NoneType{
+			NoneType: &core.Void{},
+		}
+	default:
+		p, err := MakePrimitiveForType(t, s)
 		if err != nil {
 			return nil, err
 		}
-
-		literals[key] = l
+		scalar.Value = &core.Scalar_Primitive{Primitive: p}
 	}
-
-	return &core.LiteralMap{
-		Literals: literals,
+	return &core.Literal{
+		Value: &core.Literal_Scalar{
+			Scalar: scalar,
+		},
 	}, nil
+}
+
+func MakeLiteralForBlob(path storage.DataReference, isDir bool, format string) *core.Literal {
+	dim := core.BlobType_SINGLE
+	if isDir {
+		dim = core.BlobType_MULTIPART
+	}
+	return &core.Literal{
+		Value: &core.Literal_Scalar{
+			Scalar: &core.Scalar{
+				Value: &core.Scalar_Blob{
+					Blob: &core.Blob{
+						Uri: path.String(),
+						Metadata: &core.BlobMetadata{
+							Type: &core.BlobType{
+								Dimensionality: dim,
+								Format:         format,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }

@@ -9,18 +9,14 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"strconv"
-	"strings"
-	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
 
 const maxPrimitiveSize = 1024
@@ -39,92 +35,6 @@ type dirFile struct {
 	path string
 	info os.FileInfo
 	ref  storage.DataReference
-}
-
-func MakeLiteralForSimpleType(_ context.Context, t core.SimpleType, s string) (*core.Literal, error) {
-	s = strings.Trim(s, " \n\t")
-	scalar := &core.Scalar{}
-	switch t {
-	case core.SimpleType_STRUCT:
-		st := &structpb.Struct{}
-		err := jsonpb.UnmarshalString(s, st)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load generic type as json.")
-		}
-		scalar.Value = &core.Scalar_Generic{
-			Generic: st,
-		}
-	case core.SimpleType_INTEGER, core.SimpleType_BOOLEAN, core.SimpleType_FLOAT, core.SimpleType_STRING, core.SimpleType_DATETIME, core.SimpleType_DURATION:
-		p := &core.Primitive{}
-		switch t {
-		case core.SimpleType_INTEGER:
-			v, err := strconv.ParseInt(s, 10, 64)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse integer value")
-			}
-			p.Value = &core.Primitive_Integer{Integer: v}
-		case core.SimpleType_FLOAT:
-			v, err := strconv.ParseFloat(s, 64)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse Float value")
-			}
-			p.Value = &core.Primitive_FloatValue{FloatValue: v}
-		case core.SimpleType_BOOLEAN:
-			v, err := strconv.ParseBool(s)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse Bool value")
-			}
-			p.Value = &core.Primitive_Boolean{Boolean: v}
-		case core.SimpleType_STRING:
-			p.Value = &core.Primitive_StringValue{StringValue: s}
-		case core.SimpleType_DURATION:
-			v, err := time.ParseDuration(s)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse Duration, valid formats: e.g. 300ms, -1.5h, 2h45m")
-			}
-			p.Value = &core.Primitive_Duration{Duration: ptypes.DurationProto(v)}
-		case core.SimpleType_DATETIME:
-			v, err := time.Parse(time.RFC3339, s)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse Datetime in RFC3339 format")
-			}
-			ts, err := ptypes.TimestampProto(v)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to convert datetime to proto")
-			}
-			p.Value = &core.Primitive_Datetime{Datetime: ts}
-		}
-		scalar.Value = &core.Scalar_Primitive{Primitive: p}
-	}
-	return &core.Literal{
-		Value: &core.Literal_Scalar{
-			Scalar: scalar,
-		},
-	}, nil
-}
-
-func MakeLiteralForBlob(_ context.Context, path storage.DataReference, isDir bool, format string) *core.Literal {
-	dim := core.BlobType_SINGLE
-	if isDir {
-		dim = core.BlobType_MULTIPART
-	}
-	return &core.Literal{
-		Value: &core.Literal_Scalar{
-			Scalar: &core.Scalar{
-				Value: &core.Scalar_Blob{
-					Blob: &core.Blob{
-						Uri: path.String(),
-						Metadata: &core.BlobMetadata{
-							Type: &core.BlobType{
-								Dimensionality: dim,
-								Format:         format,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
 }
 
 func IsFileReadable(fpath string, ignoreExtension bool) (string, os.FileInfo, error) {
@@ -170,7 +80,7 @@ func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, fileP
 	if err != nil {
 		return nil, err
 	}
-	return MakeLiteralForSimpleType(ctx, t, string(b))
+	return utils.MakeLiteralForSimpleType(t, string(b))
 }
 
 func UploadFile(ctx context.Context, filePath string, toPath storage.DataReference, size int64, store *storage.DataStore) error {
@@ -237,11 +147,11 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 				}
 			}
 
-			return MakeLiteralForBlob(ctx, toPath, false, ""), nil
+			return utils.MakeLiteralForBlob(toPath, false, ""), nil
 		} else {
 			size := info.Size()
 			// Should we make this a go routine as well, so that we can introduce timeouts
-			return MakeLiteralForBlob(ctx, toPath, false, ""), UploadFile(ctx, fpath, toPath, size, u.store)
+			return utils.MakeLiteralForBlob(toPath, false, ""), UploadFile(ctx, fpath, toPath, size, u.store)
 		}
 	}
 }

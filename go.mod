@@ -9,6 +9,7 @@ require (
 	github.com/coocood/freecache v1.1.0
 	github.com/fsnotify/fsnotify v1.4.8-0.20191012010759-4bf2d1fec783
 	github.com/go-test/deep v1.0.5
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.3
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4

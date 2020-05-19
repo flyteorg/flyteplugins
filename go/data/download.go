@@ -395,10 +395,6 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 
 func NewDownloader(_ context.Context, store *storage.DataStore, format Format) Downloader {
 	format = strings.ToLower(format)
-	m := json.Marshal
-	if format == FormatYAML {
-		m = yaml.Marshal
-	}
 	return Downloader{
 		format:  format,
 		store:   store,
