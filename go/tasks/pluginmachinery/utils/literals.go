@@ -147,13 +147,24 @@ func MakeBinaryLiteral(v []byte) *core.Literal {
 	}
 }
 
+func MakeGenericLiteral(v *structpb.Struct) *core.Literal {
+	return &core.Literal{
+		Value: &core.Literal_Scalar{
+			Scalar: &core.Scalar{
+				Value: &core.Scalar_Generic{
+					Generic: v,
+				},
+			},
+		}}
+}
+
 func MakeLiteral(v interface{}) (*core.Literal, error) {
 	if v == nil {
 		return &core.Literal{
 			Value: &core.Literal_Scalar{
 				Scalar: &core.Scalar{
 					Value: &core.Scalar_NoneType{
-						NoneType: nil,
+						NoneType: &core.Void{},
 					},
 				},
 			},
@@ -168,6 +179,18 @@ func MakeLiteral(v interface{}) (*core.Literal, error) {
 		return MakeLiteralForMap(o)
 	case []byte:
 		return MakeBinaryLiteral(v.([]byte)), nil
+	case *structpb.Struct:
+		return MakeGenericLiteral(v.(*structpb.Struct)), nil
+	case *core.Error:
+		return &core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Error{
+						Error: v.(*core.Error),
+					},
+				},
+			},
+		}, nil
 	default:
 		return MakePrimitiveLiteral(o)
 	}
@@ -251,7 +274,7 @@ func MakeDefaultLiteralForType(typ *core.LiteralType) (*core.Literal, error) {
 					},
 				}, nil
 			}
-			return nil, errors.Errorf("Not yet implemented. Default creation is not yet implemented. ")
+			return nil, errors.Errorf("Not yet implemented. Default creation is not yet implemented for [%s] ", t.Simple.String())
 
 		case *core.LiteralType_Blob:
 			return &core.Literal{
@@ -367,7 +390,6 @@ func MakeLiteralForSimpleType(t core.SimpleType, s string) (*core.Literal, error
 				// TODO Tag not supported at the moment
 			},
 		}
-		return nil, nil
 	case core.SimpleType_ERROR:
 		scalar.Value = &core.Scalar_Error{
 			Error: &core.Error{

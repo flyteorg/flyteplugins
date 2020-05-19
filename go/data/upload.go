@@ -37,33 +37,6 @@ type dirFile struct {
 	ref  storage.DataReference
 }
 
-func IsFileReadable(fpath string, ignoreExtension bool) (string, os.FileInfo, error) {
-	info, err := os.Stat(fpath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if ignoreExtension {
-				logger.Infof(context.TODO(), "looking for any extensions")
-				matches, err := filepath.Glob(fpath + ".*")
-				if err == nil && len(matches) == 1 {
-					logger.Infof(context.TODO(), "Extension match found [%s]", matches[0])
-					info, err = os.Stat(matches[0])
-					if err == nil {
-						return matches[0], info, nil
-					}
-				} else {
-					logger.Errorf(context.TODO(), "Extension match not found [%v,%v]", err, matches)
-				}
-			}
-			return "", nil, errors.Wrapf(err, "file not found at path [%s]", fpath)
-		}
-		if os.IsPermission(err) {
-			return "", nil, errors.Wrapf(err, "unable to read file [%s], Flyte does not have permissions", fpath)
-		}
-		return "", nil, errors.Wrapf(err, "failed to read file")
-	}
-	return fpath, info, nil
-}
-
 func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, filePath string) (*core.Literal, error) {
 	if fpath, info, err := IsFileReadable(filePath, true); err != nil {
 		return nil, err
@@ -81,20 +54,6 @@ func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, fileP
 		return nil, err
 	}
 	return utils.MakeLiteralForSimpleType(t, string(b))
-}
-
-func UploadFile(ctx context.Context, filePath string, toPath storage.DataReference, size int64, store *storage.DataStore) error {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			logger.Errorf(ctx, "failed to close blob file at path [%s]", filePath)
-		}
-	}()
-	return store.WriteRaw(ctx, toPath, size, storage.Options{}, f)
 }
 
 func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath storage.DataReference) (*core.Literal, error) {

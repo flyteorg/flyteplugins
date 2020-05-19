@@ -29,6 +29,10 @@ func TestNewSyncFuture(t *testing.T) {
 			assert.NotNil(t, got)
 			assert.Equal(t, tt.args.val, got.val)
 			assert.Equal(t, tt.args.err, got.err)
+			assert.True(t, got.Ready())
+			v, err := got.Get(nil)
+			assert.Equal(t, tt.args.val, v)
+			assert.Equal(t, tt.args.err, err)
 		})
 	}
 }
@@ -61,5 +65,20 @@ func TestAsyncFuture(t *testing.T) {
 		assert.Equal(t, v, rv)
 		assert.Equal(t, err, rerr)
 		assert.True(t, af.Ready())
+	})
+
+	t.Run("timeout", func(t *testing.T) {
+		v := "val"
+		ctx := context.TODO()
+		af := NewAsyncFuture(ctx, func(ctx context.Context) (interface{}, error) {
+			time.Sleep(time.Second * 5)
+			return v, nil
+		})
+		runtime.Gosched()
+		cctx, cancel := context.WithCancel(ctx)
+		cancel()
+		_, rerr := af.Get(cctx)
+		assert.Error(t, rerr)
+		assert.Equal(t, AsyncFutureCanceledErr, rerr)
 	})
 }

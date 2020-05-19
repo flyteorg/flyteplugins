@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"reflect"
@@ -23,23 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
-
-type Format = string
-
-const (
-	FormatJSON  Format = "json"
-	FormatYAML  Format = "yaml"
-	FormatProto Format = "proto"
-)
-
-var AllOutputFormats = []Format{
-	FormatJSON,
-	FormatYAML,
-	FormatProto,
-}
-
-type VarMap map[string]interface{}
-type FutureMap map[string]Future
 
 type Downloader struct {
 	format  Format
@@ -64,14 +46,6 @@ func (d Downloader) downloadFromStorage(ctx context.Context, ref storage.DataRef
 	return nil, fmt.Errorf("incorrect blob reference, does not exist")
 }
 
-func (d Downloader) downloadFromHttp(ctx context.Context, ref storage.DataReference) (io.ReadCloser, error) {
-	resp, err := http.Get(ref.String())
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download from url :%s", ref)
-	}
-	return resp.Body, nil
-}
-
 // TODO add support for multipart blobs
 func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath string) (interface{}, error) {
 	ref := storage.DataReference(blob.Uri)
@@ -81,7 +55,7 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 	}
 	var reader io.ReadCloser
 	if scheme == "http" || scheme == "https" {
-		reader, err = d.downloadFromHttp(ctx, ref)
+		reader, err = DownloadFromHttp(ctx, ref)
 	} else {
 		if blob.GetMetadata().GetType().Dimensionality == core.BlobType_MULTIPART {
 			logger.Warnf(ctx, "Currently only single part blobs are supported, we will force multipart to be 'path/00000'")
