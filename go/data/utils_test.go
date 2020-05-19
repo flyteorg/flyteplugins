@@ -1,6 +1,7 @@
 package data
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"os"
@@ -67,23 +68,46 @@ func TestUploadFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := context.TODO()
-	assert.NoError(t, UploadFile(ctx, exist, "exist", l, store))
+	assert.NoError(t, UploadFileToStorage(ctx, exist, "exist", l, store))
+	m, err := store.Head(ctx, "exist")
+	assert.True(t, m.Exists())
+	assert.NoError(t, err)
 
-	assert.Error(t, UploadFile(ctx, nonExist, "nonExist", l, store))
+	assert.Error(t, UploadFileToStorage(ctx, nonExist, "nonExist", l, store))
 }
 
 func TestDownloadFromHttp(t *testing.T) {
 	loc := storage.DataReference("https://raw.githubusercontent.com/lyft/flyte/master/README.md")
 	badLoc := storage.DataReference("https://no-exist")
-	f, err := DownloadFromHttp(context.TODO(), loc)
+	f, err := DownloadFileFromHttp(context.TODO(), loc)
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, f) {
 			f.Close()
 		}
 	}
 
-	f, err = DownloadFromHttp(context.TODO(), badLoc)
+	f, err = DownloadFileFromHttp(context.TODO(), badLoc)
 	assert.Error(t, err)
+}
+
+func TestDownloadFromStorage(t *testing.T) {
+	store, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	assert.NoError(t, err)
+	ref := storage.DataReference("ref")
+
+	f, err := DownloadFileFromStorage(context.TODO(), ref, store)
+	assert.Error(t, err)
+	assert.Nil(t, f)
+
+	data := []byte("data")
+	l := int64(len(data))
+
+	assert.NoError(t, store.WriteRaw(context.TODO(), ref, l, storage.Options{}, bytes.NewReader(data)))
+	f, err = DownloadFileFromStorage(context.TODO(), ref, store)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, f)
+		f.Close()
+	}
 }
 
 func init() {

@@ -29,23 +29,6 @@ type Downloader struct {
 	store *storage.DataStore
 }
 
-func (d Downloader) downloadFromStorage(ctx context.Context, ref storage.DataReference) (io.ReadCloser, error) {
-	// We should probably directly use stow!??
-	m, err := d.store.Head(ctx, ref)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed when looking up Blob")
-	}
-	if m.Exists() {
-		r, err := d.store.ReadRaw(ctx, ref)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to read Blob from storage")
-		}
-		return r, err
-
-	}
-	return nil, fmt.Errorf("incorrect blob reference, does not exist")
-}
-
 // TODO add support for multipart blobs
 func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath string) (interface{}, error) {
 	ref := storage.DataReference(blob.Uri)
@@ -55,7 +38,7 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 	}
 	var reader io.ReadCloser
 	if scheme == "http" || scheme == "https" {
-		reader, err = DownloadFromHttp(ctx, ref)
+		reader, err = DownloadFileFromHttp(ctx, ref)
 	} else {
 		if blob.GetMetadata().GetType().Dimensionality == core.BlobType_MULTIPART {
 			logger.Warnf(ctx, "Currently only single part blobs are supported, we will force multipart to be 'path/00000'")
@@ -64,7 +47,7 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 				return nil, err
 			}
 		}
-		reader, err = d.downloadFromStorage(ctx, ref)
+		reader, err = DownloadFileFromStorage(ctx, ref, d.store)
 	}
 	if err != nil {
 		logger.Errorf(ctx, "Failed to download from ref [%s]", ref)

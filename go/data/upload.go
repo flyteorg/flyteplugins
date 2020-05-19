@@ -94,7 +94,7 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 				ref := f.ref
 				size := f.info.Size()
 				fileUploader = append(fileUploader, NewAsyncFuture(childCtx, func(i2 context.Context) (i interface{}, e error) {
-					return nil, UploadFile(i2, pth, ref, size, u.store)
+					return nil, UploadFileToStorage(i2, pth, ref, size, u.store)
 				}))
 			}
 
@@ -110,7 +110,7 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 		} else {
 			size := info.Size()
 			// Should we make this a go routine as well, so that we can introduce timeouts
-			return utils.MakeLiteralForBlob(toPath, false, ""), UploadFile(ctx, fpath, toPath, size, u.store)
+			return utils.MakeLiteralForBlob(toPath, false, ""), UploadFileToStorage(ctx, fpath, toPath, size, u.store)
 		}
 	}
 }

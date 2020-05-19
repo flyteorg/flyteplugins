@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -11,20 +12,6 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
 )
-
-// Downloads data from the given HTTP URL. If context is canceled then the request will be canceled.
-func DownloadFromHttp(ctx context.Context, ref storage.DataReference) (io.ReadCloser, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ref.String(), nil)
-	if err != nil {
-		logger.Errorf(ctx, "failed to create new http request with context, %s", err)
-		return nil, err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download from url :%s", ref)
-	}
-	return resp.Body, nil
-}
 
 // Checks if the given filepath is a valid and existing file path. If ignoreExtension is true, then the dir + basepath is checked for existence
 // ignoring the extension.
@@ -57,7 +44,7 @@ func IsFileReadable(fpath string, ignoreExtension bool) (string, os.FileInfo, er
 }
 
 // Uploads a file to the data store.
-func UploadFile(ctx context.Context, filePath string, toPath storage.DataReference, size int64, store *storage.DataStore) error {
+func UploadFileToStorage(ctx context.Context, filePath string, toPath storage.DataReference, size int64, store *storage.DataStore) error {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -69,4 +56,35 @@ func UploadFile(ctx context.Context, filePath string, toPath storage.DataReferen
 		}
 	}()
 	return store.WriteRaw(ctx, toPath, size, storage.Options{}, f)
+}
+
+func DownloadFileFromStorage(ctx context.Context, ref storage.DataReference, store *storage.DataStore) (io.ReadCloser, error) {
+	// We should probably directly use stow!??
+	m, err := store.Head(ctx, ref)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed when looking up Blob")
+	}
+	if m.Exists() {
+		r, err := store.ReadRaw(ctx, ref)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to read Blob from storage")
+		}
+		return r, err
+
+	}
+	return nil, fmt.Errorf("incorrect blob reference, does not exist")
+}
+
+// Downloads data from the given HTTP URL. If context is canceled then the request will be canceled.
+func DownloadFileFromHttp(ctx context.Context, ref storage.DataReference) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ref.String(), nil)
+	if err != nil {
+		logger.Errorf(ctx, "failed to create new http request with context, %s", err)
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to download from url :%s", ref)
+	}
+	return resp.Body, nil
 }
