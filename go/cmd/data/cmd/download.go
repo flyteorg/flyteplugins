@@ -35,9 +35,11 @@ func (d *DownloadOptions) Download(ctx context.Context) error {
 	}
 	dl := data.NewDownloader(ctx, d.Store, d.outputFormat)
 	childCtx := ctx
+	cancelFn := func() {}
 	if d.timeout > 0 {
-		childCtx, _ = context.WithTimeout(ctx, d.timeout)
+		childCtx, cancelFn = context.WithTimeout(ctx, d.timeout)
 	}
+	defer cancelFn()
 	err := dl.DownloadInputs(childCtx, storage.DataReference(d.remoteInputsPath), d.localDirectoryPath)
 	if err != nil {
 		logger.Errorf(ctx, "Downloading failed, err %s", err)

@@ -5,9 +5,7 @@ import (
 	"fmt"
 )
 
-
-
-var TimeoutError = fmt.Errorf("timeout while waiting")
+var ErrTimeout = fmt.Errorf("timeout while waiting")
 
 type Watcher interface {
 	WaitToStart(ctx context.Context) error

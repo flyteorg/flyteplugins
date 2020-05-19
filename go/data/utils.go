@@ -76,7 +76,7 @@ func DownloadFileFromStorage(ctx context.Context, ref storage.DataReference, sto
 }
 
 // Downloads data from the given HTTP URL. If context is canceled then the request will be canceled.
-func DownloadFileFromHttp(ctx context.Context, ref storage.DataReference) (io.ReadCloser, error) {
+func DownloadFileFromHTTP(ctx context.Context, ref storage.DataReference) (io.ReadCloser, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ref.String(), nil)
 	if err != nil {
 		logger.Errorf(ctx, "failed to create new http request with context, %s", err)

@@ -26,26 +26,30 @@ func TestIsFileReadable(t *testing.T) {
 	p := path.Join(tmpDir, "x")
 	f, i, err := IsFileReadable(p, false)
 	assert.Error(t, err)
+	assert.Empty(t, f)
+	assert.Nil(t, i)
 
 	assert.NoError(t, ioutil.WriteFile(p, []byte("data"), os.ModePerm))
 	f, i, err = IsFileReadable(p, false)
 	assert.NoError(t, err)
 	assert.Equal(t, p, f)
 	assert.NotNil(t, i)
+	assert.Equal(t, p, f)
 
 	noExt := path.Join(tmpDir, "y")
 	p = path.Join(tmpDir, "y.png")
-	f, i, err = IsFileReadable(noExt, false)
+	_, _, err = IsFileReadable(noExt, false)
 	assert.Error(t, err)
 
 	assert.NoError(t, ioutil.WriteFile(p, []byte("data"), os.ModePerm))
-	f, i, err = IsFileReadable(noExt, false)
+	_, _, err = IsFileReadable(noExt, false)
 	assert.Error(t, err)
 
 	f, i, err = IsFileReadable(noExt, true)
 	assert.NoError(t, err)
 	assert.Equal(t, p, f)
 	assert.NotNil(t, i)
+	assert.Equal(t, p, f)
 }
 
 func TestUploadFile(t *testing.T) {
@@ -79,14 +83,14 @@ func TestUploadFile(t *testing.T) {
 func TestDownloadFromHttp(t *testing.T) {
 	loc := storage.DataReference("https://raw.githubusercontent.com/lyft/flyte/master/README.md")
 	badLoc := storage.DataReference("https://no-exist")
-	f, err := DownloadFileFromHttp(context.TODO(), loc)
+	f, err := DownloadFileFromHTTP(context.TODO(), loc)
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, f) {
 			f.Close()
 		}
 	}
 
-	f, err = DownloadFileFromHttp(context.TODO(), badLoc)
+	_, err = DownloadFileFromHTTP(context.TODO(), badLoc)
 	assert.Error(t, err)
 }
 

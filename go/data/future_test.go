@@ -30,7 +30,7 @@ func TestNewSyncFuture(t *testing.T) {
 			assert.Equal(t, tt.args.val, got.val)
 			assert.Equal(t, tt.args.err, got.err)
 			assert.True(t, got.Ready())
-			v, err := got.Get(nil)
+			v, err := got.Get(context.TODO())
 			assert.Equal(t, tt.args.val, v)
 			assert.Equal(t, tt.args.err, err)
 		})
@@ -39,8 +39,9 @@ func TestNewSyncFuture(t *testing.T) {
 
 func TestAsyncFuture(t *testing.T) {
 
+	const val = "val"
 	t.Run("immediate-return-val", func(t *testing.T) {
-		v := "val"
+		v := val
 		err := fmt.Errorf("err")
 		af := NewAsyncFuture(context.TODO(), func(ctx context.Context) (interface{}, error) {
 			return v, err
@@ -53,7 +54,7 @@ func TestAsyncFuture(t *testing.T) {
 	})
 
 	t.Run("wait-return-val", func(t *testing.T) {
-		v := "val"
+		v := val
 		err := fmt.Errorf("err")
 		af := NewAsyncFuture(context.TODO(), func(ctx context.Context) (interface{}, error) {
 			time.Sleep(time.Second * 1)
@@ -68,7 +69,7 @@ func TestAsyncFuture(t *testing.T) {
 	})
 
 	t.Run("timeout", func(t *testing.T) {
-		v := "val"
+		v := val
 		ctx := context.TODO()
 		af := NewAsyncFuture(ctx, func(ctx context.Context) (interface{}, error) {
 			time.Sleep(time.Second * 5)
@@ -79,6 +80,6 @@ func TestAsyncFuture(t *testing.T) {
 		cancel()
 		_, rerr := af.Get(cctx)
 		assert.Error(t, rerr)
-		assert.Equal(t, AsyncFutureCanceledErr, rerr)
+		assert.Equal(t, ErrAsyncFutureCanceled, rerr)
 	})
 }

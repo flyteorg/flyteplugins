@@ -183,7 +183,7 @@ func assertPodHasCoPilot(t *testing.T, cfg config.FlyteCoPilotConfig, pilot *cor
 		if c.Name == "test" {
 			assertContainerHasVolumeMounts(t, cfg, pilot, iFace, &c)
 		} else {
-			if c.Name == cfg.NamePrefix + flyteInitContainerName ||  c.Name == cfg.NamePrefix + flyteSidecarContainerName {
+			if c.Name == cfg.NamePrefix+flyteInitContainerName || c.Name == cfg.NamePrefix+flyteSidecarContainerName {
 				if iFace != nil {
 					vmap := map[string]v1.VolumeMount{}
 					for _, v := range c.VolumeMounts {

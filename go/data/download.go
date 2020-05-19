@@ -24,7 +24,7 @@ import (
 )
 
 type Downloader struct {
-	format  Format
+	format Format
 	// TODO support multiple buckets
 	store *storage.DataStore
 }
@@ -38,7 +38,7 @@ func (d Downloader) handleBlob(ctx context.Context, blob *core.Blob, toFilePath 
 	}
 	var reader io.ReadCloser
 	if scheme == "http" || scheme == "https" {
-		reader, err = DownloadFileFromHttp(ctx, ref)
+		reader, err = DownloadFileFromHTTP(ctx, ref)
 	} else {
 		if blob.GetMetadata().GetType().Dimensionality == core.BlobType_MULTIPART {
 			logger.Warnf(ctx, "Currently only single part blobs are supported, we will force multipart to be 'path/00000'")
@@ -83,7 +83,7 @@ func (d Downloader) handleSchema(ctx context.Context, schema *core.Schema, toFil
 	return d.handleBlob(ctx, &core.Blob{Uri: schema.Uri, Metadata: &core.BlobMetadata{Type: &core.BlobType{Dimensionality: core.BlobType_MULTIPART}}}, toFilePath)
 }
 
-func (d Downloader) handleBinary(ctx context.Context, b *core.Binary, toFilePath string, writeToFile bool) (interface{}, error) {
+func (d Downloader) handleBinary(_ context.Context, b *core.Binary, toFilePath string, writeToFile bool) (interface{}, error) {
 	// maybe we should return a map
 	v := b.GetValue()
 	if writeToFile {
@@ -92,8 +92,11 @@ func (d Downloader) handleBinary(ctx context.Context, b *core.Binary, toFilePath
 	return v, nil
 }
 
-func (d Downloader) handleError(ctx context.Context, b *core.Error, toFilePath string, writeToFile bool) (interface{}, error) {
+func (d Downloader) handleError(_ context.Context, b *core.Error, toFilePath string, writeToFile bool) (interface{}, error) {
 	// maybe we should return a map
+	if writeToFile {
+		return b.Message, ioutil.WriteFile(toFilePath, []byte(b.Message), os.ModePerm)
+	}
 	return b.Message, nil
 }
 
@@ -292,7 +295,7 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 		v, err := future.Get(childCtx)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to persist [%s], err %s", variable, err)
-			if err == AsyncFutureCanceledErr {
+			if err == ErrAsyncFutureCanceled {
 				logger.Errorf(ctx, "Future was canceled, possibly Timeout!")
 			}
 			return nil, nil, errors.Wrapf(err, "variable [%s] download/store failed", variable)
@@ -353,7 +356,7 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 func NewDownloader(_ context.Context, store *storage.DataStore, format Format) Downloader {
 	format = strings.ToLower(format)
 	return Downloader{
-		format:  format,
-		store:   store,
+		format: format,
+		store:  store,
 	}
 }

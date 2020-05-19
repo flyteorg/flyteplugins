@@ -76,22 +76,22 @@ func (k sharedProcessNSWatcher) wait(ctx context.Context, cyclesToWait int, f fu
 	t := time.NewTicker(k.pollInterval)
 	defer t.Stop()
 	cyclesOfMissingProcesses := 0
-	for ; ; {
+	for {
 		select {
 		case <-ctx.Done():
 			logger.Infof(ctx, "Context canceled")
-			return TimeoutError
+			return ErrTimeout
 		case <-t.C:
 			logger.Infof(ctx, "Checking processes to see if any process were started...")
-			if yes, err := k.s.AnyProcessRunning(ctx); err != nil {
+			yes, err := k.s.AnyProcessRunning(ctx)
+			if err != nil {
 				return err
-			} else {
-				if f(ctx, yes) {
-					cyclesOfMissingProcesses += 1
-					if cyclesOfMissingProcesses >= cyclesToWait {
-						logger.Infof(ctx, "Exiting wait loop")
-						return nil
-					}
+			}
+			if f(ctx, yes) {
+				cyclesOfMissingProcesses++
+				if cyclesOfMissingProcesses >= cyclesToWait {
+					logger.Infof(ctx, "Exiting wait loop")
+					return nil
 				}
 			}
 			logger.Infof(ctx, "process not yet started")

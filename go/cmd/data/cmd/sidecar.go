@@ -75,9 +75,10 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 	}
 
 	logger.Infof(ctx, "Waiting for Container to start with timeout %s.", u.containerStartTimeout)
-	childCtx, _ := context.WithTimeout(ctx, u.containerStartTimeout)
+	childCtx, cancelFn := context.WithTimeout(ctx, u.containerStartTimeout)
+	defer cancelFn()
 	err = w.WaitToStart(childCtx)
-	if err != nil && err != containerwatcher.TimeoutError {
+	if err != nil && err != containerwatcher.ErrTimeout {
 		return err
 	}
 
@@ -102,7 +103,8 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 	logger.Infof(ctx, "Container Exited! uploading data.")
 
 	dl := data.NewUploader(ctx, u.Store, u.outputFormat, ErrorFile)
-	childCtx, _ = context.WithTimeout(ctx, u.timeout)
+	childCtx, cancelFn = context.WithTimeout(ctx, u.timeout)
+	defer cancelFn()
 	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix), storage.DataReference(u.remoteOutputsRawPrefix)); err != nil {
 		logger.Errorf(ctx, "Uploading failed, err %s", err)
 		return err
@@ -147,8 +149,8 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for uploads to complete, default is 1H")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.outputInterface, "output-interface", "i", nil, "Output interface proto message - core.VariableMap, base64 encoced string")
 	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "u", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")
-	uploadCmd.Flags().StringVarP(&uploadOptions.startWatcherType, "start-watcher-type", "w", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for container before starting upload process. Watcher type makes the type configurable. Avaialble Type %+v", containerwatcher.AllWatcherTypes))
-	uploadCmd.Flags().StringVarP(&uploadOptions.exitWatcherType, "exit-watcher-type", "k", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Avaialble Type %+v", containerwatcher.AllWatcherTypes))
+	uploadCmd.Flags().StringVarP(&uploadOptions.startWatcherType, "start-watcher-type", "w", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for container before starting upload process. Watcher type makes the type configurable. Available Type %+v", containerwatcher.AllWatcherTypes))
+	uploadCmd.Flags().StringVarP(&uploadOptions.exitWatcherType, "exit-watcher-type", "k", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Upload will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Available Type %+v", containerwatcher.AllWatcherTypes))
 	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "watch-container", "c", "", "For KubeAPI watcher, Wait for this container to exit.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Namespace, "namespace", "n", "", "For KubeAPI watcher, Namespace of the pod [optional]")
 	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "pod-name", "o", "", "For KubeAPI watcher, Name of the pod [optional].")

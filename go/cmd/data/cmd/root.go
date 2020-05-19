@@ -27,7 +27,6 @@ import (
 
 type RootOptions struct {
 	*clientcmd.ConfigOverrides
-	allNamespaces  bool
 	showSource     bool
 	clientConfig   clientcmd.ClientConfig
 	restConfig     *rest.Config

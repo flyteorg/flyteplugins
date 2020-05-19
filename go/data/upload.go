@@ -23,8 +23,7 @@ const maxPrimitiveSize = 1024
 
 type Unmarshal func(r io.Reader, msg proto.Message) error
 type Uploader struct {
-	format    Format
-	unmarshal Unmarshal
+	format Format
 	// TODO support multiple buckets
 	store                   *storage.DataStore
 	aggregateOutputFileName string
@@ -37,19 +36,18 @@ type dirFile struct {
 	ref  storage.DataReference
 }
 
-func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, filePath string) (*core.Literal, error) {
-	if fpath, info, err := IsFileReadable(filePath, true); err != nil {
+func (u Uploader) handleSimpleType(_ context.Context, t core.SimpleType, filePath string) (*core.Literal, error) {
+	fpath, info, err := IsFileReadable(filePath, true)
+	if err != nil {
 		return nil, err
-	} else {
-		if info.IsDir() {
-			return nil, fmt.Errorf("expected file for type [%s], found dir at path [%s]", t.String(), filePath)
-		}
-		if info.Size() > maxPrimitiveSize {
-			return nil, fmt.Errorf("maximum allowed filesize is [%d], but found [%d]", maxPrimitiveSize, info.Size())
-		}
-		filePath = fpath
 	}
-	b, err := ioutil.ReadFile(filePath)
+	if info.IsDir() {
+		return nil, fmt.Errorf("expected file for type [%s], found dir at path [%s]", t.String(), filePath)
+	}
+	if info.Size() > maxPrimitiveSize {
+		return nil, fmt.Errorf("maximum allowed filesize is [%d], but found [%d]", maxPrimitiveSize, info.Size())
+	}
+	b, err := ioutil.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
@@ -57,62 +55,61 @@ func (u Uploader) handleSimpleType(ctx context.Context, t core.SimpleType, fileP
 }
 
 func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath storage.DataReference) (*core.Literal, error) {
-	if fpath, info, err := IsFileReadable(localPath, true); err != nil {
+	fpath, info, err := IsFileReadable(localPath, true)
+	if err != nil {
 		return nil, err
-	} else {
-		if info.IsDir() {
-			var files []dirFile
-			err := filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
+	}
+	if info.IsDir() {
+		var files []dirFile
+		err := filepath.Walk(localPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				logger.Errorf(ctx, "encountered error when uploading multipart blob, %s", err)
+				return err
+			}
+			if info.IsDir() {
+				logger.Warnf(ctx, "Currently nested directories are not supported in multipart blob uploads, for directory @ %s", path)
+			} else {
+				ref, err := u.store.ConstructReference(ctx, toPath, info.Name())
 				if err != nil {
-					logger.Errorf(ctx, "encountered error when uploading multipart blob, %s", err)
 					return err
 				}
-				if info.IsDir() {
-					logger.Warnf(ctx, "Currently nested directories are not supported in multipart blob uploads, for directory @ %s", path)
-				} else {
-					ref, err := u.store.ConstructReference(ctx, toPath, info.Name())
-					if err != nil {
-						return err
-					}
-					files = append(files, dirFile{
-						path: path,
-						info: info,
-						ref:  ref,
-					})
-				}
-				return nil
-			})
+				files = append(files, dirFile{
+					path: path,
+					info: info,
+					ref:  ref,
+				})
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		childCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		fileUploader := make([]Future, 0, len(files))
+		for _, f := range files {
+			pth := f.path
+			ref := f.ref
+			size := f.info.Size()
+			fileUploader = append(fileUploader, NewAsyncFuture(childCtx, func(i2 context.Context) (i interface{}, e error) {
+				return nil, UploadFileToStorage(i2, pth, ref, size, u.store)
+			}))
+		}
+
+		for _, f := range fileUploader {
+			// TODO maybe we should have timeouts, or we can have a global timeout at the top level
+			_, err := f.Get(ctx)
 			if err != nil {
 				return nil, err
 			}
-
-			childCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			fileUploader := make([]Future, 0, len(files))
-			for _, f := range files {
-				pth := f.path
-				ref := f.ref
-				size := f.info.Size()
-				fileUploader = append(fileUploader, NewAsyncFuture(childCtx, func(i2 context.Context) (i interface{}, e error) {
-					return nil, UploadFileToStorage(i2, pth, ref, size, u.store)
-				}))
-			}
-
-			for _, f := range fileUploader {
-				// TODO maybe we should have timeouts, or we can have a global timeout at the top level
-				_, err := f.Get(ctx)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			return utils.MakeLiteralForBlob(toPath, false, ""), nil
-		} else {
-			size := info.Size()
-			// Should we make this a go routine as well, so that we can introduce timeouts
-			return utils.MakeLiteralForBlob(toPath, false, ""), UploadFileToStorage(ctx, fpath, toPath, size, u.store)
 		}
+
+		return utils.MakeLiteralForBlob(toPath, false, ""), nil
 	}
+	size := info.Size()
+	// Should we make this a go routine as well, so that we can introduce timeouts
+	return utils.MakeLiteralForBlob(toPath, false, ""), UploadFileToStorage(ctx, fpath, toPath, size, u.store)
 }
 
 func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, metadataPath, dataRawPath storage.DataReference) error {
@@ -129,11 +126,11 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 	} else if info.IsDir() {
 		return fmt.Errorf("error file is a directory")
 	} else {
-		if b, err := ioutil.ReadFile(errFile); err != nil {
+		b, err := ioutil.ReadFile(errFile)
+		if err != nil {
 			return err
-		} else {
-			return errors.Errorf("User Error: %s", string(b))
 		}
+		return errors.Errorf("User Error: %s", string(b))
 	}
 
 	varFutures := make(map[string]Future, len(vars.Variables))

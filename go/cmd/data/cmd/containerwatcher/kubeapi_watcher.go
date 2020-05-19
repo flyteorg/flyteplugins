@@ -8,7 +8,7 @@ import (
 	v13 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/kubernetes/typed/core/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type ContainerInformation struct {
@@ -43,7 +43,7 @@ func (k kubeAPIWatcher) wait(ctx context.Context, info ContainerInformation, f f
 			}
 		case <-ctx.Done():
 			logger.Infof(ctx, "Pod [%s/%s] watcher canceled", info.Namespace, info.PodName)
-			return TimeoutError
+			return ErrTimeout
 		}
 	}
 }

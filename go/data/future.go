@@ -1,7 +1,7 @@
 // This module implements a simple Async Futures for golang
 // Usage:
 // f := NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
-            // can do large async / non blocking work
+// can do large async / non blocking work
 //			return ...
 //		}
 // f.Ready() // can be checked for completion
@@ -50,8 +50,8 @@ func NewSyncFuture(val interface{}, err error) *SyncFuture {
 	}
 }
 
-// This is error is returned when the async future is cancelled by invoking the cancel function on the context
-var AsyncFutureCanceledErr error = fmt.Errorf("async future was canceled")
+// ErrAsyncFutureCanceled is returned when the async future is cancelled by invoking the cancel function on the context
+var ErrAsyncFutureCanceled = fmt.Errorf("async future was canceled")
 
 // An asynchronously completing future
 type AsyncFuture struct {
@@ -59,10 +59,10 @@ type AsyncFuture struct {
 	doneChannel chan bool
 	cancelFn    context.CancelFunc
 	// The actual value
-	val         interface{}
+	val interface{}
 	// Or an error
-	err         error
-	ready       bool
+	err   error
+	ready bool
 }
 
 func (f *AsyncFuture) set(val interface{}, err error) {
@@ -88,13 +88,13 @@ func (f *AsyncFuture) Ready() bool {
 }
 
 // Returns results (interface{} or an error) OR blocks till the results are available.
-// If context is cancelled while waiting for results, an AsyncFutureCanceledErr is returned
+// If context is cancelled while waiting for results, an ErrAsyncFutureCanceled is returned
 func (f *AsyncFuture) Get(ctx context.Context) (interface{}, error) {
 	select {
 	case <-ctx.Done():
 		f.cancelFn()
-		return nil, AsyncFutureCanceledErr
-	case <- f.doneChannel:
+		return nil, ErrAsyncFutureCanceled
+	case <-f.doneChannel:
 		return f.get()
 	}
 }
