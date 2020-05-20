@@ -288,7 +288,9 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 		})
 	}
 
-	m := &core.LiteralMap{}
+	m := &core.LiteralMap{
+		Literals: make(map[string]*core.Literal),
+	}
 	vmap := make(VarMap, len(f))
 	for variable, future := range f {
 		logger.Infof(ctx, "Waiting for [%s] to be persisted", variable)

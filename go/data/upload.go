@@ -112,7 +112,7 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 	return utils.MakeLiteralForBlob(toPath, false, ""), UploadFileToStorage(ctx, fpath, toPath, size, u.store)
 }
 
-func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, metadataPath, dataRawPath storage.DataReference) error {
+func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, fromPath string, metaOutputPath, dataRawPath storage.DataReference) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -179,16 +179,12 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 		logger.Infof(ctx, "Var [%s] completed", k)
 	}
 
-	toOutputPath, err := u.store.ConstructReference(ctx, metadataPath, u.aggregateOutputFileName)
-	if err != nil {
+	logger.Infof(ctx, "Uploading final outputs to [%s]", metaOutputPath)
+	if err := u.store.WriteProtobuf(ctx, metaOutputPath, storage.Options{}, outputs); err != nil {
+		logger.Errorf(ctx, "Failed to upload final outputs file to [%s], err [%s]", metaOutputPath, err)
 		return err
 	}
-	logger.Infof(ctx, "Uploading final outputs to [%s]", toOutputPath)
-	if err := u.store.WriteProtobuf(ctx, toOutputPath, storage.Options{}, outputs); err != nil {
-		logger.Errorf(ctx, "Failed to upload final outputs file to [%s], err [%s]", toOutputPath, err)
-		return err
-	}
-	logger.Infof(ctx, "Uploaded final outputs to [%s]", toOutputPath)
+	logger.Infof(ctx, "Uploaded final outputs to [%s]", metaOutputPath)
 	return nil
 }
 
@@ -196,7 +192,6 @@ func NewUploader(_ context.Context, store *storage.DataStore, format Format, err
 	return Uploader{
 		format:                  format,
 		store:                   store,
-		aggregateOutputFileName: "outputs.pb",
 		errorFileName:           errorFileName,
 	}
 }

@@ -17,15 +17,20 @@ import (
 )
 
 const (
-	StartFile   = "_START"
-	SuccessFile = "_SUCCESS"
-	ErrorFile   = "_ERROR"
+	StartFile        = "_START"
+	SuccessFile      = "_SUCCESS"
+	ErrorFile        = "_ERROR"
 )
 
 type UploadOptions struct {
 	*RootOptions
+	// The remote prefix where all the meta outputs or error should be uploaded of the form s3://bucket/prefix
 	remoteOutputsPrefix    string
+	// Name like outputs.pb under the remoteOutputsPrefix that should be created to upload the metaOutputs
+	metaOutputName         string
+	// The remote prefix where all the raw outputs should be uploaded of the form s3://bucket/prefix/
 	remoteOutputsRawPrefix string
+	// Local directory path where the sidecar should look for outputs.
 	localDirectoryPath     string
 	// Non primitive types will be dumped in this output format
 	outputFormat          data.Format
@@ -102,10 +107,17 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 
 	logger.Infof(ctx, "Container Exited! uploading data.")
 
+	// TODO maybe we should just take the meta output path as an input argument
+	toOutputPath, err := u.Store.ConstructReference(ctx, storage.DataReference(u.remoteOutputsPrefix), u.metaOutputName)
+	if err != nil {
+		return err
+	}
+
 	dl := data.NewUploader(ctx, u.Store, u.outputFormat, ErrorFile)
+
 	childCtx, cancelFn = context.WithTimeout(ctx, u.timeout)
 	defer cancelFn()
-	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, storage.DataReference(u.remoteOutputsPrefix), storage.DataReference(u.remoteOutputsRawPrefix)); err != nil {
+	if err := dl.RecursiveUpload(childCtx, outputInterface, u.localDirectoryPath, toOutputPath, storage.DataReference(u.remoteOutputsRawPrefix)); err != nil {
 		logger.Errorf(ctx, "Uploading failed, err %s", err)
 		return err
 	}
@@ -146,6 +158,7 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsRawPrefix, "to-raw-output", "x", "", "The remote path/key prefix for outputs in remote store. This is a sandbox directory and all data will be uploaded here.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.localDirectoryPath, "from-local-dir", "d", "", "The local directory on disk where data will be available for upload.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
+	uploadCmd.Flags().StringVarP(&uploadOptions.metaOutputName, "meta-output-name", "k", "outputs.pb", "The key name under the remoteOutputPrefix that should be return to provide meta information about the outputs on successful execution")
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for uploads to complete, default is 1H")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.outputInterface, "output-interface", "i", nil, "Output interface proto message - core.VariableMap, base64 encoced string")
 	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "u", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")

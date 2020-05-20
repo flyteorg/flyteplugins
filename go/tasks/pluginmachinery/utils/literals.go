@@ -100,6 +100,23 @@ func MustMakePrimitiveLiteral(v interface{}) *core.Literal {
 	return p
 }
 
+func MakeLiteralMap(v map[string]interface{}) (*core.LiteralMap, error) {
+
+	literals := make(map[string]*core.Literal, len(v))
+	for key, val := range v {
+		l, err := MakeLiteral(val)
+		if err != nil {
+			return nil, err
+		}
+
+		literals[key] = l
+	}
+
+	return &core.LiteralMap{
+		Literals: literals,
+	}, nil
+}
+
 func MakeLiteralForMap(v map[string]interface{}) (*core.Literal, error) {
 	m, err := MakeLiteralMap(v)
 	if err != nil {
@@ -203,23 +220,6 @@ func MustMakeLiteral(v interface{}) *core.Literal {
 	}
 
 	return p
-}
-
-func MakeLiteralMap(v map[string]interface{}) (*core.LiteralMap, error) {
-
-	literals := make(map[string]*core.Literal, len(v))
-	for key, val := range v {
-		l, err := MakeLiteral(val)
-		if err != nil {
-			return nil, err
-		}
-
-		literals[key] = l
-	}
-
-	return &core.LiteralMap{
-		Literals: literals,
-	}, nil
 }
 
 func MustMakeDefaultLiteralForType(typ *core.LiteralType) *core.Literal {

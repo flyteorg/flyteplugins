@@ -27,14 +27,16 @@ import (
 
 type RootOptions struct {
 	*clientcmd.ConfigOverrides
-	showSource     bool
-	clientConfig   clientcmd.ClientConfig
-	restConfig     *rest.Config
-	kubeClient     kubernetes.Interface
-	Scope          promutils.Scope
-	Store          *storage.DataStore
-	configAccessor config.Accessor
-	cfgFile        string
+	showSource      bool
+	clientConfig    clientcmd.ClientConfig
+	restConfig      *rest.Config
+	kubeClient      kubernetes.Interface
+	Scope           promutils.Scope
+	Store           *storage.DataStore
+	configAccessor  config.Accessor
+	cfgFile         string
+	// The actual key name that should be created under the remote prefix where the error document is written of the form errors.pb
+	errorOutputName string
 }
 
 func (r *RootOptions) executeRootCmd() error {
@@ -50,7 +52,7 @@ func (r RootOptions) UploadError(ctx context.Context, code string, recvErr error
 	if recvErr == nil {
 		recvErr = fmt.Errorf("unknown error")
 	}
-	errorPath, err := r.Store.ConstructReference(ctx, prefix, "errors.pb")
+	errorPath, err := r.Store.ConstructReference(ctx, prefix, r.errorOutputName)
 	if err != nil {
 		logger.Errorf(ctx, "failed to create error file path err: %s", err)
 		return err
@@ -103,6 +105,7 @@ func NewDataCommand() *cobra.Command {
 
 	command.PersistentFlags().StringVar(&rootOpts.cfgFile, "config", "", "config file (default is $HOME/config.yaml)")
 	command.PersistentFlags().BoolVarP(&rootOpts.showSource, "show-source", "s", false, "Show line number for errors")
+	command.PersistentFlags().StringVar(&rootOpts.errorOutputName, "err-output-name", "errors.pb", "Actual key name under the prefix where the error protobuf should be written to")
 
 	rootOpts.configAccessor = viper.NewAccessor(config.Options{StrictMode: true})
 	// Here you will define your flags and configuration settings. Cobra supports persistent flags, which, if defined

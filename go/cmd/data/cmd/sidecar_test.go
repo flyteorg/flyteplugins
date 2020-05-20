@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -18,7 +17,7 @@ import (
 	"github.com/lyft/flyteplugins/go/data"
 )
 
-func TestUploadOptions_Upload_SuccessFile(t *testing.T) {
+func TestUploadOptions_Upload(t *testing.T) {
 	tmpFolderLocation := ""
 	tmpPrefix := "upload_test"
 	outputPath := "output"
@@ -50,17 +49,26 @@ func TestUploadOptions_Upload_SuccessFile(t *testing.T) {
 		assert.NoError(t, uopts.Upload(ctx))
 	})
 
-	uopts.outputInterface = nil
-	vmap := &core.VariableMap{
-		Variables: map[string]*core.Variable{
-			"x_test": {
-				Type:        &core.LiteralType{Type: &core.LiteralType_Blob{Blob: &core.BlobType{Dimensionality: core.BlobType_SINGLE}}},
-				Description: "example",
+	t.Run("uploadBlobType-FileNotFound", func(t *testing.T) {
+		vmap := &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {
+					Type:        &core.LiteralType{Type: &core.LiteralType_Blob{Blob: &core.BlobType{Dimensionality: core.BlobType_SINGLE}}},
+					Description: "example",
+				},
 			},
-		},
-	}
-	d, err := proto.Marshal(vmap)
-	assert.NoError(t, err)
-	fmt.Println("========")
-	fmt.Println(base64.StdEncoding.EncodeToString(d))
+		}
+		d, err := proto.Marshal(vmap)
+		assert.NoError(t, err)
+		uopts.outputInterface = []byte(base64.StdEncoding.EncodeToString(d))
+		s := promutils.NewTestScope()
+		store, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, s.NewSubScope("storage"))
+		assert.NoError(t, err)
+		uopts.RootOptions = &RootOptions{
+			Scope: s,
+			Store: store,
+		}
+
+		assert.NoError(t, uopts.Upload(ctx))
+	})
 }
