@@ -90,9 +90,9 @@ func TestDownloadCommandArgs(t *testing.T) {
 	}
 	d, err := DownloadCommandArgs("s3://from", "s3://output-meta", "/to", core.DataLoadingConfig_JSON, iFace)
 	assert.NoError(t, err)
-	expected :=  []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "JSON", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}
+	expected := []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "JSON", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}
 	assert.Len(t, d, len(expected))
-	assert.ElementsMatch(t,expected, d)
+	assert.ElementsMatch(t, expected, d)
 }
 
 func TestSidecarCommandArgs(t *testing.T) {

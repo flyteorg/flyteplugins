@@ -176,7 +176,7 @@ func TestDownloadOptions_Download(t *testing.T) {
 			},
 		}))
 		err = dopts.Download(ctx)
-		assert.NoError(t, err,"Download Operation failed")
+		assert.NoError(t, err, "Download Operation failed")
 		errFile, err := store.ConstructReference(ctx, storage.DataReference(outputPath), "errors.pb")
 		assert.NoError(t, err)
 		errProto := &core.ErrorDocument{}

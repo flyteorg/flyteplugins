@@ -27,14 +27,14 @@ import (
 
 type RootOptions struct {
 	*clientcmd.ConfigOverrides
-	showSource      bool
-	clientConfig    clientcmd.ClientConfig
-	restConfig      *rest.Config
-	kubeClient      kubernetes.Interface
-	Scope           promutils.Scope
-	Store           *storage.DataStore
-	configAccessor  config.Accessor
-	cfgFile         string
+	showSource     bool
+	clientConfig   clientcmd.ClientConfig
+	restConfig     *rest.Config
+	kubeClient     kubernetes.Interface
+	Scope          promutils.Scope
+	Store          *storage.DataStore
+	configAccessor config.Accessor
+	cfgFile        string
 	// The actual key name that should be created under the remote prefix where the error document is written of the form errors.pb
 	errorOutputName string
 }
