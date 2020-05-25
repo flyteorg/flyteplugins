@@ -61,13 +61,13 @@ var (
 	jobNamespace = "pytorch-namespace"
 )
 
-func dummyPytorchCustomObj(workers int32) *plugins.PyTorchOperatorTask {
-	return  &plugins.PyTorchOperatorTask{
+func dummyPytorchCustomObj(workers int32) *plugins.DistributedPyTorchTrainingTask {
+	return  &plugins.DistributedPyTorchTrainingTask{
 		Workers:              workers,
 	}
 }
 
-func dummySparkTaskTemplate(id string, pytorchCustomObj *plugins.PyTorchOperatorTask) *core.TaskTemplate {
+func dummySparkTaskTemplate(id string, pytorchCustomObj *plugins.DistributedPyTorchTrainingTask) *core.TaskTemplate {
 
 	ptObjJSON, err := utils.MarshalToString(pytorchCustomObj)
 	if err != nil {
@@ -105,16 +105,16 @@ func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskEx
 	taskCtx.OnInputReader().Return(inputReader)
 
 	outputReader := &pluginIOMocks.OutputWriter{}
-	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
-	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
-	taskCtx.On("OutputWriter").Return(outputReader)
+	outputReader.OnGetOutputPath().Return(storage.DataReference("/data/outputs.pb"))
+	outputReader.OnGetOutputPrefixPath().Return(storage.DataReference("/data/"))
+	taskCtx.OnOutputWriter().Return(outputReader)
 
 	taskReader := &mocks.TaskReader{}
-	taskReader.On("Read", mock.Anything).Return(taskTemplate, nil)
-	taskCtx.On("TaskReader").Return(taskReader)
+	taskReader.OnReadMatch(mock.Anything).Return(taskTemplate, nil)
+	taskCtx.OnTaskReader().Return(taskReader)
 
 	tID := &mocks.TaskExecutionID{}
-	tID.On("GetID").Return(core.TaskExecutionIdentifier{
+	tID.OnGetID().Return(core.TaskExecutionIdentifier{
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
 				Name:    "my_name",
@@ -123,25 +123,25 @@ func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskEx
 			},
 		},
 	})
-	tID.On("GetGeneratedName").Return("some-acceptable-name")
+	tID.OnGetGeneratedName().Return("some-acceptable-name")
 
 
 	resources := &mocks.TaskOverrides{}
 	resources.OnGetResources().Return(resourceRequirements)
 
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
-	taskExecutionMetadata.On("GetTaskExecutionID").Return(tID)
-	taskExecutionMetadata.On("GetNamespace").Return("test-namespace")
-	taskExecutionMetadata.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
-	taskExecutionMetadata.On("GetLabels").Return(map[string]string{"label-1": "val1"})
-	taskExecutionMetadata.On("GetOwnerReference").Return(v1.OwnerReference{
+	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
+	taskExecutionMetadata.OnGetNamespace().Return("test-namespace")
+	taskExecutionMetadata.OnGetAnnotations().Return(map[string]string{"annotation-1": "val1"})
+	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
+	taskExecutionMetadata.OnGetOwnerReference().Return(v1.OwnerReference{
 		Kind: "node",
 		Name: "blah",
 	})
-	taskExecutionMetadata.On("IsInterruptible").Return(true)
-	taskExecutionMetadata.On("GetOverrides").Return(resources)
-	taskExecutionMetadata.On("GetK8sServiceAccount").Return(serviceAccount)
-	taskCtx.On("TaskExecutionMetadata").Return(taskExecutionMetadata)
+	taskExecutionMetadata.OnIsInterruptible().Return(true)
+	taskExecutionMetadata.OnGetOverrides().Return(resources)
+	taskExecutionMetadata.OnGetK8sServiceAccount().Return(serviceAccount)
+	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
 	return taskCtx
 }
 
