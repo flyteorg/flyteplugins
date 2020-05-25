@@ -15,7 +15,6 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lyft/flyteplugins/go/data"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
 
@@ -30,7 +29,8 @@ func TestDownloadOptions_Download(t *testing.T) {
 	dopts := DownloadOptions{
 		remoteInputsPath:    inputPath,
 		remoteOutputsPrefix: outputPath,
-		outputFormat:        data.FormatJSON,
+		metadataFormat:      core.DataLoadingConfig_JSON.String(),
+		downloadMode:        core.IOStrategy_DOWNLOAD_EAGER.String(),
 	}
 
 	collectFile := func(d string) []string {
@@ -64,7 +64,7 @@ func TestDownloadOptions_Download(t *testing.T) {
 		assert.NoError(t, store.WriteProtobuf(ctx, storage.DataReference(inputPath), storage.Options{}, &core.LiteralMap{}))
 		assert.NoError(t, dopts.Download(ctx))
 
-		assert.Equal(t, []string{"inputs"}, collectFile(tmpDir))
+		assert.Len(t, collectFile(tmpDir), 0)
 	})
 
 	t.Run("primitiveInputs", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestDownloadOptions_Download(t *testing.T) {
 			},
 		}))
 		assert.NoError(t, dopts.Download(ctx), "Download Operation failed")
-		assert.Equal(t, []string{"inputs", "x", "y"}, collectFile(tmpDir))
+		assert.Equal(t, []string{"inputs.json", "inputs.pb", "x", "y"}, collectFile(tmpDir))
 	})
 
 	t.Run("primitiveAndBlobInputs", func(t *testing.T) {
@@ -134,51 +134,7 @@ func TestDownloadOptions_Download(t *testing.T) {
 			},
 		}))
 		assert.NoError(t, dopts.Download(ctx), "Download Operation failed")
-		assert.ElementsMatch(t, []string{"inputs", "x", "y", "blob"}, collectFile(tmpDir))
-	})
-
-	t.Run("primitiveAndBlobInputs", func(t *testing.T) {
-		tmpDir, err := ioutil.TempDir(tmpFolderLocation, tmpPrefix)
-		assert.NoError(t, err)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(tmpDir))
-		}()
-		dopts.localDirectoryPath = tmpDir
-
-		s := promutils.NewTestScope()
-		store, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, s.NewSubScope("storage"))
-		assert.NoError(t, err)
-		dopts.RootOptions = &RootOptions{
-			Scope: s,
-			Store: store,
-		}
-
-		blobLoc := storage.DataReference("blob-loc")
-		br := bytes.NewBuffer([]byte("Hello World!"))
-		assert.NoError(t, store.WriteRaw(ctx, blobLoc, int64(br.Len()), storage.Options{}, br))
-		assert.NoError(t, store.WriteProtobuf(ctx, storage.DataReference(inputPath), storage.Options{}, &core.LiteralMap{
-			Literals: map[string]*core.Literal{
-				"x": utils.MustMakePrimitiveLiteral(1),
-				"y": utils.MustMakePrimitiveLiteral("hello"),
-				"blob": {Value: &core.Literal_Scalar{
-					Scalar: &core.Scalar{
-						Value: &core.Scalar_Blob{
-							Blob: &core.Blob{
-								Uri: blobLoc.String(),
-								Metadata: &core.BlobMetadata{
-									Type: &core.BlobType{
-										Dimensionality: core.BlobType_SINGLE,
-										Format:         ".xyz",
-									},
-								},
-							},
-						},
-					},
-				}},
-			},
-		}))
-		assert.NoError(t, dopts.Download(ctx), "Download Operation failed")
-		assert.ElementsMatch(t, []string{"blob", "inputs", "x", "y"}, collectFile(tmpDir))
+		assert.ElementsMatch(t, []string{"inputs.json", "inputs.pb", "x", "y", "blob"}, collectFile(tmpDir))
 	})
 
 	t.Run("primitiveAndMissingBlobInputs", func(t *testing.T) {
@@ -193,8 +149,9 @@ func TestDownloadOptions_Download(t *testing.T) {
 		store, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, s.NewSubScope("storage"))
 		assert.NoError(t, err)
 		dopts.RootOptions = &RootOptions{
-			Scope: s,
-			Store: store,
+			Scope:           s,
+			Store:           store,
+			errorOutputName: "errors.pb",
 		}
 
 		assert.NoError(t, store.WriteProtobuf(ctx, storage.DataReference(inputPath), storage.Options{}, &core.LiteralMap{
@@ -218,14 +175,15 @@ func TestDownloadOptions_Download(t *testing.T) {
 				}},
 			},
 		}))
-		assert.NoError(t, dopts.Download(ctx), "Download Operation failed")
+		err = dopts.Download(ctx)
+		assert.NoError(t, err,"Download Operation failed")
 		errFile, err := store.ConstructReference(ctx, storage.DataReference(outputPath), "errors.pb")
 		assert.NoError(t, err)
 		errProto := &core.ErrorDocument{}
 		err = store.ReadProtobuf(ctx, errFile, errProto)
 		assert.NoError(t, err)
-		assert.NotNil(t, errProto.Error)
-		assert.Equal(t, core.ContainerError_RECOVERABLE, errProto.Error.Kind)
+		if assert.NotNil(t, errProto.Error) {
+			assert.Equal(t, core.ContainerError_RECOVERABLE, errProto.Error.Kind)
+		}
 	})
-
 }

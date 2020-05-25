@@ -13,19 +13,5 @@
 // TODO: Currently retries are not automatically handled.
 package data
 
-type Format = string
-
-const (
-	FormatJSON  Format = "json"
-	FormatYAML  Format = "yaml"
-	FormatProto Format = "proto"
-)
-
-var AllOutputFormats = []Format{
-	FormatJSON,
-	FormatYAML,
-	FormatProto,
-}
-
 type VarMap map[string]interface{}
 type FutureMap map[string]Future

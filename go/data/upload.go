@@ -23,7 +23,8 @@ const maxPrimitiveSize = 1024
 
 type Unmarshal func(r io.Reader, msg proto.Message) error
 type Uploader struct {
-	format Format
+	format core.DataLoadingConfig_LiteralMapFormat
+	mode   core.IOStrategy_UploadMode
 	// TODO support multiple buckets
 	store                   *storage.DataStore
 	aggregateOutputFileName string
@@ -188,10 +189,11 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 	return nil
 }
 
-func NewUploader(_ context.Context, store *storage.DataStore, format Format, errorFileName string) Uploader {
+func NewUploader(_ context.Context, store *storage.DataStore, format core.DataLoadingConfig_LiteralMapFormat, mode core.IOStrategy_UploadMode, errorFileName string) Uploader {
 	return Uploader{
-		format:                  format,
-		store:                   store,
-		errorFileName:           errorFileName,
+		format:        format,
+		store:         store,
+		errorFileName: errorFileName,
+		mode:          mode,
 	}
 }

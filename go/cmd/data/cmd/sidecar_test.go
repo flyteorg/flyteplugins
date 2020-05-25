@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/lyft/flyteplugins/go/cmd/data/cmd/containerwatcher"
-	"github.com/lyft/flyteplugins/go/data"
 )
 
 func TestUploadOptions_Upload(t *testing.T) {
@@ -25,7 +24,8 @@ func TestUploadOptions_Upload(t *testing.T) {
 	ctx := context.TODO()
 	uopts := UploadOptions{
 		remoteOutputsPrefix: outputPath,
-		outputFormat:        data.FormatJSON,
+		metadataFormat:      core.DataLoadingConfig_JSON.String(),
+		uploadMode:          core.IOStrategy_UPLOAD_ON_EXIT.String(),
 		startWatcherType:    containerwatcher.WatcherTypeFile,
 	}
 

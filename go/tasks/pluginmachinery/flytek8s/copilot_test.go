@@ -90,7 +90,9 @@ func TestDownloadCommandArgs(t *testing.T) {
 	}
 	d, err := DownloadCommandArgs("s3://from", "s3://output-meta", "/to", core.DataLoadingConfig_JSON, iFace)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "json", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}, d)
+	expected :=  []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "JSON", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}
+	assert.Len(t, d, len(expected))
+	assert.ElementsMatch(t,expected, d)
 }
 
 func TestSidecarCommandArgs(t *testing.T) {
@@ -105,7 +107,9 @@ func TestSidecarCommandArgs(t *testing.T) {
 	}
 	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, iFace)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, []string{"upload", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--output-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}, d)
+	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--output-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}
+	assert.Len(t, d, len(expected))
+	assert.ElementsMatch(t, expected, d)
 }
 
 func TestDataVolume(t *testing.T) {

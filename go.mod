@@ -13,7 +13,7 @@ require (
 	github.com/golang/protobuf v1.3.3
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/lyft/flyteidl v0.17.31
+	github.com/lyft/flyteidl v0.17.32-0.20200523192140-add6c8fcece8
 	github.com/lyft/flytestdlib v0.3.3
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/go-ps v1.0.0
@@ -32,6 +32,7 @@ require (
 	google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67 // indirect
 	google.golang.org/grpc v1.27.1
 	gopkg.in/yaml.v2 v2.2.8
+	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.17.2
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v11.0.0+incompatible

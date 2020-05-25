@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/spf13/cobra"
@@ -18,34 +19,76 @@ type DownloadOptions struct {
 	remoteOutputsPrefix string
 	localDirectoryPath  string
 	inputInterface      []byte
-	// Non primitive types will be dumped in this output format
-	outputFormat data.Format
-	timeout      time.Duration
+	metadataFormat      string
+	downloadMode        string
+	timeout             time.Duration
+}
+
+func GetFormatVals() []string {
+	var vals []string
+	for k := range core.DataLoadingConfig_LiteralMapFormat_value {
+		vals = append(vals, k)
+	}
+	return vals
+}
+
+func GetDownloadModeVals() []string {
+	var vals []string
+	for k := range core.IOStrategy_DownloadMode_value {
+		vals = append(vals, k)
+	}
+	return vals
+}
+
+func GetUploadModeVals() []string {
+	var vals []string
+	for k := range core.IOStrategy_UploadMode_value {
+		vals = append(vals, k)
+	}
+	return vals
 }
 
 func (d *DownloadOptions) Download(ctx context.Context) error {
-	if d.localDirectoryPath == "" {
-		return fmt.Errorf("to-local-dir is required")
-	}
 	if d.remoteOutputsPrefix == "" {
 		return fmt.Errorf("to-remoute-prefix is required")
 	}
-	if d.remoteInputsPath == "" {
-		return fmt.Errorf("from-remote is required")
-	}
-	dl := data.NewDownloader(ctx, d.Store, d.outputFormat)
-	childCtx := ctx
-	cancelFn := func() {}
-	if d.timeout > 0 {
-		childCtx, cancelFn = context.WithTimeout(ctx, d.timeout)
-	}
-	defer cancelFn()
-	err := dl.DownloadInputs(childCtx, storage.DataReference(d.remoteInputsPath), d.localDirectoryPath)
-	if err != nil {
-		logger.Errorf(ctx, "Downloading failed, err %s", err)
-		if err := d.UploadError(ctx, "InputDownloadFailed", err, storage.DataReference(d.remoteOutputsPrefix)); err != nil {
-			logger.Errorf(ctx, "Failed to write error document, err :%s", err)
+
+	// We need remote outputs prefix to write and error file
+	err := func() error {
+		if d.localDirectoryPath == "" {
+			return fmt.Errorf("to-local-dir is required")
+		}
+		if d.remoteInputsPath == "" {
+			return fmt.Errorf("from-remote is required")
+		}
+		f, ok := core.DataLoadingConfig_LiteralMapFormat_value[d.metadataFormat]
+		if !ok {
+			return fmt.Errorf("incorrect input download format specified, given [%s], possible values [%+v]", d.metadataFormat, GetFormatVals())
+		}
+
+		m, ok := core.IOStrategy_DownloadMode_value[d.downloadMode]
+		if !ok {
+			return fmt.Errorf("incorrect input download mode specified, given [%s], possible values [%+v]", d.downloadMode, GetDownloadModeVals())
+		}
+		dl := data.NewDownloader(ctx, d.Store, core.DataLoadingConfig_LiteralMapFormat(f), core.IOStrategy_DownloadMode(m))
+		childCtx := ctx
+		cancelFn := func() {}
+		if d.timeout > 0 {
+			childCtx, cancelFn = context.WithTimeout(ctx, d.timeout)
+		}
+		defer cancelFn()
+		err := dl.DownloadInputs(childCtx, storage.DataReference(d.remoteInputsPath), d.localDirectoryPath)
+		if err != nil {
+			logger.Errorf(ctx, "Downloading failed, err %s", err)
 			return err
+		}
+		return nil
+	}()
+
+	if err != nil {
+		if err2 := d.UploadError(ctx, "InputDownloadFailed", err, storage.DataReference(d.remoteOutputsPrefix)); err2 != nil {
+			logger.Errorf(ctx, "Failed to write error document, err :%s", err2)
+			return err2
 		}
 	}
 	return nil
@@ -70,8 +113,9 @@ func NewDownloadCommand(opts *RootOptions) *cobra.Command {
 	downloadCmd.Flags().StringVarP(&downloadOpts.remoteInputsPath, "from-remote", "f", "", "The remote path/key for inputs in stow store.")
 	downloadCmd.Flags().StringVarP(&downloadOpts.remoteOutputsPrefix, "to-output-prefix", "p", "", "The remote path/key prefix for outputs in stow store. this is mostly used to write errors.pb.")
 	downloadCmd.Flags().StringVarP(&downloadOpts.localDirectoryPath, "to-local-dir", "d", "", "The local directory on disk where data should be downloaded.")
-	downloadCmd.Flags().StringVarP(&downloadOpts.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
+	downloadCmd.Flags().StringVarP(&downloadOpts.metadataFormat, "format", "m", core.DataLoadingConfig_JSON.String(), fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", GetFormatVals()))
+	downloadCmd.Flags().StringVarP(&downloadOpts.downloadMode, "download-mode", "n", core.IOStrategy_DOWNLOAD_EAGER.String(), fmt.Sprintf("Download mode to use. Options [%v]", GetDownloadModeVals()))
 	downloadCmd.Flags().DurationVarP(&downloadOpts.timeout, "timeout", "t", time.Hour*1, "Max time to allow for downloads to complete, default is 1H")
-	downloadCmd.Flags().BytesBase64VarP(&downloadOpts.inputInterface, "input-interface", "i", nil, "Intput interface proto message - core.VariableMap, base64 encoced string")
+	downloadCmd.Flags().BytesBase64VarP(&downloadOpts.inputInterface, "input-interface", "i", nil, "Input interface proto message - core.VariableMap, base64 encoced string")
 	return downloadCmd
 }

@@ -43,7 +43,7 @@ func TestUploader_RecursiveUpload(t *testing.T) {
 
 		outputRef := storage.DataReference("output")
 		rawRef := storage.DataReference("raw")
-		u := NewUploader(context.TODO(), store, FormatJSON, "error")
+		u := NewUploader(context.TODO(), store, core.DataLoadingConfig_JSON, core.IOStrategy_UPLOAD_ON_EXIT, "error")
 		assert.NoError(t, u.RecursiveUpload(context.TODO(), vmap, tmpDir, outputRef, rawRef))
 
 		outputs := &core.LiteralMap{}

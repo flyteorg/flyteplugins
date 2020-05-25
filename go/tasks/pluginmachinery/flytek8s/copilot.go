@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -71,7 +70,7 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 		return nil, errors.Wrap(err, "failed to marshal given output interface")
 	}
 	return []string{
-		"upload",
+		"sidecar",
 		"--start-timeout",
 		startTimeout.String(),
 		"--to-raw-output",
@@ -85,7 +84,7 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 	}, nil
 }
 
-func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format core.DataLoadingConfig_MetadataFormat, inputInterface *core.VariableMap) ([]string, error) {
+func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format core.DataLoadingConfig_LiteralMapFormat, inputInterface *core.VariableMap) ([]string, error) {
 	if inputInterface == nil {
 		return nil, fmt.Errorf("input Interface is required for CoPilot Downloader")
 	}
@@ -102,7 +101,7 @@ func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toL
 		"--to-local-dir",
 		toLocalPath,
 		"--format",
-		strings.ToLower(format.String()),
+		format.String(),
 		"--input-interface",
 		base64.StdEncoding.EncodeToString(b),
 	}, nil

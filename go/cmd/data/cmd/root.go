@@ -48,7 +48,6 @@ func (r *RootOptions) executeRootCmd() error {
 }
 
 func (r RootOptions) UploadError(ctx context.Context, code string, recvErr error, prefix storage.DataReference) error {
-	logger.Infof(ctx, "Uploading Error file")
 	if recvErr == nil {
 		recvErr = fmt.Errorf("unknown error")
 	}
@@ -57,7 +56,7 @@ func (r RootOptions) UploadError(ctx context.Context, code string, recvErr error
 		logger.Errorf(ctx, "failed to create error file path err: %s", err)
 		return err
 	}
-	logger.Infof(ctx, "Uploading Error file to path [%s]", errorPath)
+	logger.Infof(ctx, "Uploading Error file to path [%s], errFile: %s", errorPath, r.errorOutputName)
 	return r.Store.WriteProtobuf(ctx, errorPath, storage.Options{}, &core.ErrorDocument{
 		Error: &core.ContainerError{
 			Code:    code,

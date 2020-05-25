@@ -17,23 +17,24 @@ import (
 )
 
 const (
-	StartFile        = "_START"
-	SuccessFile      = "_SUCCESS"
-	ErrorFile        = "_ERROR"
+	StartFile   = "_START"
+	SuccessFile = "_SUCCESS"
+	ErrorFile   = "_ERROR"
 )
 
 type UploadOptions struct {
 	*RootOptions
 	// The remote prefix where all the meta outputs or error should be uploaded of the form s3://bucket/prefix
-	remoteOutputsPrefix    string
+	remoteOutputsPrefix string
 	// Name like outputs.pb under the remoteOutputsPrefix that should be created to upload the metaOutputs
-	metaOutputName         string
+	metaOutputName string
 	// The remote prefix where all the raw outputs should be uploaded of the form s3://bucket/prefix/
 	remoteOutputsRawPrefix string
 	// Local directory path where the sidecar should look for outputs.
-	localDirectoryPath     string
+	localDirectoryPath string
 	// Non primitive types will be dumped in this output format
-	outputFormat          data.Format
+	metadataFormat        string
+	uploadMode            string
 	timeout               time.Duration
 	containerStartTimeout time.Duration
 	outputInterface       []byte
@@ -71,6 +72,16 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 	if outputInterface.Variables == nil || len(outputInterface.Variables) == 0 {
 		logger.Infof(ctx, "Empty output interface received. Assuming void outputs.")
 		return nil
+	}
+
+	f, ok := core.DataLoadingConfig_LiteralMapFormat_value[u.metadataFormat]
+	if !ok {
+		return fmt.Errorf("incorrect input data format specified, given [%s], possible values [%+v]", u.metadataFormat, GetFormatVals())
+	}
+
+	m, ok := core.IOStrategy_UploadMode_value[u.uploadMode]
+	if !ok {
+		return fmt.Errorf("incorrect input upload mode specified, given [%s], possible values [%+v]", u.uploadMode, GetUploadModeVals())
 	}
 
 	logger.Infof(ctx, "Creating start watcher type: %s", u.startWatcherType)
@@ -113,7 +124,7 @@ func (u *UploadOptions) uploader(ctx context.Context) error {
 		return err
 	}
 
-	dl := data.NewUploader(ctx, u.Store, u.outputFormat, ErrorFile)
+	dl := data.NewUploader(ctx, u.Store, core.DataLoadingConfig_LiteralMapFormat(f), core.IOStrategy_UploadMode(m), ErrorFile)
 
 	childCtx, cancelFn = context.WithTimeout(ctx, u.timeout)
 	defer cancelFn()
@@ -146,8 +157,8 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 
 	// deleteCmd represents the delete command
 	uploadCmd := &cobra.Command{
-		Use:   "upload <opts>",
-		Short: "uploads flytedata from the localpath to a remote dir.",
+		Use:   "sidecar <opts>",
+		Short: "uploads flyteData from the localpath to a remote dir.",
 		Long:  `Currently it looks at the outputs.pb and creates one file per variable.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return uploadOptions.Upload(context.Background())
@@ -157,7 +168,8 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsPrefix, "to-output-prefix", "p", "", "The remote path/key prefix for output metadata in stow store.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsRawPrefix, "to-raw-output", "x", "", "The remote path/key prefix for outputs in remote store. This is a sandbox directory and all data will be uploaded here.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.localDirectoryPath, "from-local-dir", "d", "", "The local directory on disk where data will be available for upload.")
-	uploadCmd.Flags().StringVarP(&uploadOptions.outputFormat, "format", "m", "json", fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", data.AllOutputFormats))
+	uploadCmd.Flags().StringVarP(&uploadOptions.metadataFormat, "format", "m", core.DataLoadingConfig_JSON.String(), fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", GetFormatVals()))
+	uploadCmd.Flags().StringVarP(&uploadOptions.uploadMode, "upload-mode", "u", core.IOStrategy_UPLOAD_ON_EXIT.String(), fmt.Sprintf("When should upload start/upload mode. Options [%v]", GetUploadModeVals()))
 	uploadCmd.Flags().StringVarP(&uploadOptions.metaOutputName, "meta-output-name", "k", "outputs.pb", "The key name under the remoteOutputPrefix that should be return to provide meta information about the outputs on successful execution")
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for uploads to complete, default is 1H")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.outputInterface, "output-interface", "i", nil, "Output interface proto message - core.VariableMap, base64 encoced string")

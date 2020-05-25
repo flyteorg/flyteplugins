@@ -10,7 +10,6 @@ import (
 	"path"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -24,9 +23,11 @@ import (
 )
 
 type Downloader struct {
-	format Format
+	format core.DataLoadingConfig_LiteralMapFormat
 	// TODO support multiple buckets
 	store *storage.DataStore
+	// TODO support download mode
+	mode core.IOStrategy_DownloadMode
 }
 
 // TODO add support for multipart blobs
@@ -338,14 +339,14 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 		return err
 	}
 
-	if d.format == FormatJSON {
+	if d.format == core.DataLoadingConfig_JSON {
 		m, err := json.Marshal(varMap)
 		if err != nil {
 			return errors.Wrapf(err, "failed to marshal out inputs")
 		}
 		return ioutil.WriteFile(path.Join(outputDir, "inputs.json"), m, os.ModePerm)
 	}
-	if d.format == FormatYAML {
+	if d.format == core.DataLoadingConfig_YAML {
 		m, err := yaml.Marshal(varMap)
 		if err != nil {
 			return errors.Wrapf(err, "failed to marshal out inputs")
@@ -355,10 +356,10 @@ func (d Downloader) DownloadInputs(ctx context.Context, inputRef storage.DataRef
 	return nil
 }
 
-func NewDownloader(_ context.Context, store *storage.DataStore, format Format) Downloader {
-	format = strings.ToLower(format)
+func NewDownloader(_ context.Context, store *storage.DataStore, format core.DataLoadingConfig_LiteralMapFormat, mode core.IOStrategy_DownloadMode) Downloader {
 	return Downloader{
 		format: format,
 		store:  store,
+		mode:   mode,
 	}
 }
