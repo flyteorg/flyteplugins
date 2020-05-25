@@ -99,15 +99,17 @@ func TestSidecarCommandArgs(t *testing.T) {
 	_, err := SidecarCommandArgs("", "", "", time.Second*10, nil)
 	assert.Error(t, err)
 
-	iFace := &core.VariableMap{
-		Variables: map[string]*core.Variable{
-			"x": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
-			"y": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
+	iFace := &core.TypedInterface{
+		Outputs: &core.VariableMap{
+			Variables: map[string]*core.Variable{
+				"x": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
+				"y": {Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}}},
+			},
 		},
 	}
 	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, iFace)
 	assert.NoError(t, err)
-	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--output-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}
+	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "EhYKCQoBeBIECgIIAQoJCgF5EgQKAggB"}
 	assert.Len(t, d, len(expected))
 	assert.ElementsMatch(t, expected, d)
 }

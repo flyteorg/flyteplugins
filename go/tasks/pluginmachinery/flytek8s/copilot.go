@@ -61,13 +61,13 @@ func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []st
 	}, nil
 }
 
-func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, outputInterface *core.VariableMap) ([]string, error) {
-	if outputInterface == nil {
-		return nil, fmt.Errorf("output Interface is required for CoPilot Sidecar")
+func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, iface *core.TypedInterface) ([]string, error) {
+	if iface == nil {
+		return nil, fmt.Errorf("interface is required for CoPilot Sidecar")
 	}
-	b, err := proto.Marshal(outputInterface)
+	b, err := proto.Marshal(iface)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal given output interface")
+		return nil, errors.Wrap(err, "failed to marshal given core.TypedInterface")
 	}
 	return []string{
 		"sidecar",
@@ -79,7 +79,7 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 		outputPrefix.String(),
 		"--from-local-dir",
 		fromLocalPath,
-		"--output-interface",
+		"--interface",
 		base64.StdEncoding.EncodeToString(b),
 	}, nil
 }
@@ -243,7 +243,7 @@ func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPo
 			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())))
 
 			// Lets add the Inputs init container
-			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, iFace.Outputs)
+			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, iFace)
 			if err != nil {
 				return err
 			}

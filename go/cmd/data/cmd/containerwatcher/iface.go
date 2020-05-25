@@ -23,10 +23,13 @@ const (
 	// Uses Kube 1.17 feature - https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/
 	// To look for pid in the shared namespace.
 	WatcherTypeSharedProcessNS WatcherType = "shared-process-ns"
+	// Dummy watcher. Exits immediately, assuming success
+	WatcherTypeNoop WatcherType = "noop"
 )
 
 var AllWatcherTypes = []WatcherType{
 	WatcherTypeKubeAPI,
 	WatcherTypeSharedProcessNS,
 	WatcherTypeFile,
+	WatcherTypeNoop,
 }
