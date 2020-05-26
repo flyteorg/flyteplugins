@@ -22,5 +22,5 @@ func TestCopyMap(t *testing.T) {
 	m := map[string]string{
 		"l": "v",
 	}
-	assert.Equal(t, m , CopyMap(m))
+	assert.Equal(t, m, CopyMap(m))
 }
