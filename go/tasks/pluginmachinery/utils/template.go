@@ -51,7 +51,7 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.Inp
 	return res, nil
 }
 
-func transformVarNameToStringVal(ctx context.Context, varName string, inputs *core.LiteralMap) (string, error){
+func transformVarNameToStringVal(ctx context.Context, varName string, inputs *core.LiteralMap) (string, error) {
 	inputVal, exists := inputs.Literals[varName]
 	if !exists {
 		return "", fmt.Errorf("requested input is not found [%s]", varName)
@@ -77,10 +77,8 @@ func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in 
 		return val, nil
 	}
 
-	totalMatches := 0
 	var errs ErrorCollection
 	val = inputVarRegex.ReplaceAllStringFunc(val, func(s string) string {
-		totalMatches++
 		matches := inputVarRegex.FindAllStringSubmatch(s, 1)
 		varName := matches[0][1]
 		replaced, err := transformVarNameToStringVal(ctx, varName, inputs)

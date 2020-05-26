@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestErrorCollection(t *testing.T)  {
+func TestErrorCollection(t *testing.T) {
 	ec := ErrorCollection{}
 
 	assert.Empty(t, ec.Error())

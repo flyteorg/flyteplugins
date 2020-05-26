@@ -278,14 +278,14 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 	t.Run("multi-input", func(t *testing.T) {
 		in := dummyInputReader{inputs: &core.LiteralMap{
 			Literals: map[string]*core.Literal{
-				"ds": coreutils.MustMakeLiteral(time.Date(1900, 01, 01, 01, 01, 01, 000000001, time.UTC)),
+				"ds":    coreutils.MustMakeLiteral(time.Date(1900, 01, 01, 01, 01, 01, 000000001, time.UTC)),
 				"table": coreutils.MustMakeLiteral("my_table"),
-				"hr": coreutils.MustMakeLiteral("hr"),
-				"min": coreutils.MustMakeLiteral(15),
+				"hr":    coreutils.MustMakeLiteral("hr"),
+				"min":   coreutils.MustMakeLiteral(15),
 			},
 		}}
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
-		`SELECT
+			`SELECT
         	COUNT(*) as total_count
     	FROM
         	hive.events.{{ .Inputs.table }}
@@ -294,7 +294,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 	    `}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
-		`SELECT
+			`SELECT
         	COUNT(*) as total_count
     	FROM
         	hive.events.my_table
