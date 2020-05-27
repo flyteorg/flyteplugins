@@ -168,19 +168,19 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 		},
 	}
 
-	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsPrefix, "to-output-prefix", "p", "", "The remote path/key prefix for output metadata in stow store.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsPrefix, "to-output-prefix", "o", "", "The remote path/key prefix for output metadata in stow store.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.remoteOutputsRawPrefix, "to-raw-output", "x", "", "The remote path/key prefix for outputs in remote store. This is a sandbox directory and all data will be uploaded here.")
-	uploadCmd.Flags().StringVarP(&uploadOptions.localDirectoryPath, "from-local-dir", "d", "", "The local directory on disk where data will be available for upload.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.localDirectoryPath, "from-local-dir", "f", "", "The local directory on disk where data will be available for upload.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.metadataFormat, "format", "m", core.DataLoadingConfig_JSON.String(), fmt.Sprintf("What should be the output format for the primitive and structured types. Options [%v]", GetFormatVals()))
 	uploadCmd.Flags().StringVarP(&uploadOptions.uploadMode, "upload-mode", "u", core.IOStrategy_UPLOAD_ON_EXIT.String(), fmt.Sprintf("When should upload start/upload mode. Options [%v]", GetUploadModeVals()))
-	uploadCmd.Flags().StringVarP(&uploadOptions.metaOutputName, "meta-output-name", "k", "outputs.pb", "The key name under the remoteOutputPrefix that should be return to provide meta information about the outputs on successful execution")
+	uploadCmd.Flags().StringVarP(&uploadOptions.metaOutputName, "meta-output-name", "", "outputs.pb", "The key name under the remoteOutputPrefix that should be return to provide meta information about the outputs on successful execution")
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for uploads to complete, default is 1H")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.typedInterface, "interface", "i", nil, "Typed Interface - core.TypedInterface, base64 encoded string of the serialized protobuf")
 	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")
-	uploadCmd.Flags().StringVarP(&uploadOptions.startWatcherType, "start-watcher-type", "w", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Sidecar will wait for container before starting upload process. Watcher type makes the type configurable. Available Type %+v", containerwatcher.AllWatcherTypes))
+	uploadCmd.Flags().StringVarP(&uploadOptions.startWatcherType, "start-watcher-type", "", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Sidecar will wait for container before starting upload process. Watcher type makes the type configurable. Available Type %+v", containerwatcher.AllWatcherTypes))
 	uploadCmd.Flags().StringVarP(&uploadOptions.exitWatcherType, "exit-watcher-type", "", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Sidecar will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Available Type %+v", containerwatcher.AllWatcherTypes))
-	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "watch-container", "c", "", "For KubeAPI watcher, Wait for this container to exit.")
-	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Namespace, "namespace", "n", "", "For KubeAPI watcher, Namespace of the pod [optional]")
-	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "pod-name", "o", "", "For KubeAPI watcher, Name of the pod [optional].")
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "watch-container", "", "", "For KubeAPI watcher, Wait for this container to exit.")
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Namespace, "namespace", "", "", "For KubeAPI watcher, Namespace of the pod [optional]")
+	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "pod-name", "", "", "For KubeAPI watcher, Name of the pod [optional].")
 	return uploadCmd
 }
