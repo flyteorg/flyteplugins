@@ -176,7 +176,7 @@ func NewUploadCommand(opts *RootOptions) *cobra.Command {
 	uploadCmd.Flags().StringVarP(&uploadOptions.metaOutputName, "meta-output-name", "k", "outputs.pb", "The key name under the remoteOutputPrefix that should be return to provide meta information about the outputs on successful execution")
 	uploadCmd.Flags().DurationVarP(&uploadOptions.timeout, "timeout", "t", time.Hour*1, "Max time to allow for uploads to complete, default is 1H")
 	uploadCmd.Flags().BytesBase64VarP(&uploadOptions.typedInterface, "interface", "i", nil, "Typed Interface - core.TypedInterface, base64 encoded string of the serialized protobuf")
-	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "u", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")
+	uploadCmd.Flags().DurationVarP(&uploadOptions.containerStartTimeout, "start-timeout", "", 0, "Max time to allow for container to startup. 0 indicates wait for ever.")
 	uploadCmd.Flags().StringVarP(&uploadOptions.startWatcherType, "start-watcher-type", "w", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Sidecar will wait for container before starting upload process. Watcher type makes the type configurable. Available Type %+v", containerwatcher.AllWatcherTypes))
 	uploadCmd.Flags().StringVarP(&uploadOptions.exitWatcherType, "exit-watcher-type", "k", containerwatcher.WatcherTypeSharedProcessNS, fmt.Sprintf("Sidecar will wait for completion of the container before starting upload process. Watcher type makes the type configurable. Available Type %+v", containerwatcher.AllWatcherTypes))
 	uploadCmd.Flags().StringVarP(&uploadOptions.containerInfo.Name, "watch-container", "c", "", "For KubeAPI watcher, Wait for this container to exit.")
