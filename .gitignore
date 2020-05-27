@@ -2,4 +2,4 @@
 .idea/
 vendor/
 *.swp
-./artifacts/
+artifacts/
