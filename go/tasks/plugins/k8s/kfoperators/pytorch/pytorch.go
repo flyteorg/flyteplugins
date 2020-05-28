@@ -74,7 +74,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 	workers := pytorchTaskExtraArgs.GetWorkers()
 
 	jobSpec := ptOp.PyTorchJobSpec{
-		TTLSecondsAfterFinished: nil, //60, // cleanup in 60 seconds after the job completion
+		TTLSecondsAfterFinished: nil,
 		PyTorchReplicaSpecs: map[ptOp.PyTorchReplicaType]*commonOp.ReplicaSpec{
 			ptOp.PyTorchReplicaTypeMaster: {
 				Template: v1.PodTemplateSpec{
