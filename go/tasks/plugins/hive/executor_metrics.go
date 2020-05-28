@@ -8,6 +8,8 @@ import (
 
 type QuboleHiveExecutorMetrics struct {
 	Scope                 promutils.Scope
+	Succeeded             labeled.Counter
+	Failed                labeled.Counter
 	ResourceReleased      labeled.Counter
 	ResourceReleaseFailed labeled.Counter
 	AllocationGranted     labeled.Counter
@@ -22,6 +24,10 @@ var (
 func getQuboleHiveExecutorMetrics(scope promutils.Scope) QuboleHiveExecutorMetrics {
 	return QuboleHiveExecutorMetrics{
 		Scope: scope,
+		Succeeded: labeled.NewCounter("success",
+			"Task finished successfully", scope, labeled.EmitUnlabeledMetric),
+		Failed: labeled.NewCounter("failure",
+			"Task failed", scope, labeled.EmitUnlabeledMetric),
 		ResourceReleased: labeled.NewCounter("resource_release_success",
 			"Resource allocation token released", scope, labeled.EmitUnlabeledMetric),
 		ResourceReleaseFailed: labeled.NewCounter("resource_release_failed",

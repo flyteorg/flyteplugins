@@ -59,6 +59,13 @@ func (p Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	// If no error, then infer the new Phase from the various states
 	phaseInfo := MapExecutionStateToPhaseInfo(outgoingState)
 
+	if phaseInfo.Phase() == core.PhaseSuccess {
+		p.metrics.Succeeded.Inc(ctx)
+	}
+
+	if phaseInfo.Phase() == core.PhaseRetryableFailure || phaseInfo.Phase() == core.PhasePermanentFailure {
+		p.metrics.Failed.Inc(ctx)
+	}
 	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, outgoingState); err != nil {
 		return core.UnknownTransition, err
 	}

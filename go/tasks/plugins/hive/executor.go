@@ -61,6 +61,14 @@ func (q QuboleHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionC
 	// If no error, then infer the new Phase from the various states
 	phaseInfo := MapExecutionStateToPhaseInfo(outgoingState, q.quboleClient)
 
+	if phaseInfo.Phase() == core.PhaseSuccess {
+		q.metrics.Succeeded.Inc(ctx)
+	}
+
+	if phaseInfo.Phase() == core.PhaseRetryableFailure || phaseInfo.Phase() == core.PhasePermanentFailure {
+		q.metrics.Failed.Inc(ctx)
+	}
+
 	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, outgoingState); err != nil {
 		return core.UnknownTransition, err
 	}
