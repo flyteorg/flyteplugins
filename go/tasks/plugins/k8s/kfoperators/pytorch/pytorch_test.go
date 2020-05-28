@@ -3,13 +3,14 @@ package pytorch
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/mock"
 
@@ -45,25 +46,25 @@ var (
 	}
 
 	resourceRequirements = &corev1.ResourceRequirements{
-		Limits:  corev1.ResourceList{
-			corev1.ResourceCPU: 		resource.MustParse("1000m"),
-			corev1.ResourceMemory:		resource.MustParse("1Gi"),
-			flytek8s.ResourceNvidiaGPU:	resource.MustParse("1"),
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:         resource.MustParse("1000m"),
+			corev1.ResourceMemory:      resource.MustParse("1Gi"),
+			flytek8s.ResourceNvidiaGPU: resource.MustParse("1"),
 		},
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU: 		resource.MustParse("100m"),
-			corev1.ResourceMemory:		resource.MustParse("512Mi"),
-			flytek8s.ResourceNvidiaGPU:	resource.MustParse("1"),
+			corev1.ResourceCPU:         resource.MustParse("100m"),
+			corev1.ResourceMemory:      resource.MustParse("512Mi"),
+			flytek8s.ResourceNvidiaGPU: resource.MustParse("1"),
 		},
 	}
 
-	jobName = "the-job"
+	jobName      = "the-job"
 	jobNamespace = "pytorch-namespace"
 )
 
 func dummyPytorchCustomObj(workers int32) *plugins.DistributedPyTorchTrainingTask {
-	return  &plugins.DistributedPyTorchTrainingTask{
-		Workers:              workers,
+	return &plugins.DistributedPyTorchTrainingTask{
+		Workers: workers,
 	}
 }
 
@@ -95,7 +96,6 @@ func dummySparkTaskTemplate(id string, pytorchCustomObj *plugins.DistributedPyTo
 	}
 }
 
-
 func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
@@ -125,7 +125,6 @@ func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskEx
 	})
 	tID.OnGetGeneratedName().Return("some-acceptable-name")
 
-
 	resources := &mocks.TaskOverrides{}
 	resources.OnGetResources().Return(resourceRequirements)
 
@@ -151,11 +150,11 @@ func dummyPytorchJobResource(pytorchResourceHandler pytorchOperatorResourceHandl
 	now := time.Now()
 
 	jobCreated := commonOp.JobCondition{
-		Type:               commonOp.JobCreated,
-		Status:             corev1.ConditionTrue,
-		Reason:             "PyTorchJobCreated",
-		Message:            "PyTorchJob the-job is created.",
-		LastUpdateTime:     v1.Time{
+		Type:    commonOp.JobCreated,
+		Status:  corev1.ConditionTrue,
+		Reason:  "PyTorchJobCreated",
+		Message: "PyTorchJob the-job is created.",
+		LastUpdateTime: v1.Time{
 			Time: now,
 		},
 		LastTransitionTime: v1.Time{
@@ -163,11 +162,11 @@ func dummyPytorchJobResource(pytorchResourceHandler pytorchOperatorResourceHandl
 		},
 	}
 	jobRunningActive := commonOp.JobCondition{
-		Type:               commonOp.JobRunning,
-		Status:             corev1.ConditionTrue,
-		Reason:             "PyTorchJobRunning",
-		Message:            "PyTorchJob the-job is running.",
-		LastUpdateTime:     v1.Time{
+		Type:    commonOp.JobRunning,
+		Status:  corev1.ConditionTrue,
+		Reason:  "PyTorchJobRunning",
+		Message: "PyTorchJob the-job is running.",
+		LastUpdateTime: v1.Time{
 			Time: now.Add(time.Minute),
 		},
 		LastTransitionTime: v1.Time{
@@ -177,39 +176,39 @@ func dummyPytorchJobResource(pytorchResourceHandler pytorchOperatorResourceHandl
 	jobRunningInactive := *jobRunningActive.DeepCopy()
 	jobRunningInactive.Status = corev1.ConditionFalse
 	jobSucceeded := commonOp.JobCondition{
-		Type:               commonOp.JobSucceeded,
-		Status:             corev1.ConditionTrue,
-		Reason:             "PyTorchJobSucceeded",
-		Message:            "PyTorchJob the-job is successfully completed.",
-		LastUpdateTime:     v1.Time{
-			Time: now.Add(2*time.Minute),
+		Type:    commonOp.JobSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  "PyTorchJobSucceeded",
+		Message: "PyTorchJob the-job is successfully completed.",
+		LastUpdateTime: v1.Time{
+			Time: now.Add(2 * time.Minute),
 		},
 		LastTransitionTime: v1.Time{
-			Time: now.Add(2*time.Minute),
+			Time: now.Add(2 * time.Minute),
 		},
 	}
 	jobFailed := commonOp.JobCondition{
-		Type:               commonOp.JobFailed,
-		Status:             corev1.ConditionTrue,
-		Reason:             "PyTorchJobFailed",
-		Message:            "PyTorchJob the-job is failed.",
-		LastUpdateTime:     v1.Time{
-			Time: now.Add(2*time.Minute),
+		Type:    commonOp.JobFailed,
+		Status:  corev1.ConditionTrue,
+		Reason:  "PyTorchJobFailed",
+		Message: "PyTorchJob the-job is failed.",
+		LastUpdateTime: v1.Time{
+			Time: now.Add(2 * time.Minute),
 		},
 		LastTransitionTime: v1.Time{
-			Time: now.Add(2*time.Minute),
+			Time: now.Add(2 * time.Minute),
 		},
 	}
 	jobRestarting := commonOp.JobCondition{
-		Type:               commonOp.JobRestarting,
-		Status:             corev1.ConditionTrue,
-		Reason:             "PyTorchJobRestarting",
-		Message:            "PyTorchJob the-job is restarting because some replica(s) failed.",
-		LastUpdateTime:     v1.Time{
-			Time: now.Add(3*time.Minute),
+		Type:    commonOp.JobRestarting,
+		Status:  corev1.ConditionTrue,
+		Reason:  "PyTorchJobRestarting",
+		Message: "PyTorchJob the-job is restarting because some replica(s) failed.",
+		LastUpdateTime: v1.Time{
+			Time: now.Add(3 * time.Minute),
 		},
 		LastTransitionTime: v1.Time{
-			Time: now.Add(3*time.Minute),
+			Time: now.Add(3 * time.Minute),
 		},
 	}
 
@@ -348,7 +347,7 @@ func TestGetLogs(t *testing.T) {
 	jobLogs, err := getLogs(dummyPytorchJobResource(pytorchResourceHandler, workers, commonOp.JobRunning), workers)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobLogs))
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-master-0/pod?namespace=pytorch-namespace", jobNamespace, jobName),  jobLogs[0].Uri)
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=pytorch-namespace", jobNamespace, jobName),  jobLogs[1].Uri)
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-1/pod?namespace=pytorch-namespace", jobNamespace, jobName),  jobLogs[2].Uri)
+	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-master-0/pod?namespace=pytorch-namespace", jobNamespace, jobName), jobLogs[0].Uri)
+	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=pytorch-namespace", jobNamespace, jobName), jobLogs[1].Uri)
+	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-1/pod?namespace=pytorch-namespace", jobNamespace, jobName), jobLogs[2].Uri)
 }

@@ -3,26 +3,27 @@ package pytorch
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	flyteerr "github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sort"
-	"time"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
+	logUtils "github.com/lyft/flyteidl/clients/go/coreutils/logs"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
-	logUtils "github.com/lyft/flyteidl/clients/go/coreutils/logs"
 
 	//commonOp "github.com/kubeflow/common/pkg/apis/common/v1" // switch to real 'common' once https://github.com/kubeflow/pytorch-operator/issues/263 resolved
-	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	ptOp "github.com/kubeflow/pytorch-operator/pkg/apis/pytorch/v1"
+	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -149,13 +150,13 @@ func (pytorchOperatorResourceHandler) GetTaskPhase(ctx context.Context, pluginCo
 func getLogs(app *ptOp.PyTorchJob, workersCount int32) ([]*core.TaskLog, error) {
 	// If kubeClient was available, it would be better to use
 	// https://github.com/lyft/flyteplugins/blob/209c52d002b4e6a39be5d175bc1046b7e631c153/go/tasks/logs/logging_utils.go#L12
-	makeTaskLog := func (appName, appNamespace , suffix, url string) (core.TaskLog, error) {
+	makeTaskLog := func(appName, appNamespace, suffix, url string) (core.TaskLog, error) {
 		return logUtils.NewKubernetesLogPlugin(url).GetTaskLog(
 			appName+"-"+suffix,
 			appNamespace,
 			"",
 			"",
-			suffix + " logs (via Kubernetes)")
+			suffix+" logs (via Kubernetes)")
 	}
 
 	var taskLogs []*core.TaskLog
@@ -215,10 +216,9 @@ func init() {
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  pytorchTaskType,
-			RegisteredTaskTypes: []pluginsCore.TaskType {pytorchTaskType},
+			RegisteredTaskTypes: []pluginsCore.TaskType{pytorchTaskType},
 			ResourceToWatch:     &ptOp.PyTorchJob{},
 			Plugin:              pytorchOperatorResourceHandler{},
 			IsDefault:           false,
 		})
 }
-
