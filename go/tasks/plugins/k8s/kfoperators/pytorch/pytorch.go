@@ -2,7 +2,6 @@ package pytorch
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	flyteerr "github.com/lyft/flyteplugins/go/tasks/errors"
