@@ -191,7 +191,7 @@ func extractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.Jo
 		}
 	}
 
-	return commonOp.JobCondition{}, errors.New(fmt.Sprintf("Found no current condition. Conditions: %+v", jobConditions))
+	return commonOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
 }
 
 func overrideDefaultContainerName(taskCtx pluginsCore.TaskExecutionContext, podSpec *v1.PodSpec) {
