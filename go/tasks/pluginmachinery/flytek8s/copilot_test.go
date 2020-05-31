@@ -270,6 +270,7 @@ func TestCalculateStorageSize(t *testing.T) {
 }
 
 func TestAddCoPilotToContainer(t *testing.T) {
+	ctx := context.TODO()
 	cfg := config.FlyteCoPilotConfig{
 		NamePrefix:           "test-",
 		Image:                "test",
@@ -283,18 +284,18 @@ func TestAddCoPilotToContainer(t *testing.T) {
 
 	t.Run("dataload-config-nil", func(t *testing.T) {
 		pilot := &core.DataLoadingConfig{}
-		assert.NoError(t, AddCoPilotToContainer(cfg, nil, nil, pilot))
+		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, nil, nil, pilot))
 	})
 
 	t.Run("disabled", func(t *testing.T) {
 		pilot := &core.DataLoadingConfig{}
-		assert.NoError(t, AddCoPilotToContainer(cfg, nil, nil, pilot))
+		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, nil, nil, pilot))
 	})
 
 	t.Run("nil-iface", func(t *testing.T) {
 		c := v1.Container{}
 		pilot := &core.DataLoadingConfig{Enabled: true}
-		assert.NoError(t, AddCoPilotToContainer(cfg, &c, nil, pilot))
+		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, nil, pilot))
 		assertContainerHasVolumeMounts(t, cfg, pilot, nil, &c)
 		assertContainerHasPTrace(t, &c)
 	})
@@ -316,7 +317,7 @@ func TestAddCoPilotToContainer(t *testing.T) {
 			},
 		}
 		pilot := &core.DataLoadingConfig{Enabled: true}
-		assert.NoError(t, AddCoPilotToContainer(cfg, &c, iface, pilot))
+		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
 		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
@@ -342,7 +343,7 @@ func TestAddCoPilotToContainer(t *testing.T) {
 			InputPath:  "in",
 			OutputPath: "out",
 		}
-		assert.NoError(t, AddCoPilotToContainer(cfg, &c, iface, pilot))
+		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
 		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
@@ -363,7 +364,7 @@ func TestAddCoPilotToContainer(t *testing.T) {
 			InputPath:  "in",
 			OutputPath: "out",
 		}
-		assert.NoError(t, AddCoPilotToContainer(cfg, &c, iface, pilot))
+		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
 		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
@@ -383,7 +384,7 @@ func TestAddCoPilotToContainer(t *testing.T) {
 			InputPath:  "in",
 			OutputPath: "out",
 		}
-		assert.NoError(t, AddCoPilotToContainer(cfg, &c, iface, pilot))
+		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
 		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
@@ -422,6 +423,9 @@ func TestAddCoPilotToPod(t *testing.T) {
 
 	tID := &pluginsCoreMock.TaskExecutionID{}
 	tID.OnGetID().Return(core.TaskExecutionIdentifier{
+		TaskId: &core.Identifier{
+			Name: "my-task",
+		},
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
 				Name:    "my_name",

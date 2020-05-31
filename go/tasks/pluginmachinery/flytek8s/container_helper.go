@@ -130,7 +130,7 @@ func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskE
 		c.Resources = *res
 	}
 
-	if err := AddCoPilotToContainer(config.GetK8sPluginConfig().CoPilot, c, iFace, taskContainer.DataConfig); err != nil {
+	if err := AddCoPilotToContainer(ctx, config.GetK8sPluginConfig().CoPilot, c, iFace, taskContainer.DataConfig); err != nil {
 		return nil, err
 	}
 	return c, nil

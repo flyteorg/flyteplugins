@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -134,10 +135,11 @@ func CalculateStorageSize(requirements *v1.ResourceRequirements) *resource.Quant
 	return nil
 }
 
-func AddCoPilotToContainer(cfg config.FlyteCoPilotConfig, c *v1.Container, iFace *core.TypedInterface, pilot *core.DataLoadingConfig) error {
+func AddCoPilotToContainer(ctx context.Context, cfg config.FlyteCoPilotConfig, c *v1.Container, iFace *core.TypedInterface, pilot *core.DataLoadingConfig) error {
 	if pilot == nil || !pilot.Enabled {
 		return nil
 	}
+	logger.Infof(ctx, "Enabling CoPilot on main container [%s]", c.Name)
 	if c.SecurityContext == nil {
 		c.SecurityContext = &v1.SecurityContext{}
 	}
@@ -173,11 +175,12 @@ func AddCoPilotToContainer(cfg config.FlyteCoPilotConfig, c *v1.Container, iFace
 	return nil
 }
 
-func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPod *v1.PodSpec, iFace *core.TypedInterface, taskExecMetadata core2.TaskExecutionMetadata, inputPaths io.InputFilePaths, outputPaths io.OutputFilePaths, pilot *core.DataLoadingConfig) error {
+func AddCoPilotToPod(ctx context.Context, cfg config.FlyteCoPilotConfig, coPilotPod *v1.PodSpec, iFace *core.TypedInterface, taskExecMetadata core2.TaskExecutionMetadata, inputPaths io.InputFilePaths, outputPaths io.OutputFilePaths, pilot *core.DataLoadingConfig) error {
 	if pilot == nil || !pilot.Enabled {
 		return nil
 	}
 
+	logger.Infof(ctx, "CoPilot Enabled for task [%s]", taskExecMetadata.GetTaskExecutionID().GetID().TaskId.Name)
 	shareProcessNamespaceEnabled := true
 	coPilotPod.ShareProcessNamespace = &shareProcessNamespaceEnabled
 	if iFace != nil {
@@ -207,6 +210,9 @@ func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPo
 				inPath = pilot.GetInputPath()
 			}
 
+			// TODO we should calculate input volume size based on the size of the inputs which is known ahead of time. We should store that as part of the metadata
+			size := CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())
+			logger.Infof(ctx, "Adding Input path [%s] of Size [%d] for Task [%s]", size, inPath, taskExecMetadata.GetTaskExecutionID().GetID().TaskId.Name)
 			inputsVolumeMount := v1.VolumeMount{
 				Name:      cfg.InputVolumeName,
 				MountPath: inPath,
@@ -214,8 +220,7 @@ func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPo
 
 			format := pilot.Format
 			// Lets add the InputsVolume
-			// TODO we should calculate input volume size based on the size of the inputs which is known ahead of time. We should store that as part of the metadata
-			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.InputVolumeName, CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())))
+			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.InputVolumeName, size))
 
 			// Lets add the Inputs init container
 			args, err := DownloadCommandArgs(inputPaths.GetInputPath(), outputPaths.GetOutputPrefixPath(), inPath, format, iFace.Inputs)
@@ -234,13 +239,17 @@ func AddCoPilotToPod(_ context.Context, cfg config.FlyteCoPilotConfig, coPilotPo
 			if pilot.GetOutputPath() != "" {
 				outPath = pilot.GetOutputPath()
 			}
+
+			size := CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())
+			logger.Infof(ctx, "Adding Output path [%s] of size [%d] for Task [%s]", size, outPath, taskExecMetadata.GetTaskExecutionID().GetID().TaskId.Name)
+
 			outputsVolumeMount := v1.VolumeMount{
 				Name:      cfg.OutputVolumeName,
 				MountPath: outPath,
 			}
 
 			// Lets add the InputsVolume
-			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, CalculateStorageSize(taskExecMetadata.GetOverrides().GetResources())))
+			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, size))
 
 			// Lets add the Inputs init container
 			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, iFace)
