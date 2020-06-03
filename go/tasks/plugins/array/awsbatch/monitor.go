@@ -115,7 +115,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	if queued > 0 {
-		metrics.SubTasksSucceeded.Add(ctx, float64(queued))
+		metrics.SubTasksQueued.Add(ctx, float64(queued))
 	}
 
 	parentState = parentState.SetArrayStatus(newArrayStatus)
