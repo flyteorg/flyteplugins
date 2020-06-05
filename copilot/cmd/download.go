@@ -10,7 +10,7 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/spf13/cobra"
 
-	"github.com/lyft/flyteplugins/data"
+	"github.com/lyft/flyteplugins/copilot/data"
 )
 
 type DownloadOptions struct {

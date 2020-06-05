@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/lyft/flyteplugins/copilot/cmd/containerwatcher"
-	"github.com/lyft/flyteplugins/data"
+	"github.com/lyft/flyteplugins/copilot/data"
 )
 
 const (
