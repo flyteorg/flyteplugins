@@ -91,8 +91,11 @@ func TestDownloadCommandArgs(t *testing.T) {
 	d, err := DownloadCommandArgs("s3://from", "s3://output-meta", "/to", core.DataLoadingConfig_JSON, iFace)
 	assert.NoError(t, err)
 	expected := []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "JSON", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}
-	assert.Len(t, d, len(expected))
-	assert.ElementsMatch(t, expected, d)
+	if assert.Len(t, d, len(expected)) {
+		for i, exp := range expected {
+			assert.Equal(t, exp, d[i])
+		}
+	}
 }
 
 func TestSidecarCommandArgs(t *testing.T) {
@@ -110,8 +113,11 @@ func TestSidecarCommandArgs(t *testing.T) {
 	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, iFace)
 	assert.NoError(t, err)
 	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "EhYKCQoBeBIECgIIAQoJCgF5EgQKAggB"}
-	assert.Len(t, d, len(expected))
-	assert.ElementsMatch(t, expected, d)
+	if assert.Len(t, d, len(expected)) {
+		for i, exp := range expected {
+			assert.Equal(t, exp, d[i])
+		}
+	}
 }
 
 func TestDataVolume(t *testing.T) {
