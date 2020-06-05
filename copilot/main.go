@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lyft/flyteplugins/go/cmd/data/cmd"
+	"github.com/lyft/flyteplugins/copilot/cmd"
 )
 
 func main() {

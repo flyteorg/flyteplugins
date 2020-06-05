@@ -13,7 +13,7 @@ import (
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lyft/flyteplugins/go/cmd/data/cmd/containerwatcher"
+	"github.com/lyft/flyteplugins/copilot/cmd/containerwatcher"
 )
 
 func TestUploadOptions_Upload(t *testing.T) {

@@ -12,8 +12,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/lyft/flyteplugins/go/cmd/data/cmd/containerwatcher"
-	"github.com/lyft/flyteplugins/go/data"
+	"github.com/lyft/flyteplugins/copilot/cmd/containerwatcher"
+	"github.com/lyft/flyteplugins/data"
 )
 
 const (
