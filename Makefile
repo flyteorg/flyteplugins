@@ -14,14 +14,14 @@ clean:
 
 .PHONY: linux_compile
 linux_compile:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/flyte-copilot ./copilot/main.go
+	cd copilot; GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ../artifacts/flyte-copilot .; cd -
 
 .PHONY: compile
 compile:
 	mkdir -p ./artifacts
-	go build -o ./artifacts/flyte-copilot ./copilot/main.go
+	cd copilot; go build -o ../artifacts/flyte-copilot .; cd -
 
 cross_compile:
 	@glide install
 	@mkdir -p ./artifacts/cross
-	GOOS=linux GOARCH=amd64 go build -o ./artifacts/flyte-copilot ./copilot/main.go
+	cd copilot; GOOS=linux GOARCH=amd64 go build -o ../artifacts/flyte-copilot .; cd -
