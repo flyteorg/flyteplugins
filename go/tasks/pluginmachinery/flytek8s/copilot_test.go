@@ -2,10 +2,12 @@ package flytek8s
 
 import (
 	"context"
+	"encoding/base64"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	config2 "github.com/lyft/flytestdlib/config"
 	"github.com/lyft/flytestdlib/storage"
@@ -90,10 +92,23 @@ func TestDownloadCommandArgs(t *testing.T) {
 	}
 	d, err := DownloadCommandArgs("s3://from", "s3://output-meta", "/to", core.DataLoadingConfig_JSON, iFace)
 	assert.NoError(t, err)
-	expected := []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "JSON", "--input-interface", "CgkKAXgSBAoCCAEKCQoBeRIECgIIAQ=="}
+	expected := []string{"download", "--from-remote", "s3://from", "--to-output-prefix", "s3://output-meta", "--to-local-dir", "/to", "--format", "JSON", "--input-interface", "<interface>"}
 	if assert.Len(t, d, len(expected)) {
-		for i, exp := range expected {
-			assert.Equal(t, exp, d[i])
+		for i := 0; i < len(expected)-1; i++ {
+			assert.Equal(t, expected[i], d[i])
+		}
+		// We cannot compare the last one, as the interface is a map the order is not guaranteed.
+		ifaceB64 := d[len(expected)-1]
+		serIFaceBytes, err := base64.StdEncoding.DecodeString(ifaceB64)
+		if assert.NoError(t, err) {
+			vm := &core.VariableMap{}
+			assert.NoError(t, proto.Unmarshal(serIFaceBytes, vm))
+			assert.Len(t, vm.Variables, 2)
+			for k, v := range iFace.Variables {
+				v2, ok := vm.Variables[k]
+				assert.True(t, ok)
+				assert.Equal(t, v.Type.GetSimple(), v2.Type.GetSimple(), "for %s, types do not match", k)
+			}
 		}
 	}
 }
@@ -112,10 +127,23 @@ func TestSidecarCommandArgs(t *testing.T) {
 	}
 	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, iFace)
 	assert.NoError(t, err)
-	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "EhYKCQoBeBIECgIIAQoJCgF5EgQKAggB"}
+	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "<interface>"}
 	if assert.Len(t, d, len(expected)) {
-		for i, exp := range expected {
-			assert.Equal(t, exp, d[i])
+		for i := 0; i < len(expected)-1; i++ {
+			assert.Equal(t, expected[i], d[i])
+		}
+		// We cannot compare the last one, as the interface is a map the order is not guaranteed.
+		ifaceB64 := d[len(expected)-1]
+		serIFaceBytes, err := base64.StdEncoding.DecodeString(ifaceB64)
+		if assert.NoError(t, err) {
+			if2 := &core.TypedInterface{}
+			assert.NoError(t, proto.Unmarshal(serIFaceBytes, if2))
+			assert.Len(t, if2.Outputs.Variables, 2)
+			for k, v := range iFace.Outputs.Variables {
+				v2, ok := if2.Outputs.Variables[k]
+				assert.True(t, ok)
+				assert.Equal(t, v.Type.GetSimple(), v2.Type.GetSimple(), "for %s, types do not match", k)
+			}
 		}
 	}
 }
