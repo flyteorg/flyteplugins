@@ -100,7 +100,7 @@ func TestGetTaskPhase(t *testing.T) {
 
 	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.SubmittedState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseQueued)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseInitializing)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 

@@ -303,8 +303,10 @@ func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.
 
 	occurredAt := time.Now()
 	switch app.Status.AppState.State {
-	case sparkOp.NewState, sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
-		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
+	case sparkOp.NewState:
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job queued"), nil
+	case sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
+		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted", info), nil
 	case sparkOp.FailedSubmissionState:
 		reason := fmt.Sprintf("Spark Job  Submission Failed with Error: %s", app.Status.AppState.ErrorMessage)
 		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
