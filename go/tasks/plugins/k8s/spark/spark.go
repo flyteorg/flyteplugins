@@ -256,7 +256,9 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 		taskLogs = append(taskLogs, &cwUserLogs)
 		taskLogs = append(taskLogs, &cwSystemLogs)
 
-	} else if logConfig.IsCloudwatchEnabled {
+	}
+
+	if logConfig.IsCloudwatchEnabled {
 
 		allUserLogs := core.TaskLog{
 			Uri: fmt.Sprintf(
