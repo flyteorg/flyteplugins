@@ -168,7 +168,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			HadoopConf:     sparkJob.GetHadoopConf(),
 			// SubmissionFailures handled here. Task Failures handled at Propeller/Job level.
 			RestartPolicy: sparkOp.RestartPolicy{
-				Type: 						sparkOp.OnFailure,
+				Type:                       sparkOp.OnFailure,
 				OnSubmissionFailureRetries: &submissionFailureRetries,
 			},
 		},
