@@ -168,7 +168,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			HadoopConf:     sparkJob.GetHadoopConf(),
 			// SubmissionFailures handled here. Task Failures handled at Propeller/Job level.
 			RestartPolicy: sparkOp.RestartPolicy{
-				Type: sparkOp.OnFailure,
+				Type: 						sparkOp.OnFailure,
 				OnSubmissionFailureRetries: &submissionFailureRetries,
 			},
 		},
@@ -219,7 +219,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 		state == sparkOp.PendingSubmissionState ||
 		state == sparkOp.SubmittedState
 
-	if logConfig.IsKubernetesEnabled && !isQueued || sj.Status.DriverInfo.PodName != "" {
+	if logConfig.IsKubernetesEnabled && !isQueued && sj.Status.DriverInfo.PodName != "" {
 		k8sLog, err := logUtils.NewKubernetesLogPlugin(logConfig.KubernetesURL).GetTaskLog(
 			sj.Status.DriverInfo.PodName,
 			sj.Namespace,
