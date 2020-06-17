@@ -66,7 +66,7 @@ func (r RootOptions) UploadError(ctx context.Context, code string, recvErr error
 	})
 }
 
-// NewCommand returns a new instance of an argo command
+// NewCommand returns a new instance of the co-pilot root command
 func NewDataCommand() *cobra.Command {
 	rootOpts := &RootOptions{}
 	command := &cobra.Command{

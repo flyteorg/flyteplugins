@@ -24,7 +24,6 @@ import (
 
 type Downloader struct {
 	format core.DataLoadingConfig_LiteralMapFormat
-	// TODO support multiple buckets
 	store *storage.DataStore
 	// TODO support download mode
 	mode core.IOStrategy_DownloadMode
