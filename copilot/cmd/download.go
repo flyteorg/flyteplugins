@@ -50,7 +50,7 @@ func GetUploadModeVals() []string {
 
 func (d *DownloadOptions) Download(ctx context.Context) error {
 	if d.remoteOutputsPrefix == "" {
-		return fmt.Errorf("to-remoute-prefix is required")
+		return fmt.Errorf("to-output-prefix is required")
 	}
 
 	// We need remote outputs prefix to write and error file
