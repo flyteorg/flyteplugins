@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/futures"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
@@ -279,7 +280,7 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 	for variable, literal := range inputs.Literals {
 		varPath := path.Join(dir, variable)
 		lit := literal
-		f[variable] = NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
+		f[variable] = futures.NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
 			v, lit, err := d.handleLiteral(ctx2, lit, varPath, writePrimitiveToFile)
 			if err != nil {
 				return nil, err
@@ -297,7 +298,7 @@ func (d Downloader) RecursiveDownload(ctx context.Context, inputs *core.LiteralM
 		v, err := future.Get(childCtx)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to persist [%s], err %s", variable, err)
-			if err == ErrAsyncFutureCanceled {
+			if err == futures.ErrAsyncFutureCanceled {
 				logger.Errorf(ctx, "Future was canceled, possibly Timeout!")
 			}
 			return nil, nil, errors.Wrapf(err, "variable [%s] download/store failed", variable)

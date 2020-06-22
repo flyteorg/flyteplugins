@@ -9,7 +9,7 @@ require (
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/lyft/flyteidl v0.17.32
 	github.com/lyft/flyteplugins v0.3.29
-	github.com/lyft/flytestdlib v0.3.7
+	github.com/lyft/flytestdlib v0.3.9
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.0.0

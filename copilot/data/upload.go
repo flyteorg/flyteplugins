@@ -14,6 +14,7 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/lyft/flytestdlib/storage"
+	"github.com/lyft/flytestdlib/futures"
 	"github.com/pkg/errors"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -88,12 +89,12 @@ func (u Uploader) handleBlobType(ctx context.Context, localPath string, toPath s
 
 		childCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		fileUploader := make([]Future, 0, len(files))
+		fileUploader := make([]futures.Future, 0, len(files))
 		for _, f := range files {
 			pth := f.path
 			ref := f.ref
 			size := f.info.Size()
-			fileUploader = append(fileUploader, NewAsyncFuture(childCtx, func(i2 context.Context) (i interface{}, e error) {
+			fileUploader = append(fileUploader, futures.NewAsyncFuture(childCtx, func(i2 context.Context) (i interface{}, e error) {
 				return nil, UploadFileToStorage(i2, pth, ref, size, u.store)
 			}))
 		}
@@ -134,7 +135,7 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 		return errors.Errorf("User Error: %s", string(b))
 	}
 
-	varFutures := make(map[string]Future, len(vars.Variables))
+	varFutures := make(map[string]futures.Future, len(vars.Variables))
 	for varName, variable := range vars.Variables {
 		varPath := path.Join(fromPath, varName)
 		varType := variable.GetType()
@@ -150,11 +151,11 @@ func (u Uploader) RecursiveUpload(ctx context.Context, vars *core.VariableMap, f
 			if err != nil {
 				return err
 			}
-			varFutures[varName] = NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
+			varFutures[varName] = futures.NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
 				return u.handleBlobType(ctx2, varPath, varOutputPath)
 			})
 		case *core.LiteralType_Simple:
-			varFutures[varName] = NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
+			varFutures[varName] = futures.NewAsyncFuture(childCtx, func(ctx2 context.Context) (interface{}, error) {
 				return u.handleSimpleType(ctx2, varType.GetSimple(), varPath)
 			})
 		default:
