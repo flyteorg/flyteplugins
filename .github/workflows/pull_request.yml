@@ -13,7 +13,7 @@ jobs:
         with:
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: ${{ secrets.flytegithub_repo }}/operator
+          image_name: ${{ secrets.flytegithub_repo }}/flytecopilot
           image_tag: ${{ github.sha }}
           push_git_tag: true
           registry: docker.pkg.github.com
