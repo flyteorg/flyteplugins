@@ -24,7 +24,7 @@ jobs:
         with:
           username: "${{ github.actor }}"
           password: "${{ secrets.GITHUB_TOKEN }}"
-          image_name: ${{ secrets.flytegithub_repo }}/operator
+          image_name: ${{ secrets.flytegithub_repo }}/flytecopilot
           image_tag: latest,${{ github.sha }},${{ steps.bump-version.outputs.tag }}
           push_git_tag: true
           registry: docker.pkg.github.com
