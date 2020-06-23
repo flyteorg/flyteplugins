@@ -14,7 +14,7 @@ clean:
 
 .PHONY: linux_compile
 linux_compile:
-	cd copilot; GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ../artifacts/flyte-copilot .; cd -
+	cd copilot; GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /artifacts/flyte-copilot .; cd -
 
 .PHONY: compile
 compile:
