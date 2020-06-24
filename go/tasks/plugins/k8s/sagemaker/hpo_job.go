@@ -135,7 +135,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 					MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
 				},
 				ParameterRanges:              hpoJobParameterRanges,
-				TrainingJobEarlyStoppingType: "Auto",
+				TrainingJobEarlyStoppingType: getAPITrainingJobEarlyStoppingType(hpoJobConfig.TrainingJobEarlyStoppingType),
 			},
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
 				StaticHyperParameters: staticHyperparams,
