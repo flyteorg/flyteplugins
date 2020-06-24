@@ -24,13 +24,28 @@ import (
 	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
 
 	. "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
-	smIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+
+	"github.com/golang/protobuf/proto"
 )
 
 const (
 	pluginID          = "aws_sagemaker_hpo"
 	sagemakerTaskType = "aws_sagemaker_hpo"
 )
+
+const (
+	AutoSageMakerAPIHyperParameterScalingType   commonv1.HyperParameterScalingType = "Auto"
+	LinearSageMakerAPIHyperParameterScalingType  commonv1.HyperParameterScalingType = "Linear"
+	LogarithmicSageMakerAPIHyperParameterScalingType commonv1.HyperParameterScalingType = "Logarithmic"
+	ReverseLogarithmicSageMakerAPIHyperParameterScalingType      commonv1.HyperParameterScalingType = "ReverseLogarithmic"
+)
+
+const (
+	MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType commonv1.HyperParameterTuningJobObjectiveType = "Minimize"
+	MaximizeSageMakerAPIHyperParameterTuningJobObjectiveType commonv1.HyperParameterTuningJobObjectiveType = "Maximize"
+)
+
 
 // Sanity test that the plugin implements method of k8s.Plugin
 var _ k8s.Plugin = awsSagemakerPlugin{}
@@ -40,6 +55,91 @@ type awsSagemakerPlugin struct {
 
 func (m awsSagemakerPlugin) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
 	return &hpojobv1.HyperparameterTuningJob{}, nil
+}
+
+// Convert SparkJob ApplicationType to Operator CRD ApplicationType
+func getAPIHyperParameterTuningJobStrategyType(
+	strategyType sagemakerSpec.HPOJobConfig_HyperparameterTuningStrategy) commonv1.HyperParameterTuningJobStrategyType {
+
+	switch strategyType {
+	case sagemakerSpec.HPOJobConfig_BAYESIAN:
+		return "Bayesian"
+	}
+	return "Bayesian"
+}
+
+func getAPIScalingType(scalingType sagemakerSpec.HyperparameterScalingType) commonv1.HyperParameterScalingType {
+	switch scalingType {
+	case sagemakerSpec.HyperparameterScalingType_AUTO:
+		return AutoSageMakerAPIHyperParameterScalingType
+	case sagemakerSpec.HyperparameterScalingType_LINEAR:
+		return LinearSageMakerAPIHyperParameterScalingType
+	case sagemakerSpec.HyperparameterScalingType_LOGARITHMIC:
+		return LogarithmicSageMakerAPIHyperParameterScalingType
+	case sagemakerSpec.HyperparameterScalingType_REVERSELOGARITHMIC:
+		return ReverseLogarithmicSageMakerAPIHyperParameterScalingType
+	}
+	return AutoSageMakerAPIHyperParameterScalingType
+}
+
+func getAPIHyperparameterTuningObjectiveType(
+	objectiveType sagemakerSpec.HyperparameterTuningObjective_HyperparameterTuningObjectiveType) commonv1.HyperParameterTuningJobObjectiveType {
+
+	switch objectiveType {
+	case sagemakerSpec.HyperparameterTuningObjective_MINIMIZE:
+		return MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType
+	case sagemakerSpec.HyperparameterTuningObjective_MAXIMIZE:
+		return MaximizeSageMakerAPIHyperParameterTuningJobObjectiveType
+	}
+	return MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType
+}
+
+func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.ParameterRanges {
+	prMap := hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap()
+	var retValue = &commonv1.ParameterRanges{
+		CategoricalParameterRanges: []commonv1.CategoricalParameterRange{},
+		ContinuousParameterRanges:  []commonv1.ContinuousParameterRange{},
+		IntegerParameterRanges:     []commonv1.IntegerParameterRange{},
+	}
+	
+	for prName, pr := range prMap {
+		switch p := pr.GetParameterRangeType().(type) {
+		case sagemakerSpec.ParameterRangeOneOf_CategoricalParameterRange:
+			var newElem = commonv1.CategoricalParameterRange{
+				Name:   ToStringPtr(prName),
+				Values: pr.GetCategoricalParameterRange().GetValues(),
+			} 
+			retValue.CategoricalParameterRanges = append(retValue.CategoricalParameterRanges, newElem)
+
+		case sagemakerSpec.ParameterRangeOneOf_ContinuousParameterRange:
+			var newElem = commonv1.ContinuousParameterRange{
+				MaxValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
+				MinValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
+				Name:        ToStringPtr(prName),
+				ScalingType: getAPIScalingType(pr.GetContinuousParameterRange().GetScalingType()),
+			}
+			retValue.ContinuousParameterRanges = append(retValue.ContinuousParameterRanges, newElem)
+
+		case sagemakerSpec.ParameterRangeOneOf_IntegerParameterRange:
+			var newElem = commonv1.IntegerParameterRange{
+				MaxValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
+				MinValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
+				Name:        ToStringPtr(prName),
+				ScalingType: getAPIScalingType(pr.GetContinuousParameterRange().GetScalingType()),
+			}
+			retValue.IntegerParameterRanges = append(retValue.IntegerParameterRanges, newElem)
+		}		
+	}
+}
+
+func convertHPOJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemakerSpec.HPOJobConfig, error) {
+	var retValue = &sagemakerSpec.HPOJobConfig{}
+	hpoJobConfigByteArray := hpoJobConfigLiteral.GetScalar().GetBinary().GetValue()
+	err := proto.Unmarshal(hpoJobConfigByteArray, retValue)
+	if err != nil {
+		return nil, errors.Errorf("HPO Job Config Literal in input cannot be unmarshalled into spec type")
+	}
+	return retValue, nil
 }
 
 func convertStaticHyperparamsLiteralToSpecType(hyperparamLiteral *core.Literal) ([]*commonv1.KeyValuePair, error) {
@@ -73,26 +173,28 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	inputLiterals := taskInput.GetLiterals()
 	trainPathLiteral, ok := inputLiterals["train"]
 	if !ok {
-		return nil, errors.Errorf("train input not specified")
+		return nil, errors.Errorf("Input not specified: [train]")
 	}
 	validatePathLiteral, ok := inputLiterals["validation"]
 	if !ok {
-		return nil, errors.Errorf("validation input not specified")
+		return nil, errors.Errorf("Input not specified: [validation]")
 	}
 	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
 	if !ok {
-		return nil, errors.Errorf("static hyperparameters input not specified")
+		return nil, errors.Errorf("Input not specified: [static_hyperparameters]")
 	}
-	tunableHyperparamsLiteral, ok := inputLiterals["tunable_hyperparameters"]
-	// TODO: consider not erroring out when this happens, because it could be the case that the user doesn't want
-	// 		 to do HPO
+
+
+	hpoJobConfigLiteral, ok := inputLiterals["hpo_job_config"]
 	if !ok {
-		return nil, errors.Errorf("tunable hyperparameters input not specified")
+		return nil, errors.Errorf("Input not specified: [hpo_job_config]")
 	}
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
-	sagemakerJob := smIdl.SagemakerHPOJob{}
-	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerJob)
+
+	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
+	sagemakerHPOJob := sagemakerSpec.HPOJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerHPOJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid task specification for taskType [%s]", sagemakerTaskType)
 	}
@@ -101,6 +203,12 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
+	}
+
+	// hpo_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
+	hpoJobConfig, err := convertHPOJobConfigToSpecType(hpoJobConfigLiteral)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert hpo job config literal to spec type")
 	}
 
 	// If the container is part of the task template you can access it here
@@ -112,37 +220,29 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
+	hpoJobParameterRanges := buildParameterRanges(hpoJobConfig)
+
 	hpoJob := &hpojobv1.HyperparameterTuningJob{
 		Spec: hpojobv1.HyperparameterTuningJobSpec{
 			HyperParameterTuningJobName: &taskName,
 			HyperParameterTuningJobConfig: &commonv1.HyperParameterTuningJobConfig{
 				ResourceLimits: &commonv1.ResourceLimits{
-					MaxNumberOfTrainingJobs: ToInt64Ptr(10),
-					MaxParallelTrainingJobs: ToInt64Ptr(5),
+					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.MaxNumberOfTrainingJobs),
+					MaxParallelTrainingJobs: ToInt64Ptr(sagemakerHPOJob.MaxParallelTrainingJobs),
 				},
-				Strategy: "Bayesian",
+				Strategy: getAPIHyperParameterTuningJobStrategyType(hpoJobConfig.TuningStrategy),
 				HyperParameterTuningJobObjective: &commonv1.HyperParameterTuningJobObjective{
-					Type:       "Minimize",
-					MetricName: ToStringPtr("validation:error"),
+					Type:       getAPIHyperparameterTuningObjectiveType(hpoJobConfig.TuningObjective.ObjectiveType),
+					MetricName: ToStringPtr(hpoJobConfig.TuningObjective.MetricName),
 				},
-				// TODO: need to implement a factory that map names to different types of parameter range
-				ParameterRanges: &commonv1.ParameterRanges{
-					IntegerParameterRanges: []commonv1.IntegerParameterRange{
-						commonv1.IntegerParameterRange{
-							Name:        ToStringPtr("num_round"),
-							MinValue:    ToStringPtr("10"),
-							MaxValue:    ToStringPtr("20"),
-							ScalingType: "Linear",
-						},
-					},
-				},
+				ParameterRanges: hpoJobParameterRanges,
 				TrainingJobEarlyStoppingType: "Auto",
 			},
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
 				StaticHyperParameters: staticHyperparams,
 				AlgorithmSpecification: &commonv1.HyperParameterAlgorithmSpecification{
-					TrainingImage:     &sagemakerJob.AlgorithmSpecification.TrainingImage,
-					TrainingInputMode: commonv1.TrainingInputMode(sagemakerJob.AlgorithmSpecification.TrainingInputMode),
+					TrainingImage:     &sagemakerHPOJob.AlgorithmSpecification.TrainingImage,
+					TrainingInputMode: commonv1.TrainingInputMode(sagemakerHPOJob.AlgorithmSpecification.TrainingInputMode),
 				},
 				InputDataConfig: []commonv1.Channel{
 					commonv1.Channel{
@@ -172,17 +272,17 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 					S3OutputPath: ToStringPtr(outputPath),
 				},
 				ResourceConfig: &commonv1.ResourceConfig{
-					InstanceType:   sagemakerJob.ResourceConfig.InstanceType,
-					InstanceCount:  &sagemakerJob.ResourceConfig.InstanceCount,
-					VolumeSizeInGB: &sagemakerJob.ResourceConfig.VolumeSizeInGB,
-					VolumeKmsKeyId: &sagemakerJob.ResourceConfig.VolumeKmsKeyId,
+					InstanceType:   sagemakerHPOJob.ResourceConfig.InstanceType,
+					InstanceCount:  &sagemakerHPOJob.ResourceConfig.InstanceCount,
+					VolumeSizeInGB: &sagemakerHPOJob.ResourceConfig.VolumeSizeInGB,
+					VolumeKmsKeyId: &sagemakerHPOJob.ResourceConfig.VolumeKmsKeyId,
 				},
-				RoleArn: &sagemakerJob.RoleArn,
+				RoleArn: &sagemakerHPOJob.RoleArn,
 				StoppingCondition: &commonv1.StoppingCondition{
-					MaxRuntimeInSeconds: &sagemakerJob.StoppingCondition.MaxRuntimeInSeconds,
+					MaxRuntimeInSeconds: &sagemakerHPOJob.StoppingCondition.MaxRuntimeInSeconds,
 				},
 			},
-			Region: &sagemakerJob.Region,
+			Region: &sagemakerHPOJob.Region,
 		},
 	}
 
@@ -302,12 +402,12 @@ func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
 
-// TODO we should register the plugin
 func init() {
 	if err := commonv1.AddToScheme(scheme.Scheme); err != nil {
 		panic(err)
 	}
 
+	// Registering the plugin
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  pluginID,
