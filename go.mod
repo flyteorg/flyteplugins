@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/Azure/azure-sdk-for-go v39.0.0+incompatible // indirect
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
+	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a
 	github.com/aws/aws-sdk-go v1.28.11
 	github.com/coocood/freecache v1.1.0
