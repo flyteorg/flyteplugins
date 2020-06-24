@@ -15,7 +15,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// Convert SparkJob ApplicationType to Operator CRD ApplicationType
 func getAPIHyperParameterTuningJobStrategyType(
 	strategyType sagemakerSpec.HPOJobConfig_HyperparameterTuningStrategy) commonv1.HyperParameterTuningJobStrategyType {
 
