@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/Azure/azure-sdk-for-go v39.0.0+incompatible // indirect
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
-	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/semver v1.5.0
 	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a
 	github.com/aws/aws-sdk-go v1.28.11
 	github.com/coocood/freecache v1.1.0
@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
-	github.com/lyft/flyteidl v0.17.33-0.20200624052212-70a213e49b56 // indirect
+	github.com/lyft/flyteidl v0.17.33-0.20200624052212-70a213e49b56
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/go-ps v1.0.0

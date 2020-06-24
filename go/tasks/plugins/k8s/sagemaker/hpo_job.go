@@ -23,7 +23,7 @@ import (
 
 	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
 
-	. "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
+	awssagemaker "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
 	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 )
@@ -126,13 +126,13 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 			HyperParameterTuningJobName: &taskName,
 			HyperParameterTuningJobConfig: &commonv1.HyperParameterTuningJobConfig{
 				ResourceLimits: &commonv1.ResourceLimits{
-					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
-					MaxParallelTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxParallelTrainingJobs()),
+					MaxNumberOfTrainingJobs: awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
+					MaxParallelTrainingJobs: awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetMaxParallelTrainingJobs()),
 				},
 				Strategy: getAPIHyperParameterTuningJobStrategyType(hpoJobConfig.GetTuningStrategy()),
 				HyperParameterTuningJobObjective: &commonv1.HyperParameterTuningJobObjective{
 					Type:       getAPIHyperparameterTuningObjectiveType(hpoJobConfig.GetTuningObjective().GetObjectiveType()),
-					MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
+					MetricName: awssagemaker.ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
 				},
 				ParameterRanges:              hpoJobParameterRanges,
 				TrainingJobEarlyStoppingType: getAPITrainingJobEarlyStoppingType(hpoJobConfig.TrainingJobEarlyStoppingType),
@@ -140,49 +140,49 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
 				StaticHyperParameters: staticHyperparams,
 				AlgorithmSpecification: &commonv1.HyperParameterAlgorithmSpecification{
-					TrainingImage:     ToStringPtr(trainingImageStr),
+					TrainingImage:     awssagemaker.ToStringPtr(trainingImageStr),
 					TrainingInputMode: getAPITrainingInputMode(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode()),
 				},
 				InputDataConfig: []commonv1.Channel{
 					{
-						ChannelName: ToStringPtr("train"),
+						ChannelName: awssagemaker.ToStringPtr("train"),
 						DataSource: &commonv1.DataSource{
 							S3DataSource: &commonv1.S3DataSource{
 								S3DataType: "S3Prefix",
-								S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
+								S3Uri:      awssagemaker.ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
+						ContentType: awssagemaker.ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
 						InputMode:   "File",
 					},
 					{
-						ChannelName: ToStringPtr("validation"),
+						ChannelName: awssagemaker.ToStringPtr("validation"),
 						DataSource: &commonv1.DataSource{
 							S3DataSource: &commonv1.S3DataSource{
 								S3DataType: "S3Prefix",
-								S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
+								S3Uri:      awssagemaker.ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
+						ContentType: awssagemaker.ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
 						InputMode:   "File",
 					},
 				},
 				OutputDataConfig: &commonv1.OutputDataConfig{
-					S3OutputPath: ToStringPtr(outputPath),
+					S3OutputPath: awssagemaker.ToStringPtr(outputPath),
 				},
 				ResourceConfig: &commonv1.ResourceConfig{
 					InstanceType:   sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceType(),
-					InstanceCount:  ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
-					VolumeSizeInGB: ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
-					VolumeKmsKeyId: ToStringPtr(""), // TODO: add to proto and flytekit
+					InstanceCount:  awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
+					VolumeSizeInGB: awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
+					VolumeKmsKeyId: awssagemaker.ToStringPtr(""), // TODO: add to proto and flytekit
 				},
-				RoleArn: ToStringPtr(cfg.RoleArn),
+				RoleArn: awssagemaker.ToStringPtr(cfg.RoleArn),
 				StoppingCondition: &commonv1.StoppingCondition{
-					MaxRuntimeInSeconds:  ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
-					MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
+					MaxRuntimeInSeconds:  awssagemaker.ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
+					MaxWaitTimeInSeconds: awssagemaker.ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
 				},
 			},
-			Region: ToStringPtr(cfg.Region),
+			Region: awssagemaker.ToStringPtr(cfg.Region),
 		},
 	}
 

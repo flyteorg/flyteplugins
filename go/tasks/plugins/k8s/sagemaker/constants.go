@@ -7,6 +7,12 @@ const (
 	sagemakerTaskType = "aws_sagemaker_hpo"
 )
 
+
+const (
+	BayesianSageMakerAPIHyperParameterTuningJobStrategyType commonv1.HyperParameterTuningJobStrategyType = "Bayesian"
+	RandomSageMakerAPIHyperParameterTuningJobStrategyType commonv1.HyperParameterTuningJobStrategyType = "Random"
+)
+
 const (
 	AutoSageMakerAPIHyperParameterScalingType               commonv1.HyperParameterScalingType = "Auto"
 	LinearSageMakerAPIHyperParameterScalingType             commonv1.HyperParameterScalingType = "Linear"

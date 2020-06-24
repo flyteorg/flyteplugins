@@ -6,7 +6,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
-	. "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
+	awssagemaker "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
@@ -21,9 +21,9 @@ func getAPIHyperParameterTuningJobStrategyType(
 
 	switch strategyType {
 	case sagemakerSpec.HPOJobConfig_BAYESIAN:
-		return "Bayesian"
+		return BayesianSageMakerAPIHyperParameterTuningJobStrategyType
 	}
-	return "Bayesian"
+	return RandomSageMakerAPIHyperParameterTuningJobStrategyType
 }
 
 func getAPIScalingType(scalingType sagemakerSpec.HyperparameterScalingType) commonv1.HyperParameterScalingType {
@@ -94,13 +94,6 @@ func getAllVersions(cfg *config.Config, algName, region string) []string {
 	return allVers
 }
 
-func trivial(s string) {
-	if s == "" {
-		s = "Win!!!!"
-	}
-	fmt.Println(s)
-}
-
 func convertRawVersToSemVers(raw []string) ([]*semver.Version, error) {
 
 	vs := make([]*semver.Version, len(raw))
@@ -160,25 +153,25 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.Pa
 		switch pr.GetParameterRangeType().(type) {
 		case *sagemakerSpec.ParameterRangeOneOf_CategoricalParameterRange:
 			var newElem = commonv1.CategoricalParameterRange{
-				Name:   ToStringPtr(prName),
+				Name:   awssagemaker.ToStringPtr(prName),
 				Values: pr.GetCategoricalParameterRange().GetValues(),
 			}
 			retValue.CategoricalParameterRanges = append(retValue.CategoricalParameterRanges, newElem)
 
 		case *sagemakerSpec.ParameterRangeOneOf_ContinuousParameterRange:
 			var newElem = commonv1.ContinuousParameterRange{
-				MaxValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
-				MinValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
-				Name:        ToStringPtr(prName),
+				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
+				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
+				Name:        awssagemaker.ToStringPtr(prName),
 				ScalingType: getAPIScalingType(pr.GetContinuousParameterRange().GetScalingType()),
 			}
 			retValue.ContinuousParameterRanges = append(retValue.ContinuousParameterRanges, newElem)
 
 		case *sagemakerSpec.ParameterRangeOneOf_IntegerParameterRange:
 			var newElem = commonv1.IntegerParameterRange{
-				MaxValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
-				MinValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
-				Name:        ToStringPtr(prName),
+				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
+				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
+				Name:        awssagemaker.ToStringPtr(prName),
 				ScalingType: getAPIScalingType(pr.GetContinuousParameterRange().GetScalingType()),
 			}
 			retValue.IntegerParameterRanges = append(retValue.IntegerParameterRanges, newElem)
@@ -201,6 +194,9 @@ func convertHPOJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemake
 func convertStaticHyperparamsLiteralToSpecType(hyperparamLiteral *core.Literal) ([]*commonv1.KeyValuePair, error) {
 	var retValue []*commonv1.KeyValuePair
 	hyperFields := hyperparamLiteral.GetScalar().GetGeneric().GetFields()
+	if hyperFields == nil {
+		return nil, errors.Errorf("Failed to get the static hyperparameters field from the literal")
+	}
 	for k, v := range hyperFields {
 		var newElem = commonv1.KeyValuePair{
 			Name:  k,
