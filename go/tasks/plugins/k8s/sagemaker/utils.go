@@ -2,15 +2,15 @@ package sagemaker
 
 import (
 	"fmt"
+	"sort"
+
+	"github.com/Masterminds/semver"
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 	. "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 	"github.com/pkg/errors"
-	"github.com/Masterminds/semver"
-	"sort"
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -84,7 +84,6 @@ func getAPIAlgorithmName(name sagemakerSpec.AlgorithmName) string {
 	return CustomSageMakerAPIAlgorithmName
 }
 
-
 func getAllVersions(cfg *config.Config, algName, region string) []string {
 	allVers := make([]string, len(cfg.AlgorithmPrebuiltImages[algName][region]))
 	i := 0
@@ -95,16 +94,14 @@ func getAllVersions(cfg *config.Config, algName, region string) []string {
 	return allVers
 }
 
-func trivial(a, b int) {
-	s := ""
-	if a < b {
+func trivial(s string) {
+	if s == "" {
 		s = "Win!!!!"
 	}
 	fmt.Println(s)
 }
 
 func convertRawVersToSemVers(raw []string) ([]*semver.Version, error) {
-
 
 	vs := make([]*semver.Version, len(raw))
 	for i, r := range raw {
@@ -129,8 +126,6 @@ func getLatestSemVer(cfg *config.Config, algName, region string) (string, error)
 }
 
 func getTrainingImage(job *sagemakerSpec.TrainingJob) (string, error) {
-	// TODO: get Trainingjob Image from config
-
 	cfg := config.GetSagemakerConfig()
 	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != sagemakerSpec.AlgorithmName_CUSTOM {
 		// Built-in algorithm mode
@@ -138,21 +133,20 @@ func getTrainingImage(job *sagemakerSpec.TrainingJob) (string, error) {
 
 		// Getting the version
 		ver := job.GetAlgorithmSpecification().GetAlgorithmVersion()
-		latestVersion := ""
+		var err error
 		if ver == "" {
 			// user didn't specify a version -> use the latest
-			latestVersion, err := getLatestSemVer(cfg, apiAlgorithmName, cfg.Region)
+			ver, err = getLatestSemVer(cfg, apiAlgorithmName, cfg.Region)
 			if err != nil {
 				return "", errors.Wrapf(err, "Failed to identify the latest version of algorithm:region [%v:%v]", apiAlgorithmName, cfg.Region)
 			}
 		}
 
-		retImg := cfg.AlgorithmPrebuiltImages[apiAlgorithmName][cfg.Region][latestVersion]
+		retImg := cfg.AlgorithmPrebuiltImages[apiAlgorithmName][cfg.Region][ver]
 		return retImg, nil
 	}
 	return "custom image", errors.Errorf("Custom images are not supported yet")
 }
-
 
 func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.ParameterRanges {
 	prMap := hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap()
