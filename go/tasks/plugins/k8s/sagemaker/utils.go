@@ -127,13 +127,13 @@ func getLatestSemVer(cfg *config.Config, algName, region string) (string, error)
 
 func getTrainingImage(job *sagemakerSpec.TrainingJob) (string, error) {
 	cfg := config.GetSagemakerConfig()
+	var err error
 	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != sagemakerSpec.AlgorithmName_CUSTOM {
 		// Built-in algorithm mode
 		apiAlgorithmName := getAPIAlgorithmName(specifiedAlg)
 
 		// Getting the version
 		ver := job.GetAlgorithmSpecification().GetAlgorithmVersion()
-		var err error
 		if ver == "" {
 			// user didn't specify a version -> use the latest
 			ver, err = getLatestSemVer(cfg, apiAlgorithmName, cfg.Region)
