@@ -8,10 +8,10 @@ const (
 )
 
 const (
-	AutoSageMakerAPIHyperParameterScalingType   commonv1.HyperParameterScalingType = "Auto"
-	LinearSageMakerAPIHyperParameterScalingType  commonv1.HyperParameterScalingType = "Linear"
-	LogarithmicSageMakerAPIHyperParameterScalingType commonv1.HyperParameterScalingType = "Logarithmic"
-	ReverseLogarithmicSageMakerAPIHyperParameterScalingType      commonv1.HyperParameterScalingType = "ReverseLogarithmic"
+	AutoSageMakerAPIHyperParameterScalingType               commonv1.HyperParameterScalingType = "Auto"
+	LinearSageMakerAPIHyperParameterScalingType             commonv1.HyperParameterScalingType = "Linear"
+	LogarithmicSageMakerAPIHyperParameterScalingType        commonv1.HyperParameterScalingType = "Logarithmic"
+	ReverseLogarithmicSageMakerAPIHyperParameterScalingType commonv1.HyperParameterScalingType = "ReverseLogarithmic"
 )
 
 const (
@@ -25,11 +25,11 @@ const (
 )
 
 const (
-	OffSageMakerAPITrainingJobEarlyStoppingType commonv1.TrainingJobEarlyStoppingType = "Off"
+	OffSageMakerAPITrainingJobEarlyStoppingType  commonv1.TrainingJobEarlyStoppingType = "Off"
 	AutoSageMakerAPITrainingJobEarlyStoppingType commonv1.TrainingJobEarlyStoppingType = "Auto"
 )
 
-const(
-	CustomSageMakerAPIAlgorithmName string = "custom"
+const (
+	CustomSageMakerAPIAlgorithmName  string = "custom"
 	XgboostSageMakerAPIAlgorithmName string = "xgboost"
 )

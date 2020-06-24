@@ -38,8 +38,6 @@ func (m awsSagemakerPlugin) BuildIdentityResource(ctx context.Context, taskCtx p
 	return &hpojobv1.HyperparameterTuningJob{}, nil
 }
 
-
-
 func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 	// TODO build the actual spec of the k8s resource from the taskCtx Some helpful code is already added
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
@@ -136,7 +134,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 					Type:       getAPIHyperparameterTuningObjectiveType(hpoJobConfig.GetTuningObjective().GetObjectiveType()),
 					MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
 				},
-				ParameterRanges: hpoJobParameterRanges,
+				ParameterRanges:              hpoJobParameterRanges,
 				TrainingJobEarlyStoppingType: "Auto",
 			},
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
@@ -154,7 +152,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 								S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"),  // TODO: can this be derived from the task spec?
+						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
 						InputMode:   "File",
 					},
 					{
@@ -165,7 +163,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 								S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"),  // TODO: can this be derived from the task spec?
+						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
 						InputMode:   "File",
 					},
 				},
@@ -176,11 +174,11 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 					InstanceType:   sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceType(),
 					InstanceCount:  ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
 					VolumeSizeInGB: ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
-					VolumeKmsKeyId: ToStringPtr(""),   // TODO: add to proto and flytekit
+					VolumeKmsKeyId: ToStringPtr(""), // TODO: add to proto and flytekit
 				},
 				RoleArn: ToStringPtr(cfg.RoleArn),
 				StoppingCondition: &commonv1.StoppingCondition{
-					MaxRuntimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
+					MaxRuntimeInSeconds:  ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
 					MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
 				},
 			},
@@ -319,4 +317,3 @@ func init() {
 			IsDefault:           false,
 		})
 }
-
