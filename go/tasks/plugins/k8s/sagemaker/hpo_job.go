@@ -46,6 +46,10 @@ const (
 	MaximizeSageMakerAPIHyperParameterTuningJobObjectiveType commonv1.HyperParameterTuningJobObjectiveType = "Maximize"
 )
 
+const (
+	FileSageMakerAPITrainingInputMode commonv1.TrainingInputMode = "File"
+	PipeSageMakerAPITrainingInputMode commonv1.TrainingInputMode = "Pipe"
+)
 
 // Sanity test that the plugin implements method of k8s.Plugin
 var _ k8s.Plugin = awsSagemakerPlugin{}
@@ -93,6 +97,43 @@ func getAPIHyperparameterTuningObjectiveType(
 	}
 	return MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType
 }
+
+func getAPITrainingInputMode(trainingjob *sagemakerSpec.TrainingJob) commonv1.TrainingInputMode {
+	switch trainingjob.GetAlgorithmSpecification().GetInputMode() {
+	case sagemakerSpec.InputMode_FILE:
+		return FileSageMakerAPITrainingInputMode
+	case sagemakerSpec.InputMode_PIPE:
+		return PipeSageMakerAPITrainingInputMode
+	}
+	return FileSageMakerAPITrainingInputMode
+}
+
+func getTrainingImage(job *sagemakerSpec.TrainingJob) (string, error) {
+	// TODO: get Trainingjob Image from config
+	var retImg string
+	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != sagemakerSpec.AlgorithmName_CUSTOM {
+		// Built-in algorithm mode
+
+		alg, ok := // use config to find the algorithm
+		if !ok {
+			return "", errors.Errorf("Cannot find an image corresponding to the user-specified algorithm [%v]", specifiedAlg)
+		}
+
+		// Getting the version
+		ver := job.GetAlgorithmSpecification().GetAlgorithmVersion()
+		if ver == "" {
+			// user didn't specify a version -> use the latest
+			ver = "latest"
+		}
+		retImg, ok = findImg(alg, ver)
+		if !ok {
+			return "", errors.Errorf("Cannot find an image corresponding to the user-specified algorithm:version [%v:%v]", specifiedAlg, ver)
+		}
+		return retImg, nil
+	}
+	return "custom image", errors.Errorf("Custom images are not supported yet")
+}
+
 
 func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.ParameterRanges {
 	prMap := hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap()
@@ -155,6 +196,16 @@ func convertStaticHyperparamsLiteralToSpecType(hyperparamLiteral *core.Literal) 
 	return retValue, nil
 }
 
+func convertStoppingConditionToSpecType(stoppingConditionLiteral *core.Literal) (*sagemakerSpec.StoppingCondition, error) {
+	var retValue sagemakerSpec.StoppingCondition
+	bytearray := stoppingConditionLiteral.GetScalar().GetBinary().GetValue()
+	err := proto.Unmarshal(bytearray, &retValue)
+	if err != nil {
+		return nil, errors.Errorf("StoppingCondition Literal in input cannot be unmarshalled into spec type")
+	}
+	return &retValue, nil
+}
+
 func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 	// TODO build the actual spec of the k8s resource from the taskCtx Some helpful code is already added
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
@@ -184,6 +235,10 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 		return nil, errors.Errorf("Input not specified: [static_hyperparameters]")
 	}
 
+	trainingJobStoppingConditionLiteral, ok := inputLiterals["stopping_condition"]
+	if !ok {
+		return nil, errors.Errorf("Input not specified: [stopping_condition]")
+	}
 
 	hpoJobConfigLiteral, ok := inputLiterals["hpo_job_config"]
 	if !ok {
@@ -205,6 +260,11 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
 	}
 
+	trainingJobStoppingCondition, err := convertStoppingConditionToSpecType(trainingJobStoppingConditionLiteral)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert stopping condition literal to spec type")
+	}
+
 	// hpo_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
 	hpoJobConfig, err := convertHPOJobConfigToSpecType(hpoJobConfigLiteral)
 	if err != nil {
@@ -220,6 +280,11 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
+	trainingImageStr, err := getTrainingImage(sagemakerHPOJob.GetTrainingJob())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to find the training image")
+	}
+
 	hpoJobParameterRanges := buildParameterRanges(hpoJobConfig)
 
 	hpoJob := &hpojobv1.HyperparameterTuningJob{
@@ -227,22 +292,22 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 			HyperParameterTuningJobName: &taskName,
 			HyperParameterTuningJobConfig: &commonv1.HyperParameterTuningJobConfig{
 				ResourceLimits: &commonv1.ResourceLimits{
-					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.MaxNumberOfTrainingJobs),
-					MaxParallelTrainingJobs: ToInt64Ptr(sagemakerHPOJob.MaxParallelTrainingJobs),
+					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
+					MaxParallelTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxParallelTrainingJobs()),
 				},
-				Strategy: getAPIHyperParameterTuningJobStrategyType(hpoJobConfig.TuningStrategy),
+				Strategy: getAPIHyperParameterTuningJobStrategyType(hpoJobConfig.GetTuningStrategy()),
 				HyperParameterTuningJobObjective: &commonv1.HyperParameterTuningJobObjective{
-					Type:       getAPIHyperparameterTuningObjectiveType(hpoJobConfig.TuningObjective.ObjectiveType),
-					MetricName: ToStringPtr(hpoJobConfig.TuningObjective.MetricName),
+					Type:       getAPIHyperparameterTuningObjectiveType(hpoJobConfig.GetTuningObjective().GetObjectiveType()),
+					MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
 				},
 				ParameterRanges: hpoJobParameterRanges,
 				TrainingJobEarlyStoppingType: "Auto",
 			},
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
-				StaticHyperParameters: staticHyperparams,
+				StaticHyperParameters: staticHyperparams,  // TODO: are these still accessible as before?
 				AlgorithmSpecification: &commonv1.HyperParameterAlgorithmSpecification{
-					TrainingImage:     &sagemakerHPOJob.AlgorithmSpecification.TrainingImage,
-					TrainingInputMode: commonv1.TrainingInputMode(sagemakerHPOJob.AlgorithmSpecification.TrainingInputMode),
+					TrainingImage:     ToStringPtr(trainingImageStr),
+					TrainingInputMode: getAPITrainingInputMode(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode()),
 				},
 				InputDataConfig: []commonv1.Channel{
 					commonv1.Channel{
@@ -253,7 +318,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 								S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"),
+						ContentType: ToStringPtr("text/csv"),  // TODO: can this be derived from the task spec?
 						InputMode:   "File",
 					},
 					commonv1.Channel{
@@ -264,7 +329,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 								S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"),
+						ContentType: ToStringPtr("text/csv"),  // TODO: can this be derived from the task spec?
 						InputMode:   "File",
 					},
 				},
@@ -272,17 +337,18 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 					S3OutputPath: ToStringPtr(outputPath),
 				},
 				ResourceConfig: &commonv1.ResourceConfig{
-					InstanceType:   sagemakerHPOJob.ResourceConfig.InstanceType,
-					InstanceCount:  &sagemakerHPOJob.ResourceConfig.InstanceCount,
-					VolumeSizeInGB: &sagemakerHPOJob.ResourceConfig.VolumeSizeInGB,
-					VolumeKmsKeyId: &sagemakerHPOJob.ResourceConfig.VolumeKmsKeyId,
+					InstanceType:   sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceType(),
+					InstanceCount:  ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
+					VolumeSizeInGB: ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
+					VolumeKmsKeyId: ToStringPtr(""),
 				},
-				RoleArn: &sagemakerHPOJob.RoleArn,
+				RoleArn: &sagemakerHPOJob.RoleArn,  // TODO: get this from config
 				StoppingCondition: &commonv1.StoppingCondition{
-					MaxRuntimeInSeconds: &sagemakerHPOJob.StoppingCondition.MaxRuntimeInSeconds,
+					MaxRuntimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
+					MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
 				},
 			},
-			Region: &sagemakerHPOJob.Region,
+			Region: &sagemakerHPOJob.Region,  // TODO: get this from config
 		},
 	}
 
