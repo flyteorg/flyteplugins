@@ -157,15 +157,15 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.Pa
 	}
 
 	for prName, pr := range prMap {
-		switch p := pr.GetParameterRangeType().(type) {
-		case sagemakerSpec.ParameterRangeOneOf_CategoricalParameterRange:
+		switch pr.GetParameterRangeType().(type) {
+		case *sagemakerSpec.ParameterRangeOneOf_CategoricalParameterRange:
 			var newElem = commonv1.CategoricalParameterRange{
 				Name:   ToStringPtr(prName),
 				Values: pr.GetCategoricalParameterRange().GetValues(),
 			}
 			retValue.CategoricalParameterRanges = append(retValue.CategoricalParameterRanges, newElem)
 
-		case sagemakerSpec.ParameterRangeOneOf_ContinuousParameterRange:
+		case *sagemakerSpec.ParameterRangeOneOf_ContinuousParameterRange:
 			var newElem = commonv1.ContinuousParameterRange{
 				MaxValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
 				MinValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
@@ -174,7 +174,7 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.Pa
 			}
 			retValue.ContinuousParameterRanges = append(retValue.ContinuousParameterRanges, newElem)
 
-		case sagemakerSpec.ParameterRangeOneOf_IntegerParameterRange:
+		case *sagemakerSpec.ParameterRangeOneOf_IntegerParameterRange:
 			var newElem = commonv1.IntegerParameterRange{
 				MaxValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
 				MinValue:    ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
