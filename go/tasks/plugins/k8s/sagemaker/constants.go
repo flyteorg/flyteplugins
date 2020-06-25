@@ -3,8 +3,13 @@ package sagemaker
 import commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 
 const (
-	pluginID          = "aws_sagemaker_hpo"
-	sagemakerTaskType = "aws_sagemaker_hpo"
+	trainingJobTaskPluginID = "sagemaker-training-job-task"
+	trainingJobTaskType = "sagemaker-training-job-task"
+)
+
+const (
+	hpoJobTaskPluginID = "sagemaker-hpo-job-task"
+	hpoJobTaskType = "sagemaker-hpo-job-task"
 )
 
 const (

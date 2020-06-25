@@ -38,6 +38,12 @@ func (m awsSagemakerPlugin) BuildIdentityResource(ctx context.Context, taskCtx p
 	return &hpojobv1.HyperparameterTuningJob{}, nil
 }
 
+
+func (m awsSagemakerPlugin) buildTrainingJobSpec(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
+
+}
+
+
 func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 	// TODO build the actual spec of the k8s resource from the taskCtx Some helpful code is already added
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
@@ -310,10 +316,11 @@ func init() {
 	// Registering the plugin
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
-			ID:                  pluginID,
-			RegisteredTaskTypes: []pluginsCore.TaskType{sagemakerTaskType},
+			ID:                  hpoJobTaskPluginID,
+			RegisteredTaskTypes: []pluginsCore.TaskType{hpoJobTaskType},
 			ResourceToWatch:     &hpojobv1.HyperparameterTuningJob{},
 			Plugin:              awsSagemakerPlugin{},
 			IsDefault:           false,
 		})
+
 }
