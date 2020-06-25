@@ -3,6 +3,7 @@ package spark
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -68,6 +69,33 @@ func validateSparkJob(sparkJob *plugins.SparkJob) error {
 		return fmt.Errorf("either MainApplicationFile or MainClass must be set")
 	}
 
+	return nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func populateSparkConfig(sparkConfig, userSparkConfig map[string]string) error {
+	for k, v := range userSparkConfig {
+		if k == "spark.executor.instances" && sparkConfig["spark.executor.instances"] != "" {
+			limit, err := strconv.Atoi(sparkConfig["spark.executor.instances"])
+			if err != nil {
+				return err
+			}
+			userRequest, err := strconv.Atoi(v)
+			if err != nil {
+				return err
+			}
+			numberOfExecutors := min(limit, userRequest)
+			sparkConfig[k] = strconv.Itoa(numberOfExecutors)
+			continue
+		}
+		sparkConfig[k] = v
+	}
 	return nil
 }
 
@@ -138,8 +166,9 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		sparkConfig["spark.pyspark.driver.python"] = sparkJob.GetExecutorPath()
 	}
 
-	for k, v := range sparkJob.GetSparkConf() {
-		sparkConfig[k] = v
+	err = populateSparkConfig(sparkConfig, sparkJob.GetSparkConf())
+	if err != nil {
+		return nil, err
 	}
 
 	// Set pod limits.

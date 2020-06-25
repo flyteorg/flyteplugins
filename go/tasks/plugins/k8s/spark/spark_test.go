@@ -301,3 +301,35 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Nil(t, resource)
 }
+
+func TestPopulateSparkConfigExecutorLimit(t *testing.T) {
+	testCases := []struct {
+		description string
+		sparkConfig map[string]string
+		want        string
+	}{
+		{
+			"User executor config less than limit",
+			map[string]string{"spark.executor.instances": "5"},
+			"3",
+		},
+		{
+			"User executor config greater than limit",
+			map[string]string{"spark.executor.instances": "1"},
+			"1",
+		},
+		{
+			"No limit set.",
+			map[string]string{},
+			"3",
+		},
+	}
+
+	for _, tc := range testCases {
+		_ = populateSparkConfig(tc.sparkConfig, dummySparkConf)
+		got := tc.sparkConfig["spark.executor.instances"]
+		if got != tc.want {
+			t.Errorf("Test Case: %s, got %s, want %s", tc.description, got, tc.want)
+		}
+	}
+}
