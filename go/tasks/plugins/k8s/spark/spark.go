@@ -31,6 +31,8 @@ import (
 const KindSparkApplication = "SparkApplication"
 const sparkDriverUI = "sparkDriverUI"
 const sparkHistoryUI = "sparkHistoryUI"
+const sparkExecutorKey = "spark.executor.instances"
+const sparkExecutorLimitKey = "spark.executor.instances.limit"
 
 var sparkTaskType = "spark"
 
@@ -81,8 +83,8 @@ func min(a, b int) int {
 
 func populateSparkConfig(sparkConfig, userSparkConfig map[string]string) error {
 	for k, v := range userSparkConfig {
-		if k == "spark.executor.instances" && sparkConfig["spark.executor.instances"] != "" {
-			limit, err := strconv.Atoi(sparkConfig["spark.executor.instances"])
+		if k == sparkExecutorKey && sparkConfig[sparkExecutorLimitKey] != "" {
+			limit, err := strconv.Atoi(sparkConfig[sparkExecutorLimitKey])
 			if err != nil {
 				return err
 			}

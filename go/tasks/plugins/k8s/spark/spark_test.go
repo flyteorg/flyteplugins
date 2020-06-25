@@ -310,12 +310,12 @@ func TestPopulateSparkConfigExecutorLimit(t *testing.T) {
 	}{
 		{
 			"User executor config less than limit",
-			map[string]string{"spark.executor.instances": "5"},
+			map[string]string{sparkExecutorLimitKey: "5"},
 			"3",
 		},
 		{
 			"User executor config greater than limit",
-			map[string]string{"spark.executor.instances": "1"},
+			map[string]string{sparkExecutorLimitKey: "1"},
 			"1",
 		},
 		{
@@ -327,7 +327,7 @@ func TestPopulateSparkConfigExecutorLimit(t *testing.T) {
 
 	for _, tc := range testCases {
 		_ = populateSparkConfig(tc.sparkConfig, dummySparkConf)
-		got := tc.sparkConfig["spark.executor.instances"]
+		got := tc.sparkConfig[sparkExecutorKey]
 		if got != tc.want {
 			t.Errorf("Test Case: %s, got %s, want %s", tc.description, got, tc.want)
 		}
