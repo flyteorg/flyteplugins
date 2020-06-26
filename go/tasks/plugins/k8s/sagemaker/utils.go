@@ -168,8 +168,8 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.Pa
 
 		case *sagemakerSpec.ParameterRangeOneOf_IntegerParameterRange:
 			var newElem = commonv1.IntegerParameterRange{
-				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetContinuousParameterRange().GetMaxValue())),
-				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetContinuousParameterRange().GetMinValue())),
+				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMaxValue())),
+				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMinValue())),
 				Name:        awssagemaker.ToStringPtr(prName),
 				ScalingType: getAPIScalingType(pr.GetContinuousParameterRange().GetScalingType()),
 			}
