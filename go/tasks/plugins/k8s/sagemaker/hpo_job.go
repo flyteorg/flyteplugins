@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/hyperparametertuningjob"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
@@ -24,8 +26,8 @@ import (
 
 	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
 
-	awssagemaker "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
 	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 )
 
@@ -122,18 +124,20 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	cfg := config.GetSagemakerConfig()
 
+
+
 	hpoJob := &hpojobv1.HyperparameterTuningJob{
 		Spec: hpojobv1.HyperparameterTuningJobSpec{
 			HyperParameterTuningJobName: &taskName,
 			HyperParameterTuningJobConfig: &commonv1.HyperParameterTuningJobConfig{
 				ResourceLimits: &commonv1.ResourceLimits{
-					MaxNumberOfTrainingJobs: awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
-					MaxParallelTrainingJobs: awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetMaxParallelTrainingJobs()),
+					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
+					MaxParallelTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxParallelTrainingJobs()),
 				},
 				Strategy: getAPIHyperParameterTuningJobStrategyType(hpoJobConfig.GetTuningStrategy()),
 				HyperParameterTuningJobObjective: &commonv1.HyperParameterTuningJobObjective{
 					Type:       getAPIHyperparameterTuningObjectiveType(hpoJobConfig.GetTuningObjective().GetObjectiveType()),
-					MetricName: awssagemaker.ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
+					MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
 				},
 				ParameterRanges:              hpoJobParameterRanges,
 				TrainingJobEarlyStoppingType: getAPITrainingJobEarlyStoppingType(hpoJobConfig.TrainingJobEarlyStoppingType),
@@ -141,49 +145,49 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
 				StaticHyperParameters: staticHyperparams,
 				AlgorithmSpecification: &commonv1.HyperParameterAlgorithmSpecification{
-					TrainingImage:     awssagemaker.ToStringPtr(trainingImageStr),
+					TrainingImage:     ToStringPtr(trainingImageStr),
 					TrainingInputMode: getAPITrainingInputMode(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode()),
 				},
 				InputDataConfig: []commonv1.Channel{
 					{
-						ChannelName: awssagemaker.ToStringPtr("train"),
+						ChannelName: ToStringPtr("train"),
 						DataSource: &commonv1.DataSource{
 							S3DataSource: &commonv1.S3DataSource{
 								S3DataType: "S3Prefix",
-								S3Uri:      awssagemaker.ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
+								S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: awssagemaker.ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
+						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
 						InputMode:   "File",
 					},
 					{
-						ChannelName: awssagemaker.ToStringPtr("validation"),
+						ChannelName: ToStringPtr("validation"),
 						DataSource: &commonv1.DataSource{
 							S3DataSource: &commonv1.S3DataSource{
 								S3DataType: "S3Prefix",
-								S3Uri:      awssagemaker.ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
+								S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: awssagemaker.ToStringPtr("text/csv"), // TODO: can this be derived from the task spec?
+						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
 						InputMode:   "File",
 					},
 				},
 				OutputDataConfig: &commonv1.OutputDataConfig{
-					S3OutputPath: awssagemaker.ToStringPtr(outputPath),
+					S3OutputPath: ToStringPtr(outputPath),
 				},
 				ResourceConfig: &commonv1.ResourceConfig{
 					InstanceType:   sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceType(),
-					InstanceCount:  awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
-					VolumeSizeInGB: awssagemaker.ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
-					VolumeKmsKeyId: awssagemaker.ToStringPtr(""), // TODO: add to proto and flytekit
+					InstanceCount:  ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
+					VolumeSizeInGB: ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
+					VolumeKmsKeyId: ToStringPtr(""), // TODO: add to proto and flytekit
 				},
-				RoleArn: awssagemaker.ToStringPtr(cfg.RoleArn),
+				RoleArn: ToStringPtr(cfg.RoleArn),
 				StoppingCondition: &commonv1.StoppingCondition{
-					MaxRuntimeInSeconds:  awssagemaker.ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
-					MaxWaitTimeInSeconds: awssagemaker.ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
+					MaxRuntimeInSeconds:  ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
+					MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
 				},
 			},
-			Region: awssagemaker.ToStringPtr(cfg.Region),
+			Region: ToStringPtr(cfg.Region),
 		},
 	}
 

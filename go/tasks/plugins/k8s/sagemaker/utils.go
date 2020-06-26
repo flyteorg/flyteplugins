@@ -215,3 +215,32 @@ func convertStoppingConditionToSpecType(stoppingConditionLiteral *core.Literal) 
 	}
 	return &retValue, nil
 }
+
+func ToStringPtr(str string) *string {
+	if str == "" {
+		return nil
+	}
+	return &str
+}
+
+func ToInt64Ptr(i int64) *int64 {
+	if i == 0 {
+		return nil
+	}
+	return &i
+}
+
+func ToIntPtr(i int) *int {
+	if i == 0 {
+		return nil
+	}
+	return &i
+}
+
+func ToFloat64Ptr(f float64) *float64 {
+	if f == nil {
+		return nil
+	}
+	return &f
+}
+
