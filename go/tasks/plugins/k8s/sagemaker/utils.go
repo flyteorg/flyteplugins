@@ -238,7 +238,7 @@ func ToIntPtr(i int) *int {
 }
 
 func ToFloat64Ptr(f float64) *float64 {
-	if f == nil {
+	if f == 0 {
 		return nil
 	}
 	return &f
