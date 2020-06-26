@@ -16,8 +16,8 @@ var (
 		AlgorithmPrebuiltImages: map[string]map[string]map[string]string{
 			"xgboost": {
 				"us-east-1": {
-					"0.72": "811284229777.dkr.ecr.us-east-1.amazonaws.com",
-					"0.90": "683313688378.dkr.ecr.us-east-1.amazonaws.com",
+					"0.72": "811284229777.dkr.ecr.us-east-1.amazonaws.com/xgboost:latest",
+					"0.90": "683313688378.dkr.ecr.us-east-1.amazonaws.com/xgboost:latest",
 				},
 			},
 		},
