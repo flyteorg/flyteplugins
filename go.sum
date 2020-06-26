@@ -336,6 +336,8 @@ github.com/lyft/flyteidl v0.17.33-0.20200624052212-70a213e49b56/go.mod h1:/zQXxu
 github.com/lyft/flyteidl v0.17.34 h1:8ERT/8vY40dOPPJrdD8ossBb30WkvzUx/IAFMR/7+9U=
 github.com/lyft/flyteidl v0.17.35-0.20200624212759-8781e5dfa56e h1:NOeU8ohsaWy2vJFHB9FtzIgR4JSp0vGguUK9lTWuMA4=
 github.com/lyft/flyteidl v0.17.35-0.20200624212759-8781e5dfa56e/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
+github.com/lyft/flyteidl v0.17.35-0.20200625185757-b560a5755178 h1:vneSReSUxfgQCLf7ROGtgYQ9ezNTZLB4ODREjnNiVMo=
+github.com/lyft/flyteidl v0.17.35-0.20200625185757-b560a5755178/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
 github.com/lyft/flytestdlib v0.3.0 h1:nIkX4MlyYdcLLzaF35RI2P5BhARt+qMgHoFto8eVNzU=
 github.com/lyft/flytestdlib v0.3.0/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
 github.com/lyft/flytestdlib v0.3.2 h1:bY6Y+Fg6Jdc7zY4GAYuR7t2hjWwynIdmRvtLcRNaGnw=
