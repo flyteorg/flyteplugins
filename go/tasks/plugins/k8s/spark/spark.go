@@ -40,6 +40,12 @@ var sparkTaskType = "spark"
 type Config struct {
 	DefaultSparkConfig    map[string]string `json:"spark-config-default" pflag:",Key value pairs of default spark configuration that should be applied to every SparkJob"`
 	SparkHistoryServerURL string            `json:"spark-history-server-url" pflag:",URL for SparkHistory Server that each job will publish the execution history to."`
+	SparkLimits           Limits            `json:"spark-limits" pflag:", Spark Limits that can be set for each job execution."`
+}
+
+// Spark Limits config
+type Limits struct {
+	ExecutorLimit string `json:"executor-limit" pflag:",Max limit on number of executors allowed to be launched."`
 }
 
 var (
@@ -81,22 +87,18 @@ func min(a, b int) int {
 	return b
 }
 
-func populateSparkConfig(sparkConfig, userSparkConfig map[string]string) error {
-	for k, v := range userSparkConfig {
-		if k == sparkExecutorKey && sparkConfig[sparkExecutorLimitKey] != "" {
-			limit, err := strconv.Atoi(sparkConfig[sparkExecutorLimitKey])
-			if err != nil {
-				return err
-			}
-			userRequest, err := strconv.Atoi(v)
-			if err != nil {
-				return err
-			}
-			numberOfExecutors := min(limit, userRequest)
-			sparkConfig[k] = strconv.Itoa(numberOfExecutors)
-			continue
+func checkLimits(sparkConfig map[string]string, limits Limits) error {
+	// Enforce executor limits
+	if limits.ExecutorLimit != "" {
+		userRequest, err := strconv.Atoi(sparkConfig[sparkExecutorKey])
+		if err != nil {
+			return err
 		}
-		sparkConfig[k] = v
+		limit, err := strconv.Atoi(limits.ExecutorLimit)
+		if err != nil {
+			return err
+		}
+		sparkConfig[sparkExecutorKey] = strconv.Itoa(min(limit, userRequest))
 	}
 	return nil
 }
@@ -168,7 +170,11 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		sparkConfig["spark.pyspark.driver.python"] = sparkJob.GetExecutorPath()
 	}
 
-	err = populateSparkConfig(sparkConfig, sparkJob.GetSparkConf())
+	for k, v := range sparkJob.GetSparkConf() {
+		sparkConfig[k] = v
+	}
+
+	err = checkLimits(sparkConfig, GetSparkConfig().SparkLimits)
 	if err != nil {
 		return nil, err
 	}
