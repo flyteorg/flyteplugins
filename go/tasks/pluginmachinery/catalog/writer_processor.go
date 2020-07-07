@@ -8,6 +8,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/lyft/flytestdlib/logger"
 )
 
@@ -36,7 +37,7 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type. Received: %v", reflect.TypeOf(workItem))
 	}
 
-	err := p.catalogClient.Put(ctx, wi.key, wi.data, wi.metadata)
+	status, err := p.catalogClient.Put(ctx, wi.key, wi.data, wi.metadata)
 	if err != nil {
 		logger.Errorf(ctx, "Error putting to catalog [%s]", err)
 		return workqueue.WorkStatusNotDone, errors.Wrapf(errors.DownstreamSystemError, err,
@@ -44,8 +45,13 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 			wi.key.Identifier, wi.key.CacheVersion)
 	}
 
-	logger.Debugf(ctx, "Successfully wrote to catalog. Key [%v]", wi.key)
+	if status.GetCacheStatus() == event.CatalogCacheStatus_CACHE_PUT_FAILURE {
+		return workqueue.WorkStatusNotDone, errors.Errorf(errors.DownstreamSystemError,
+			"Error writing to catalog, key id [%v] cache version [%v]",
+			wi.key.Identifier, wi.key.CacheVersion)
+	}
 
+		logger.Debugf(ctx, "Successfully wrote to catalog. Key [%v]", wi.key)
 	return workqueue.WorkStatusSucceeded, nil
 }
 
