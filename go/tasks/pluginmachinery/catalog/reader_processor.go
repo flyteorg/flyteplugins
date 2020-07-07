@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 
@@ -60,11 +60,11 @@ func (p ReaderProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 		return workqueue.WorkStatusFailed, err
 	}
 
-	if op.status.GetCacheStatus() == event.CatalogCacheStatus_CACHE_LOOKUP_FAILURE {
+	if op.status.GetCacheStatus() == core.CatalogCacheStatus_CACHE_LOOKUP_FAILURE {
 		return workqueue.WorkStatusFailed, errors.Errorf(errors.DownstreamSystemError, "failed to lookup cache")
 	}
 
-	if op.status.GetCacheStatus() == event.CatalogCacheStatus_CACHE_MISS || op.GetOutputs() == nil {
+	if op.status.GetCacheStatus() == core.CatalogCacheStatus_CACHE_MISS || op.GetOutputs() == nil {
 		wi.cached = false
 		return workqueue.WorkStatusSucceeded, nil
 	}

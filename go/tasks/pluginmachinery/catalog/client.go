@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
 	"google.golang.org/grpc/codes"
 	grpcStatus "google.golang.org/grpc/status"
 
@@ -36,19 +35,19 @@ func (k Key) String() string {
 
 // Indicates that status of the query to Catalog. This can be returned for both Get and Put calls
 type Status struct {
-	cacheStatus event.CatalogCacheStatus
-	metadata    *event.CatalogMetadata
+	cacheStatus core.CatalogCacheStatus
+	metadata    *core.CatalogMetadata
 }
 
-func (s Status) GetCacheStatus() event.CatalogCacheStatus {
+func (s Status) GetCacheStatus() core.CatalogCacheStatus {
 	return s.cacheStatus
 }
 
-func (s Status) GetMetadata() *event.CatalogMetadata {
+func (s Status) GetMetadata() *core.CatalogMetadata {
 	return s.metadata
 }
 
-func NewStatus(cacheStatus event.CatalogCacheStatus, md *event.CatalogMetadata) Status {
+func NewStatus(cacheStatus core.CatalogCacheStatus, md *core.CatalogMetadata) Status {
 	return Status{cacheStatus: cacheStatus, metadata: md}
 }
 

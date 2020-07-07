@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flytestdlib/logger"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/lyft/flytestdlib/logger"
 )
 
 type WriterWorkItem struct {
@@ -45,7 +46,7 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 			wi.key.Identifier, wi.key.CacheVersion)
 	}
 
-	if status.GetCacheStatus() == event.CatalogCacheStatus_CACHE_PUT_FAILURE {
+	if status.GetCacheStatus() == core.CatalogCacheStatus_CACHE_PUT_FAILURE {
 		return workqueue.WorkStatusNotDone, errors.Errorf(errors.DownstreamSystemError,
 			"Error writing to catalog, key id [%v] cache version [%v]",
 			wi.key.Identifier, wi.key.CacheVersion)
