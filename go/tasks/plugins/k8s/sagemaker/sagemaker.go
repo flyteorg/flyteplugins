@@ -117,13 +117,13 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{
 			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
-				AlgorithmName: nil,  // TODO: to add
-				TrainingImage: ToStringPtr(trainingImageStr),
+				AlgorithmName:     nil, // TODO: to add
+				TrainingImage:     ToStringPtr(trainingImageStr),
 				TrainingInputMode: getAPITrainingInputMode(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode()),
-				MetricDefinitions: nil,  // TODO: to add
+				MetricDefinitions: nil, // TODO: to add
 			},
 			EnableManagedSpotTraining: nil,
-			HyperParameters: staticHyperparams,
+			HyperParameters:           staticHyperparams,
 			InputDataConfig: []commonv1.Channel{
 				{
 					ChannelName: ToStringPtr("train"),
@@ -151,7 +151,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			OutputDataConfig: &commonv1.OutputDataConfig{
 				S3OutputPath: ToStringPtr(outputPath),
 			},
-			CheckpointConfig:                    nil,
+			CheckpointConfig: nil,
 			ResourceConfig: &commonv1.ResourceConfig{
 				InstanceType:   sagemakerTrainingJob.GetTrainingJobConfig().GetInstanceType(),
 				InstanceCount:  ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobConfig().GetInstanceCount()),
@@ -159,14 +159,14 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 				VolumeKmsKeyId: ToStringPtr(""), // TODO: Not yet supported. Need to add to proto and flytekit in the future
 			},
 			RoleArn: ToStringPtr(cfg.RoleArn),
-			Region: ToStringPtr(cfg.Region),
+			Region:  ToStringPtr(cfg.Region),
 			StoppingCondition: &commonv1.StoppingCondition{
 				MaxRuntimeInSeconds:  ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
 				MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
 			},
-			TensorBoardOutputConfig:               nil,
-			Tags:                                  nil,
-			TrainingJobName:                       &taskName,
+			TensorBoardOutputConfig: nil,
+			Tags:                    nil,
+			TrainingJobName:         &taskName,
 		},
 	}
 	logger.Infof(ctx, "Successfully built a training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
@@ -175,7 +175,6 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
-
 
 	logger.Infof(ctx, "Building a hpo job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 
@@ -250,11 +249,11 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 
 	hpoJobParameterRanges := buildParameterRanges(hpoJobConfig)
 
-	logger.Infof(ctx, "The Sagemaker HPOJob Task plugin received the following inputs: \n" +
-		"static hyperparameters: [%v]\n" +
-		"stopping condition: [%v]\n" +
-		"hpo job config: [%v]\n" +
-		"parameter ranges: [%v]" , staticHyperparams, trainingJobStoppingCondition, hpoJobConfig, hpoJobParameterRanges)
+	logger.Infof(ctx, "The Sagemaker HPOJob Task plugin received the following inputs: \n"+
+		"static hyperparameters: [%v]\n"+
+		"stopping condition: [%v]\n"+
+		"hpo job config: [%v]\n"+
+		"parameter ranges: [%v]", staticHyperparams, trainingJobStoppingCondition, hpoJobConfig, hpoJobParameterRanges)
 
 	cfg := config.GetSagemakerConfig()
 
@@ -399,7 +398,6 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 	}, nil
 }
 
-
 func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath string) (*core.LiteralMap, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
@@ -425,7 +423,6 @@ func createOutputPath(prefix string) string {
 func createModelOutputPath(prefix, bestExperiment string) string {
 	return fmt.Sprintf("%s/%s/output/model.tar.gz", createOutputPath(prefix), bestExperiment)
 }
-
 
 func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
 	ctx context.Context, pluginContext k8s.PluginContext, trainingJob *trainingjobv1.TrainingJob) (pluginsCore.PhaseInfo, error) {
@@ -476,7 +473,6 @@ func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
 
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
-
 
 func (m awsSagemakerPlugin) GetTaskPhaseForHPOJob(
 	ctx context.Context, pluginContext k8s.PluginContext, hpoJob *hpojobv1.HyperparameterTuningJob) (pluginsCore.PhaseInfo, error) {
