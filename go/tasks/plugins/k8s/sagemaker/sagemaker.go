@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/hyperparametertuningjob"
+	hpojobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/hyperparametertuningjob"
+	trainingjobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/trainingjob"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -444,38 +445,40 @@ func createModelOutputPath(prefix, bestExperiment string) string {
 	return fmt.Sprintf("%s/%s/output/model.tar.gz", createOutputPath(prefix), bestExperiment)
 }
 
-func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
-	job := resource.(*hpojobv1.HyperparameterTuningJob)
-	info, err := getEventInfoForHPOJob(job)
+
+func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
+	ctx context.Context, pluginContext k8s.PluginContext, trainingJob *trainingjobv1.TrainingJob) (pluginsCore.PhaseInfo, error) {
+
+	info, err := m.getEventInfoForJob(trainingJob)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	occurredAt := time.Now()
 
-	switch job.Status.HyperParameterTuningJobStatus {
-	case hyperparametertuningjob.ReconcilingTuningJobStatus:
-		logger.Errorf(ctx, "Job stuck in reconciling status, assuming retryable failure [%s]", job.Status.Additional)
+	switch trainingJob.Status.TrainingJobStatus {
+	case trainingjobController.ReconcilingTrainingJobStatus:
+		logger.Errorf(ctx, "Job stuck in reconciling status, assuming retryable failure [%s]", trainingJob.Status.Additional)
 		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call errors
 		execError := &core.ExecutionError{
-			Message: job.Status.Additional,
+			Message: trainingJob.Status.Additional,
 			Kind:    core.ExecutionError_USER,
-			Code:    hyperparametertuningjob.ReconcilingTuningJobStatus,
+			Code:    trainingjobController.ReconcilingTrainingJobStatus,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, execError, info), nil
-	case sagemaker.HyperParameterTuningJobStatusFailed:
+	case sagemaker.TrainingJobStatusFailed:
 		execError := &core.ExecutionError{
-			Message: job.Status.Additional,
+			Message: trainingJob.Status.Additional,
 			Kind:    core.ExecutionError_USER,
-			Code:    sagemaker.HyperParameterTuningJobStatusFailed,
+			Code:    sagemaker.TrainingJobStatusFailed,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
-	case sagemaker.HyperParameterTuningJobStatusStopped:
-		reason := fmt.Sprintf("HPO Job Stopped")
+	case sagemaker.TrainingJobStatusStopped:
+		reason := fmt.Sprintf("Training Job Stopped")
 		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
-	case sagemaker.HyperParameterTuningJobStatusCompleted:
+	case sagemaker.TrainingJobStatusCompleted:
 		// Now that it is success we will set the outputs as expected by the task
-		out, err := getOutputs(ctx, pluginContext.TaskReader(), createModelOutputPath(pluginContext.OutputWriter().GetOutputPrefixPath().String(), *job.Status.BestTrainingJob.TrainingJobName))
+		out, err := getOutputs(ctx, pluginContext.TaskReader(), createModelOutputPath(pluginContext.OutputWriter().GetOutputPrefixPath().String(), trainingJob.Status.SageMakerTrainingJobName))
 		if err != nil {
 			logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
 			return pluginsCore.PhaseInfoUndefined, errors.Wrapf(err, "failed to create outputs for the task")
@@ -490,6 +493,67 @@ func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.
 	}
 
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
+}
+
+
+func (m awsSagemakerPlugin) GetTaskPhaseForHPOJob(
+	ctx context.Context, pluginContext k8s.PluginContext, hpoJob *hpojobv1.HyperparameterTuningJob) (pluginsCore.PhaseInfo, error) {
+
+	info, err := m.getEventInfoForJob(hpoJob)
+	if err != nil {
+		return pluginsCore.PhaseInfoUndefined, err
+	}
+
+	occurredAt := time.Now()
+
+	switch hpoJob.Status.HyperParameterTuningJobStatus {
+	case hpojobController.ReconcilingTuningJobStatus:
+		logger.Errorf(ctx, "Job stuck in reconciling status, assuming retryable failure [%s]", hpoJob.Status.Additional)
+		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call errors
+		execError := &core.ExecutionError{
+			Message: hpoJob.Status.Additional,
+			Kind:    core.ExecutionError_USER,
+			Code:    hpojobController.ReconcilingTuningJobStatus,
+		}
+		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, execError, info), nil
+	case sagemaker.HyperParameterTuningJobStatusFailed:
+		execError := &core.ExecutionError{
+			Message: hpoJob.Status.Additional,
+			Kind:    core.ExecutionError_USER,
+			Code:    sagemaker.HyperParameterTuningJobStatusFailed,
+		}
+		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
+	case sagemaker.HyperParameterTuningJobStatusStopped:
+		reason := fmt.Sprintf("HPO Job Stopped")
+		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
+	case sagemaker.HyperParameterTuningJobStatusCompleted:
+		// Now that it is success we will set the outputs as expected by the task
+		out, err := getOutputs(ctx, pluginContext.TaskReader(), createModelOutputPath(pluginContext.OutputWriter().GetOutputPrefixPath().String(), *hpoJob.Status.BestTrainingJob.TrainingJobName))
+		if err != nil {
+			logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
+			return pluginsCore.PhaseInfoUndefined, errors.Wrapf(err, "failed to create outputs for the task")
+		}
+		if err := pluginContext.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(out, nil)); err != nil {
+			return pluginsCore.PhaseInfoUndefined, err
+		}
+		logger.Debugf(ctx, "Successfully produced and returned outputs")
+		return pluginsCore.PhaseInfoSuccess(info), nil
+	case "":
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
+	}
+
+	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
+}
+
+func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
+	if m.TaskType == trainingJobTaskType {
+		job := resource.(*trainingjobv1.TrainingJob)
+		return m.GetTaskPhaseForTrainingJob(ctx, pluginContext, job)
+	} else if m.TaskType == hpoJobTaskType {
+		job := resource.(*hpojobv1.HyperparameterTuningJob)
+		return m.GetTaskPhaseForHPOJob(ctx, pluginContext, job)
+	}
+	return pluginsCore.PhaseInfoUndefined, errors.Errorf("cannot get task phase for unknown task type [%s]", m.TaskType)
 }
 
 func init() {
