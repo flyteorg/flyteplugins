@@ -367,6 +367,57 @@ func getEventInfoForHPOJob(job *hpojobv1.HyperparameterTuningJob) (*pluginsCore.
 	}, nil
 }
 
+func (m awsSagemakerPlugin) getEventInfoForJob(job k8s.Resource) (*pluginsCore.TaskInfo, error) {
+
+	var jobRegion, jobName, jobTypeInURL, jobTypeInUI string
+	if m.TaskType == trainingJobTaskType {
+		trainingJob := job.(*trainingjobv1.TrainingJob)
+		jobRegion = *trainingJob.Spec.Region
+		jobName = *trainingJob.Spec.TrainingJobName
+		jobTypeInURL = "jobs"
+		jobTypeInUI = "SageMaker Training Job"
+	} else if m.TaskType == hpoJobTaskType {
+		trainingJob := job.(*hpojobv1.HyperparameterTuningJob)
+		jobRegion = *trainingJob.Spec.Region
+		jobName = *trainingJob.Spec.HyperParameterTuningJobName
+		jobTypeInURL = "hyper-tuning-jobs"
+		jobTypeInUI = "SageMaker Hyperparameter Tuning Job"
+	} else {
+		return nil, errors.Errorf("The plugin is unable to get event info for unknown task type {%v}", m.TaskType)
+	}
+
+	cwLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
+		jobRegion, jobRegion, jobName)
+	smLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
+		jobRegion, jobRegion, jobTypeInURL, jobName)
+
+	taskLogs := []*core.TaskLog{
+		{
+			Uri:           cwLogURL,
+			Name:          "CloudWatch Logs",
+			MessageFormat: core.TaskLog_JSON,
+		},
+		{
+			Uri:           smLogURL,
+			Name:          jobTypeInUI,
+			MessageFormat: core.TaskLog_UNKNOWN,
+		},
+	}
+
+	customInfoMap := make(map[string]string)
+
+	customInfo, err := utils.MarshalObjToStruct(customInfoMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pluginsCore.TaskInfo{
+		Logs:       taskLogs,
+		CustomInfo: customInfo,
+	}, nil
+}
+
+
 func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath string) (*core.LiteralMap, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
