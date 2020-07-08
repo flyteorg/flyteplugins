@@ -35,15 +35,34 @@ import (
 var _ k8s.Plugin = awsSagemakerPlugin{}
 
 type awsSagemakerPlugin struct {
+	TaskType pluginsCore.TaskType
 }
 
 func (m awsSagemakerPlugin) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
-	// TODO
-	return &hpojobv1.HyperparameterTuningJob{}, nil
+	if m.TaskType == trainingJobTaskType {
+		return &trainingjobv1.TrainingJob{}, nil
+	}
+	if m.TaskType == hpoJobTaskType {
+		return &hpojobv1.HyperparameterTuningJob{}, nil
+	}
+	return nil, errors.Errorf("The sagemaker plugin is unable to build identity resource for unknown task type [%v]", m.TaskType)
 }
 
 func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
-	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, sagemakerTrainingJob *sagemakerSpec.TrainingJob) (k8s.Resource, error) {
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+
+	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
+	sagemakerTrainingJob := sagemakerSpec.TrainingJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
+	}
+
 	taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to fetch task inputs")
@@ -84,7 +103,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
-	trainingImageStr, err := getTrainingImage(sagemakerTrainingJob)
+	trainingImageStr, err := getTrainingImage(&sagemakerTrainingJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
@@ -151,7 +170,19 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 }
 
 func (m awsSagemakerPlugin) BuildResourceForHPOJob(
-	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, sagemakerHPOJob *sagemakerSpec.HPOJob) (k8s.Resource, error) {
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+
+	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
+	sagemakerHPOJob := sagemakerSpec.HPOJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerHPOJob)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid HPOJob task specification: not able to unmarshal the custom field to [%s]", hpoJobTaskType)
+	}
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
@@ -282,28 +313,26 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 	return hpoJob, nil
 }
 
-func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
-	// TODO build the actual spec of the k8s resource from the taskCtx Some helpful code is already added
+func getTaskTemplate(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (*core.TaskTemplate, error) {
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to fetch task specification")
 	} else if taskTemplate == nil {
 		return nil, errors.Errorf("nil task specification")
 	}
+	return taskTemplate, nil
+}
+
+func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 
 	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
-	sagemakerJob := sagemakerSpec.TrainingJob{}
-	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerJob)
-	if err == nil {
-		return m.BuildResourceForTrainingJob(ctx, taskCtx, &sagemakerJob)
-	} else {
-		sagemakerJob := sagemakerSpec.HPOJob{}
-		err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerJob)
-		if err == nil {
-			return m.BuildResourceForHPOJob(ctx, taskCtx, &sagemakerJob)
-		}
+	if m.TaskType == trainingJobTaskType {
+		return m.BuildResourceForTrainingJob(ctx, taskCtx)
 	}
-	return nil, errors.Wrapf(err, "invalid task specification: not able to unmarshal the custom field to either [%s] or [%s]", trainingJobTaskType, hpoJobTaskType)
+	if m.TaskType == hpoJobTaskType {
+		return m.BuildResourceForHPOJob(ctx, taskCtx)
+	}
+	return nil, errors.Errorf("The SageMaker plugin is unable to build resource for unknown task type [%s]", m.TaskType)
 }
 
 func getEventInfoForHPOJob(job *hpojobv1.HyperparameterTuningJob) (*pluginsCore.TaskInfo, error) {
@@ -423,7 +452,7 @@ func init() {
 			ID:                  hpoJobTaskPluginID,
 			RegisteredTaskTypes: []pluginsCore.TaskType{hpoJobTaskType},
 			ResourceToWatch:     &hpojobv1.HyperparameterTuningJob{},
-			Plugin:              awsSagemakerPlugin{},
+			Plugin:              awsSagemakerPlugin{TaskType: hpoJobTaskType},
 			IsDefault:           false,
 		})
 
@@ -433,7 +462,7 @@ func init() {
 			ID:                  trainingJobTaskPluginID,
 			RegisteredTaskTypes: []pluginsCore.TaskType{trainingJobTaskType},
 			ResourceToWatch:     &trainingjobv1.TrainingJob{},
-			Plugin:              awsSagemakerPlugin{},
+			Plugin:              awsSagemakerPlugin{TaskType: trainingJobTaskType},
 			IsDefault:           false,
 		})
 }
