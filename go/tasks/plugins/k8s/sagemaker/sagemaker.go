@@ -46,7 +46,7 @@ func (m awsSagemakerPlugin) BuildIdentityResource(ctx context.Context, taskCtx p
 	if m.TaskType == hpoJobTaskType {
 		return &hpojobv1.HyperparameterTuningJob{}, nil
 	}
-	return nil, errors.Errorf("The sagemaker plugin is unable to build identity resource for unknown task type [%v]", m.TaskType)
+	return nil, errors.Errorf("The sagemaker plugin is unable to build identity resource for an unknown task type [%v]", m.TaskType)
 }
 
 func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
@@ -350,22 +350,25 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Resource) (*pluginsCore.TaskInfo, error) {
 
-	var jobRegion, jobName, jobTypeInURL, jobTypeInUI string
+	var jobRegion, jobName, jobTypeInURL, sagemakerLinkName string
 	if m.TaskType == trainingJobTaskType {
 		trainingJob := job.(*trainingjobv1.TrainingJob)
 		jobRegion = *trainingJob.Spec.Region
 		jobName = *trainingJob.Spec.TrainingJobName
 		jobTypeInURL = "jobs"
-		jobTypeInUI = "SageMaker Training Job"
+		sagemakerLinkName = "SageMaker Training Job"
 	} else if m.TaskType == hpoJobTaskType {
 		trainingJob := job.(*hpojobv1.HyperparameterTuningJob)
 		jobRegion = *trainingJob.Spec.Region
 		jobName = *trainingJob.Spec.HyperParameterTuningJobName
 		jobTypeInURL = "hyper-tuning-jobs"
-		jobTypeInUI = "SageMaker Hyperparameter Tuning Job"
+		sagemakerLinkName = "SageMaker Hyperparameter Tuning Job"
 	} else {
 		return nil, errors.Errorf("The plugin is unable to get event info for unknown task type {%v}", m.TaskType)
 	}
+
+	logger.Infof(ctx, "Getting event information for task type: [%v], job region: [%v], job name: [%v], " +
+		"job type in url: [%v], sagemaker link name: [%v]", m.TaskType, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 
 	cwLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
 		jobRegion, jobRegion, jobName)
@@ -380,7 +383,7 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 		},
 		{
 			Uri:           smLogURL,
-			Name:          jobTypeInUI,
+			Name:          sagemakerLinkName,
 			MessageFormat: core.TaskLog_UNKNOWN,
 		},
 	}
