@@ -302,7 +302,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Nil(t, resource)
 }
 
-func TestPopulateSparkConfigExecutorLimit(t *testing.T) {
+func TestPopulateSparkConfigExecutorCountLimit(t *testing.T) {
 	testCases := []struct {
 		description  string
 		limitsConfig Limits
@@ -311,13 +311,13 @@ func TestPopulateSparkConfigExecutorLimit(t *testing.T) {
 	}{
 		{
 			"User executor config less than limit",
-			Limits{ExecutorLimit: "3"},
+			Limits{ExecutorCountLimit: "3"},
 			map[string]string{sparkExecutorKey: "5"},
 			"3",
 		},
 		{
 			"User executor config greater than limit",
-			Limits{ExecutorLimit: "1"},
+			Limits{ExecutorCountLimit: "1"},
 			map[string]string{sparkExecutorKey: "3"},
 			"1",
 		},

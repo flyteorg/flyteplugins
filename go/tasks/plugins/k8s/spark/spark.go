@@ -44,7 +44,7 @@ type Config struct {
 
 // Spark Limits config
 type Limits struct {
-	ExecutorLimit string `json:"executor-limit" pflag:",Max limit on number of executors allowed to be launched."`
+	ExecutorCountLimit string `json:"executor-count-limit" pflag:",Max limit on number of executors allowed to be launched."`
 }
 
 var (
@@ -88,12 +88,12 @@ func min(a, b int) int {
 
 func checkLimits(sparkConfig map[string]string, limits Limits) error {
 	// Enforce executor limits
-	if limits.ExecutorLimit != "" {
+	if limits.ExecutorCountLimit != "" {
 		userRequest, err := strconv.Atoi(sparkConfig[sparkExecutorKey])
 		if err != nil {
 			return err
 		}
-		limit, err := strconv.Atoi(limits.ExecutorLimit)
+		limit, err := strconv.Atoi(limits.ExecutorCountLimit)
 		if err != nil {
 			return err
 		}
