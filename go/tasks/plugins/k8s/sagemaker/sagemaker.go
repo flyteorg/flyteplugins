@@ -367,7 +367,7 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 		return nil, errors.Errorf("The plugin is unable to get event info for unknown task type {%v}", m.TaskType)
 	}
 
-	logger.Infof(ctx, "Getting event information for task type: [%v], job region: [%v], job name: [%v], " +
+	logger.Infof(ctx, "Getting event information for task type: [%v], job region: [%v], job name: [%v], "+
 		"job type in url: [%v], sagemaker link name: [%v]", m.TaskType, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 
 	cwLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
