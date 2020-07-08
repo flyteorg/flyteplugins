@@ -32,7 +32,6 @@ const KindSparkApplication = "SparkApplication"
 const sparkDriverUI = "sparkDriverUI"
 const sparkHistoryUI = "sparkHistoryUI"
 const sparkExecutorKey = "spark.executor.instances"
-const sparkExecutorLimitKey = "spark.executor.instances.limit"
 
 var sparkTaskType = "spark"
 
