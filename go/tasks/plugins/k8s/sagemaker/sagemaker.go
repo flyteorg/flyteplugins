@@ -16,12 +16,12 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 	hpojobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/hyperparametertuningjob"
+	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
 	"github.com/aws/aws-sdk-go/service/sagemaker"
 
 	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
@@ -38,17 +38,120 @@ type awsSagemakerPlugin struct {
 }
 
 func (m awsSagemakerPlugin) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
+	// TODO
 	return &hpojobv1.HyperparameterTuningJob{}, nil
 }
 
-func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
-	// TODO build the actual spec of the k8s resource from the taskCtx Some helpful code is already added
-	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
+func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, sagemakerTrainingJob *sagemakerSpec.TrainingJob) (k8s.Resource, error) {
+	taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to fetch task specification")
-	} else if taskTemplate == nil {
-		return nil, errors.Errorf("nil task specification")
+		return nil, errors.Wrapf(err, "unable to fetch task inputs")
 	}
+
+	// Get inputs from literals
+	inputLiterals := taskInput.GetLiterals()
+
+	trainPathLiteral, ok := inputLiterals["train"]
+	if !ok {
+		return nil, errors.Errorf("Input not specified: [train]")
+	}
+	validatePathLiteral, ok := inputLiterals["validation"]
+	if !ok {
+		return nil, errors.Errorf("Input not specified: [validation]")
+	}
+	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
+	if !ok {
+		return nil, errors.Errorf("Input not specified: [static_hyperparameters]")
+	}
+	trainingJobStoppingConditionLiteral, ok := inputLiterals["stopping_condition"]
+	if !ok {
+		return nil, errors.Errorf("Input not specified: [stopping_condition]")
+	}
+
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
+
+	// Convert the hyperparameters to the spec value
+	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
+	}
+
+	trainingJobStoppingCondition, err := convertStoppingConditionToSpecType(trainingJobStoppingConditionLiteral)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert stopping condition literal to spec type")
+	}
+
+	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
+
+	trainingImageStr, err := getTrainingImage(sagemakerTrainingJob)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to find the training image")
+	}
+
+	cfg := config.GetSagemakerConfig()
+
+	trainingJob := &trainingjobv1.TrainingJob{
+		Spec: trainingjobv1.TrainingJobSpec{
+			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
+				AlgorithmName: nil,  // TODO: to add
+				TrainingImage: ToStringPtr(trainingImageStr),
+				TrainingInputMode: getAPITrainingInputMode(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode()),
+				MetricDefinitions: nil,  // TODO: to add
+			},
+			EnableManagedSpotTraining: nil,
+			HyperParameters: staticHyperparams,
+			InputDataConfig: []commonv1.Channel{
+				{
+					ChannelName: ToStringPtr("train"),
+					DataSource: &commonv1.DataSource{
+						S3DataSource: &commonv1.S3DataSource{
+							S3DataType: "S3Prefix",
+							S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
+						},
+					},
+					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
+					InputMode:   "File",
+				},
+				{
+					ChannelName: ToStringPtr("validation"),
+					DataSource: &commonv1.DataSource{
+						S3DataSource: &commonv1.S3DataSource{
+							S3DataType: "S3Prefix",
+							S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
+						},
+					},
+					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
+					InputMode:   "File",
+				},
+			},
+			OutputDataConfig: &commonv1.OutputDataConfig{
+				S3OutputPath: ToStringPtr(outputPath),
+			},
+			CheckpointConfig:                    nil,
+			ResourceConfig: &commonv1.ResourceConfig{
+				InstanceType:   sagemakerTrainingJob.GetTrainingJobConfig().GetInstanceType(),
+				InstanceCount:  ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobConfig().GetInstanceCount()),
+				VolumeSizeInGB: ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobConfig().GetVolumeSizeInGb()),
+				VolumeKmsKeyId: ToStringPtr(""), // TODO: Not yet supported. Need to add to proto and flytekit in the future
+			},
+			RoleArn: ToStringPtr(cfg.RoleArn),
+			Region: ToStringPtr(cfg.Region),
+			StoppingCondition: &commonv1.StoppingCondition{
+				MaxRuntimeInSeconds:  ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
+				MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
+			},
+			TensorBoardOutputConfig:               nil,
+			Tags:                                  nil,
+			TrainingJobName:                       &taskName,
+		},
+	}
+
+	return trainingJob, nil
+}
+
+func (m awsSagemakerPlugin) BuildResourceForHPOJob(
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, sagemakerHPOJob *sagemakerSpec.HPOJob) (k8s.Resource, error) {
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
@@ -57,6 +160,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	// Get inputs from literals
 	inputLiterals := taskInput.GetLiterals()
+
 	trainPathLiteral, ok := inputLiterals["train"]
 	if !ok {
 		return nil, errors.Errorf("Input not specified: [train]")
@@ -82,13 +186,6 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
 
-	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
-	sagemakerHPOJob := sagemakerSpec.HPOJob{}
-	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerHPOJob)
-	if err != nil {
-		return nil, errors.Wrapf(err, "invalid task specification for taskType [%s]", hpoJobTaskType)
-	}
-
 	// Convert the hyperparameters to the spec value
 	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
 	if err != nil {
@@ -106,13 +203,6 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 		return nil, errors.Wrapf(err, "failed to convert hpo job config literal to spec type")
 	}
 
-	// If the container is part of the task template you can access it here
-	container := taskTemplate.GetContainer()
-
-	// When adding env vars there are some default env vars that are available, you can pass them through
-	envVars := flytek8s.DecorateEnvVars(ctx, flytek8s.ToK8sEnvVar(container.GetEnv()), taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
-	_ = envVars
-
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
 	trainingImageStr, err := getTrainingImage(sagemakerHPOJob.GetTrainingJob())
@@ -123,8 +213,6 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	hpoJobParameterRanges := buildParameterRanges(hpoJobConfig)
 
 	cfg := config.GetSagemakerConfig()
-
-
 
 	hpoJob := &hpojobv1.HyperparameterTuningJob{
 		Spec: hpojobv1.HyperparameterTuningJobSpec{
@@ -179,7 +267,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 					InstanceType:   sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceType(),
 					InstanceCount:  ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
 					VolumeSizeInGB: ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
-					VolumeKmsKeyId: ToStringPtr(""), // TODO: add to proto and flytekit
+					VolumeKmsKeyId: ToStringPtr(""), // TODO: Not yet supported. Need to add to proto and flytekit in the future
 				},
 				RoleArn: ToStringPtr(cfg.RoleArn),
 				StoppingCondition: &commonv1.StoppingCondition{
@@ -192,6 +280,30 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 
 	return hpoJob, nil
+}
+
+func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+	// TODO build the actual spec of the k8s resource from the taskCtx Some helpful code is already added
+	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to fetch task specification")
+	} else if taskTemplate == nil {
+		return nil, errors.Errorf("nil task specification")
+	}
+
+	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
+	sagemakerJob := sagemakerSpec.TrainingJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerJob)
+	if err == nil {
+		return m.BuildResourceForTrainingJob(ctx, taskCtx, &sagemakerJob)
+	} else {
+		sagemakerJob := sagemakerSpec.HPOJob{}
+		err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerJob)
+		if err == nil {
+			return m.BuildResourceForHPOJob(ctx, taskCtx, &sagemakerJob)
+		}
+	}
+	return nil, errors.Wrapf(err, "invalid task specification: not able to unmarshal the custom field to either [%s] or [%s]", trainingJobTaskType, hpoJobTaskType)
 }
 
 func getEventInfoForHPOJob(job *hpojobv1.HyperparameterTuningJob) (*pluginsCore.TaskInfo, error) {
@@ -240,26 +352,7 @@ func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath strin
 	if len(tk.Interface.Outputs.Variables) > 1 {
 		return nil, fmt.Errorf("expected to generate more than one outputs of type [%v]", tk.Interface.Outputs.Variables)
 	}
-	op := &core.LiteralMap{}
-	// TODO: @kumare3 OMG This looks scary, provide helper methods for this
-	for k := range tk.Interface.Outputs.Variables {
-		// if v != core.LiteralType_Blob{}
-		op.Literals = make(map[string]*core.Literal)
-		op.Literals[k] = &core.Literal{
-			Value: &core.Literal_Scalar{
-				Scalar: &core.Scalar{
-					Value: &core.Scalar_Blob{
-						Blob: &core.Blob{
-							Metadata: &core.BlobMetadata{
-								Type: &core.BlobType{Dimensionality: core.BlobType_SINGLE},
-							},
-							Uri: outputPath,
-						},
-					},
-				},
-			},
-		}
-	}
+	op := createOutputLiteralMap(tk, outputPath)
 	return op, nil
 }
 
@@ -286,15 +379,15 @@ func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.
 		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call errors
 		execError := &core.ExecutionError{
 			Message: job.Status.Additional,
-			Kind: core.ExecutionError_USER,
-			Code: hyperparametertuningjob.ReconcilingTuningJobStatus,
+			Kind:    core.ExecutionError_USER,
+			Code:    hyperparametertuningjob.ReconcilingTuningJobStatus,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, execError, info), nil
 	case sagemaker.HyperParameterTuningJobStatusFailed:
 		execError := &core.ExecutionError{
 			Message: job.Status.Additional,
-			Kind: core.ExecutionError_USER,
-			Code: sagemaker.HyperParameterTuningJobStatusFailed,
+			Kind:    core.ExecutionError_USER,
+			Code:    sagemaker.HyperParameterTuningJobStatusFailed,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
 	case sagemaker.HyperParameterTuningJobStatusStopped:
@@ -324,7 +417,7 @@ func init() {
 		panic(err)
 	}
 
-	// Registering the plugin
+	// Registering the plugin for HPOJob
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  hpoJobTaskPluginID,
@@ -334,4 +427,13 @@ func init() {
 			IsDefault:           false,
 		})
 
+	// Registering the plugin for standalone TrainingJob
+	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
+		k8s.PluginEntry{
+			ID:                  trainingJobTaskPluginID,
+			RegisteredTaskTypes: []pluginsCore.TaskType{trainingJobTaskType},
+			ResourceToWatch:     &trainingjobv1.TrainingJob{},
+			Plugin:              awsSagemakerPlugin{},
+			IsDefault:           false,
+		})
 }

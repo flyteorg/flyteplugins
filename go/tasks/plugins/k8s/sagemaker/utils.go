@@ -244,3 +244,25 @@ func ToFloat64Ptr(f float64) *float64 {
 	return &f
 }
 
+func createOutputLiteralMap(tk *core.TaskTemplate, outputPath string) *core.LiteralMap {
+	op := &core.LiteralMap{}
+	for k := range tk.Interface.Outputs.Variables {
+		// if v != core.LiteralType_Blob{}
+		op.Literals = make(map[string]*core.Literal)
+		op.Literals[k] = &core.Literal{
+			Value: &core.Literal_Scalar{
+				Scalar: &core.Scalar{
+					Value: &core.Scalar_Blob{
+						Blob: &core.Blob{
+							Metadata: &core.BlobMetadata{
+								Type: &core.BlobType{Dimensionality: core.BlobType_SINGLE},
+							},
+							Uri: outputPath,
+						},
+					},
+				},
+			},
+		}
+	}
+	return op
+}
