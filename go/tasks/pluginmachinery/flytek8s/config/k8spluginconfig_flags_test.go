@@ -319,28 +319,6 @@ func TestK8sPluginConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_co-pilot.start-timeout", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vString, err := cmdFlags.GetString("co-pilot.start-timeout"); err == nil {
-				assert.Equal(t, string(defaultK8sConfig.CoPilot.StartTimeout.String()), vString)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := defaultK8sConfig.CoPilot.StartTimeout.String()
-
-			cmdFlags.Set("co-pilot.start-timeout", testValue)
-			if vString, err := cmdFlags.GetString("co-pilot.start-timeout"); err == nil {
-				testDecodeJson_K8sPluginConfig(t, fmt.Sprintf("%v", vString), &actual.CoPilot.StartTimeout)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
 	t.Run("Test_co-pilot.cpu", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly

@@ -51,7 +51,6 @@ func (cfg K8sPluginConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.default-output-path"), defaultK8sConfig.CoPilot.DefaultOutputPath, "Default path where the volume should be mounted")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.input-vol-name"), defaultK8sConfig.CoPilot.InputVolumeName, "Name of the data volume that is created for storing inputs")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.output-vol-name"), defaultK8sConfig.CoPilot.OutputVolumeName, "Name of the data volume that is created for storing outputs")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.start-timeout"), defaultK8sConfig.CoPilot.StartTimeout.String(), "Time for which the sidecar should wait on startup before assuming the primary container to have failed startup.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.cpu"), defaultK8sConfig.CoPilot.CPU, "Used to set cpu for co-pilot containers")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.memory"), defaultK8sConfig.CoPilot.Memory, "Used to set memory for co-pilot containers")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.storage"), defaultK8sConfig.CoPilot.Storage, "Default storage limit for individual inputs / outputs")
