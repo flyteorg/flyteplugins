@@ -175,11 +175,6 @@ func getLogs(app *tfOp.TFJob, workersCount int32, psReplicasCount int32, chiefRe
 
 	logConfig := logs.GetLogConfig()
 	if logConfig.IsKubernetesEnabled {
-		masterTaskLog, masterErr := makeTaskLog(app.Name, app.Namespace, "master-0", logConfig.KubernetesURL)
-		if masterErr != nil {
-			return nil, masterErr
-		}
-		taskLogs = append(taskLogs, &masterTaskLog)
 
 		// get all workers log
 		for workerIndex := int32(0); workerIndex < workersCount; workerIndex++ {
