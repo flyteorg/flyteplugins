@@ -52,7 +52,7 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 			wi.key.Identifier, wi.key.CacheVersion)
 	}
 
-		logger.Debugf(ctx, "Successfully wrote to catalog. Key [%v]", wi.key)
+	logger.Debugf(ctx, "Successfully wrote to catalog. Key [%v]", wi.key)
 	return workqueue.WorkStatusSucceeded, nil
 }
 
