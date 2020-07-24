@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
-	github.com/lyft/flyteidl v0.17.35-0.20200707003420-954dedb491fa
+	github.com/lyft/flyteidl v0.17.37-0.20200721225522-b4751137e5ce
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/go-ps v1.0.0
@@ -57,5 +57,3 @@ replace (
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
 )
-
-replace github.com/lyft/flyteidl => ../flyteidl/
