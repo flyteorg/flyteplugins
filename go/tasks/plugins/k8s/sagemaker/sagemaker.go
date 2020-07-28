@@ -58,7 +58,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		return nil, err
 	}
 
-	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
+	// Unmarshal the custom field of the task template back into the Hyperparameter Tuning Job struct generated in flyteidl
 	sagemakerTrainingJob := sagemakerSpec.TrainingJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
 	if err != nil {
@@ -174,11 +174,11 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 		return nil, err
 	}
 
-	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
+	// Unmarshal the custom field of the task template back into the HyperparameterTuningJob struct generated in flyteidl
 	sagemakerHPOJob := sagemakerSpec.HyperparameterTuningJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerHPOJob)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid HPOJob task specification: not able to unmarshal the custom field to [%s]", hyperparameterTuningJobTaskType)
+		return nil, errors.Wrapf(err, "invalid HyperparameterTuningJob task specification: not able to unmarshal the custom field to [%s]", hyperparameterTuningJobTaskType)
 	}
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
@@ -230,7 +230,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	hpoJobParameterRanges := buildParameterRanges(hpoJobConfig)
 
-	logger.Infof(ctx, "The Sagemaker HPOJob Task plugin received the following inputs: \n"+
+	logger.Infof(ctx, "The Sagemaker HyperparameterTuningJob Task plugin received the following inputs: \n"+
 		"static hyperparameters: [%v]\n"+
 		"hyperparameter tuning job config: [%v]\n"+
 		"parameter ranges: [%v]", staticHyperparams, hpoJobConfig, hpoJobParameterRanges)
@@ -318,7 +318,7 @@ func getTaskTemplate(ctx context.Context, taskCtx pluginsCore.TaskExecutionConte
 
 func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 
-	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
+	// Unmarshal the custom field of the task template back into the HyperparameterTuningJob struct generated in flyteidl
 	if m.TaskType == trainingJobTaskType {
 		return m.BuildResourceForTrainingJob(ctx, taskCtx)
 	}
@@ -523,7 +523,7 @@ func init() {
 		panic(err)
 	}
 
-	// Registering the plugin for HPOJob
+	// Registering the plugin for HyperparameterTuningJob
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  hyperparameterTuningJobTaskPluginID,

@@ -185,7 +185,7 @@ func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Li
 	hpoJobConfigByteArray := hpoJobConfigLiteral.GetScalar().GetBinary().GetValue()
 	err := proto.Unmarshal(hpoJobConfigByteArray, retValue)
 	if err != nil {
-		return nil, errors.Errorf("HPO Job Config Literal in input cannot be unmarshalled into spec type")
+		return nil, errors.Errorf("Hyperparameter Tuning Job Config Literal in input cannot be unmarshalled into spec type")
 	}
 	return retValue, nil
 }
