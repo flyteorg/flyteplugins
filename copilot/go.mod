@@ -7,7 +7,7 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.2
 	github.com/imdario/mergo v0.3.9 // indirect
-	github.com/lyft/flyteidl v0.17.32
+	github.com/lyft/flyteidl v0.17.37-0.20200727195325-5aef14f0da69
 	github.com/lyft/flyteplugins v0.3.29
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/mitchellh/go-ps v1.0.0
@@ -18,7 +18,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
-	k8s.io/client-go v11.0.0+incompatible
+	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451 // indirect
 )

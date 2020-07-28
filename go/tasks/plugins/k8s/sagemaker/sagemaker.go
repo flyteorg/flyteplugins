@@ -39,7 +39,7 @@ type awsSagemakerPlugin struct {
 	TaskType pluginsCore.TaskType
 }
 
-func (m awsSagemakerPlugin) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
+func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
 	if m.TaskType == trainingJobTaskType {
 		return &trainingjobv1.TrainingJob{}, nil
 	}
@@ -75,19 +75,15 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	trainPathLiteral, ok := inputLiterals["train"]
 	if !ok {
-		return nil, errors.Errorf("Input not specified: [train]")
+		return nil, errors.Errorf("Required input not specified: [train]")
 	}
 	validatePathLiteral, ok := inputLiterals["validation"]
 	if !ok {
-		return nil, errors.Errorf("Input not specified: [validation]")
+		return nil, errors.Errorf("Required input not specified: [validation]")
 	}
 	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
 	if !ok {
-		return nil, errors.Errorf("Input not specified: [static_hyperparameters]")
-	}
-	trainingJobStoppingConditionLiteral, ok := inputLiterals["stopping_condition"]
-	if !ok {
-		return nil, errors.Errorf("Input not specified: [stopping_condition]")
+		return nil, errors.Errorf("Required input not specified: [static_hyperparameters]")
 	}
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
@@ -98,11 +94,6 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
 	}
 
-	trainingJobStoppingCondition, err := convertStoppingConditionToSpecType(trainingJobStoppingConditionLiteral)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to convert stopping condition literal to spec type")
-	}
-
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
 	trainingImageStr, err := getTrainingImage(&sagemakerTrainingJob)
@@ -110,7 +101,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
 
-	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v] and stopping condition [%v]", staticHyperparams, trainingJobStoppingCondition)
+	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", staticHyperparams)
 
 	cfg := config.GetSagemakerConfig()
 
@@ -133,7 +124,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 							S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
 						},
 					},
-					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
+					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata?
 					InputMode:   "File",
 				},
 				{
@@ -144,7 +135,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 							S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
 						},
 					},
-					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
+					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata?
 					InputMode:   "File",
 				},
 			},
@@ -153,16 +144,16 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			},
 			CheckpointConfig: nil,
 			ResourceConfig: &commonv1.ResourceConfig{
-				InstanceType:   sagemakerTrainingJob.GetTrainingJobConfig().GetInstanceType(),
-				InstanceCount:  ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobConfig().GetInstanceCount()),
-				VolumeSizeInGB: ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobConfig().GetVolumeSizeInGb()),
+				InstanceType:   sagemakerTrainingJob.GetTrainingJobResourceConfig().GetInstanceType(),
+				InstanceCount:  ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobResourceConfig().GetInstanceCount()),
+				VolumeSizeInGB: ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobResourceConfig().GetVolumeSizeInGb()),
 				VolumeKmsKeyId: ToStringPtr(""), // TODO: Not yet supported. Need to add to proto and flytekit in the future
 			},
 			RoleArn: ToStringPtr(cfg.RoleArn),
 			Region:  ToStringPtr(cfg.Region),
 			StoppingCondition: &commonv1.StoppingCondition{
-				MaxRuntimeInSeconds:  ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
-				MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
+				MaxRuntimeInSeconds:  nil, // TODO: decide how to coordinate this and Flyte's timeout
+				MaxWaitTimeInSeconds: nil, // TODO: decide how to coordinate this and Flyte's timeout and queueing budget
 			},
 			TensorBoardOutputConfig: nil,
 			Tags:                    nil,
@@ -184,7 +175,7 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 	}
 
 	// Unmarshal the custom field of the task template back into the HPOJob struct generated in flyteidl
-	sagemakerHPOJob := sagemakerSpec.HPOJob{}
+	sagemakerHPOJob := sagemakerSpec.HyperparameterTuningJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerHPOJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid HPOJob task specification: not able to unmarshal the custom field to [%s]", hpoJobTaskType)
@@ -204,21 +195,16 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 	}
 	validatePathLiteral, ok := inputLiterals["validation"]
 	if !ok {
-		return nil, errors.Errorf("Input not specified: [validation]")
+		return nil, errors.Errorf("Required input not specified: [validation]")
 	}
 	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
 	if !ok {
-		return nil, errors.Errorf("Input not specified: [static_hyperparameters]")
-	}
-
-	trainingJobStoppingConditionLiteral, ok := inputLiterals["stopping_condition"]
-	if !ok {
-		return nil, errors.Errorf("Input not specified: [stopping_condition]")
+		return nil, errors.Errorf("Required input not specified: [static_hyperparameters]")
 	}
 
 	hpoJobConfigLiteral, ok := inputLiterals["hpo_job_config"]
 	if !ok {
-		return nil, errors.Errorf("Input not specified: [hpo_job_config]")
+		return nil, errors.Errorf("Required input not specified: [hpo_job_config]")
 	}
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
@@ -227,11 +213,6 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
-	}
-
-	trainingJobStoppingCondition, err := convertStoppingConditionToSpecType(trainingJobStoppingConditionLiteral)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to convert stopping condition literal to spec type")
 	}
 
 	// hpo_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
@@ -251,9 +232,8 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 
 	logger.Infof(ctx, "The Sagemaker HPOJob Task plugin received the following inputs: \n"+
 		"static hyperparameters: [%v]\n"+
-		"stopping condition: [%v]\n"+
 		"hpo job config: [%v]\n"+
-		"parameter ranges: [%v]", staticHyperparams, trainingJobStoppingCondition, hpoJobConfig, hpoJobParameterRanges)
+		"parameter ranges: [%v]", staticHyperparams, hpoJobConfig, hpoJobParameterRanges)
 
 	cfg := config.GetSagemakerConfig()
 
@@ -307,15 +287,15 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 					S3OutputPath: ToStringPtr(outputPath),
 				},
 				ResourceConfig: &commonv1.ResourceConfig{
-					InstanceType:   sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceType(),
-					InstanceCount:  ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetInstanceCount()),
-					VolumeSizeInGB: ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobConfig().GetVolumeSizeInGb()),
+					InstanceType:   sagemakerHPOJob.GetTrainingJob().GetTrainingJobResourceConfig().GetInstanceType(),
+					InstanceCount:  ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobResourceConfig().GetInstanceCount()),
+					VolumeSizeInGB: ToInt64Ptr(sagemakerHPOJob.GetTrainingJob().GetTrainingJobResourceConfig().GetVolumeSizeInGb()),
 					VolumeKmsKeyId: ToStringPtr(""), // TODO: Not yet supported. Need to add to proto and flytekit in the future
 				},
 				RoleArn: ToStringPtr(cfg.RoleArn),
 				StoppingCondition: &commonv1.StoppingCondition{
-					MaxRuntimeInSeconds:  ToInt64Ptr(trainingJobStoppingCondition.GetMaxRuntimeInSeconds()),
-					MaxWaitTimeInSeconds: ToInt64Ptr(trainingJobStoppingCondition.GetMaxWaitTimeInSeconds()),
+					MaxRuntimeInSeconds:  nil,
+					MaxWaitTimeInSeconds: nil,
 				},
 			},
 			Region: ToStringPtr(cfg.Region),

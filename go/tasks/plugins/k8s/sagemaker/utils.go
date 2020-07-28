@@ -16,16 +16,16 @@ import (
 )
 
 func getAPIHyperParameterTuningJobStrategyType(
-	strategyType sagemakerSpec.HPOJobConfig_HyperparameterTuningStrategy) commonv1.HyperParameterTuningJobStrategyType {
+	strategyType sagemakerSpec.HyperparameterTuningStrategy_Value) commonv1.HyperParameterTuningJobStrategyType {
 
 	switch strategyType {
-	case sagemakerSpec.HPOJobConfig_BAYESIAN:
+	case sagemakerSpec.HyperparameterTuningStrategy_BAYESIAN:
 		return BayesianSageMakerAPIHyperParameterTuningJobStrategyType
 	}
 	return RandomSageMakerAPIHyperParameterTuningJobStrategyType
 }
 
-func getAPIScalingType(scalingType sagemakerSpec.HyperparameterScalingType) commonv1.HyperParameterScalingType {
+func getAPIScalingType(scalingType sagemakerSpec.HyperparameterScalingType_Value) commonv1.HyperParameterScalingType {
 	switch scalingType {
 	case sagemakerSpec.HyperparameterScalingType_AUTO:
 		return AutoSageMakerAPIHyperParameterScalingType
@@ -40,18 +40,18 @@ func getAPIScalingType(scalingType sagemakerSpec.HyperparameterScalingType) comm
 }
 
 func getAPIHyperparameterTuningObjectiveType(
-	objectiveType sagemakerSpec.HyperparameterTuningObjective_HyperparameterTuningObjectiveType) commonv1.HyperParameterTuningJobObjectiveType {
+	objectiveType sagemakerSpec.HyperparameterTuningObjectiveType_Value) commonv1.HyperParameterTuningJobObjectiveType {
 
 	switch objectiveType {
-	case sagemakerSpec.HyperparameterTuningObjective_MINIMIZE:
+	case sagemakerSpec.HyperparameterTuningObjectiveType_MINIMIZE:
 		return MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType
-	case sagemakerSpec.HyperparameterTuningObjective_MAXIMIZE:
+	case sagemakerSpec.HyperparameterTuningObjectiveType_MAXIMIZE:
 		return MaximizeSageMakerAPIHyperParameterTuningJobObjectiveType
 	}
 	return MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType
 }
 
-func getAPITrainingInputMode(trainingInputMode sagemakerSpec.InputMode) commonv1.TrainingInputMode {
+func getAPITrainingInputMode(trainingInputMode sagemakerSpec.InputMode_Value) commonv1.TrainingInputMode {
 	switch trainingInputMode {
 	case sagemakerSpec.InputMode_FILE:
 		return FileSageMakerAPITrainingInputMode
@@ -62,18 +62,18 @@ func getAPITrainingInputMode(trainingInputMode sagemakerSpec.InputMode) commonv1
 }
 
 func getAPITrainingJobEarlyStoppingType(
-	earlyStoppingType sagemakerSpec.HPOJobConfig_TrainingJobEarlyStoppingType) commonv1.TrainingJobEarlyStoppingType {
+	earlyStoppingType sagemakerSpec.TrainingJobEarlyStoppingType_Value) commonv1.TrainingJobEarlyStoppingType {
 
 	switch earlyStoppingType {
-	case sagemakerSpec.HPOJobConfig_OFF:
+	case sagemakerSpec.TrainingJobEarlyStoppingType_OFF:
 		return OffSageMakerAPITrainingJobEarlyStoppingType
-	case sagemakerSpec.HPOJobConfig_AUTO:
+	case sagemakerSpec.TrainingJobEarlyStoppingType_AUTO:
 		return AutoSageMakerAPITrainingJobEarlyStoppingType
 	}
 	return OffSageMakerAPITrainingJobEarlyStoppingType
 }
 
-func getAPIAlgorithmName(name sagemakerSpec.AlgorithmName) string {
+func getAPIAlgorithmName(name sagemakerSpec.AlgorithmName_Value) string {
 	switch name {
 	case sagemakerSpec.AlgorithmName_CUSTOM:
 		return CustomSageMakerAPIAlgorithmName
@@ -140,7 +140,7 @@ func getTrainingImage(job *sagemakerSpec.TrainingJob) (string, error) {
 	return "custom image", errors.Errorf("Custom images are not supported yet")
 }
 
-func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.ParameterRanges {
+func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobConfig) *commonv1.ParameterRanges {
 	prMap := hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap()
 	var retValue = &commonv1.ParameterRanges{
 		CategoricalParameterRanges: []commonv1.CategoricalParameterRange{},
@@ -180,8 +180,8 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HPOJobConfig) *commonv1.Pa
 	return retValue
 }
 
-func convertHPOJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemakerSpec.HPOJobConfig, error) {
-	var retValue = &sagemakerSpec.HPOJobConfig{}
+func convertHPOJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemakerSpec.HyperparameterTuningJobConfig, error) {
+	var retValue = &sagemakerSpec.HyperparameterTuningJobConfig{}
 	hpoJobConfigByteArray := hpoJobConfigLiteral.GetScalar().GetBinary().GetValue()
 	err := proto.Unmarshal(hpoJobConfigByteArray, retValue)
 	if err != nil {
@@ -204,16 +204,6 @@ func convertStaticHyperparamsLiteralToSpecType(hyperparamLiteral *core.Literal) 
 		retValue = append(retValue, &newElem)
 	}
 	return retValue, nil
-}
-
-func convertStoppingConditionToSpecType(stoppingConditionLiteral *core.Literal) (*sagemakerSpec.StoppingCondition, error) {
-	var retValue sagemakerSpec.StoppingCondition
-	bytearray := stoppingConditionLiteral.GetScalar().GetBinary().GetValue()
-	err := proto.Unmarshal(bytearray, &retValue)
-	if err != nil {
-		return nil, errors.Errorf("StoppingCondition Literal in input cannot be unmarshalled into spec type")
-	}
-	return &retValue, nil
 }
 
 func ToStringPtr(str string) *string {
