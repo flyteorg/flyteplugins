@@ -43,7 +43,7 @@ func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCo
 	if m.TaskType == trainingJobTaskType {
 		return &trainingjobv1.TrainingJob{}, nil
 	}
-	if m.TaskType == hpoJobTaskType {
+	if m.TaskType == hyperparameterTuningJobTaskType {
 		return &hpojobv1.HyperparameterTuningJob{}, nil
 	}
 	return nil, errors.Errorf("The sagemaker plugin is unable to build identity resource for an unknown task type [%v]", m.TaskType)
@@ -164,10 +164,10 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	return trainingJob, nil
 }
 
-func (m awsSagemakerPlugin) BuildResourceForHPOJob(
+func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 
-	logger.Infof(ctx, "Building a hpo job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	logger.Infof(ctx, "Building a hyperparameter tuning job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 
 	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
 	if err != nil {
@@ -178,7 +178,7 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 	sagemakerHPOJob := sagemakerSpec.HyperparameterTuningJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerHPOJob)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid HPOJob task specification: not able to unmarshal the custom field to [%s]", hpoJobTaskType)
+		return nil, errors.Wrapf(err, "invalid HPOJob task specification: not able to unmarshal the custom field to [%s]", hyperparameterTuningJobTaskType)
 	}
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
@@ -202,9 +202,9 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 		return nil, errors.Errorf("Required input not specified: [static_hyperparameters]")
 	}
 
-	hpoJobConfigLiteral, ok := inputLiterals["hpo_job_config"]
+	hpoJobConfigLiteral, ok := inputLiterals["hyperparameter_tuning_job_config"]
 	if !ok {
-		return nil, errors.Errorf("Required input not specified: [hpo_job_config]")
+		return nil, errors.Errorf("Required input not specified: [hyperparameter_tuning_job_config]")
 	}
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
@@ -215,10 +215,10 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
 	}
 
-	// hpo_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
-	hpoJobConfig, err := convertHPOJobConfigToSpecType(hpoJobConfigLiteral)
+	// hyperparameter_tuning_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
+	hpoJobConfig, err := convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to convert hpo job config literal to spec type")
+		return nil, errors.Wrapf(err, "failed to convert hyperparameter tuning job config literal to spec type")
 	}
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
@@ -232,7 +232,7 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 
 	logger.Infof(ctx, "The Sagemaker HPOJob Task plugin received the following inputs: \n"+
 		"static hyperparameters: [%v]\n"+
-		"hpo job config: [%v]\n"+
+		"hyperparameter tuning job config: [%v]\n"+
 		"parameter ranges: [%v]", staticHyperparams, hpoJobConfig, hpoJobParameterRanges)
 
 	cfg := config.GetSagemakerConfig()
@@ -302,7 +302,7 @@ func (m awsSagemakerPlugin) BuildResourceForHPOJob(
 		},
 	}
 
-	logger.Infof(ctx, "Successfully built a hpo job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	logger.Infof(ctx, "Successfully built a hyperparameter tuning job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 	return hpoJob, nil
 }
 
@@ -322,8 +322,8 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	if m.TaskType == trainingJobTaskType {
 		return m.BuildResourceForTrainingJob(ctx, taskCtx)
 	}
-	if m.TaskType == hpoJobTaskType {
-		return m.BuildResourceForHPOJob(ctx, taskCtx)
+	if m.TaskType == hyperparameterTuningJobTaskType {
+		return m.BuildResourceForHyperparameterTuningJob(ctx, taskCtx)
 	}
 	return nil, errors.Errorf("The SageMaker plugin is unable to build resource for unknown task type [%s]", m.TaskType)
 }
@@ -337,7 +337,7 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 		jobName = *trainingJob.Spec.TrainingJobName
 		jobTypeInURL = "jobs"
 		sagemakerLinkName = "SageMaker Training Job"
-	} else if m.TaskType == hpoJobTaskType {
+	} else if m.TaskType == hyperparameterTuningJobTaskType {
 		trainingJob := job.(*hpojobv1.HyperparameterTuningJob)
 		jobRegion = *trainingJob.Spec.Region
 		jobName = *trainingJob.Spec.HyperParameterTuningJobName
@@ -400,7 +400,7 @@ func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath strin
 }
 
 func createOutputPath(prefix string) string {
-	return fmt.Sprintf("%s/hpo_outputs", prefix)
+	return fmt.Sprintf("%s/hyperparameter_tuning_outputs", prefix)
 }
 
 func createModelOutputPath(prefix, bestExperiment string) string {
@@ -457,10 +457,10 @@ func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
 
-func (m awsSagemakerPlugin) GetTaskPhaseForHPOJob(
+func (m awsSagemakerPlugin) GetTaskPhaseForHyperparameterTuningJob(
 	ctx context.Context, pluginContext k8s.PluginContext, hpoJob *hpojobv1.HyperparameterTuningJob) (pluginsCore.PhaseInfo, error) {
 
-	logger.Infof(ctx, "Getting task phase for hpo job [%v]", hpoJob.Status.SageMakerHyperParameterTuningJobName)
+	logger.Infof(ctx, "Getting task phase for hyperparameter tuning job [%v]", hpoJob.Status.SageMakerHyperParameterTuningJobName)
 	info, err := m.getEventInfoForJob(ctx, hpoJob)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
@@ -486,7 +486,7 @@ func (m awsSagemakerPlugin) GetTaskPhaseForHPOJob(
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
 	case sagemaker.HyperParameterTuningJobStatusStopped:
-		reason := fmt.Sprintf("HPO Job Stopped")
+		reason := fmt.Sprintf("Hyperparameter tuning job stopped")
 		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
 	case sagemaker.HyperParameterTuningJobStatusCompleted:
 		// Now that it is success we will set the outputs as expected by the task
@@ -511,9 +511,9 @@ func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.
 	if m.TaskType == trainingJobTaskType {
 		job := resource.(*trainingjobv1.TrainingJob)
 		return m.GetTaskPhaseForTrainingJob(ctx, pluginContext, job)
-	} else if m.TaskType == hpoJobTaskType {
+	} else if m.TaskType == hyperparameterTuningJobTaskType {
 		job := resource.(*hpojobv1.HyperparameterTuningJob)
-		return m.GetTaskPhaseForHPOJob(ctx, pluginContext, job)
+		return m.GetTaskPhaseForHyperparameterTuningJob(ctx, pluginContext, job)
 	}
 	return pluginsCore.PhaseInfoUndefined, errors.Errorf("cannot get task phase for unknown task type [%s]", m.TaskType)
 }
@@ -526,10 +526,10 @@ func init() {
 	// Registering the plugin for HPOJob
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
-			ID:                  hpoJobTaskPluginID,
-			RegisteredTaskTypes: []pluginsCore.TaskType{hpoJobTaskType},
+			ID:                  hyperparameterTuningJobTaskPluginID,
+			RegisteredTaskTypes: []pluginsCore.TaskType{hyperparameterTuningJobTaskType},
 			ResourceToWatch:     &hpojobv1.HyperparameterTuningJob{},
-			Plugin:              awsSagemakerPlugin{TaskType: hpoJobTaskType},
+			Plugin:              awsSagemakerPlugin{TaskType: hyperparameterTuningJobTaskType},
 			IsDefault:           false,
 		})
 

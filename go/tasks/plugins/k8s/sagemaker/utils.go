@@ -180,7 +180,7 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobCon
 	return retValue
 }
 
-func convertHPOJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemakerSpec.HyperparameterTuningJobConfig, error) {
+func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemakerSpec.HyperparameterTuningJobConfig, error) {
 	var retValue = &sagemakerSpec.HyperparameterTuningJobConfig{}
 	hpoJobConfigByteArray := hpoJobConfigLiteral.GetScalar().GetBinary().GetValue()
 	err := proto.Unmarshal(hpoJobConfigByteArray, retValue)

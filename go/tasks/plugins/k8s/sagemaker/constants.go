@@ -8,8 +8,8 @@ const (
 )
 
 const (
-	hpoJobTaskPluginID = "sagemaker_hpo"
-	hpoJobTaskType     = "sagemaker_hpo_job_task"
+	hyperparameterTuningJobTaskPluginID = "sagemaker_hyperparameter_tuning"
+	hyperparameterTuningJobTaskType     = "sagemaker_hyperparameter_tuning_job_task"
 )
 
 const (
