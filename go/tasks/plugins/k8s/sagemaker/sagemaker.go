@@ -191,7 +191,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	trainPathLiteral, ok := inputLiterals["train"]
 	if !ok {
-		return nil, errors.Errorf("Input not specified: [train]")
+		return nil, errors.Errorf("Required input not specified: [train]")
 	}
 	validatePathLiteral, ok := inputLiterals["validation"]
 	if !ok {
