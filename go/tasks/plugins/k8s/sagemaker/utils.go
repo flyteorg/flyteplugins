@@ -1,8 +1,11 @@
 package sagemaker
 
 import (
+	"context"
 	"fmt"
 	"sort"
+
+	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/Masterminds/semver"
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
@@ -258,6 +261,7 @@ func createOutputLiteralMap(tk *core.TaskTemplate, outputPath string) *core.Lite
 }
 
 func deleteConflictingStaticHyperparameters(
+	ctx context.Context,
 	staticHPs []*commonv1.KeyValuePair,
 	tunableHPMap map[string]*sagemakerSpec.ParameterRangeOneOf) []*commonv1.KeyValuePair {
 
@@ -268,6 +272,7 @@ func deleteConflictingStaticHyperparameters(
 		if _, found := tunableHPMap[hp.Name]; !found {
 			finalStaticHPs[w] = hp
 			w++
+			logger.Infof(ctx, "Static hyperparameter [%v] is preserved because there is no conflict", hp.Name)
 		}
 	}
 	return finalStaticHPs[:w]

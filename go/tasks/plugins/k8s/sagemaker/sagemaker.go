@@ -224,7 +224,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	// Deleting the conflicting static hyperparameters: if a hyperparameter exist in both the map of static hyperparameter
 	// and the map of the tunable hyperparameter inside the Hyperparameter Tuning Job Config, we delete the entry
 	// in the static map and let the one in the map of the tunable hyperparameters take precedence
-	staticHyperparams = deleteConflictingStaticHyperparameters(staticHyperparams, hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap())
+	staticHyperparams = deleteConflictingStaticHyperparameters(ctx, staticHyperparams, hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap())
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
