@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -17,74 +18,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 )
-
-func getAPIHyperParameterTuningJobStrategyType(
-	strategyType sagemakerSpec.HyperparameterTuningStrategy_Value) commonv1.HyperParameterTuningJobStrategyType {
-
-	switch strategyType {
-	case sagemakerSpec.HyperparameterTuningStrategy_BAYESIAN:
-		return BayesianSageMakerAPIHyperParameterTuningJobStrategyType
-	}
-	return RandomSageMakerAPIHyperParameterTuningJobStrategyType
-}
-
-func getAPIScalingType(scalingType sagemakerSpec.HyperparameterScalingType_Value) commonv1.HyperParameterScalingType {
-	switch scalingType {
-	case sagemakerSpec.HyperparameterScalingType_AUTO:
-		return AutoSageMakerAPIHyperParameterScalingType
-	case sagemakerSpec.HyperparameterScalingType_LINEAR:
-		return LinearSageMakerAPIHyperParameterScalingType
-	case sagemakerSpec.HyperparameterScalingType_LOGARITHMIC:
-		return LogarithmicSageMakerAPIHyperParameterScalingType
-	case sagemakerSpec.HyperparameterScalingType_REVERSELOGARITHMIC:
-		return ReverseLogarithmicSageMakerAPIHyperParameterScalingType
-	}
-	return AutoSageMakerAPIHyperParameterScalingType
-}
-
-func getAPIHyperparameterTuningObjectiveType(
-	objectiveType sagemakerSpec.HyperparameterTuningObjectiveType_Value) commonv1.HyperParameterTuningJobObjectiveType {
-
-	switch objectiveType {
-	case sagemakerSpec.HyperparameterTuningObjectiveType_MINIMIZE:
-		return MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType
-	case sagemakerSpec.HyperparameterTuningObjectiveType_MAXIMIZE:
-		return MaximizeSageMakerAPIHyperParameterTuningJobObjectiveType
-	}
-	return MinimizeSageMakerAPIHyperParameterTuningJobObjectiveType
-}
-
-func getAPITrainingInputMode(trainingInputMode sagemakerSpec.InputMode_Value) commonv1.TrainingInputMode {
-	switch trainingInputMode {
-	case sagemakerSpec.InputMode_FILE:
-		return FileSageMakerAPITrainingInputMode
-	case sagemakerSpec.InputMode_PIPE:
-		return PipeSageMakerAPITrainingInputMode
-	}
-	return FileSageMakerAPITrainingInputMode
-}
-
-func getAPITrainingJobEarlyStoppingType(
-	earlyStoppingType sagemakerSpec.TrainingJobEarlyStoppingType_Value) commonv1.TrainingJobEarlyStoppingType {
-
-	switch earlyStoppingType {
-	case sagemakerSpec.TrainingJobEarlyStoppingType_OFF:
-		return OffSageMakerAPITrainingJobEarlyStoppingType
-	case sagemakerSpec.TrainingJobEarlyStoppingType_AUTO:
-		return AutoSageMakerAPITrainingJobEarlyStoppingType
-	}
-	return OffSageMakerAPITrainingJobEarlyStoppingType
-}
-
-func getAPIAlgorithmName(name sagemakerSpec.AlgorithmName_Value) string {
-	switch name {
-	case sagemakerSpec.AlgorithmName_CUSTOM:
-		return CustomSageMakerAPIAlgorithmName
-	case sagemakerSpec.AlgorithmName_XGBOOST:
-		return XgboostSageMakerAPIAlgorithmName
-	}
-	return CustomSageMakerAPIAlgorithmName
-}
 
 func getAllVersions(cfg *config.Config, algName, region string) []string {
 	allVers := make([]string, len(cfg.AlgorithmPrebuiltImages[algName][region]))
@@ -125,7 +58,7 @@ func getTrainingImage(job *sagemakerSpec.TrainingJob) (string, error) {
 	var err error
 	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != sagemakerSpec.AlgorithmName_CUSTOM {
 		// Built-in algorithm mode
-		apiAlgorithmName := getAPIAlgorithmName(specifiedAlg)
+		apiAlgorithmName := strings.ToLower(specifiedAlg.String())
 
 		// Getting the version
 		ver := job.GetAlgorithmSpecification().GetAlgorithmVersion()
@@ -165,7 +98,7 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobCon
 				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
 				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
 				Name:        awssagemaker.ToStringPtr(prName),
-				ScalingType: getAPIScalingType(pr.GetContinuousParameterRange().GetScalingType()),
+				ScalingType: commonv1.HyperParameterScalingType(pr.GetContinuousParameterRange().GetScalingType().String()),
 			}
 			retValue.ContinuousParameterRanges = append(retValue.ContinuousParameterRanges, newElem)
 
@@ -174,7 +107,7 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobCon
 				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMaxValue())),
 				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMinValue())),
 				Name:        awssagemaker.ToStringPtr(prName),
-				ScalingType: getAPIScalingType(pr.GetContinuousParameterRange().GetScalingType()),
+				ScalingType: commonv1.HyperParameterScalingType(pr.GetContinuousParameterRange().GetScalingType().String()),
 			}
 			retValue.IntegerParameterRanges = append(retValue.IntegerParameterRanges, newElem)
 		}
@@ -265,17 +198,15 @@ func deleteConflictingStaticHyperparameters(
 	staticHPs []*commonv1.KeyValuePair,
 	tunableHPMap map[string]*sagemakerSpec.ParameterRangeOneOf) []*commonv1.KeyValuePair {
 
-	w := 0 // write position
-	finalStaticHPs := make([]*commonv1.KeyValuePair, len(staticHPs))
+	finalStaticHPs := make([]*commonv1.KeyValuePair, 0, len(staticHPs))
 
 	for _, hp := range staticHPs {
 		if _, found := tunableHPMap[hp.Name]; !found {
-			finalStaticHPs[w] = hp
-			w++
+			finalStaticHPs = append(finalStaticHPs, hp)
 		} else {
 			logger.Infof(ctx,
 				"Static hyperparameter [%v] is removed because the same hyperparameter can be found in the map of tunable hyperparameters", hp.Name)
 		}
 	}
-	return finalStaticHPs[:w]
+	return finalStaticHPs
 }

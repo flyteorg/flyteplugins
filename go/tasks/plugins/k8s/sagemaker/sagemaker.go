@@ -110,7 +110,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
 				AlgorithmName:     nil, // TODO: to add
 				TrainingImage:     ToStringPtr(trainingImageStr),
-				TrainingInputMode: getAPITrainingInputMode(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode()),
+				TrainingInputMode: commonv1.TrainingInputMode(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()),
 				MetricDefinitions: nil, // TODO: to add
 			},
 			EnableManagedSpotTraining: nil,
@@ -250,19 +250,19 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
 					MaxParallelTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxParallelTrainingJobs()),
 				},
-				Strategy: getAPIHyperParameterTuningJobStrategyType(hpoJobConfig.GetTuningStrategy()),
+				Strategy: commonv1.HyperParameterTuningJobStrategyType(hpoJobConfig.GetTuningStrategy().String()),
 				HyperParameterTuningJobObjective: &commonv1.HyperParameterTuningJobObjective{
-					Type:       getAPIHyperparameterTuningObjectiveType(hpoJobConfig.GetTuningObjective().GetObjectiveType()),
+					Type:       commonv1.HyperParameterTuningJobObjectiveType(hpoJobConfig.GetTuningObjective().GetObjectiveType().String()),
 					MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
 				},
 				ParameterRanges:              hpoJobParameterRanges,
-				TrainingJobEarlyStoppingType: getAPITrainingJobEarlyStoppingType(hpoJobConfig.TrainingJobEarlyStoppingType),
+				TrainingJobEarlyStoppingType: commonv1.TrainingJobEarlyStoppingType(hpoJobConfig.TrainingJobEarlyStoppingType.String()),
 			},
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
 				StaticHyperParameters: staticHyperparams,
 				AlgorithmSpecification: &commonv1.HyperParameterAlgorithmSpecification{
 					TrainingImage:     ToStringPtr(trainingImageStr),
-					TrainingInputMode: getAPITrainingInputMode(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode()),
+					TrainingInputMode: commonv1.TrainingInputMode(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String()),
 				},
 				InputDataConfig: []commonv1.Channel{
 					{
