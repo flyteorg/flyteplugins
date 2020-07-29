@@ -152,8 +152,8 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			RoleArn: ToStringPtr(cfg.RoleArn),
 			Region:  ToStringPtr(cfg.Region),
 			StoppingCondition: &commonv1.StoppingCondition{
-				MaxRuntimeInSeconds:  nil, // TODO: decide how to coordinate this and Flyte's timeout
-				MaxWaitTimeInSeconds: nil, // TODO: decide how to coordinate this and Flyte's timeout and queueing budget
+				MaxRuntimeInSeconds:  ToInt64Ptr(86400), // TODO: decide how to coordinate this and Flyte's timeout
+				MaxWaitTimeInSeconds: nil,               // TODO: decide how to coordinate this and Flyte's timeout and queueing budget
 			},
 			TensorBoardOutputConfig: nil,
 			Tags:                    nil,
@@ -220,6 +220,11 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to convert hyperparameter tuning job config literal to spec type")
 	}
+
+	// Deleting the conflicting static hyperparameters: if a hyperparameter exist in both the map of static hyperparameter
+	// and the map of the tunable hyperparameter inside the Hyperparameter Tuning Job Config, we delete the entry
+	// in the static map and let the one in the map of the tunable hyperparameters take precedence
+	staticHyperparams = deleteConflictingStaticHyperparameters(staticHyperparams, hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap())
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
@@ -294,7 +299,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 				},
 				RoleArn: ToStringPtr(cfg.RoleArn),
 				StoppingCondition: &commonv1.StoppingCondition{
-					MaxRuntimeInSeconds:  nil,
+					MaxRuntimeInSeconds:  ToInt64Ptr(86400),
 					MaxWaitTimeInSeconds: nil,
 				},
 			},

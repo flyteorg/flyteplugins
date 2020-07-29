@@ -256,3 +256,19 @@ func createOutputLiteralMap(tk *core.TaskTemplate, outputPath string) *core.Lite
 	}
 	return op
 }
+
+func deleteConflictingStaticHyperparameters(
+	staticHPs []*commonv1.KeyValuePair,
+	tunableHPMap map[string]*sagemakerSpec.ParameterRangeOneOf) []*commonv1.KeyValuePair {
+
+	w := 0 // write position
+	finalStaticHPs := make([]*commonv1.KeyValuePair, len(staticHPs))
+
+	for _, hp := range staticHPs {
+		if _, found := tunableHPMap[hp.Name]; !found {
+			finalStaticHPs[w] = hp
+			w++
+		}
+	}
+	return finalStaticHPs[:w]
+}
