@@ -137,12 +137,12 @@ func Test_buildParameterRanges(t *testing.T) {
 			}
 			wantConPr := tt.want.ContinuousParameterRanges[0]
 			gotConPr := got.ContinuousParameterRanges[0]
-			wantMin, err := strconv.ParseFloat(*wantConPr.MinValue, 64)
+			wantMin, _ := strconv.ParseFloat(*wantConPr.MinValue, 64)
 			gotMin, err := strconv.ParseFloat(*gotConPr.MinValue, 64)
 			if err != nil {
 				t.Errorf("buildParameterRanges(): ContinuousParameterRange: got invalid min value [%v]", gotMin)
 			}
-			wantMax, err := strconv.ParseFloat(*wantConPr.MaxValue, 64)
+			wantMax, _ := strconv.ParseFloat(*wantConPr.MaxValue, 64)
 			gotMax, err := strconv.ParseFloat(*gotConPr.MaxValue, 64)
 			if err != nil {
 				t.Errorf("buildParameterRanges(): ContinuousParameterRange: got invalid max value [%v]", gotMax)
