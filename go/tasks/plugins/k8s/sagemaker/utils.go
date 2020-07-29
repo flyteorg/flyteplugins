@@ -272,7 +272,9 @@ func deleteConflictingStaticHyperparameters(
 		if _, found := tunableHPMap[hp.Name]; !found {
 			finalStaticHPs[w] = hp
 			w++
-			logger.Infof(ctx, "Static hyperparameter [%v] is preserved because there is no conflict", hp.Name)
+		} else {
+			logger.Infof(ctx,
+				"Static hyperparameter [%v] is removed because the same hyperparameter can be found in the map of tunable hyperparameters", hp.Name)
 		}
 	}
 	return finalStaticHPs[:w]
