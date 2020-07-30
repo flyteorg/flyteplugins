@@ -8,6 +8,8 @@ import (
 
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
+	sagemakerConfig "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 )
 
 func generateMockTunableHPMap() map[string]*sagemakerSpec.ParameterRangeOneOf {
@@ -61,6 +63,30 @@ func generateMockHyperparameterTuningJobConfig() *sagemakerSpec.HyperparameterTu
 			MetricName:    "validate:mse",
 		},
 		TrainingJobEarlyStoppingType: sagemakerSpec.TrainingJobEarlyStoppingType_AUTO,
+	}
+}
+
+func generateMockSageMakerConfig() *sagemakerConfig.Config {
+	return &sagemakerConfig.Config{
+		RoleArn: "default",
+		Region:  "us-east-1",
+		// https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
+		PrebuiltAlgorithms: []sagemakerConfig.PrebuiltAlgorithmConfig{
+			{
+				Name: "xgboost",
+				RegionalConfig: []sagemakerConfig.RegionalConfig{
+					{
+						Region: "us-east-1",
+						VersionConfigs: []sagemakerConfig.VersionConfig{
+							{
+								Version: "0.9.1",
+								Image:   "amazonaws.com/xgboost:latest",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -150,6 +176,100 @@ func Test_buildParameterRanges(t *testing.T) {
 			if *wantConPr.Name != *gotConPr.Name || wantMin != gotMin || wantMax != gotMax {
 				t.Errorf("buildParameterRanges(): ContinuousParameterRange: got [Name: %v, MinValue: %v, MaxValue: %v], want [Name: %v, MinValue: %v, MaxValue: %v]",
 					*gotConPr.Name, gotMin, gotMax, *wantConPr.Name, wantMin, wantMax)
+			}
+		})
+	}
+}
+
+func Test_getLatestTrainingImage(t *testing.T) {
+	type args struct {
+		versionConfigs []config.VersionConfig
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{name: "minor version", args: args{versionConfigs: []config.VersionConfig{
+			{Version: "0.9", Image: "image1"}, {Version: "0.92", Image: "image2"}, {Version: "0.9.2", Image: "image3"},
+		}}, want: "image2", wantErr: false},
+		{name: "patch version", args: args{versionConfigs: []config.VersionConfig{
+			{Version: "0.9", Image: "image1"}, {Version: "0.9.2", Image: "image3"},
+		}}, want: "image3", wantErr: false},
+		{name: "major version", args: args{versionConfigs: []config.VersionConfig{
+			{Version: "1.0.0-3", Image: "image1"}, {Version: "0.9.2", Image: "image3"},
+		}}, want: "image1", wantErr: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getLatestTrainingImage(tt.args.versionConfigs)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getLatestTrainingImage() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getLatestTrainingImage() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getTrainingImage(t *testing.T) {
+	ctx := context.TODO()
+
+	sagemakerConfig.SetSagemakerConfig(generateMockSageMakerConfig())
+
+	type args struct {
+		ctx context.Context
+		job *sagemakerSpec.TrainingJob
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{name: "xgboost version found", args: args{ctx: ctx, job: &sagemakerSpec.TrainingJob{
+			AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
+				InputMode:         0,
+				AlgorithmName:     sagemakerSpec.AlgorithmName_XGBOOST,
+				AlgorithmVersion:  "0.9.1",
+				MetricDefinitions: nil,
+				InputFileType:     0,
+			},
+			TrainingJobResourceConfig: nil,
+		}}, want: "amazonaws.com/xgboost:latest", wantErr: false},
+		{name: "xgboost version not found", args: args{ctx: ctx, job: &sagemakerSpec.TrainingJob{
+			AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
+				InputMode:         0,
+				AlgorithmName:     sagemakerSpec.AlgorithmName_XGBOOST,
+				AlgorithmVersion:  "0.7",
+				MetricDefinitions: nil,
+				InputFileType:     0,
+			},
+			TrainingJobResourceConfig: nil,
+		}}, want: "", wantErr: true},
+		{name: "custom", args: args{ctx: ctx, job: &sagemakerSpec.TrainingJob{
+			AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
+				InputMode:         0,
+				AlgorithmName:     sagemakerSpec.AlgorithmName_CUSTOM,
+				AlgorithmVersion:  "0.7",
+				MetricDefinitions: nil,
+				InputFileType:     0,
+			},
+			TrainingJobResourceConfig: nil,
+		}}, want: "custom image", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getTrainingImage(tt.args.ctx, tt.args.job)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getTrainingImage() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getTrainingImage() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

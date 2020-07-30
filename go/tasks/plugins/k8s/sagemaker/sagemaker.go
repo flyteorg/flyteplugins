@@ -96,7 +96,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
-	trainingImageStr, err := getTrainingImage(&sagemakerTrainingJob)
+	trainingImageStr, err := getTrainingImage(ctx, &sagemakerTrainingJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
@@ -105,14 +105,30 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	cfg := config.GetSagemakerConfig()
 
+	var metricDefinitions []commonv1.MetricDefinition
+	idlMetricDefinitions := sagemakerTrainingJob.GetAlgorithmSpecification().GetMetricDefinitions()
+	for _, md := range idlMetricDefinitions {
+		metricDefinitions = append(metricDefinitions,
+			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
+	}
+
+	apiContentType, err := getAPIContentType(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputFileType())
+	if err != nil {
+		return nil, errors.Wrapf(err, "Unsupported input file type [%v]", sagemakerTrainingJob.GetAlgorithmSpecification().GetInputFileType().String())
+	}
+
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{
 			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
-				AlgorithmName:     nil, // TODO: to add
+				// If the specify a value for this AlgorithmName parameter, the user can't specify a value for TrainingImage.
+				// in this Flyte plugin, we always use the algorithm name and version the user provides via Flytekit to map to an image
+				// so we intentionally leave this field nil
+				AlgorithmName:     nil,
 				TrainingImage:     ToStringPtr(trainingImageStr),
 				TrainingInputMode: commonv1.TrainingInputMode(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()),
-				MetricDefinitions: nil, // TODO: to add
+				MetricDefinitions: metricDefinitions,
 			},
+			// The support of spot training will come in a later version
 			EnableManagedSpotTraining: nil,
 			HyperParameters:           staticHyperparams,
 			InputDataConfig: []commonv1.Channel{
@@ -124,8 +140,8 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 							S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
 						},
 					},
-					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata?
-					InputMode:   "File",
+					ContentType: ToStringPtr(apiContentType),
+					InputMode:   sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String(),
 				},
 				{
 					ChannelName: ToStringPtr("validation"),
@@ -135,8 +151,8 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 							S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
 						},
 					},
-					ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata?
-					InputMode:   "File",
+					ContentType: ToStringPtr(apiContentType),
+					InputMode:   sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String(),
 				},
 			},
 			OutputDataConfig: &commonv1.OutputDataConfig{
@@ -228,7 +244,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
-	trainingImageStr, err := getTrainingImage(sagemakerHPOJob.GetTrainingJob())
+	trainingImageStr, err := getTrainingImage(ctx, sagemakerHPOJob.GetTrainingJob())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
@@ -241,6 +257,19 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 		"parameter ranges: [%v]", staticHyperparams, hpoJobConfig, hpoJobParameterRanges)
 
 	cfg := config.GetSagemakerConfig()
+
+	var metricDefinitions []commonv1.MetricDefinition
+	idlMetricDefinitions := sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetMetricDefinitions()
+	for _, md := range idlMetricDefinitions {
+		metricDefinitions = append(metricDefinitions,
+			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
+	}
+
+	apiContentType, err := getAPIContentType(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputFileType())
+	if err != nil {
+		return nil, errors.Wrapf(err, "Unsupported input file type [%v]",
+			sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputFileType().String())
+	}
 
 	hpoJob := &hpojobv1.HyperparameterTuningJob{
 		Spec: hpojobv1.HyperparameterTuningJobSpec{
@@ -263,6 +292,8 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 				AlgorithmSpecification: &commonv1.HyperParameterAlgorithmSpecification{
 					TrainingImage:     ToStringPtr(trainingImageStr),
 					TrainingInputMode: commonv1.TrainingInputMode(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String()),
+					MetricDefinitions: metricDefinitions,
+					AlgorithmName:     nil,
 				},
 				InputDataConfig: []commonv1.Channel{
 					{
@@ -273,8 +304,8 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 								S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
-						InputMode:   "File",
+						ContentType: ToStringPtr(apiContentType), // TODO: can this be derived from the BlobMetadata
+						InputMode:   sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String(),
 					},
 					{
 						ChannelName: ToStringPtr("validation"),
@@ -284,8 +315,8 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 								S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
 							},
 						},
-						ContentType: ToStringPtr("text/csv"), // TODO: can this be derived from the BlobMetadata
-						InputMode:   "File",
+						ContentType: ToStringPtr(apiContentType), // TODO: can this be derived from the BlobMetadata
+						InputMode:   sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String(),
 					},
 				},
 				OutputDataConfig: &commonv1.OutputDataConfig{

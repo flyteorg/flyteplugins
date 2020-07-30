@@ -3,7 +3,6 @@ package sagemaker
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -19,59 +18,97 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func getAllVersions(cfg *config.Config, algName, region string) []string {
-	allVers := make([]string, len(cfg.AlgorithmPrebuiltImages[algName][region]))
-	i := 0
-	for k := range cfg.AlgorithmPrebuiltImages[algName][region] {
-		allVers[i] = k
-		i++
+func getAPIContentType(fileType sagemakerSpec.InputFileType_Value) (string, error) {
+	if fileType == sagemakerSpec.InputFileType_TEXT_CSV {
+		return TEXTCSVInputFileType, nil
+	} else if fileType == sagemakerSpec.InputFileType_TEXT_LIBSVM {
+		return TEXTLIBSVMInputFileType, nil
 	}
-	return allVers
+	return "", errors.Errorf("Unsupported input file type [%v]", fileType.String())
 }
 
-func convertRawVersToSemVers(raw []string) ([]*semver.Version, error) {
-
-	vs := make([]*semver.Version, len(raw))
-	for i, r := range raw {
-		v, err := semver.NewVersion(r)
+func getLatestTrainingImage(versionConfigs []config.VersionConfig) (string, error) {
+	latestSemVer, _ := semver.NewVersion("0.0.0")
+	latestImg := ""
+	for _, verCfg := range versionConfigs {
+		semVer, err := semver.NewVersion(verCfg.Version)
 		if err != nil {
-			return nil, errors.Errorf("Failed to convert version string [%v] to semantic version [%v]", r, v)
+			return "", errors.Wrapf(err, "Failed to cast version [%v] to a semver", verCfg.Version)
 		}
-		vs[i] = v
+		if semVer.GreaterThan(latestSemVer) {
+			latestSemVer = semVer
+			latestImg = verCfg.Image
+		}
 	}
-	return vs, nil
+	if latestImg == "" {
+		return "", errors.Errorf("Failed to find the latest image")
+	}
+	return latestImg, nil
 }
 
-func getLatestSemVer(cfg *config.Config, algName, region string) (string, error) {
-	allVersionsRaw := getAllVersions(cfg, algName, region)
-	allSemVers, err := convertRawVersToSemVers(allVersionsRaw)
-	if err != nil {
-		return "", errors.Wrapf(err, "Failed to get the semantic versions of algorithm:region [%v:%v]", algName, region)
-	}
-	sort.Sort(semver.Collection(allSemVers))
-	// https://play.golang.org/p/bd7XndTKwq5
-	return allSemVers[len(allSemVers)-1].String(), nil
-}
-
-func getTrainingImage(job *sagemakerSpec.TrainingJob) (string, error) {
+func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (string, error) {
 	cfg := config.GetSagemakerConfig()
-	var err error
+	var foundAlgorithmCfg *config.PrebuiltAlgorithmConfig
+	var foundRegionalCfg *config.RegionalConfig
+
 	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != sagemakerSpec.AlgorithmName_CUSTOM {
 		// Built-in algorithm mode
-		apiAlgorithmName := strings.ToLower(specifiedAlg.String())
+		apiAlgorithmName := specifiedAlg.String()
 
-		// Getting the version
-		ver := job.GetAlgorithmSpecification().GetAlgorithmVersion()
-		if ver == "" {
-			// user didn't specify a version -> use the latest
-			ver, err = getLatestSemVer(cfg, apiAlgorithmName, cfg.Region)
-			if err != nil {
-				return "", errors.Wrapf(err, "Failed to identify the latest version of algorithm:region [%v:%v]", apiAlgorithmName, cfg.Region)
+		for _, algorithmCfg := range cfg.PrebuiltAlgorithms {
+			if strings.ToLower(apiAlgorithmName) == strings.ToLower(algorithmCfg.Name) {
+				foundAlgorithmCfg = &algorithmCfg
+				break
 			}
 		}
+		if foundAlgorithmCfg == nil {
+			return "", errors.Errorf("Failed to find a image for algorithm [%v]", apiAlgorithmName)
+		}
 
-		retImg := cfg.AlgorithmPrebuiltImages[apiAlgorithmName][cfg.Region][ver]
-		return retImg, nil
+		for _, regionalCfg := range foundAlgorithmCfg.RegionalConfig {
+			if strings.ToLower(cfg.Region) == strings.ToLower(regionalCfg.Region) {
+				foundRegionalCfg = &regionalCfg
+				break
+			}
+		}
+		if foundRegionalCfg == nil {
+			return "", errors.Errorf("Failed to find a image for algorithm [%v] region [%v]",
+				job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region)
+		}
+
+		userSpecifiedVer := job.GetAlgorithmSpecification().GetAlgorithmVersion()
+		// If the user does not specify a version -> use the latest version found in the config possible
+		if userSpecifiedVer == "" {
+			logger.Infof(ctx, "The version of the algorithm [%v] is not specified. "+
+				"The plugin will try to pick the latest version available for the algorithm-region combination.", userSpecifiedVer, apiAlgorithmName, cfg.Region)
+			latestTrainingImage, err := getLatestTrainingImage(foundRegionalCfg.VersionConfigs)
+			if err != nil {
+				return "", errors.Wrapf(err, "Failed to identify the latest image for algorithm:region [%v:%v]",
+					apiAlgorithmName, cfg.Region)
+			}
+			return latestTrainingImage, nil
+		}
+		// If the user specified a version -> we have to translate it to semver and find an exact match
+		for _, versionCfg := range foundRegionalCfg.VersionConfigs {
+			configSemVer, err := semver.NewVersion(versionCfg.Version)
+			if err != nil {
+				return "", errors.Wrapf(err, "Unable to cast version listed in the config [%v] to a semver", versionCfg.Version)
+			}
+			userSpecifiedSemVer, err := semver.NewVersion(userSpecifiedVer)
+			if err != nil {
+				return "", errors.Wrapf(err, "Unable to cast version specified by the user [%v] to a semver", userSpecifiedVer)
+			}
+			if configSemVer.Equal(userSpecifiedSemVer) {
+				logger.Infof(ctx, "Image [%v] is picked for algorithm [] region [] version [] ",
+					versionCfg.Image, apiAlgorithmName, cfg.Region, userSpecifiedSemVer)
+				return versionCfg.Image, nil
+			}
+		}
+		logger.Errorf(ctx, "Failed to find a image for [%v]:[%v]:[%v]",
+			job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region, job.GetAlgorithmSpecification().GetAlgorithmVersion())
+
+		return "", errors.Errorf("Failed to find a image for [%v]:[%v]:[%v]",
+			job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region, job.GetAlgorithmSpecification().GetAlgorithmVersion())
 	}
 	return "custom image", errors.Errorf("Custom images are not supported yet")
 }
