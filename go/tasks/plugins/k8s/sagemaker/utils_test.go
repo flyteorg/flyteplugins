@@ -218,7 +218,7 @@ func Test_getLatestTrainingImage(t *testing.T) {
 func Test_getTrainingImage(t *testing.T) {
 	ctx := context.TODO()
 
-	sagemakerConfig.SetSagemakerConfig(generateMockSageMakerConfig())
+	_ := sagemakerConfig.SetSagemakerConfig(generateMockSageMakerConfig())
 
 	type args struct {
 		ctx context.Context

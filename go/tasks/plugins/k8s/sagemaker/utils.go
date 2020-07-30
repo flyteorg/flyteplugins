@@ -56,7 +56,7 @@ func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (stri
 		apiAlgorithmName := specifiedAlg.String()
 
 		for _, algorithmCfg := range cfg.PrebuiltAlgorithms {
-			if strings.ToLower(apiAlgorithmName) == strings.ToLower(algorithmCfg.Name) {
+			if strings.EqualFold(apiAlgorithmName, algorithmCfg.Name) {
 				foundAlgorithmCfg = &algorithmCfg
 				break
 			}
@@ -66,7 +66,7 @@ func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (stri
 		}
 
 		for _, regionalCfg := range foundAlgorithmCfg.RegionalConfig {
-			if strings.ToLower(cfg.Region) == strings.ToLower(regionalCfg.Region) {
+			if strings.EqualFold(cfg.Region, regionalCfg.Region) {
 				foundRegionalCfg = &regionalCfg
 				break
 			}
