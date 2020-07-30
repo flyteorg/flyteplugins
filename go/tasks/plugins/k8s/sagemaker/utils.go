@@ -18,11 +18,9 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func getAPIContentType(fileType sagemakerSpec.InputFileType_Value) (string, error) {
-	if fileType == sagemakerSpec.InputFileType_TEXT_CSV {
-		return TEXTCSVInputFileType, nil
-	} else if fileType == sagemakerSpec.InputFileType_TEXT_LIBSVM {
-		return TEXTLIBSVMInputFileType, nil
+func getAPIContentType(fileType sagemakerSpec.InputContentType_Value) (string, error) {
+	if fileType == sagemakerSpec.InputContentType_TEXT_CSV {
+		return TEXT_CSV_InputContentType, nil
 	}
 	return "", errors.Errorf("Unsupported input file type [%v]", fileType.String())
 }

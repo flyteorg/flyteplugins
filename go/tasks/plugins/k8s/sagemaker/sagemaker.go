@@ -112,9 +112,9 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
 	}
 
-	apiContentType, err := getAPIContentType(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputFileType())
+	apiContentType, err := getAPIContentType(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputContentType())
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unsupported input file type [%v]", sagemakerTrainingJob.GetAlgorithmSpecification().GetInputFileType().String())
+		return nil, errors.Wrapf(err, "Unsupported input file type [%v]", sagemakerTrainingJob.GetAlgorithmSpecification().GetInputContentType().String())
 	}
 
 	trainingJob := &trainingjobv1.TrainingJob{
@@ -265,10 +265,10 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
 	}
 
-	apiContentType, err := getAPIContentType(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputFileType())
+	apiContentType, err := getAPIContentType(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputContentType())
 	if err != nil {
 		return nil, errors.Wrapf(err, "Unsupported input file type [%v]",
-			sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputFileType().String())
+			sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputContentType().String())
 	}
 
 	hpoJob := &hpojobv1.HyperparameterTuningJob{

@@ -11,6 +11,5 @@ const (
 )
 
 const (
-	TEXTCSVInputFileType    string = "text/csv"
-	TEXTLIBSVMInputFileType string = "text/libsvm"
+	TEXT_CSV_InputContentType string = "text/csv"
 )
