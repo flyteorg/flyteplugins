@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	hpojobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/hyperparametertuningjob"
@@ -117,6 +118,8 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		return nil, errors.Wrapf(err, "Unsupported input file type [%v]", sagemakerTrainingJob.GetAlgorithmSpecification().GetInputContentType().String())
 	}
 
+	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
+
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{
 			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
@@ -125,7 +128,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 				// so we intentionally leave this field nil
 				AlgorithmName:     nil,
 				TrainingImage:     ToStringPtr(trainingImageStr),
-				TrainingInputMode: commonv1.TrainingInputMode(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()),
+				TrainingInputMode: commonv1.TrainingInputMode(inputModeString),
 				MetricDefinitions: metricDefinitions,
 			},
 			// The support of spot training will come in a later version
@@ -141,7 +144,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 						},
 					},
 					ContentType: ToStringPtr(apiContentType),
-					InputMode:   sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String(),
+					InputMode:   inputModeString,
 				},
 				{
 					ChannelName: ToStringPtr("validation"),
@@ -152,7 +155,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 						},
 					},
 					ContentType: ToStringPtr(apiContentType),
-					InputMode:   sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String(),
+					InputMode:   inputModeString,
 				},
 			},
 			OutputDataConfig: &commonv1.OutputDataConfig{
@@ -271,6 +274,11 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 			sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputContentType().String())
 	}
 
+	inputModeString := strings.Title(strings.ToLower(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String()))
+	tuningStrategyString := strings.Title(strings.ToLower(hpoJobConfig.GetTuningStrategy().String()))
+	tuningObjectiveTypeString := strings.Title(strings.ToLower(hpoJobConfig.GetTuningObjective().GetObjectiveType().String()))
+	trainingJobEarlyStoppingTypeString := strings.Title(strings.ToLower(hpoJobConfig.TrainingJobEarlyStoppingType.String()))
+
 	hpoJob := &hpojobv1.HyperparameterTuningJob{
 		Spec: hpojobv1.HyperparameterTuningJobSpec{
 			HyperParameterTuningJobName: &taskName,
@@ -279,19 +287,19 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
 					MaxParallelTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxParallelTrainingJobs()),
 				},
-				Strategy: commonv1.HyperParameterTuningJobStrategyType(hpoJobConfig.GetTuningStrategy().String()),
+				Strategy: commonv1.HyperParameterTuningJobStrategyType(tuningStrategyString),
 				HyperParameterTuningJobObjective: &commonv1.HyperParameterTuningJobObjective{
-					Type:       commonv1.HyperParameterTuningJobObjectiveType(hpoJobConfig.GetTuningObjective().GetObjectiveType().String()),
+					Type:       commonv1.HyperParameterTuningJobObjectiveType(tuningObjectiveTypeString),
 					MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
 				},
 				ParameterRanges:              hpoJobParameterRanges,
-				TrainingJobEarlyStoppingType: commonv1.TrainingJobEarlyStoppingType(hpoJobConfig.TrainingJobEarlyStoppingType.String()),
+				TrainingJobEarlyStoppingType: commonv1.TrainingJobEarlyStoppingType(trainingJobEarlyStoppingTypeString),
 			},
 			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
 				StaticHyperParameters: staticHyperparams,
 				AlgorithmSpecification: &commonv1.HyperParameterAlgorithmSpecification{
 					TrainingImage:     ToStringPtr(trainingImageStr),
-					TrainingInputMode: commonv1.TrainingInputMode(sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String()),
+					TrainingInputMode: commonv1.TrainingInputMode(inputModeString),
 					MetricDefinitions: metricDefinitions,
 					AlgorithmName:     nil,
 				},
@@ -305,7 +313,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 							},
 						},
 						ContentType: ToStringPtr(apiContentType), // TODO: can this be derived from the BlobMetadata
-						InputMode:   sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String(),
+						InputMode:   inputModeString,
 					},
 					{
 						ChannelName: ToStringPtr("validation"),
@@ -316,7 +324,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 							},
 						},
 						ContentType: ToStringPtr(apiContentType), // TODO: can this be derived from the BlobMetadata
-						InputMode:   sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputMode().String(),
+						InputMode:   inputModeString,
 					},
 				},
 				OutputDataConfig: &commonv1.OutputDataConfig{
