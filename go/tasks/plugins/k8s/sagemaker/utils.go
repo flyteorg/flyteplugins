@@ -20,7 +20,7 @@ import (
 
 func getAPIContentType(fileType sagemakerSpec.InputContentType_Value) (string, error) {
 	if fileType == sagemakerSpec.InputContentType_TEXT_CSV {
-		return TEXT_CSV_InputContentType, nil
+		return TEXTCSVInputContentType, nil
 	}
 	return "", errors.Errorf("Unsupported input file type [%v]", fileType.String())
 }
