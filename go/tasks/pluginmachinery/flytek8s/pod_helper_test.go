@@ -106,7 +106,7 @@ func TestToK8sPodIterruptible(t *testing.T) {
 
 	p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(p.Tolerations))
+	assert.Len(t, p.Tolerations, 2)
 	assert.Equal(t, "x/flyte", p.Tolerations[1].Key)
 	assert.Equal(t, "interruptible", p.Tolerations[1].Value)
 	assert.Equal(t, 1, len(p.NodeSelector))
