@@ -113,8 +113,9 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 				if val, ok := pod.ObjectMeta.Labels["interruptible"]; ok {
 					if val == "true" && k8s.GetConfig().MaxSystemLevelTimeout > 0 && k8s.GetConfig().MaxSystemLevelTimeout > elapsedtime.Minutes() {
 						return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
-							Code: "systemLevelTimeout",
-							Kind: idlCore.ExecutionError_SYSTEM,
+							Code:    "systemLevelTimeout",
+							Kind:    idlCore.ExecutionError_SYSTEM,
+							Message: fmt.Sprint("system timeout reached at status [%v]", v1.PodScheduled),
 						},
 							&pluginsCore.TaskInfo{
 								OccuredAt: &time.Now(),
@@ -145,6 +146,7 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 					return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
 						Code: "systemLevelTimeout",
 						Kind: idlCore.ExecutionError_SYSTEM,
+						Message: fmt.Sprint("system timeout reached at status [%v]", v1.PodReasonUnschedulable),
 					},
 						&pluginsCore.TaskInfo{
 							OccuredAt: &time.Now(),
@@ -196,6 +198,7 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 									return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
 										Code: "systemLevelTimeout",
 										Kind: idlCore.ExecutionError_SYSTEM,
+										Message: fmt.Sprintf("system timeout reached at status [%v], with reason [%s]", v1.PodReady, reason)
 									},
 										&pluginsCore.TaskInfo{
 											OccuredAt: &time.Now(),
