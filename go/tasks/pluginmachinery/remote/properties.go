@@ -15,7 +15,7 @@ var (
 	DefaultPluginProperties = PluginProperties{
 		Caching: CachingProperties{
 			Size:           100000,
-			ResyncInterval: config.Duration{Duration: 20 * time.Second},
+			ResyncInterval: config.Duration{Duration: 30 * time.Second},
 			Workers:        10,
 		},
 		ReadRateLimiter: RateLimiterProperties{

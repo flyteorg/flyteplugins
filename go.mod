@@ -7,6 +7,7 @@ require (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
 	github.com/aws/aws-sdk-go v1.28.11
 	github.com/coocood/freecache v1.1.0
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.5
 	github.com/golang/protobuf v1.3.3
 	github.com/googleapis/gnostic v0.4.1 // indirect
@@ -31,7 +32,7 @@ require (
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/utils v0.0.0-20200124190032-861946025e34 // indirect
+	k8s.io/utils v0.0.0-20200124190032-861946025e34
 	sigs.k8s.io/controller-runtime v0.4.0
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
