@@ -10,9 +10,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s"
 )
 
 const PodKind = "pod"
@@ -96,27 +98,60 @@ func BuildIdentityPod() *v1.Pod {
 //          resources requested is beyond the capability of the system. for this we will rely on configuration
 //          and hence input gates. We should not allow bad requests that request for large number of resource through.
 //          In the case it makes through, we will fail after timeout
-func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
+func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 	// Search over the difference conditions in the status object.  Note that the 'Pending' this function is
 	// demystifying is the 'phase' of the pod status. This is different than the PodReady condition type also used below
+	status := pod.Status
+	elapsedtime := time.Now().Sub(pod.GetObjectMeta().GetCreationTimestamp().Time)
 	for _, c := range status.Conditions {
 		switch c.Type {
 		case v1.PodScheduled:
 			if c.Status == v1.ConditionFalse {
+				// If the pod is interruptible and is waiting to be scheduled for an extended amount of time,  it is possible there are
+				// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
+				// non spot instance AZ.
+				if val, ok := pod.ObjectMeta.Labels["interruptible"]; ok {
+					if val == "true" && k8s.GetConfig().MaxSystemLevelTimeout > 0 && k8s.GetConfig().MaxSystemLevelTimeout > elapsedtime.Minutes() {
+						return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
+							Code: "systemLevelTimeout",
+							Kind: idlCore.ExecutionError_SYSTEM,
+						},
+							&pluginsCore.TaskInfo{
+								OccuredAt: &time.Now(),
+							}), nil
+					}
+				}
+
 				// Waiting to be scheduled. This usually refers to inability to acquire resources.
 				return pluginsCore.PhaseInfoQueued(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 			}
 
 		case v1.PodReasonUnschedulable:
-			// We Ignore case in which we are unable to find resources on the cluster. This is because
-			// - The resources may be not available at the moment, but may become available eventually
-			//   The pod scheduler will keep on looking at this pod and trying to satisfy it.
+			//  We Ignore case in which we are unable to find resources on the cluster unless system level
+			//  timeout is set. This is because The resources may be not available at the moment, but may become
+			//  available eventually The pod scheduler will keep on looking at this pod and trying to satistfy it
 			//
 			//  Pod status looks like this:
 			// 	message: '0/1 nodes are available: 1 Insufficient memory.'
 			//  reason: Unschedulable
 			// 	status: "False"
 			// 	type: PodScheduled
+
+			// If the pod is interruptible and is waiting to be scheduled for an extended amount of time,  it is possible there are
+			// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
+			// non spot instance AZ.
+			if val, ok := pod.ObjectMeta.Labels["interruptible"]; ok {
+				if val == "true" && k8s.GetConfig().MaxSystemLevelTimeout > 0 && k8s.GetConfig().MaxSystemLevelTimeout > elapsedtime.Minutes() {
+					return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
+						Code: "systemLevelTimeout",
+						Kind: idlCore.ExecutionError_SYSTEM,
+					},
+						&pluginsCore.TaskInfo{
+							OccuredAt: &time.Now(),
+						}), nil
+				}
+			}
+
 			return pluginsCore.PhaseInfoQueued(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 
 		case v1.PodReady:
@@ -153,6 +188,19 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 							finalMessage := fmt.Sprintf("%s|%s", c.Message, containerStatus.State.Waiting.Message)
 							switch reason {
 							case "ErrImagePull", "ContainerCreating", "PodInitializing":
+
+								// If we are in any of these states for an extended period of time there could be a system level error.
+								// To help mitigate the pod being stuck in this state we have a system level timeout that will error out
+								// as a system error and retry launching the pod.
+								if k8s.GetConfig().MaxSystemLevelTimeout > 0 && k8s.GetConfig().MaxSystemLevelTimeout > elapsedtime.Minutes() {
+									return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
+										Code: "systemLevelTimeout",
+										Kind: idlCore.ExecutionError_SYSTEM,
+									},
+										&pluginsCore.TaskInfo{
+											OccuredAt: &time.Now(),
+										}), nil
+								}
 								// But, there are only two "reasons" when a pod is successfully being created and hence it is in
 								// waiting state
 								// Refer to https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/kubelet_pods.go

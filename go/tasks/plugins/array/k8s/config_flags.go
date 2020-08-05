@@ -44,6 +44,7 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "scheduler"), defaultConfig.DefaultScheduler, "Decides the scheduler to use when launching array-pods.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "maxErrLength"), defaultConfig.MaxErrorStringLength, "Determines the maximum length of the error string returned for the array.")
 	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "maxArrayJobSize"), defaultConfig.MaxArrayJobSize, "Maximum size of array job.")
+	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "maxSystemLevelTimeout"), defaultConfig.MaxSystemLevelTimeout, "Value to be used for system level timeouts in minutes.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.workers"), defaultConfig.OutputAssembler.Workers, "Number of concurrent workers to start processing the queue.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.maxRetries"), defaultConfig.OutputAssembler.MaxRetries, "Maximum number of retries per item.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "OutputAssembler.maxItems"), defaultConfig.OutputAssembler.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")

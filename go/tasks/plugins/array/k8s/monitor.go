@@ -169,7 +169,7 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 		code, message := flytek8s.ConvertPodFailureToError(pod.Status)
 		return core.PhaseInfoRetryableFailure(code, message, &taskInfo), nil
 	case v1.PodPending:
-		return flytek8s.DemystifyPending(pod.Status)
+		return flytek8s.DemystifyPending(pod)
 	case v1.PodUnknown:
 		return core.PhaseInfoUndefined, nil
 	}
