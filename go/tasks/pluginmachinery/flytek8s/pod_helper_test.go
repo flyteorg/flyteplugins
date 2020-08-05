@@ -175,6 +175,39 @@ func TestToK8sPod(t *testing.T) {
 		assert.Equal(t, len(p.Tolerations), 0)
 		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
 	})
+
+	t.Run("Default toleration, selector, scheduler", func(t *testing.T) {
+		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
+			Limits: v1.ResourceList{
+				v1.ResourceCPU:     resource.MustParse("1024m"),
+				v1.ResourceStorage: resource.MustParse("100M"),
+			},
+			Requests: v1.ResourceList{
+				v1.ResourceCPU:     resource.MustParse("1024m"),
+				v1.ResourceStorage: resource.MustParse("100M"),
+			},
+		})
+
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+			DefaultTolerations: []v1.Toleration{
+				{
+					Key:   "tolerationKey",
+					Value: flyteDataConfigVolume,
+				},
+			},
+			DefaultNodeSelector: map[string]string{
+				"nodeId": "123",
+			},
+			SchedulerName: "myScheduler",
+		}))
+
+		p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(p.Tolerations))
+		assert.Equal(t, 1, len(p.NodeSelector))
+		assert.Equal(t, "myScheduler", p.SchedulerName)
+		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
+	})
 }
 
 func TestDemystifyPending(t *testing.T) {
