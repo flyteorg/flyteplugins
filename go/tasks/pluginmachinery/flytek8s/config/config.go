@@ -76,6 +76,8 @@ type K8sPluginConfig struct {
 	SchedulerName string `json:"scheduler-name" pflag:",Defines scheduler name."`
 	// Flyte CoPilot Configuration
 	CoPilot FlyteCoPilotConfig `json:"co-pilot" pflag:",Co-Pilot Configuration"`
+	// Set system level timeout. If timeout reached pod will be relaunched.
+	MaxSystemLevelTimeout int64 `json:"maxSystemLevelTimeout" pflag:",Value to be used for system level timeouts in minutes."`
 }
 
 type FlyteCoPilotConfig struct {

@@ -156,7 +156,7 @@ func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8
 		code, message := flytek8s.ConvertPodFailureToError(pod.Status)
 		return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil
 	case k8sv1.PodPending:
-		return flytek8s.DemystifyPending(pod.Status)
+		return flytek8s.DemystifyPending(pod)
 	case k8sv1.PodReasonUnschedulable:
 		return pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable"), nil
 	case k8sv1.PodUnknown:

@@ -10,11 +10,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/k8s"
 )
 
 const PodKind = "pod"
@@ -102,7 +100,7 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 	// Search over the difference conditions in the status object.  Note that the 'Pending' this function is
 	// demystifying is the 'phase' of the pod status. This is different than the PodReady condition type also used below
 	status := pod.Status
-	elapsedtime := time.Now().Sub(pod.GetObjectMeta().GetCreationTimestamp().Time)
+	timeout := config.GetK8sPluginConfig().MaxSystemLevelTimeout
 	for _, c := range status.Conditions {
 		switch c.Type {
 		case v1.PodScheduled:
@@ -111,15 +109,11 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 				// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
 				// non spot instance AZ.
 				if val, ok := pod.ObjectMeta.Labels["interruptible"]; ok {
-					if val == "true" && k8s.GetConfig().MaxSystemLevelTimeout > 0 && k8s.GetConfig().MaxSystemLevelTimeout > elapsedtime.Minutes() {
-						return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
-							Code:    "systemLevelTimeout",
-							Kind:    idlCore.ExecutionError_SYSTEM,
-							Message: fmt.Sprint("system timeout reached at status [%v]", v1.PodScheduled),
-						},
-							&pluginsCore.TaskInfo{
-								OccuredAt: &time.Now(),
-							}), nil
+					if val == "true" && timeout > 0 && timeout > int64(time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time)) {
+						return pluginsCore.PhaseInfoRetryableFailure(
+							"systemLevelTimeout",
+							fmt.Sprintf("system timeout reached at status %v", v1.PodScheduled),
+							&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
 					}
 				}
 
@@ -142,15 +136,11 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 			// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
 			// non spot instance AZ.
 			if val, ok := pod.ObjectMeta.Labels["interruptible"]; ok {
-				if val == "true" && k8s.GetConfig().MaxSystemLevelTimeout > 0 && k8s.GetConfig().MaxSystemLevelTimeout > elapsedtime.Minutes() {
-					return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
-						Code: "systemLevelTimeout",
-						Kind: idlCore.ExecutionError_SYSTEM,
-						Message: fmt.Sprint("system timeout reached at status [%v]", v1.PodReasonUnschedulable),
-					},
-						&pluginsCore.TaskInfo{
-							OccuredAt: &time.Now(),
-						}), nil
+				if val == "true" && timeout > 0 && timeout > int64(time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time)) {
+					return pluginsCore.PhaseInfoRetryableFailure(
+						"systemLevelTimeout",
+						fmt.Sprintf("system timeout reached at status %v", v1.PodReasonUnschedulable),
+						&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
 				}
 			}
 
@@ -194,16 +184,13 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 								// If we are in any of these states for an extended period of time there could be a system level error.
 								// To help mitigate the pod being stuck in this state we have a system level timeout that will error out
 								// as a system error and retry launching the pod.
-								if k8s.GetConfig().MaxSystemLevelTimeout > 0 && k8s.GetConfig().MaxSystemLevelTimeout > elapsedtime.Minutes() {
-									return pluginsCore.PhaseInfoFailed(c.LastTransitionTime.Time, &idlCore.ExecutionError_SYSTEM{
-										Code: "systemLevelTimeout",
-										Kind: idlCore.ExecutionError_SYSTEM,
-										Message: fmt.Sprintf("system timeout reached at status [%v], with reason [%s]", v1.PodReady, reason)
-									},
-										&pluginsCore.TaskInfo{
-											OccuredAt: &time.Now(),
-										}), nil
+								if timeout > 0 && timeout > int64(time.Since(status.StartTime.Time)) {
+									return pluginsCore.PhaseInfoRetryableFailure(
+										"systemLevelTimeout",
+										fmt.Sprintf("system timeout reached, %s", finalMessage),
+										&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
 								}
+
 								// But, there are only two "reasons" when a pod is successfully being created and hence it is in
 								// waiting state
 								// Refer to https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/kubelet_pods.go

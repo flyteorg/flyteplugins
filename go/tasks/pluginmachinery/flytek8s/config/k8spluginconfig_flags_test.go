@@ -385,4 +385,26 @@ func TestK8sPluginConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_maxSystemLevelTimeout", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt64, err := cmdFlags.GetInt64("maxSystemLevelTimeout"); err == nil {
+				assert.Equal(t, int64(defaultK8sConfig.MaxSystemLevelTimeout), vInt64)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("maxSystemLevelTimeout", testValue)
+			if vInt64, err := cmdFlags.GetInt64("maxSystemLevelTimeout"); err == nil {
+				testDecodeJson_K8sPluginConfig(t, fmt.Sprintf("%v", vInt64), &actual.MaxSystemLevelTimeout)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

@@ -42,7 +42,7 @@ func (Plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext,
 		code, message := flytek8s.ConvertPodFailureToError(pod.Status)
 		return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil
 	case v1.PodPending:
-		return flytek8s.DemystifyPending(pod.Status)
+		return flytek8s.DemystifyPending(pod)
 	case v1.PodUnknown:
 		return pluginsCore.PhaseInfoUndefined, nil
 	}
