@@ -18,6 +18,7 @@ import (
 const PodKind = "pod"
 const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
+const Interruptible = "interruptible"
 const SIGKILL = 137
 
 func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
@@ -100,23 +101,11 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 	// Search over the difference conditions in the status object.  Note that the 'Pending' this function is
 	// demystifying is the 'phase' of the pod status. This is different than the PodReady condition type also used below
 	status := pod.Status
-	timeout := config.GetK8sPluginConfig().MaxSystemLevelTimeout
+	timeout := config.GetK8sPluginConfig().MaxSystemLevelTimeout.Duration
 	for _, c := range status.Conditions {
 		switch c.Type {
 		case v1.PodScheduled:
 			if c.Status == v1.ConditionFalse {
-				// If the pod is interruptible and is waiting to be scheduled for an extended amount of time,  it is possible there are
-				// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
-				// non spot instance AZ.
-				if val, ok := pod.ObjectMeta.Labels["interruptible"]; ok {
-					if val == "true" && timeout > 0 && timeout > int64(time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time)) {
-						return pluginsCore.PhaseInfoRetryableFailure(
-							"systemLevelTimeout",
-							fmt.Sprintf("system timeout reached at status %v", v1.PodScheduled),
-							&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
-					}
-				}
-
 				// Waiting to be scheduled. This usually refers to inability to acquire resources.
 				return pluginsCore.PhaseInfoQueued(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 			}
@@ -135,8 +124,8 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 			// If the pod is interruptible and is waiting to be scheduled for an extended amount of time,  it is possible there are
 			// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
 			// non spot instance AZ.
-			if val, ok := pod.ObjectMeta.Labels["interruptible"]; ok {
-				if val == "true" && timeout > 0 && timeout > int64(time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time)) {
+			if val, ok := pod.ObjectMeta.Labels[Interruptible]; ok {
+				if val == "true" && timeout > 0 && timeout > time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time) {
 					return pluginsCore.PhaseInfoRetryableFailure(
 						"systemLevelTimeout",
 						fmt.Sprintf("system timeout reached at status %v", v1.PodReasonUnschedulable),
@@ -184,7 +173,7 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 								// If we are in any of these states for an extended period of time there could be a system level error.
 								// To help mitigate the pod being stuck in this state we have a system level timeout that will error out
 								// as a system error and retry launching the pod.
-								if timeout > 0 && timeout > int64(time.Since(status.StartTime.Time)) {
+								if timeout > 0 && timeout > time.Since(status.StartTime.Time) {
 									return pluginsCore.PhaseInfoRetryableFailure(
 										"systemLevelTimeout",
 										fmt.Sprintf("system timeout reached, %s", finalMessage),
