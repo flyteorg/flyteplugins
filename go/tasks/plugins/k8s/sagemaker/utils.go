@@ -154,6 +154,9 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobCon
 
 func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemakerSpec.HyperparameterTuningJobConfig, error) {
 	var retValue = &sagemakerSpec.HyperparameterTuningJobConfig{}
+	if hpoJobConfigLiteral.GetScalar() == nil || hpoJobConfigLiteral.GetScalar().GetBinary() == nil {
+		return nil, errors.Errorf("[Hyperparameters] should be of type [Scalar.Binary]")
+	}
 	hpoJobConfigByteArray := hpoJobConfigLiteral.GetScalar().GetBinary().GetValue()
 	err := proto.Unmarshal(hpoJobConfigByteArray, retValue)
 	if err != nil {

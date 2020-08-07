@@ -65,6 +65,9 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
 	}
+	if sagemakerTrainingJob.GetTrainingJobResourceConfig() == nil {
+		return nil, errors.Errorf("Required field [TrainingJobResourceConfig] of the TrainingJob does not exist")
+	}
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
@@ -112,6 +115,9 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	cfg := config.GetSagemakerConfig()
 
+	if sagemakerTrainingJob.GetAlgorithmSpecification() == nil {
+		return nil, errors.Errorf("Required field [AlgorithmSpecification] does not exist")
+	}
 	var metricDefinitions []commonv1.MetricDefinition
 	idlMetricDefinitions := sagemakerTrainingJob.GetAlgorithmSpecification().GetMetricDefinitions()
 	for _, md := range idlMetricDefinitions {
@@ -205,6 +211,15 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid HyperparameterTuningJob task specification: not able to unmarshal the custom field to [%s]", hyperparameterTuningJobTaskType)
 	}
+	if sagemakerHPOJob.GetTrainingJob() == nil {
+		return nil, errors.Errorf("Required field [TrainingJob] of the HyperparameterTuningJob does not exist")
+	}
+	if sagemakerHPOJob.GetTrainingJob().GetAlgorithmSpecification() == nil {
+		return nil, errors.Errorf("Required field [AlgorithmSpecification] of the HyperparameterTuningJob's underlying TrainingJob does not exist")
+	}
+	if sagemakerHPOJob.GetTrainingJob().GetTrainingJobResourceConfig() == nil {
+		return nil, errors.Errorf("Required field [TrainingJobResourceConfig] of the HyperparameterTuningJob's underlying TrainingJob does not exist")
+	}
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
@@ -218,9 +233,15 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	if !ok {
 		return nil, errors.Errorf("Required input not specified: [train]")
 	}
+	if trainPathLiteral.GetScalar() == nil || trainPathLiteral.GetScalar().GetBlob() == nil {
+		return nil, errors.Errorf("[train] Input is required and should be of Type [Scalar.Blob]")
+	}
 	validatePathLiteral, ok := inputLiterals["validation"]
 	if !ok {
 		return nil, errors.Errorf("Required input not specified: [validation]")
+	}
+	if validatePathLiteral.GetScalar() == nil || validatePathLiteral.GetScalar().GetBlob() == nil {
+		return nil, errors.Errorf("[validation] Input is required and should be of Type [Scalar.Blob]")
 	}
 	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
 	if !ok {
@@ -244,6 +265,10 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	hpoJobConfig, err := convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to convert hyperparameter tuning job config literal to spec type")
+	}
+
+	if hpoJobConfig.GetTuningObjective() == nil {
+		return nil, errors.Errorf("Required field [TuningObjective] does not exist")
 	}
 
 	// Deleting the conflicting static hyperparameters: if a hyperparameter exist in both the map of static hyperparameter
