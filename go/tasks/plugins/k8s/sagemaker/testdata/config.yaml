@@ -3,7 +3,7 @@ plugins:
     roleArn: "role"
     region: "us-west-2"
     prebuiltAlgorithms:
-      - name: xgboost
+      - name: "XGBOOST"
         regionalConfigs:
           - region: "us-west-2"
             versionConfigs:
