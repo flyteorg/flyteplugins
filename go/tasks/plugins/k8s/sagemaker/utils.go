@@ -164,6 +164,9 @@ func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Li
 
 func convertStaticHyperparamsLiteralToSpecType(hyperparamLiteral *core.Literal) ([]*commonv1.KeyValuePair, error) {
 	var retValue []*commonv1.KeyValuePair
+	if hyperparamLiteral.GetScalar() == nil || hyperparamLiteral.GetScalar().GetGeneric() == nil {
+		return nil, errors.Errorf("[Hyperparameters] should be of type [Scalar.Generic]")
+	}
 	hyperFields := hyperparamLiteral.GetScalar().GetGeneric().GetFields()
 	if hyperFields == nil {
 		return nil, errors.Errorf("Failed to get the static hyperparameters field from the literal")

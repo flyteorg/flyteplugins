@@ -78,9 +78,15 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	if !ok {
 		return nil, errors.Errorf("Required input not specified: [train]")
 	}
+	if trainPathLiteral.GetScalar() == nil || trainPathLiteral.GetScalar().GetBlob() == nil {
+		return nil, errors.Errorf("[train] Input is required and should be of Type [Scalar.Blob]")
+	}
 	validatePathLiteral, ok := inputLiterals["validation"]
 	if !ok {
 		return nil, errors.Errorf("Required input not specified: [validation]")
+	}
+	if validatePathLiteral.GetScalar() == nil || validatePathLiteral.GetScalar().GetBlob() == nil {
+		return nil, errors.Errorf("[validation] Input is required and should be of Type [Scalar.Blob]")
 	}
 	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
 	if !ok {

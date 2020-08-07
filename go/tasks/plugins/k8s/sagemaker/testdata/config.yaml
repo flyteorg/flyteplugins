@@ -1,0 +1,13 @@
+plugins:
+  sagemaker:
+    roleArn: "role"
+    region: "us-west-2"
+    prebuiltAlgorithms:
+      - name: xgboost
+        regionalConfigs:
+          - region: "us-west-2"
+            versionConfigs:
+              - version: 0.90
+                image: "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
+              - version: 1.0
+                image: "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.0-1-cpu-py3"

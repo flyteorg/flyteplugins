@@ -32,7 +32,7 @@ var (
 	sagemakerConfigSection = pluginsConfig.MustRegisterSubSection(sagemakerConfigSectionKey, &defaultConfig)
 )
 
-//Sagemaker plugin configs
+// Sagemaker plugin configs
 type Config struct {
 	RoleArn            string                    `json:"roleArn" pflag:",The role the SageMaker plugin uses to communicate with the SageMaker service"`
 	Region             string                    `json:"region" pflag:",The AWS region the SageMaker plugin communicates to"`
