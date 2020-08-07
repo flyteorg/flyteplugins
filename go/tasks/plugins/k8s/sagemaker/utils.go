@@ -60,7 +60,7 @@ func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (stri
 			}
 		}
 		if foundAlgorithmCfg == nil {
-			return "", errors.Errorf("Failed to find a image for algorithm [%v]", apiAlgorithmName)
+			return "", errors.Errorf("Failed to find an image for algorithm [%v]", apiAlgorithmName)
 		}
 
 		for _, regionalCfg := range foundAlgorithmCfg.RegionalConfig {
@@ -70,7 +70,7 @@ func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (stri
 			}
 		}
 		if foundRegionalCfg == nil {
-			return "", errors.Errorf("Failed to find a image for algorithm [%v] region [%v]",
+			return "", errors.Errorf("Failed to find an image for algorithm [%v] region [%v]",
 				job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region)
 		}
 
@@ -102,10 +102,10 @@ func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (stri
 				return versionCfg.Image, nil
 			}
 		}
-		logger.Errorf(ctx, "Failed to find a image for [%v]:[%v]:[%v]",
+		logger.Errorf(ctx, "Failed to find an image for [%v]:[%v]:[%v]",
 			job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region, job.GetAlgorithmSpecification().GetAlgorithmVersion())
 
-		return "", errors.Errorf("Failed to find a image for [%v]:[%v]:[%v]",
+		return "", errors.Errorf("Failed to find an image for [%v]:[%v]:[%v]",
 			job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region, job.GetAlgorithmSpecification().GetAlgorithmVersion())
 	}
 	return "custom image", errors.Errorf("Custom images are not supported yet")

@@ -292,10 +292,18 @@ func Test_getTrainingImage_LoadConfig(t *testing.T) {
 	assert.NotNil(t, config.GetSagemakerConfig())
 
 	image, err := getTrainingImage(context.TODO(), &sagemakerSpec.TrainingJob{AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
-		AlgorithmName: sagemakerSpec.AlgorithmName_XGBOOST,
+		AlgorithmName:    sagemakerSpec.AlgorithmName_XGBOOST,
 		AlgorithmVersion: "0.90",
 	}})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "", image)
+	assert.Equal(t, "image-0.90", image)
+
+	image, err = getTrainingImage(context.TODO(), &sagemakerSpec.TrainingJob{AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
+		AlgorithmName:    sagemakerSpec.AlgorithmName_XGBOOST,
+		AlgorithmVersion: "1.0",
+	}})
+
+	assert.NoError(t, err)
+	assert.Equal(t, "image-1.0", image)
 }
