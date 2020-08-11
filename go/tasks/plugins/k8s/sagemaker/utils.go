@@ -97,7 +97,7 @@ func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (stri
 				return "", errors.Wrapf(err, "Unable to cast version specified by the user [%v] to a semver", userSpecifiedVer)
 			}
 			if configSemVer.Equal(userSpecifiedSemVer) {
-				logger.Infof(ctx, "Image [%v] is picked for algorithm [] region [] version [] ",
+				logger.Infof(ctx, "Image [%v] is picked for algorithm [%v] region [%v] version [%v] ",
 					versionCfg.Image, apiAlgorithmName, cfg.Region, userSpecifiedSemVer)
 				return versionCfg.Image, nil
 			}
