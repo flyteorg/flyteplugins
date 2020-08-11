@@ -1,7 +1,8 @@
 plugins:
   sagemaker:
-    roleArn: "role"
+    roleArn: "config_role"
     region: "us-west-2"
+    roleAnnotationKey: "iam.amazonaws.com/role"
     prebuiltAlgorithms:
       - name: "XGBOOST"
         regionalConfigs:

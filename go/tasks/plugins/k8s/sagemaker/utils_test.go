@@ -73,8 +73,9 @@ func generateMockHyperparameterTuningJobConfig() *sagemakerSpec.HyperparameterTu
 
 func generateMockSageMakerConfig() *sagemakerConfig.Config {
 	return &sagemakerConfig.Config{
-		RoleArn: "default",
-		Region:  "us-east-1",
+		RoleArn:           "default",
+		Region:            "us-east-1",
+		RoleAnnotationKey: "role_annotation_key",
 		// https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
 		PrebuiltAlgorithms: []sagemakerConfig.PrebuiltAlgorithmConfig{
 			{
