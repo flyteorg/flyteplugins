@@ -318,6 +318,7 @@ func generateMockHyperparameterTuningJobTaskContext(taskTemplate *flyteIdlCore.T
 	return taskCtx
 }
 
+// nolint
 func generateMockTrainingJobCustomObj(
 	inputMode sagemakerIdl.InputMode_Value, algName sagemakerIdl.AlgorithmName_Value, algVersion string,
 	metricDefinitions []*sagemakerIdl.MetricDefinition, contentType sagemakerIdl.InputContentType_Value,
@@ -416,7 +417,10 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
 
-	config.SetSagemakerConfig(defaultCfg)
+	err = config.SetSagemakerConfig(defaultCfg)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func Test_awsSagemakerPlugin_BuildResourceForHyperparameterTuningJob(t *testing.T) {
@@ -443,5 +447,8 @@ func Test_awsSagemakerPlugin_BuildResourceForHyperparameterTuningJob(t *testing.
 	assert.Equal(t, "us-east-1", *hpoJob.Spec.Region)
 	assert.Equal(t, "default_role", *hpoJob.Spec.TrainingJobDefinition.RoleArn)
 
-	config.SetSagemakerConfig(defaultCfg)
+	err = config.SetSagemakerConfig(defaultCfg)
+	if err != nil {
+		panic(err)
+	}
 }
