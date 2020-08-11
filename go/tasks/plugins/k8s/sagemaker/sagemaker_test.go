@@ -193,14 +193,8 @@ func generateMockTrainingJobCustomObj(
 }
 
 func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
+	// Default config does not contain a roleAnnotationKey -> expecting to get the role from default config
 	ctx := context.TODO()
-	configAccessor := viper.NewAccessor(stdConfig.Options{
-		StrictMode:  true,
-		SearchPaths: []string{"testdata/config.yaml"},
-	})
-
-	err := configAccessor.UpdateConfig(context.TODO())
-	assert.NoError(t, err)
 
 	awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
 
@@ -215,6 +209,55 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 
 	trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 	assert.True(t, ok)
-	assert.Equal(t, "metadata_role", *trainingJob.Spec.RoleArn)
+	assert.Equal(t, "default_role", *trainingJob.Spec.RoleArn)
 	assert.Equal(t, "File", string(trainingJob.Spec.AlgorithmSpecification.TrainingInputMode))
+
+	// Injecting a config which contains a matching roleAnnotationKey -> expecting to get the role from metadata
+	configAccessor := viper.NewAccessor(stdConfig.Options{
+		StrictMode:  true,
+		SearchPaths: []string{"testdata/config.yaml"},
+	})
+
+	err = configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	awsSageMakerTrainingJobHandler = awsSagemakerPlugin{TaskType: trainingJobTaskType}
+
+	tjObj = generateMockTrainingJobCustomObj(
+		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
+		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+	taskTemplate = generateMockTrainingJobTaskTemplate("the job", tjObj)
+
+	trainingJobResource, err = awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+	assert.NoError(t, err)
+	assert.NotNil(t, trainingJobResource)
+
+	trainingJob, ok = trainingJobResource.(*trainingjobv1.TrainingJob)
+	assert.True(t, ok)
+	assert.Equal(t, "metadata_role", *trainingJob.Spec.RoleArn)
+
+	// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+	configAccessor = viper.NewAccessor(stdConfig.Options{
+		StrictMode: true,
+		// Use a different
+		SearchPaths: []string{"testdata/config2.yaml"},
+	})
+
+	err = configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	awsSageMakerTrainingJobHandler = awsSagemakerPlugin{TaskType: trainingJobTaskType}
+
+	tjObj = generateMockTrainingJobCustomObj(
+		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
+		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+	taskTemplate = generateMockTrainingJobTaskTemplate("the job", tjObj)
+
+	trainingJobResource, err = awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+	assert.NoError(t, err)
+	assert.NotNil(t, trainingJobResource)
+
+	trainingJob, ok = trainingJobResource.(*trainingjobv1.TrainingJob)
+	assert.True(t, ok)
+	assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
 }

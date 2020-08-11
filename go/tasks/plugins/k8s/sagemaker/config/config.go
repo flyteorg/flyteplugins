@@ -8,7 +8,7 @@ const sagemakerConfigSectionKey = "sagemaker"
 
 var (
 	defaultConfig = Config{
-		RoleArn: "default",
+		RoleArn: "default_role",
 		Region:  "us-east-1",
 		// https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html
 		PrebuiltAlgorithms: []PrebuiltAlgorithmConfig{
