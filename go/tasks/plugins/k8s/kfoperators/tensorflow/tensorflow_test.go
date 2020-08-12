@@ -70,7 +70,7 @@ func dummyTensorflowCustomObj(workers int32, psReplicas int32, chiefReplicas int
 	}
 }
 
-func dummySparkTaskTemplate(id string, tensorflowCustomObj *plugins.DistributedTensorflowTrainingTask) *core.TaskTemplate {
+func dummyTensorflowTaskTemplate(id string, tensorflowCustomObj *plugins.DistributedTensorflowTrainingTask) *core.TaskTemplate {
 
 	tfObjJSON, err := utils.MarshalToString(tensorflowCustomObj)
 	if err != nil {
@@ -247,7 +247,7 @@ func dummyTensorflowJobResource(tensorflowResourceHandler tensorflowOperatorReso
 	}
 
 	tfObj := dummyTensorflowCustomObj(workers, psReplicas, chiefReplicas)
-	taskTemplate := dummySparkTaskTemplate("the job", tfObj)
+	taskTemplate := dummyTensorflowTaskTemplate("the job", tfObj)
 	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorflowTaskContext(taskTemplate))
 	if err != nil {
 		panic(err)
@@ -273,7 +273,7 @@ func TestBuildResourceTensorflow(t *testing.T) {
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
 	tfObj := dummyTensorflowCustomObj(100, 1,1)
-	taskTemplate := dummySparkTaskTemplate("the job", tfObj)
+	taskTemplate := dummyTensorflowTaskTemplate("the job", tfObj)
 
 	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorflowTaskContext(taskTemplate))
 	assert.NoError(t, err)
