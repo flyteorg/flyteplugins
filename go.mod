@@ -24,10 +24,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	go.opencensus.io v0.22.3 // indirect
-	golang.org/x/tools v0.0.0-20200124170513-3f4d10fc73b4
-	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72 // indirect
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
+	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 	google.golang.org/api v0.16.0 // indirect
 	google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67 // indirect
 	google.golang.org/grpc v1.27.1
@@ -36,7 +33,7 @@ require (
 	k8s.io/api v0.17.2
 	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible
-	k8s.io/klog v1.0.0
+	k8s.io/klog v1.0.0 // indirect
 	k8s.io/utils v0.0.0-20200124190032-861946025e34 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
 	sigs.k8s.io/yaml v1.2.0 // indirect
