@@ -13,3 +13,7 @@ const (
 const (
 	TEXTCSVInputContentType string = "text/csv"
 )
+
+const (
+	FlyteSageMakerEntryPointSelectorKey string = "__FLYTE_ENTRYPOINT_SELECTOR__"
+)

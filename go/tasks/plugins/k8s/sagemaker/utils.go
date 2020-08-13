@@ -5,21 +5,22 @@ import (
 	"fmt"
 	"strings"
 
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/Masterminds/semver"
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 	awssagemaker "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
+	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+	flyteSagemakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 	"github.com/pkg/errors"
-
-	"github.com/golang/protobuf/proto"
 )
 
-func getAPIContentType(fileType sagemakerSpec.InputContentType_Value) (string, error) {
-	if fileType == sagemakerSpec.InputContentType_TEXT_CSV {
+func getAPIContentType(fileType flyteSagemakerIdl.InputContentType_Value) (string, error) {
+	if fileType == flyteSagemakerIdl.InputContentType_TEXT_CSV {
 		return TEXTCSVInputContentType, nil
 	}
 	return "", errors.Errorf("Unsupported input file type [%v]", fileType.String())
@@ -44,12 +45,36 @@ func getLatestTrainingImage(versionConfigs []config.VersionConfig) (string, erro
 	return latestImg, nil
 }
 
-func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (string, error) {
+func getTrainingJobImage(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, job *flyteSagemakerIdl.TrainingJob) (string, error) {
+	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
+	if err != nil {
+		return "", err
+	}
+
+	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg == flyteSagemakerIdl.AlgorithmName_CUSTOM {
+		image := taskTemplate.GetContainer().GetImage()
+		if len(image) == 0 {
+			return "", errors.Errorf("Empty image specified in the task template")
+		}
+		return image, nil
+
+	} else {
+		image, err := getPrebuiltTrainingImage(ctx, job)
+		if err != nil {
+			return "", errors.Wrapf(err, "Failed to get prebuilt image for job [%v]", *job)
+		}
+		return image, nil
+	}
+}
+
+func getPrebuiltTrainingImage(ctx context.Context, job *flyteSagemakerIdl.TrainingJob) (string, error) {
+	// This function determines which image URI to put into the CRD of the training job and the hyperparameter tuning job
+
 	cfg := config.GetSagemakerConfig()
 	var foundAlgorithmCfg *config.PrebuiltAlgorithmConfig
 	var foundRegionalCfg *config.RegionalConfig
 
-	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != sagemakerSpec.AlgorithmName_CUSTOM {
+	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != flyteSagemakerIdl.AlgorithmName_CUSTOM {
 		// Built-in algorithm mode
 		apiAlgorithmName := specifiedAlg.String()
 
@@ -108,10 +133,11 @@ func getTrainingImage(ctx context.Context, job *sagemakerSpec.TrainingJob) (stri
 		return "", errors.Errorf("Failed to find an image for [%v]:[%v]:[%v]",
 			job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region, job.GetAlgorithmSpecification().GetAlgorithmVersion())
 	}
-	return "custom image", errors.Errorf("Custom images are not supported yet")
+	// Custom image
+	return "", errors.Errorf("It is invalid to try getting a prebuilt image for AlgorithmName == CUSTOM ")
 }
 
-func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobConfig) *commonv1.ParameterRanges {
+func buildParameterRanges(hpoJobConfig *flyteSagemakerIdl.HyperparameterTuningJobConfig) *commonv1.ParameterRanges {
 	prMap := hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap()
 	var retValue = &commonv1.ParameterRanges{
 		CategoricalParameterRanges: []commonv1.CategoricalParameterRange{},
@@ -122,14 +148,14 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobCon
 	for prName, pr := range prMap {
 		scalingTypeString := strings.Title(strings.ToLower(pr.GetContinuousParameterRange().GetScalingType().String()))
 		switch pr.GetParameterRangeType().(type) {
-		case *sagemakerSpec.ParameterRangeOneOf_CategoricalParameterRange:
+		case *flyteSagemakerIdl.ParameterRangeOneOf_CategoricalParameterRange:
 			var newElem = commonv1.CategoricalParameterRange{
 				Name:   awssagemaker.ToStringPtr(prName),
 				Values: pr.GetCategoricalParameterRange().GetValues(),
 			}
 			retValue.CategoricalParameterRanges = append(retValue.CategoricalParameterRanges, newElem)
 
-		case *sagemakerSpec.ParameterRangeOneOf_ContinuousParameterRange:
+		case *flyteSagemakerIdl.ParameterRangeOneOf_ContinuousParameterRange:
 			var newElem = commonv1.ContinuousParameterRange{
 				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
 				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
@@ -138,7 +164,7 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobCon
 			}
 			retValue.ContinuousParameterRanges = append(retValue.ContinuousParameterRanges, newElem)
 
-		case *sagemakerSpec.ParameterRangeOneOf_IntegerParameterRange:
+		case *flyteSagemakerIdl.ParameterRangeOneOf_IntegerParameterRange:
 			var newElem = commonv1.IntegerParameterRange{
 				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMaxValue())),
 				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMinValue())),
@@ -152,8 +178,8 @@ func buildParameterRanges(hpoJobConfig *sagemakerSpec.HyperparameterTuningJobCon
 	return retValue
 }
 
-func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*sagemakerSpec.HyperparameterTuningJobConfig, error) {
-	var retValue = &sagemakerSpec.HyperparameterTuningJobConfig{}
+func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*flyteSagemakerIdl.HyperparameterTuningJobConfig, error) {
+	var retValue = &flyteSagemakerIdl.HyperparameterTuningJobConfig{}
 	if hpoJobConfigLiteral.GetScalar() == nil || hpoJobConfigLiteral.GetScalar().GetBinary() == nil {
 		return nil, errors.Errorf("[Hyperparameters] should be of type [Scalar.Binary]")
 	}
@@ -238,17 +264,24 @@ func createOutputLiteralMap(tk *core.TaskTemplate, outputPath string) *core.Lite
 func deleteConflictingStaticHyperparameters(
 	ctx context.Context,
 	staticHPs []*commonv1.KeyValuePair,
-	tunableHPMap map[string]*sagemakerSpec.ParameterRangeOneOf) []*commonv1.KeyValuePair {
+	tunableHPMap map[string]*flyteSagemakerIdl.ParameterRangeOneOf) []*commonv1.KeyValuePair {
 
-	finalStaticHPs := make([]*commonv1.KeyValuePair, 0, len(staticHPs))
+	resolvedStaticHPs := make([]*commonv1.KeyValuePair, 0, len(staticHPs))
 
 	for _, hp := range staticHPs {
 		if _, found := tunableHPMap[hp.Name]; !found {
-			finalStaticHPs = append(finalStaticHPs, hp)
+			resolvedStaticHPs = append(resolvedStaticHPs, hp)
 		} else {
 			logger.Infof(ctx,
 				"Static hyperparameter [%v] is removed because the same hyperparameter can be found in the map of tunable hyperparameters", hp.Name)
 		}
 	}
-	return finalStaticHPs
+	return resolvedStaticHPs
+}
+
+func injectFlyteSagemakerEnvVars(ctx context.Context, staticHyperparams []*commonv1.KeyValuePair) []*commonv1.KeyValuePair {
+	staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerEntryPointSelectorKey, Value: SAGEMAKERFlyteSageMakerEntryPointSelectorValue})
+	staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: EntryPointCmdKey, Value: ""})
+	logger.Infof(ctx, "After injection: static hyperparameter: [%v]", staticHyperparams)
+	return staticHyperparams
 }

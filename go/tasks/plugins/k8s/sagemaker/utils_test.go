@@ -221,7 +221,7 @@ func Test_getLatestTrainingImage(t *testing.T) {
 	}
 }
 
-func Test_getTrainingImage(t *testing.T) {
+func Test_getPrebuiltTrainingImage(t *testing.T) {
 	ctx := context.TODO()
 
 	_ = sagemakerConfig.SetSagemakerConfig(generateMockSageMakerConfig())
@@ -269,19 +269,19 @@ func Test_getTrainingImage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getTrainingImage(tt.args.ctx, tt.args.job)
+			got, err := getPrebuiltTrainingImage(tt.args.ctx, tt.args.job)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getTrainingImage() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("getPrebuiltTrainingImage() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("getTrainingImage() got = %v, want %v", got, tt.want)
+				t.Errorf("getPrebuiltTrainingImage() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_getTrainingImage_LoadConfig(t *testing.T) {
+func Test_getPrebuiltTrainingImage_LoadConfig(t *testing.T) {
 	configAccessor := viper.NewAccessor(stdConfig.Options{
 		StrictMode:  true,
 		SearchPaths: []string{"testdata/config.yaml"},
@@ -292,7 +292,7 @@ func Test_getTrainingImage_LoadConfig(t *testing.T) {
 
 	assert.NotNil(t, config.GetSagemakerConfig())
 
-	image, err := getTrainingImage(context.TODO(), &sagemakerSpec.TrainingJob{AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
+	image, err := getPrebuiltTrainingImage(context.TODO(), &sagemakerSpec.TrainingJob{AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
 		AlgorithmName:    sagemakerSpec.AlgorithmName_XGBOOST,
 		AlgorithmVersion: "0.90",
 	}})
@@ -300,7 +300,7 @@ func Test_getTrainingImage_LoadConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "image-0.90", image)
 
-	image, err = getTrainingImage(context.TODO(), &sagemakerSpec.TrainingJob{AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
+	image, err = getPrebuiltTrainingImage(context.TODO(), &sagemakerSpec.TrainingJob{AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
 		AlgorithmName:    sagemakerSpec.AlgorithmName_XGBOOST,
 		AlgorithmVersion: "1.0",
 	}})

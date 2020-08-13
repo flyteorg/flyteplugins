@@ -17,7 +17,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
@@ -30,7 +30,7 @@ import (
 
 	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
 
-	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+	flyteSageMakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 )
@@ -52,6 +52,16 @@ func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCo
 	return nil, errors.Errorf("The sagemaker plugin is unable to build identity resource for an unknown task type [%v]", m.TaskType)
 }
 
+func (m awsSagemakerPlugin) checkRequiredInputLiteralsExist(inputLiterals map[string]*flyteIdlCore.Literal, inputKeys []string) error {
+	for _, inputKey := range inputKeys {
+		_, ok := inputLiterals[inputKey]
+		if !ok {
+			return errors.Errorf("Required input not specified: [%v]", inputKey)
+		}
+	}
+	return nil
+}
+
 func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 
@@ -62,13 +72,16 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	}
 
 	// Unmarshal the custom field of the task template back into the Hyperparameter Tuning Job struct generated in flyteidl
-	sagemakerTrainingJob := sagemakerSpec.TrainingJob{}
+	sagemakerTrainingJob := flyteSageMakerIdl.TrainingJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
 	}
 	if sagemakerTrainingJob.GetTrainingJobResourceConfig() == nil {
 		return nil, errors.Errorf("Required field [TrainingJobResourceConfig] of the TrainingJob does not exist")
+	}
+	if sagemakerTrainingJob.GetAlgorithmSpecification() == nil {
+		return nil, errors.Errorf("Required field [AlgorithmSpecification] does not exist")
 	}
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
@@ -78,27 +91,21 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	// Get inputs from literals
 	inputLiterals := taskInput.GetLiterals()
-
-	trainPathLiteral, ok := inputLiterals["train"]
-	if !ok {
-		return nil, errors.Errorf("Required input not specified: [train]")
+	err = m.checkRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error occurred when checking if all the required inputs exist")
 	}
+
+	trainPathLiteral := inputLiterals["train"]
+	validationPathLiteral := inputLiterals["validation"]
+	staticHyperparamsLiteral := inputLiterals["static_hyperparameters"]
+
 	if trainPathLiteral.GetScalar() == nil || trainPathLiteral.GetScalar().GetBlob() == nil {
 		return nil, errors.Errorf("[train] Input is required and should be of Type [Scalar.Blob]")
 	}
-	validatePathLiteral, ok := inputLiterals["validation"]
-	if !ok {
-		return nil, errors.Errorf("Required input not specified: [validation]")
-	}
-	if validatePathLiteral.GetScalar() == nil || validatePathLiteral.GetScalar().GetBlob() == nil {
+	if validationPathLiteral.GetScalar() == nil || validationPathLiteral.GetScalar().GetBlob() == nil {
 		return nil, errors.Errorf("[validation] Input is required and should be of Type [Scalar.Blob]")
 	}
-	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
-	if !ok {
-		return nil, errors.Errorf("Required input not specified: [static_hyperparameters]")
-	}
-
-	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
 
 	// Convert the hyperparameters to the spec value
 	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
@@ -106,9 +113,11 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
 	}
 
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
+
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
-	trainingImageStr, err := getTrainingImage(ctx, &sagemakerTrainingJob)
+	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
@@ -117,9 +126,6 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	cfg := config.GetSagemakerConfig()
 
-	if sagemakerTrainingJob.GetAlgorithmSpecification() == nil {
-		return nil, errors.Errorf("Required field [AlgorithmSpecification] does not exist")
-	}
 	var metricDefinitions []commonv1.MetricDefinition
 	idlMetricDefinitions := sagemakerTrainingJob.GetAlgorithmSpecification().GetMetricDefinitions()
 	for _, md := range idlMetricDefinitions {
@@ -138,6 +144,23 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	if role == "" {
 		role = cfg.RoleArn
 	}
+
+	if sagemakerTrainingJob.AlgorithmSpecification.AlgorithmName == flyteSageMakerIdl.AlgorithmName_CUSTOM {
+		cmd, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetCommand(), taskCtx.InputReader(), taskCtx.OutputWriter())
+		if err != nil {
+			return nil, err
+		}
+
+		args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
+		if err != nil {
+			return nil, err
+		}
+
+		selectorCmd := fmt.Sprintf("%s %s", cmd, args)
+		// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
+		staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerEntryPointSelectorKey, Value: selectorCmd})
+	}
+
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{
 			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
@@ -169,7 +192,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 					DataSource: &commonv1.DataSource{
 						S3DataSource: &commonv1.S3DataSource{
 							S3DataType: "S3Prefix",
-							S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
+							S3Uri:      ToStringPtr(validationPathLiteral.GetScalar().GetBlob().GetUri()),
 						},
 					},
 					ContentType: ToStringPtr(apiContentType),
@@ -212,7 +235,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	}
 
 	// Unmarshal the custom field of the task template back into the HyperparameterTuningJob struct generated in flyteidl
-	sagemakerHPOJob := sagemakerSpec.HyperparameterTuningJob{}
+	sagemakerHPOJob := flyteSageMakerIdl.HyperparameterTuningJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerHPOJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid HyperparameterTuningJob task specification: not able to unmarshal the custom field to [%s]", hyperparameterTuningJobTaskType)
@@ -234,44 +257,33 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	// Get inputs from literals
 	inputLiterals := taskInput.GetLiterals()
-
-	trainPathLiteral, ok := inputLiterals["train"]
-	if !ok {
-		return nil, errors.Errorf("Required input not specified: [train]")
+	err = m.checkRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error occurred when checking if all the required inputs exist")
 	}
+
+	trainPathLiteral := inputLiterals["train"]
+	validatePathLiteral := inputLiterals["validation"]
+	staticHyperparamsLiteral := inputLiterals["static_hyperparameters"]
+	hpoJobConfigLiteral := inputLiterals["hyperparameter_tuning_job_config"]
 	if trainPathLiteral.GetScalar() == nil || trainPathLiteral.GetScalar().GetBlob() == nil {
 		return nil, errors.Errorf("[train] Input is required and should be of Type [Scalar.Blob]")
-	}
-	validatePathLiteral, ok := inputLiterals["validation"]
-	if !ok {
-		return nil, errors.Errorf("Required input not specified: [validation]")
 	}
 	if validatePathLiteral.GetScalar() == nil || validatePathLiteral.GetScalar().GetBlob() == nil {
 		return nil, errors.Errorf("[validation] Input is required and should be of Type [Scalar.Blob]")
 	}
-	staticHyperparamsLiteral, ok := inputLiterals["static_hyperparameters"]
-	if !ok {
-		return nil, errors.Errorf("Required input not specified: [static_hyperparameters]")
-	}
-
-	hpoJobConfigLiteral, ok := inputLiterals["hyperparameter_tuning_job_config"]
-	if !ok {
-		return nil, errors.Errorf("Required input not specified: [hyperparameter_tuning_job_config]")
-	}
-
-	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
-
 	// Convert the hyperparameters to the spec value
 	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
 	}
-
 	// hyperparameter_tuning_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
 	hpoJobConfig, err := convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to convert hyperparameter tuning job config literal to spec type")
 	}
+
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
 
 	if hpoJobConfig.GetTuningObjective() == nil {
 		return nil, errors.Errorf("Required field [TuningObjective] does not exist")
@@ -284,7 +296,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
-	trainingImageStr, err := getTrainingImage(ctx, sagemakerHPOJob.GetTrainingJob())
+	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, sagemakerHPOJob.GetTrainingJob()) // TODO: replace this
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
@@ -392,7 +404,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	return hpoJob, nil
 }
 
-func getTaskTemplate(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (*core.TaskTemplate, error) {
+func getTaskTemplate(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (*flyteIdlCore.TaskTemplate, error) {
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to fetch task specification")
@@ -441,16 +453,16 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 	smLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
 		jobRegion, jobRegion, jobTypeInURL, jobName)
 
-	taskLogs := []*core.TaskLog{
+	taskLogs := []*flyteIdlCore.TaskLog{
 		{
 			Uri:           cwLogURL,
 			Name:          "CloudWatch Logs",
-			MessageFormat: core.TaskLog_JSON,
+			MessageFormat: flyteIdlCore.TaskLog_JSON,
 		},
 		{
 			Uri:           smLogURL,
 			Name:          sagemakerLinkName,
-			MessageFormat: core.TaskLog_UNKNOWN,
+			MessageFormat: flyteIdlCore.TaskLog_UNKNOWN,
 		},
 	}
 
@@ -467,7 +479,7 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 	}, nil
 }
 
-func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath string) (*core.LiteralMap, error) {
+func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath string) (*flyteIdlCore.LiteralMap, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
 		return nil, err
@@ -508,16 +520,16 @@ func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
 	case trainingjobController.ReconcilingTrainingJobStatus:
 		logger.Errorf(ctx, "Job stuck in reconciling status, assuming retryable failure [%s]", trainingJob.Status.Additional)
 		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call errors
-		execError := &core.ExecutionError{
+		execError := &flyteIdlCore.ExecutionError{
 			Message: trainingJob.Status.Additional,
-			Kind:    core.ExecutionError_USER,
+			Kind:    flyteIdlCore.ExecutionError_USER,
 			Code:    trainingjobController.ReconcilingTrainingJobStatus,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, execError, info), nil
 	case sagemaker.TrainingJobStatusFailed:
-		execError := &core.ExecutionError{
+		execError := &flyteIdlCore.ExecutionError{
 			Message: trainingJob.Status.Additional,
-			Kind:    core.ExecutionError_USER,
+			Kind:    flyteIdlCore.ExecutionError_USER,
 			Code:    sagemaker.TrainingJobStatusFailed,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
@@ -558,16 +570,16 @@ func (m awsSagemakerPlugin) GetTaskPhaseForHyperparameterTuningJob(
 	case hpojobController.ReconcilingTuningJobStatus:
 		logger.Errorf(ctx, "Job stuck in reconciling status, assuming retryable failure [%s]", hpoJob.Status.Additional)
 		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call errors
-		execError := &core.ExecutionError{
+		execError := &flyteIdlCore.ExecutionError{
 			Message: hpoJob.Status.Additional,
-			Kind:    core.ExecutionError_USER,
+			Kind:    flyteIdlCore.ExecutionError_USER,
 			Code:    hpojobController.ReconcilingTuningJobStatus,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, execError, info), nil
 	case sagemaker.HyperParameterTuningJobStatusFailed:
-		execError := &core.ExecutionError{
+		execError := &flyteIdlCore.ExecutionError{
 			Message: hpoJob.Status.Additional,
-			Kind:    core.ExecutionError_USER,
+			Kind:    flyteIdlCore.ExecutionError_USER,
 			Code:    sagemaker.HyperParameterTuningJobStatusFailed,
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
