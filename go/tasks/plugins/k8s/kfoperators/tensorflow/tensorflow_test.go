@@ -23,13 +23,13 @@ import (
 
 	pluginIOMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
-	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/golang/protobuf/jsonpb"
 	tfOp "github.com/kubeflow/tf-operator/pkg/apis/tensorflow/v1"
 )
 
