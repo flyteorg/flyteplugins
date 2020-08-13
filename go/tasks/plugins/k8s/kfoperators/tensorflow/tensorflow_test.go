@@ -64,8 +64,8 @@ var (
 
 func dummyTensorflowCustomObj(workers int32, psReplicas int32, chiefReplicas int32) *plugins.DistributedTensorflowTrainingTask {
 	return &plugins.DistributedTensorflowTrainingTask{
-		Workers: workers,
-		PsReplicas: psReplicas,
+		Workers:       workers,
+		PsReplicas:    psReplicas,
 		ChiefReplicas: chiefReplicas,
 	}
 }
@@ -272,7 +272,7 @@ func dummyTensorflowJobResource(tensorflowResourceHandler tensorflowOperatorReso
 func TestBuildResourceTensorflow(t *testing.T) {
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
-	tfObj := dummyTensorflowCustomObj(100, 1,1)
+	tfObj := dummyTensorflowCustomObj(100, 1, 1)
 	taskTemplate := dummyTensorflowTaskTemplate("the job", tfObj)
 
 	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorflowTaskContext(taskTemplate))
@@ -306,7 +306,7 @@ func TestGetTaskPhase(t *testing.T) {
 	ctx := context.TODO()
 
 	dummyTensorflowJobResourceCreator := func(conditionType commonOp.JobConditionType) *tfOp.TFJob {
-		return dummyTensorflowJobResource(tensorflowResourceHandler, 2,1, 1, conditionType)
+		return dummyTensorflowJobResource(tensorflowResourceHandler, 2, 1, 1, conditionType)
 	}
 
 	taskPhase, err := tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorflowJobResourceCreator(commonOp.JobCreated))
