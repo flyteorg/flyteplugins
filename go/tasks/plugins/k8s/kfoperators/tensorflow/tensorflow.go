@@ -168,7 +168,7 @@ func getLogs(app *tfOp.TFJob, workersCount int32, psReplicasCount int32, chiefRe
 			appNamespace,
 			"",
 			"",
-			suffix+" logs (via Kubernetes)"), nil
+			suffix+" logs (via Kubernetes)")
 	}
 
 	var taskLogs []*core.TaskLog
