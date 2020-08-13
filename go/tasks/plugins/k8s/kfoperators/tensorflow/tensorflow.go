@@ -168,7 +168,7 @@ func getLogs(app *tfOp.TFJob, workersCount int32, psReplicasCount int32, chiefRe
 			appNamespace,
 			"",
 			"",
-			suffix+" logs (via Kubernetes)")
+			suffix+" logs (via Kubernetes)"), nil
 	}
 
 	var taskLogs []*core.TaskLog
@@ -192,12 +192,14 @@ func getLogs(app *tfOp.TFJob, workersCount int32, psReplicasCount int32, chiefRe
 			}
 			taskLogs = append(taskLogs, &psReplicaLog)
 		}
-		// get chief worker log, and the max number of chief worker is 1
-		chiefReplicaLog, err := makeTaskLog(app.Name, app.Namespace, fmt.Sprintf("chiefReplica-%d", 0), logConfig.KubernetesURL)
-		if err != nil {
-			return nil, err
+		if chiefReplicasCount != 0 {
+			// get chief worker log, and the max number of chief worker is 1
+			chiefReplicaLog, err := makeTaskLog(app.Name, app.Namespace, fmt.Sprintf("chiefReplica-%d", 0), logConfig.KubernetesURL)
+			if err != nil {
+				return nil, err
+			}
+			taskLogs = append(taskLogs, &chiefReplicaLog)
 		}
-		taskLogs = append(taskLogs, &chiefReplicaLog)
 	}
 	return taskLogs, nil
 }
