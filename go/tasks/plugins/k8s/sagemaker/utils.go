@@ -280,7 +280,7 @@ func deleteConflictingStaticHyperparameters(
 }
 
 func injectFlyteSagemakerEnvVars(ctx context.Context, staticHyperparams []*commonv1.KeyValuePair) []*commonv1.KeyValuePair {
-	staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerEntryPointSelectorKey, Value: SAGEMAKERFlyteSageMakerEntryPointSelectorValue})
+	staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: SAGEMAKERFlyteSageMakerEntryPointSelectorValue})
 	staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: EntryPointCmdKey, Value: ""})
 	logger.Infof(ctx, "After injection: static hyperparameter: [%v]", staticHyperparams)
 	return staticHyperparams

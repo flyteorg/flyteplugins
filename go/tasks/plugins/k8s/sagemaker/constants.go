@@ -15,5 +15,5 @@ const (
 )
 
 const (
-	FlyteSageMakerEntryPointSelectorKey string = "__FLYTE_ENTRYPOINT_SELECTOR__"
+	FlyteSageMakerCmdKey string = "__FLYTE_SAGEMAKER_CMD__"
 )
