@@ -156,9 +156,10 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			return nil, err
 		}
 
-		selectorCmd := fmt.Sprintf("%s %s", cmd, args)
+		selectorCmd := strings.Join(append(cmd, args...)[:], " ")
 		// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
 		staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
+
 	}
 
 	trainingJob := &trainingjobv1.TrainingJob{

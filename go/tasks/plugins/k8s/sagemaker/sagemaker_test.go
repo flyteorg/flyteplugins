@@ -2,7 +2,13 @@ package sagemaker
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"testing"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+
+	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 
@@ -39,7 +45,13 @@ var (
 	}
 
 	testArgs = []string{
-		"test-args",
+		"test-args1",
+		"test-args2",
+	}
+
+	testCmds = []string{
+		"test-cmds1",
+		"test-cmds2",
 	}
 
 	resourceRequirements = &corev1.ResourceRequirements{
@@ -74,9 +86,10 @@ func generateMockTrainingJobTaskTemplate(id string, trainingJobCustomObj *sagema
 		Type: "container",
 		Target: &flyteIdlCore.TaskTemplate_Container{
 			Container: &flyteIdlCore.Container{
-				Image: testImage,
-				Args:  testArgs,
-				Env:   dummyEnvVars,
+				Command: testCmds,
+				Image:   testImage,
+				Args:    testArgs,
+				Env:     dummyEnvVars,
 			},
 		},
 		Custom: &structObj,
@@ -286,7 +299,12 @@ func generateMockHyperparameterTuningJobTaskContext(taskTemplate *flyteIdlCore.T
 	taskReader := &mocks.TaskReader{}
 	taskReader.OnReadMatch(mock.Anything).Return(taskTemplate, nil)
 	taskCtx.OnTaskReader().Return(taskReader)
+	taskExecutionMetadata := genMockTaskExecutionMetadata()
+	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
+	return taskCtx
+}
 
+func genMockTaskExecutionMetadata() *mocks.TaskExecutionMetadata {
 	tID := &mocks.TaskExecutionID{}
 	tID.OnGetID().Return(flyteIdlCore.TaskExecutionIdentifier{
 		NodeExecutionId: &flyteIdlCore.NodeExecutionIdentifier{
@@ -297,6 +315,7 @@ func generateMockHyperparameterTuningJobTaskContext(taskTemplate *flyteIdlCore.T
 			},
 		},
 	})
+
 	tID.OnGetGeneratedName().Return("some-acceptable-name")
 
 	resources := &mocks.TaskOverrides{}
@@ -314,8 +333,7 @@ func generateMockHyperparameterTuningJobTaskContext(taskTemplate *flyteIdlCore.T
 	taskExecutionMetadata.OnIsInterruptible().Return(true)
 	taskExecutionMetadata.OnGetOverrides().Return(resources)
 	taskExecutionMetadata.OnGetK8sServiceAccount().Return(serviceAccount)
-	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
-	return taskCtx
+	return taskExecutionMetadata
 }
 
 // nolint
@@ -352,75 +370,107 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 	// Default config does not contain a roleAnnotationKey -> expecting to get the role from default config
 	ctx := context.TODO()
 	defaultCfg := config.GetSagemakerConfig()
-	awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
+	defer func() {
+		_ = config.SetSagemakerConfig(defaultCfg)
+	}()
 
-	tjObj := generateMockTrainingJobCustomObj(
-		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
-		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
-	taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+	t.Run("If roleAnnotationKey has a match, the role from the metadata should be fetched", func(t *testing.T) {
+		// Injecting a config which contains a matching roleAnnotationKey -> expecting to get the role from metadata
+		configAccessor := viper.NewAccessor(stdConfig.Options{
+			StrictMode:  true,
+			SearchPaths: []string{"testdata/config.yaml"},
+		})
 
-	trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
-	assert.NoError(t, err)
-	assert.NotNil(t, trainingJobResource)
+		err := configAccessor.UpdateConfig(context.TODO())
+		assert.NoError(t, err)
 
-	trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
-	assert.True(t, ok)
-	assert.Equal(t, "default_role", *trainingJob.Spec.RoleArn)
-	assert.Equal(t, "File", string(trainingJob.Spec.AlgorithmSpecification.TrainingInputMode))
+		awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
 
-	// Injecting a config which contains a matching roleAnnotationKey -> expecting to get the role from metadata
-	configAccessor := viper.NewAccessor(stdConfig.Options{
-		StrictMode:  true,
-		SearchPaths: []string{"testdata/config.yaml"},
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+		assert.NoError(t, err)
+		assert.NotNil(t, trainingJobResource)
+
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+		assert.Equal(t, "metadata_role", *trainingJob.Spec.RoleArn)
 	})
 
-	err = configAccessor.UpdateConfig(context.TODO())
-	assert.NoError(t, err)
+	t.Run("If roleAnnotationKey does not have a match, the role from the config should be fetched", func(t *testing.T) {
+		// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+		configAccessor := viper.NewAccessor(stdConfig.Options{
+			StrictMode: true,
+			// Use a different
+			SearchPaths: []string{"testdata/config2.yaml"},
+		})
 
-	awsSageMakerTrainingJobHandler = awsSagemakerPlugin{TaskType: trainingJobTaskType}
+		err := configAccessor.UpdateConfig(context.TODO())
+		assert.NoError(t, err)
 
-	tjObj = generateMockTrainingJobCustomObj(
-		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
-		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
-	taskTemplate = generateMockTrainingJobTaskTemplate("the job", tjObj)
+		awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
 
-	trainingJobResource, err = awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
-	assert.NoError(t, err)
-	assert.NotNil(t, trainingJobResource)
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 
-	trainingJob, ok = trainingJobResource.(*trainingjobv1.TrainingJob)
-	assert.True(t, ok)
-	assert.Equal(t, "metadata_role", *trainingJob.Spec.RoleArn)
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+		assert.NoError(t, err)
+		assert.NotNil(t, trainingJobResource)
 
-	// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
-	configAccessor = viper.NewAccessor(stdConfig.Options{
-		StrictMode: true,
-		// Use a different
-		SearchPaths: []string{"testdata/config2.yaml"},
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+		assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
 	})
 
-	err = configAccessor.UpdateConfig(context.TODO())
-	assert.NoError(t, err)
+	t.Run("In a custom training job we should see the FLYTE_SAGEMAKER_CMD being injected", func(t *testing.T) {
+		// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+		configAccessor := viper.NewAccessor(stdConfig.Options{
+			StrictMode: true,
+			// Use a different
+			SearchPaths: []string{"testdata/config2.yaml"},
+		})
 
-	awsSageMakerTrainingJobHandler = awsSagemakerPlugin{TaskType: trainingJobTaskType}
+		err := configAccessor.UpdateConfig(context.TODO())
+		assert.NoError(t, err)
 
-	tjObj = generateMockTrainingJobCustomObj(
-		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
-		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
-	taskTemplate = generateMockTrainingJobTaskTemplate("the job", tjObj)
+		awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
 
-	trainingJobResource, err = awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
-	assert.NoError(t, err)
-	assert.NotNil(t, trainingJobResource)
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 
-	trainingJob, ok = trainingJobResource.(*trainingjobv1.TrainingJob)
-	assert.True(t, ok)
-	assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+		assert.NoError(t, err)
+		assert.NotNil(t, trainingJobResource)
 
-	err = config.SetSagemakerConfig(defaultCfg)
-	if err != nil {
-		panic(err)
-	}
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+		assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
+		expectedHPs := []*commonv1.KeyValuePair{
+			{Name: "a", Value: "1"}, {Name: "b", Value: "2"},
+			{Name: FlyteSageMakerCmdKey, Value: "test-cmds1 test-cmds2 test-args1 test-args2"}}
+		assert.ElementsMatch(t,
+			func(kvs []*commonv1.KeyValuePair) []commonv1.KeyValuePair {
+				ret := make([]commonv1.KeyValuePair, 0, len(kvs))
+				for _, kv := range kvs {
+					ret = append(ret, *kv)
+				}
+				return ret
+			}(expectedHPs),
+			func(kvs []*commonv1.KeyValuePair) []commonv1.KeyValuePair {
+				ret := make([]commonv1.KeyValuePair, 0, len(kvs))
+				for _, kv := range kvs {
+					ret = append(ret, *kv)
+				}
+				return ret
+			}(trainingJob.Spec.HyperParameters))
+	})
 }
 
 func Test_awsSagemakerPlugin_BuildResourceForHyperparameterTuningJob(t *testing.T) {
@@ -450,5 +500,115 @@ func Test_awsSagemakerPlugin_BuildResourceForHyperparameterTuningJob(t *testing.
 	err = config.SetSagemakerConfig(defaultCfg)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func Test_awsSagemakerPlugin_getEventInfoForJob(t *testing.T) {
+	// Default config does not contain a roleAnnotationKey -> expecting to get the role from default config
+	ctx := context.TODO()
+	defaultCfg := config.GetSagemakerConfig()
+	defer func() {
+		_ = config.SetSagemakerConfig(defaultCfg)
+	}()
+
+	t.Run("get event info should return correctly formatted log links for training job", func(t *testing.T) {
+		// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+		configAccessor := viper.NewAccessor(stdConfig.Options{
+			StrictMode: true,
+			// Use a different
+			SearchPaths: []string{"testdata/config2.yaml"},
+		})
+
+		err := configAccessor.UpdateConfig(context.TODO())
+		assert.NoError(t, err)
+
+		awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
+
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskCtx := generateMockTrainingJobTaskContext(taskTemplate)
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
+		assert.NoError(t, err)
+		assert.NotNil(t, trainingJobResource)
+
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+
+		taskInfo, err := awsSageMakerTrainingJobHandler.getEventInfoForJob(ctx, trainingJob)
+
+		expectedTaskLogs := []*flyteIdlCore.TaskLog{
+			{
+				Uri: fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
+					"us-west-2", "us-west-2", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()),
+				Name:          "CloudWatch Logs",
+				MessageFormat: flyteIdlCore.TaskLog_JSON,
+			},
+			{
+				Uri: fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
+					"us-west-2", "us-west-2", "jobs", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()),
+				Name:          "SageMaker Training Job",
+				MessageFormat: flyteIdlCore.TaskLog_UNKNOWN,
+			},
+		}
+
+		expectedCustomInfo, _ := utils.MarshalObjToStruct(map[string]string{})
+		assert.Equal(t,
+			func(tis []*flyteIdlCore.TaskLog) []flyteIdlCore.TaskLog {
+				ret := make([]flyteIdlCore.TaskLog, 0, len(tis))
+				for _, ti := range tis {
+					ret = append(ret, *ti)
+				}
+				return ret
+			}(expectedTaskLogs),
+			func(tis []*flyteIdlCore.TaskLog) []flyteIdlCore.TaskLog {
+				ret := make([]flyteIdlCore.TaskLog, 0, len(tis))
+				for _, ti := range tis {
+					ret = append(ret, *ti)
+				}
+				return ret
+			}(taskInfo.Logs))
+		assert.Equal(t, *expectedCustomInfo, *taskInfo.CustomInfo)
+	})
+}
+
+func Test_awsSagemakerPlugin_BuildIdentityResource(t *testing.T) {
+	ctx := context.TODO()
+	type fields struct {
+		TaskType pluginsCore.TaskType
+	}
+	type args struct {
+		in0 context.Context
+		in1 pluginsCore.TaskExecutionMetadata
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    k8s.Resource
+		wantErr bool
+	}{
+		{name: "Training Job Identity Resource", fields: fields{TaskType: trainingJobTaskType},
+			args: args{in0: ctx, in1: genMockTaskExecutionMetadata()}, want: &trainingjobv1.TrainingJob{}, wantErr: false},
+		{name: "HPO Job Identity Resource", fields: fields{TaskType: hyperparameterTuningJobTaskType},
+			args: args{in0: ctx, in1: genMockTaskExecutionMetadata()}, want: &hpojobv1.HyperparameterTuningJob{}, wantErr: false},
+		{name: "Unsupported Job Identity Resource", fields: fields{TaskType: "bad type"},
+			args: args{in0: ctx, in1: genMockTaskExecutionMetadata()}, want: nil, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := awsSagemakerPlugin{
+				TaskType: tt.fields.TaskType,
+			}
+			got, err := m.BuildIdentityResource(tt.args.in0, tt.args.in1)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BuildIdentityResource() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BuildIdentityResource() got = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

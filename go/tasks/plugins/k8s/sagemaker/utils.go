@@ -57,14 +57,12 @@ func getTrainingJobImage(ctx context.Context, taskCtx pluginsCore.TaskExecutionC
 			return "", errors.Errorf("Empty image specified in the task template")
 		}
 		return image, nil
-
-	} else {
-		image, err := getPrebuiltTrainingImage(ctx, job)
-		if err != nil {
-			return "", errors.Wrapf(err, "Failed to get prebuilt image for job [%v]", *job)
-		}
-		return image, nil
 	}
+	image, err := getPrebuiltTrainingImage(ctx, job)
+	if err != nil {
+		return "", errors.Wrapf(err, "Failed to get prebuilt image for job [%v]", *job)
+	}
+	return image, nil
 }
 
 func getPrebuiltTrainingImage(ctx context.Context, job *flyteSagemakerIdl.TrainingJob) (string, error) {

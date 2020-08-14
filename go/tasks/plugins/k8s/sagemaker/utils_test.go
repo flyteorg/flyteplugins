@@ -316,7 +316,9 @@ func Test_getTrainingJobImage(t *testing.T) {
 
 	ctx := context.TODO()
 	defaultCfg := config.GetSagemakerConfig()
-	defer config.SetSagemakerConfig(defaultCfg)
+	defer func() {
+		_ = config.SetSagemakerConfig(defaultCfg)
+	}()
 
 	type Result struct {
 		name    string
@@ -337,7 +339,7 @@ func Test_getTrainingJobImage(t *testing.T) {
 			1,
 			"ml.m4.xlarge",
 			25)
-		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskTemplate := generateMockTrainingJobTaskTemplate("training job", tjObj)
 		taskCtx := generateMockTrainingJobTaskContext(taskTemplate)
 		sagemakerTrainingJob := flyteSagemakerIdl.TrainingJob{}
 		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
