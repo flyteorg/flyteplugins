@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 	sagemakerSpec "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/lyft/flytestdlib/config/viper"
@@ -13,6 +15,7 @@ import (
 
 	stdConfig "github.com/lyft/flytestdlib/config"
 
+	flyteSagemakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 	sagemakerConfig "github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 )
@@ -265,7 +268,7 @@ func Test_getPrebuiltTrainingImage(t *testing.T) {
 				InputContentType:  0,
 			},
 			TrainingJobResourceConfig: nil,
-		}}, want: "custom image", wantErr: true},
+		}}, want: "", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -298,7 +301,7 @@ func Test_getPrebuiltTrainingImage_LoadConfig(t *testing.T) {
 	}})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "image-0.90", image)
+	assert.Equal(t, "XGBOOST_us-west-2_image-0.90", image)
 
 	image, err = getPrebuiltTrainingImage(context.TODO(), &sagemakerSpec.TrainingJob{AlgorithmSpecification: &sagemakerSpec.AlgorithmSpecification{
 		AlgorithmName:    sagemakerSpec.AlgorithmName_XGBOOST,
@@ -306,5 +309,89 @@ func Test_getPrebuiltTrainingImage_LoadConfig(t *testing.T) {
 	}})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "image-1.0", image)
+	assert.Equal(t, "XGBOOST_us-west-2_image-1.0", image)
+}
+
+func Test_getTrainingJobImage(t *testing.T) {
+
+	ctx := context.TODO()
+	defaultCfg := config.GetSagemakerConfig()
+	defer config.SetSagemakerConfig(defaultCfg)
+
+	type Result struct {
+		name    string
+		want    string
+		wantErr bool
+	}
+
+	expectedResult := Result{
+		"custom training job should get image from task template", testImage, false,
+	}
+	t.Run(expectedResult.name, func(t *testing.T) {
+		tjObj := generateMockTrainingJobCustomObj(
+			flyteSagemakerIdl.InputMode_FILE,
+			flyteSagemakerIdl.AlgorithmName_CUSTOM,
+			"0.90",
+			[]*flyteSagemakerIdl.MetricDefinition{},
+			flyteSagemakerIdl.InputContentType_TEXT_CSV,
+			1,
+			"ml.m4.xlarge",
+			25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskCtx := generateMockTrainingJobTaskContext(taskTemplate)
+		sagemakerTrainingJob := flyteSagemakerIdl.TrainingJob{}
+		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
+		if err != nil {
+			panic(err)
+		}
+
+		got, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
+		if (err != nil) != expectedResult.wantErr {
+			t.Errorf("getTrainingJobImage() error = %v, wantErr %v", err, expectedResult.wantErr)
+			return
+		}
+		if got != expectedResult.want {
+			t.Errorf("getTrainingJobImage() got = %v, want %v", got, expectedResult.want)
+		}
+	})
+
+	configAccessor := viper.NewAccessor(stdConfig.Options{
+		StrictMode:  true,
+		SearchPaths: []string{"testdata/config.yaml"},
+	})
+
+	err := configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	expectedResult = Result{
+		"Should retrieve image url from config for built-in algorithms", "XGBOOST_us-west-2_image-0.90", false,
+	}
+	t.Run(expectedResult.name, func(t *testing.T) {
+		tjObj := generateMockTrainingJobCustomObj(
+			flyteSagemakerIdl.InputMode_FILE,
+			flyteSagemakerIdl.AlgorithmName_XGBOOST,
+			"0.90",
+			[]*flyteSagemakerIdl.MetricDefinition{},
+			flyteSagemakerIdl.InputContentType_TEXT_CSV,
+			1,
+			"ml.m4.xlarge",
+			25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskCtx := generateMockTrainingJobTaskContext(taskTemplate)
+		sagemakerTrainingJob := flyteSagemakerIdl.TrainingJob{}
+		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
+		if err != nil {
+			panic(err)
+		}
+
+		got, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
+		if (err != nil) != expectedResult.wantErr {
+			t.Errorf("getTrainingJobImage() error = %v, wantErr %v", err, expectedResult.wantErr)
+			return
+		}
+		if got != expectedResult.want {
+			t.Errorf("getTrainingJobImage() got = %v, want %v", got, expectedResult.want)
+		}
+	})
+
 }
