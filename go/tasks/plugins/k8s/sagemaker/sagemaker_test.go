@@ -537,6 +537,9 @@ func Test_awsSagemakerPlugin_getEventInfoForJob(t *testing.T) {
 		assert.True(t, ok)
 
 		taskInfo, err := awsSageMakerTrainingJobHandler.getEventInfoForJob(ctx, trainingJob)
+		if err != nil {
+			panic(err)
+		}
 
 		expectedTaskLogs := []*flyteIdlCore.TaskLog{
 			{
