@@ -136,40 +136,8 @@ func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate)
 	inputReader.OnGetMatch(mock.Anything).Return(
 		&flyteIdlCore.LiteralMap{
 			Literals: map[string]*flyteIdlCore.Literal{
-				"train": {
-					Value: &flyteIdlCore.Literal_Scalar{
-						Scalar: &flyteIdlCore.Scalar{
-							Value: &flyteIdlCore.Scalar_Blob{
-								Blob: &flyteIdlCore.Blob{
-									Uri: trainBlobLoc.String(),
-									Metadata: &flyteIdlCore.BlobMetadata{
-										Type: &flyteIdlCore.BlobType{
-											Dimensionality: flyteIdlCore.BlobType_SINGLE,
-											Format:         "csv",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				"validation": {
-					Value: &flyteIdlCore.Literal_Scalar{
-						Scalar: &flyteIdlCore.Scalar{
-							Value: &flyteIdlCore.Scalar_Blob{
-								Blob: &flyteIdlCore.Blob{
-									Uri: validationBlobLoc.String(),
-									Metadata: &flyteIdlCore.BlobMetadata{
-										Type: &flyteIdlCore.BlobType{
-											Dimensionality: flyteIdlCore.BlobType_SINGLE,
-											Format:         "csv",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
+				"train":                  generateMockBlobLiteral(trainBlobLoc),
+				"validation":             generateMockBlobLiteral(validationBlobLoc),
 				"static_hyperparameters": utils.MakeGenericLiteral(shpStructObj),
 			},
 		}, nil)
