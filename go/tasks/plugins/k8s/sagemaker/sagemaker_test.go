@@ -215,6 +215,26 @@ func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate)
 	return taskCtx
 }
 
+func generateMockBlobLiteral(loc storage.DataReference) *flyteIdlCore.Literal {
+	return &flyteIdlCore.Literal{
+		Value: &flyteIdlCore.Literal_Scalar{
+			Scalar: &flyteIdlCore.Scalar{
+				Value: &flyteIdlCore.Scalar_Blob{
+					Blob: &flyteIdlCore.Blob{
+						Uri: loc.String(),
+						Metadata: &flyteIdlCore.BlobMetadata{
+							Type: &flyteIdlCore.BlobType{
+								Dimensionality: flyteIdlCore.BlobType_SINGLE,
+								Format:         "csv",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func generateMockHyperparameterTuningJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
@@ -251,40 +271,8 @@ func generateMockHyperparameterTuningJobTaskContext(taskTemplate *flyteIdlCore.T
 	inputReader.OnGetMatch(mock.Anything).Return(
 		&flyteIdlCore.LiteralMap{
 			Literals: map[string]*flyteIdlCore.Literal{
-				"train": {
-					Value: &flyteIdlCore.Literal_Scalar{
-						Scalar: &flyteIdlCore.Scalar{
-							Value: &flyteIdlCore.Scalar_Blob{
-								Blob: &flyteIdlCore.Blob{
-									Uri: trainBlobLoc.String(),
-									Metadata: &flyteIdlCore.BlobMetadata{
-										Type: &flyteIdlCore.BlobType{
-											Dimensionality: flyteIdlCore.BlobType_SINGLE,
-											Format:         "csv",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				"validation": {
-					Value: &flyteIdlCore.Literal_Scalar{
-						Scalar: &flyteIdlCore.Scalar{
-							Value: &flyteIdlCore.Scalar_Blob{
-								Blob: &flyteIdlCore.Blob{
-									Uri: validationBlobLoc.String(),
-									Metadata: &flyteIdlCore.BlobMetadata{
-										Type: &flyteIdlCore.BlobType{
-											Dimensionality: flyteIdlCore.BlobType_SINGLE,
-											Format:         "csv",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
+				"train":                            generateMockBlobLiteral(trainBlobLoc),
+				"validation":                       generateMockBlobLiteral(validationBlobLoc),
 				"static_hyperparameters":           utils.MakeGenericLiteral(shpStructObj),
 				"hyperparameter_tuning_job_config": utils.MakeBinaryLiteral(hpoJobConfigByteArray),
 			},
