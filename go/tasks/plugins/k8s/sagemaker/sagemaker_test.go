@@ -6,6 +6,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/pkg/errors"
+
+	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
+
+	trainingjobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/trainingjob"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
@@ -19,6 +25,7 @@ import (
 
 	hpojobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/hyperparametertuningjob"
 	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
+	"github.com/aws/aws-sdk-go/service/sagemaker"
 	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -120,10 +127,34 @@ func generateMockHyperparameterTuningJobTaskTemplate(id string, hpoJobCustomObj 
 			},
 		},
 		Custom: &structObj,
+		Interface: &flyteIdlCore.TypedInterface{
+			Inputs: &flyteIdlCore.VariableMap{
+				Variables: map[string]*flyteIdlCore.Variable{
+					"input": {
+						Type: &flyteIdlCore.LiteralType{
+							Type: &flyteIdlCore.LiteralType_CollectionType{
+								CollectionType: &flyteIdlCore.LiteralType{Type: &flyteIdlCore.LiteralType_Simple{Simple: flyteIdlCore.SimpleType_INTEGER}},
+							},
+						},
+					},
+				},
+			},
+			Outputs: &flyteIdlCore.VariableMap{
+				Variables: map[string]*flyteIdlCore.Variable{
+					"output": {
+						Type: &flyteIdlCore.LiteralType{
+							Type: &flyteIdlCore.LiteralType_CollectionType{
+								CollectionType: &flyteIdlCore.LiteralType{Type: &flyteIdlCore.LiteralType_Simple{Simple: flyteIdlCore.SimpleType_INTEGER}},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
-func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate) pluginsCore.TaskExecutionContext {
+func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate, outputReaderPutError bool) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
 	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("/input/prefix"))
@@ -146,6 +177,9 @@ func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate)
 	outputReader := &pluginIOMocks.OutputWriter{}
 	outputReader.OnGetOutputPath().Return(storage.DataReference("/data/outputs.pb"))
 	outputReader.OnGetOutputPrefixPath().Return(storage.DataReference("/data/"))
+	if outputReaderPutError {
+		outputReader.OnPutMatch(mock.Anything).Return(errors.Errorf("err"))
+	}
 	taskCtx.OnOutputWriter().Return(outputReader)
 
 	taskReader := &mocks.TaskReader{}
@@ -347,7 +381,7 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 
-		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate, false))
 		assert.NoError(t, err)
 		assert.NotNil(t, trainingJobResource)
 
@@ -374,7 +408,7 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 
-		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate, false))
 		assert.NoError(t, err)
 		assert.NotNil(t, trainingJobResource)
 
@@ -401,7 +435,7 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 
-		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate))
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate, false))
 		assert.NoError(t, err)
 		assert.NotNil(t, trainingJobResource)
 
@@ -484,7 +518,7 @@ func Test_awsSagemakerPlugin_getEventInfoForJob(t *testing.T) {
 			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
-		taskCtx := generateMockTrainingJobTaskContext(taskTemplate)
+		taskCtx := generateMockTrainingJobTaskContext(taskTemplate, false)
 		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
 		assert.NoError(t, err)
 		assert.NotNil(t, trainingJobResource)
@@ -570,4 +604,105 @@ func Test_awsSagemakerPlugin_BuildIdentityResource(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_createModelOutputPath(t *testing.T) {
+	type args struct {
+		prefix         string
+		bestExperiment string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{name: "simple output path", args: args{prefix: "s3://my-bucket", bestExperiment: "job-ABC"},
+			want: "s3://my-bucket/hyperparameter_tuning_outputs/job-ABC/output/model.tar.gz"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := createModelOutputPath(tt.args.prefix, tt.args.bestExperiment); got != tt.want {
+				t.Errorf("createModelOutputPath() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_awsSagemakerPlugin_GetTaskPhaseForTrainingJob(t *testing.T) {
+	ctx := context.TODO()
+	// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+	configAccessor := viper.NewAccessor(stdConfig.Options{
+		StrictMode: true,
+		// Use a different
+		SearchPaths: []string{"testdata/config2.yaml"},
+	})
+
+	err := configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
+
+	tjObj := generateMockTrainingJobCustomObj(
+		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
+		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+	taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+	taskCtx := generateMockTrainingJobTaskContext(taskTemplate, false)
+	trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
+	assert.NoError(t, err)
+	assert.NotNil(t, trainingJobResource)
+
+	t.Run("ReconcilingTrainingJobStatus should lead to a retryable failure", func(t *testing.T) {
+
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+		trainingJob.Status.TrainingJobStatus = trainingjobController.ReconcilingTrainingJobStatus
+		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
+		assert.Nil(t, err)
+		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseRetryableFailure)
+		assert.Equal(t, phaseInfo.Err().GetKind(), flyteIdlCore.ExecutionError_USER)
+		assert.Equal(t, phaseInfo.Err().GetCode(), trainingjobController.ReconcilingTrainingJobStatus)
+		assert.Equal(t, phaseInfo.Err().GetMessage(), "")
+	})
+	t.Run("TrainingJobStatusFailed should be a permanent failure", func(t *testing.T) {
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusFailed
+
+		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
+		assert.Nil(t, err)
+		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhasePermanentFailure)
+		assert.Equal(t, phaseInfo.Err().GetKind(), flyteIdlCore.ExecutionError_USER)
+		assert.Equal(t, phaseInfo.Err().GetCode(), sagemaker.TrainingJobStatusFailed)
+		assert.Equal(t, phaseInfo.Err().GetMessage(), "")
+	})
+	t.Run("TrainingJobStatusFailed should be a permanent failure", func(t *testing.T) {
+
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusStopped
+
+		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
+		assert.Nil(t, err)
+		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseRetryableFailure)
+		assert.Equal(t, phaseInfo.Err().GetKind(), flyteIdlCore.ExecutionError_USER)
+		assert.Equal(t, phaseInfo.Err().GetCode(), taskError.DownstreamSystemError)
+		// We have a default message for TrainingJobStatusStopped
+		assert.Equal(t, phaseInfo.Err().GetMessage(), "Training Job Stopped")
+	})
+	/*
+		t.Run("TrainingJobStatusCompleted", func(t *testing.T) {
+			taskCtx = generateMockTrainingJobTaskContext(taskTemplate, true)
+			trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
+			assert.NoError(t, err)
+			assert.NotNil(t, trainingJobResource)
+
+			trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+			assert.True(t, ok)
+
+			trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusCompleted
+			phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
+			assert.NotNil(t, err)
+			assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseUndefined)
+		})
+	*/
 }

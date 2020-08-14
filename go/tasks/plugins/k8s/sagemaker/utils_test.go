@@ -340,7 +340,7 @@ func Test_getTrainingJobImage(t *testing.T) {
 			"ml.m4.xlarge",
 			25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("training job", tjObj)
-		taskCtx := generateMockTrainingJobTaskContext(taskTemplate)
+		taskCtx := generateMockTrainingJobTaskContext(taskTemplate, false)
 		sagemakerTrainingJob := flyteSagemakerIdl.TrainingJob{}
 		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
 		if err != nil {
@@ -379,7 +379,7 @@ func Test_getTrainingJobImage(t *testing.T) {
 			"ml.m4.xlarge",
 			25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
-		taskCtx := generateMockTrainingJobTaskContext(taskTemplate)
+		taskCtx := generateMockTrainingJobTaskContext(taskTemplate, false)
 		sagemakerTrainingJob := flyteSagemakerIdl.TrainingJob{}
 		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
 		if err != nil {
