@@ -154,6 +154,7 @@ func generateMockHyperparameterTuningJobTaskTemplate(id string, hpoJobCustomObj 
 	}
 }
 
+// nolint
 func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate, outputReaderPutError bool) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}

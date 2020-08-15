@@ -589,6 +589,10 @@ func (m awsSagemakerPlugin) GetTaskPhaseForHyperparameterTuningJob(
 		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
 	case sagemaker.HyperParameterTuningJobStatusCompleted:
 		// Now that it is success we will set the outputs as expected by the task
+
+		// TODO:
+		// Check task template -> custom training job -> if custom: assume output.pb exist, and fail if it doesn't. If it exists, then
+		//						 				      -> if not custom: check model.tar.gz
 		out, err := getOutputs(ctx, pluginContext.TaskReader(), createModelOutputPath(pluginContext.OutputWriter().GetOutputPrefixPath().String(), *hpoJob.Status.BestTrainingJob.TrainingJobName))
 		if err != nil {
 			logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
