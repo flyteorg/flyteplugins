@@ -215,7 +215,6 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 
 	state := sj.Status.AppState.State
 	isQueued := state == sparkOp.NewState ||
-		state == sparkOp.PendingSubmissionState ||
 		state == sparkOp.SubmittedState
 
 	if logConfig.IsKubernetesEnabled && !isQueued && sj.Status.DriverInfo.PodName != "" {
