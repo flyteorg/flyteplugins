@@ -147,12 +147,6 @@ func TestGetTaskPhase(t *testing.T) {
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailedSubmissionState))
-	assert.NoError(t, err)
-	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRetryableFailure)
-	assert.NotNil(t, taskPhase.Info())
-	assert.Nil(t, err)
-
 	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailedState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRetryableFailure)
