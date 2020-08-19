@@ -126,7 +126,7 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 			// non spot instance AZ.
 			if val, ok := pod.ObjectMeta.Labels[Interruptible]; ok && c.Status == v1.ConditionTrue {
 				if val == "true" && timeout > 0 && timeout > time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time) {
-					return pluginsCore.PhaseInfoRetryableFailure(
+					return pluginsCore.PhaseInfoSystemRetryableFailure(
 						"systemLevelTimeout",
 						fmt.Sprintf("system timeout reached at status %v", v1.PodReasonUnschedulable),
 						&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
@@ -174,7 +174,7 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 								// To help mitigate the pod being stuck in this state we have a system level timeout that will error out
 								// as a system error and retry launching the pod.
 								if timeout > 0 && timeout > time.Since(status.StartTime.Time) {
-									return pluginsCore.PhaseInfoRetryableFailure(
+									return pluginsCore.PhaseInfoSystemRetryableFailure(
 										"systemLevelTimeout",
 										fmt.Sprintf("system timeout reached, %s", finalMessage),
 										&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
