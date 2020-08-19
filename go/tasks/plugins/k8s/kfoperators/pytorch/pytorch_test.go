@@ -3,6 +3,7 @@ package pytorch
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 	"testing"
 	"time"
 
@@ -345,7 +346,8 @@ func TestGetLogs(t *testing.T) {
 	workers := int32(2)
 
 	pytorchResourceHandler := pytorchOperatorResourceHandler{}
-	jobLogs, err := getLogs(dummyPytorchJobResource(pytorchResourceHandler, workers, commonOp.JobRunning), workers)
+	pytorchJob := dummyPytorchJobResource(pytorchResourceHandler, workers, commonOp.JobRunning)
+	jobLogs, err := common.GetLogs(common.PytorchTaskType, pytorchJob.Name, pytorchJob.Namespace, workers, 0, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-master-0/pod?namespace=pytorch-namespace", jobNamespace, jobName), jobLogs[0].Uri)

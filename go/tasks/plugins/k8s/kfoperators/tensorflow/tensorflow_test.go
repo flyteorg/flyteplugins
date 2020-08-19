@@ -9,6 +9,7 @@ import (
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -351,8 +352,8 @@ func TestGetLogs(t *testing.T) {
 	chiefReplicas := int32(1)
 
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
-	jobLogs, err := getLogs(dummyTensorflowJobResource(tensorflowResourceHandler, workers, psReplicas, chiefReplicas, commonOp.JobRunning),
-		workers, psReplicas, chiefReplicas)
+	tensorflowJob := dummyTensorflowJobResource(tensorflowResourceHandler, workers, psReplicas, chiefReplicas, commonOp.JobRunning)
+	jobLogs, err := common.GetLogs(common.TensorflowTaskType, tensorflowJob.Name,tensorflowJob.Namespace, workers, psReplicas, chiefReplicas)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=tensorflow-namespace", jobNamespace, jobName), jobLogs[0].Uri)
