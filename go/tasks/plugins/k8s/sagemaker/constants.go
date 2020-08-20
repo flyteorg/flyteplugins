@@ -17,3 +17,12 @@ const (
 const (
 	FlyteSageMakerCmdKey string = "__FLYTE_SAGEMAKER_CMD__"
 )
+
+const (
+	TrainingJobOutputPathSubDir    = "training_outputs"
+	HyperparameterOutputPathSubDir = "hyerparameter_tuning_outputs"
+)
+
+const (
+	CustomTrainingCmdArgSeparator = "+"
+)

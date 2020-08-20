@@ -52,7 +52,7 @@ func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCo
 	return nil, errors.Errorf("The sagemaker plugin is unable to build identity resource for an unknown task type [%v]", m.TaskType)
 }
 
-func (m awsSagemakerPlugin) checkRequiredInputLiteralsExist(inputLiterals map[string]*flyteIdlCore.Literal, inputKeys []string) error {
+func (m awsSagemakerPlugin) checkIfRequiredInputLiteralsExist(inputLiterals map[string]*flyteIdlCore.Literal, inputKeys []string) error {
 	for _, inputKey := range inputKeys {
 		_, ok := inputLiterals[inputKey]
 		if !ok {
@@ -91,7 +91,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	// Get inputs from literals
 	inputLiterals := taskInput.GetLiterals()
-	err = m.checkRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
+	err = m.checkIfRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error occurred when checking if all the required inputs exist")
 	}
@@ -113,7 +113,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		return nil, errors.Wrapf(err, "could not convert static hyperparameters to spec type")
 	}
 
-	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetRawOutputPrefix().String(), TrainingJobOutputPathSubDir)
 
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
@@ -146,20 +146,29 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	}
 
 	if sagemakerTrainingJob.AlgorithmSpecification.AlgorithmName == flyteSageMakerIdl.AlgorithmName_CUSTOM {
-		cmd, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetCommand(), taskCtx.InputReader(), taskCtx.OutputWriter())
+		// If the task is a custom training job, we need to de-templatize the command and args of the container in the taskTemplate
+		// Currently we de-templatize it with the raw output prefix.
+		// An alternative is to fill in both the metadata prefix and the raw output prefix.
+		cmd, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetCommand(), taskCtx.InputReader(), taskCtx.OutputWriter())
 		if err != nil {
 			return nil, err
 		}
 
-		args, err := utils.ReplaceTemplateCommandArgs(ctx, taskTemplate.GetContainer().GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
+		args, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
 		if err != nil {
 			return nil, err
 		}
 
-		selectorCmd := strings.Join(append(cmd, args...)[:], " ")
+		// pyflyte-execute+--output-prefix=s3://path+--inputs=s3://input+--extra
+		runnerCmd := strings.Join(append(cmd, args...)[:], CustomTrainingCmdArgSeparator)
+
+		// Extend the runnerCmd with all the static hyperparameters
+		for _, pair := range staticHyperparams {
+			runnerCmd += pair.Name + CustomTrainingCmdArgSeparator + pair.Value
+		}
 		// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
-		staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
-
+		// staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
+		staticHyperparams = []*commonv1.KeyValuePair{{Name: FlyteSageMakerCmdKey, Value: runnerCmd}}
 	}
 
 	trainingJob := &trainingjobv1.TrainingJob{
@@ -258,7 +267,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	// Get inputs from literals
 	inputLiterals := taskInput.GetLiterals()
-	err = m.checkRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
+	err = m.checkIfRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error occurred when checking if all the required inputs exist")
 	}
@@ -284,7 +293,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 		return nil, errors.Wrapf(err, "failed to convert hyperparameter tuning job config literal to spec type")
 	}
 
-	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetRawOutputPrefix().String(), HyperparameterOutputPathSubDir)
 
 	if hpoJobConfig.GetTuningObjective() == nil {
 		return nil, errors.Errorf("Required field [TuningObjective] does not exist")
@@ -480,7 +489,7 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 	}, nil
 }
 
-func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath string) (*flyteIdlCore.LiteralMap, error) {
+func getOutputLiteralMapFromTaskInterface(ctx context.Context, tr pluginsCore.TaskReader, outputPath string) (*flyteIdlCore.LiteralMap, error) {
 	tk, err := tr.Read(ctx)
 	if err != nil {
 		return nil, err
@@ -491,6 +500,7 @@ func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath strin
 	}
 
 	// We know that for XGBoost task there is only one output to be generated
+	// TODO to accommodate the custom training, this needs to be changed. We shouldn't assume there's only one output
 	if len(tk.Interface.Outputs.Variables) > 1 {
 		return nil, fmt.Errorf("expected to generate more than one outputs of type [%v]", tk.Interface.Outputs.Variables)
 	}
@@ -498,12 +508,19 @@ func getOutputs(ctx context.Context, tr pluginsCore.TaskReader, outputPath strin
 	return op, nil
 }
 
-func createOutputPath(prefix string) string {
-	return fmt.Sprintf("%s/hyperparameter_tuning_outputs", prefix)
+func createOutputPath(prefix string, subdir string) string {
+	return fmt.Sprintf("%s/%s", prefix, subdir)
 }
 
-func createModelOutputPath(prefix, bestExperiment string) string {
-	return fmt.Sprintf("%s/%s/output/model.tar.gz", createOutputPath(prefix), bestExperiment)
+func createModelOutputPath(job k8s.Resource, prefix, jobName string) string {
+	switch job.(type) {
+	case *trainingjobv1.TrainingJob:
+		return fmt.Sprintf("%s/%s/output/model.tar.gz", createOutputPath(prefix, TrainingJobOutputPathSubDir), jobName)
+	case *hpojobv1.HyperparameterTuningJob:
+		return fmt.Sprintf("%s/%s/output/model.tar.gz", createOutputPath(prefix, HyperparameterOutputPathSubDir), jobName)
+	default:
+		return fmt.Sprintf("")
+	}
 }
 
 func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
@@ -538,13 +555,22 @@ func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
 		reason := fmt.Sprintf("Training Job Stopped")
 		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
 	case sagemaker.TrainingJobStatusCompleted:
-		// Now that it is success we will set the outputs as expected by the task
-		out, err := getOutputs(ctx, pluginContext.TaskReader(), createModelOutputPath(pluginContext.OutputWriter().GetOutputPrefixPath().String(), trainingJob.Status.SageMakerTrainingJobName))
+		// Now that it is a success we will set the outputs as expected by the task
+
+		// We have specified an output path in the CRD, and we know SageMaker will automatically upload the
+		// model tarball to s3://<specified-output-path>/<training-job-name>/output/model.tar.gz
+		// The rest of the output will be uploaded by Flytekit
+
+		// Therefore, here we create a output literal map, where we fill in the above path to the URI field of the
+		// blob output, which will later be written out by the OutputWriter to the output.pb remotely on S3
+		outputLiteralMap, err := getOutputLiteralMapFromTaskInterface(ctx, pluginContext.TaskReader(),
+			createModelOutputPath(trainingJob, pluginContext.OutputWriter().GetRawOutputPrefix().String(), trainingJob.Status.SageMakerTrainingJobName))
 		if err != nil {
 			logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
 			return pluginsCore.PhaseInfoUndefined, errors.Wrapf(err, "failed to create outputs for the task")
 		}
-		if err := pluginContext.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(out, nil)); err != nil {
+		// Instantiate a output reader with the literal map, and write the output to the remote location referred to by the OutputWriter
+		if err := pluginContext.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(outputLiteralMap, nil)); err != nil {
 			return pluginsCore.PhaseInfoUndefined, err
 		}
 		logger.Debugf(ctx, "Successfully produced and returned outputs")
@@ -588,12 +614,14 @@ func (m awsSagemakerPlugin) GetTaskPhaseForHyperparameterTuningJob(
 		reason := fmt.Sprintf("Hyperparameter tuning job stopped")
 		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
 	case sagemaker.HyperParameterTuningJobStatusCompleted:
-		// Now that it is success we will set the outputs as expected by the task
+		// Now that it is a success we will set the outputs as expected by the task
 
 		// TODO:
 		// Check task template -> custom training job -> if custom: assume output.pb exist, and fail if it doesn't. If it exists, then
 		//						 				      -> if not custom: check model.tar.gz
-		out, err := getOutputs(ctx, pluginContext.TaskReader(), createModelOutputPath(pluginContext.OutputWriter().GetOutputPrefixPath().String(), *hpoJob.Status.BestTrainingJob.TrainingJobName))
+		out, err := getOutputLiteralMapFromTaskInterface(ctx, pluginContext.TaskReader(),
+			createModelOutputPath(hpoJob, pluginContext.OutputWriter().GetRawOutputPrefix().String(),
+				*hpoJob.Status.BestTrainingJob.TrainingJobName))
 		if err != nil {
 			logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
 			return pluginsCore.PhaseInfoUndefined, errors.Wrapf(err, "failed to create outputs for the task")

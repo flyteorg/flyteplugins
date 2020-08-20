@@ -51,6 +51,26 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.Inp
 	return res, nil
 }
 
+func ReplaceTemplateCommandArgsWithRawOutput(ctx context.Context, command []string, in io.InputReader, out io.OutputFilePaths) ([]string, error) {
+	if len(command) == 0 {
+		return []string{}, nil
+	}
+	if in == nil || out == nil {
+		return nil, fmt.Errorf("input reader and output path cannot be nil")
+	}
+	res := make([]string, 0, len(command))
+	for _, commandTemplate := range command {
+		updated, err := replaceTemplateCommandArgsWithRawOutput(ctx, commandTemplate, in, out)
+		if err != nil {
+			return res, err
+		}
+
+		res = append(res, updated)
+	}
+
+	return res, nil
+}
+
 func transformVarNameToStringVal(ctx context.Context, varName string, inputs *core.LiteralMap) (string, error) {
 	inputVal, exists := inputs.Literals[varName]
 	if !exists {
@@ -64,11 +84,7 @@ func transformVarNameToStringVal(ctx context.Context, varName string, inputs *co
 	return v, nil
 }
 
-func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in io.InputReader, out io.OutputFilePaths) (string, error) {
-	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
-	val = outputRegex.ReplaceAllString(val, out.GetOutputPrefixPath().String())
-	val = inputPrefixRegex.ReplaceAllString(val, in.GetInputPrefixPath().String())
-
+func replaceInputVarsTemplateCommandArgs(ctx context.Context, in io.InputReader, val string) (string, error) {
 	inputs, err := in.Get(ctx)
 	if err != nil {
 		return val, errors.Wrapf(err, "unable to read inputs")
@@ -94,6 +110,22 @@ func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in 
 	}
 
 	return val, nil
+}
+
+func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in io.InputReader, out io.OutputFilePaths) (string, error) {
+	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
+	val = outputRegex.ReplaceAllString(val, out.GetOutputPrefixPath().String())
+	val = inputPrefixRegex.ReplaceAllString(val, in.GetInputPrefixPath().String())
+
+	return replaceInputVarsTemplateCommandArgs(ctx, in, val)
+}
+
+func replaceTemplateCommandArgsWithRawOutput(ctx context.Context, commandTemplate string, in io.InputReader, out io.OutputFilePaths) (string, error) {
+	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
+	val = outputRegex.ReplaceAllString(val, out.GetRawOutputPrefix().String())
+	val = inputPrefixRegex.ReplaceAllString(val, in.GetInputPrefixPath().String())
+
+	return replaceInputVarsTemplateCommandArgs(ctx, in, val)
 }
 
 func serializePrimitive(p *core.Primitive) (string, error) {
