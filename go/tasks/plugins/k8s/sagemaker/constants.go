@@ -20,7 +20,7 @@ const (
 
 const (
 	TrainingJobOutputPathSubDir    = "training_outputs"
-	HyperparameterOutputPathSubDir = "hyerparameter_tuning_outputs"
+	HyperparameterOutputPathSubDir = "hyperparameter_tuning_outputs"
 )
 
 const (

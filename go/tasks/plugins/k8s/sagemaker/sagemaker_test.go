@@ -609,6 +609,7 @@ func Test_awsSagemakerPlugin_BuildIdentityResource(t *testing.T) {
 
 func Test_createModelOutputPath(t *testing.T) {
 	type args struct {
+		job            k8s.Resource
 		prefix         string
 		bestExperiment string
 	}
@@ -617,12 +618,14 @@ func Test_createModelOutputPath(t *testing.T) {
 		args args
 		want string
 	}{
-		{name: "simple output path", args: args{prefix: "s3://my-bucket", bestExperiment: "job-ABC"},
+		{name: "training job: simple output path", args: args{job: &trainingjobv1.TrainingJob{}, prefix: "s3://my-bucket", bestExperiment: "job-ABC"},
+			want: "s3://my-bucket/training_outputs/job-ABC/output/model.tar.gz"},
+		{name: "hpo job: simple output path", args: args{job: &hpojobv1.HyperparameterTuningJob{}, prefix: "s3://my-bucket", bestExperiment: "job-ABC"},
 			want: "s3://my-bucket/hyperparameter_tuning_outputs/job-ABC/output/model.tar.gz"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := createModelOutputPath(tt.args.prefix, tt.args.bestExperiment); got != tt.want {
+			if got := createModelOutputPath(tt.args.job, tt.args.prefix, tt.args.bestExperiment); got != tt.want {
 				t.Errorf("createModelOutputPath() = %v, want %v", got, tt.want)
 			}
 		})
