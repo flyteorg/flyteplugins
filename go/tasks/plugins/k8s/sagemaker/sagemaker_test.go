@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -52,8 +53,12 @@ var (
 	}
 
 	testArgs = []string{
-		"test-args1",
-		"test-args2",
+		"pyflyte-execute",
+		"--test-opt1",
+		"value1",
+		"--test-opt2",
+		"value2",
+		"--test-flag",
 	}
 
 	testCmds = []string{
@@ -178,6 +183,7 @@ func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate,
 	outputReader := &pluginIOMocks.OutputWriter{}
 	outputReader.OnGetOutputPath().Return(storage.DataReference("/data/outputs.pb"))
 	outputReader.OnGetOutputPrefixPath().Return(storage.DataReference("/data/"))
+	outputReader.OnGetRawOutputPrefix().Return(storage.DataReference("/raw/"))
 	if outputReaderPutError {
 		outputReader.OnPutMatch(mock.Anything).Return(errors.Errorf("err"))
 	}
@@ -285,6 +291,7 @@ func generateMockHyperparameterTuningJobTaskContext(taskTemplate *flyteIdlCore.T
 	outputReader := &pluginIOMocks.OutputWriter{}
 	outputReader.OnGetOutputPath().Return(storage.DataReference("/data/outputs.pb"))
 	outputReader.OnGetOutputPrefixPath().Return(storage.DataReference("/data/"))
+	outputReader.OnGetRawOutputPrefix().Return(storage.DataReference("/raw/"))
 	taskCtx.OnOutputWriter().Return(outputReader)
 
 	taskReader := &mocks.TaskReader{}
@@ -443,9 +450,14 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 		assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
+		expectedCmd := "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --a 1 --b 2"
+		expectedCmd = strings.ReplaceAll(expectedCmd, " ", "+")
 		expectedHPs := []*commonv1.KeyValuePair{
-			{Name: "a", Value: "1"}, {Name: "b", Value: "2"},
-			{Name: FlyteSageMakerCmdKey, Value: "test-cmds1 test-cmds2 test-args1 test-args2"}}
+			{Name: FlyteSageMakerCmdKey, Value: expectedCmd},
+		}
+		// expectedHPs := []*commonv1.KeyValuePair{
+		// 	{Name: "a", Value: "1"}, {Name: "b", Value: "2"},
+		//	{Name: FlyteSageMakerCmdKey, Value: "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --a 1 --b 2"}}
 		assert.ElementsMatch(t,
 			func(kvs []*commonv1.KeyValuePair) []commonv1.KeyValuePair {
 				ret := make([]commonv1.KeyValuePair, 0, len(kvs))

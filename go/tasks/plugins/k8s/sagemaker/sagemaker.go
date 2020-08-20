@@ -163,9 +163,11 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		runnerCmd := strings.Join(append(cmd, args...)[:], CustomTrainingCmdArgSeparator)
 
 		// Extend the runnerCmd with all the static hyperparameters
+
 		for _, pair := range staticHyperparams {
-			runnerCmd += pair.Name + CustomTrainingCmdArgSeparator + pair.Value
+			runnerCmd += CustomTrainingCmdArgSeparator + "--" + pair.Name + CustomTrainingCmdArgSeparator + pair.Value
 		}
+
 		// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
 		// staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
 		staticHyperparams = []*commonv1.KeyValuePair{{Name: FlyteSageMakerCmdKey, Value: runnerCmd}}

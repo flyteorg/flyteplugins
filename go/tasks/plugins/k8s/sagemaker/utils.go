@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -198,13 +199,29 @@ func convertStaticHyperparamsLiteralToSpecType(hyperparamLiteral *core.Literal) 
 	if hyperFields == nil {
 		return nil, errors.Errorf("Failed to get the static hyperparameters field from the literal")
 	}
-	for k, v := range hyperFields {
+
+	keys := make([]string, 0)
+	for k := range hyperFields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	fmt.Printf("[%v]", keys)
+	for _, k := range keys {
+		v := hyperFields[k]
 		var newElem = commonv1.KeyValuePair{
 			Name:  k,
 			Value: v.GetStringValue(),
 		}
 		retValue = append(retValue, &newElem)
 	}
+	//for k, v := range hyperFields {
+	//	var newElem = commonv1.KeyValuePair{
+	//		Name:  k,
+	//		Value: v.GetStringValue(),
+	//	}
+	//	retValue = append(retValue, &newElem)
+	//}
 	return retValue, nil
 }
 
