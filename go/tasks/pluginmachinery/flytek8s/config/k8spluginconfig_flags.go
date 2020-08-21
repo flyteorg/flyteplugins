@@ -54,5 +54,6 @@ func (cfg K8sPluginConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.cpu"), defaultK8sConfig.CoPilot.CPU, "Used to set cpu for co-pilot containers")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.memory"), defaultK8sConfig.CoPilot.Memory, "Used to set memory for co-pilot containers")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "co-pilot.storage"), defaultK8sConfig.CoPilot.Storage, "Default storage limit for individual inputs / outputs")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "max-system-level-timeout"), defaultK8sConfig.MaxSystemLevelTimeout.String(), "Value to be used for system level timeouts in minutes.")
 	return cmdFlags
 }
