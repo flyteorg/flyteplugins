@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -160,6 +161,73 @@ func generateMockHyperparameterTuningJobTaskTemplate(id string, hpoJobCustomObj 
 }
 
 // nolint
+func generateMockCustomTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate, outputReaderPutError bool) pluginsCore.TaskExecutionContext {
+	taskCtx := &mocks.TaskExecutionContext{}
+	inputReader := &pluginIOMocks.InputReader{}
+	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("/input/prefix"))
+	inputReader.OnGetInputPath().Return(storage.DataReference("/input"))
+
+	trainBlobLoc := storage.DataReference("train-blob-loc")
+	validationBlobLoc := storage.DataReference("validation-blob-loc")
+
+	inputReader.OnGetMatch(mock.Anything).Return(
+		&flyteIdlCore.LiteralMap{
+			Literals: map[string]*flyteIdlCore.Literal{
+				"train":      generateMockBlobLiteral(trainBlobLoc),
+				"validation": generateMockBlobLiteral(validationBlobLoc),
+				"hp_int":     utils.MustMakeLiteral(1),
+				"hp_float":   utils.MustMakeLiteral(1.5),
+				"hp_bool":    utils.MustMakeLiteral(false),
+				"hp_string":  utils.MustMakeLiteral("a"),
+			},
+		}, nil)
+	taskCtx.OnInputReader().Return(inputReader)
+
+	outputReader := &pluginIOMocks.OutputWriter{}
+	outputReader.OnGetOutputPath().Return(storage.DataReference("/data/outputs.pb"))
+	outputReader.OnGetOutputPrefixPath().Return(storage.DataReference("/data/"))
+	outputReader.OnGetRawOutputPrefix().Return(storage.DataReference("/raw/"))
+	if outputReaderPutError {
+		outputReader.OnPutMatch(mock.Anything).Return(errors.Errorf("err"))
+	}
+	taskCtx.OnOutputWriter().Return(outputReader)
+
+	taskReader := &mocks.TaskReader{}
+	taskReader.OnReadMatch(mock.Anything).Return(taskTemplate, nil)
+	taskCtx.OnTaskReader().Return(taskReader)
+
+	tID := &mocks.TaskExecutionID{}
+	tID.OnGetID().Return(flyteIdlCore.TaskExecutionIdentifier{
+		NodeExecutionId: &flyteIdlCore.NodeExecutionIdentifier{
+			ExecutionId: &flyteIdlCore.WorkflowExecutionIdentifier{
+				Name:    "my_name",
+				Project: "my_project",
+				Domain:  "my_domain",
+			},
+		},
+	})
+	tID.OnGetGeneratedName().Return("some-acceptable-name")
+
+	resources := &mocks.TaskOverrides{}
+	resources.OnGetResources().Return(resourceRequirements)
+
+	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
+	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
+	taskExecutionMetadata.OnGetNamespace().Return("test-namespace")
+	taskExecutionMetadata.OnGetAnnotations().Return(map[string]string{"iam.amazonaws.com/role": "metadata_role"})
+	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
+	taskExecutionMetadata.OnGetOwnerReference().Return(v1.OwnerReference{
+		Kind: "node",
+		Name: "blah",
+	})
+	taskExecutionMetadata.OnIsInterruptible().Return(true)
+	taskExecutionMetadata.OnGetOverrides().Return(resources)
+	taskExecutionMetadata.OnGetK8sServiceAccount().Return(serviceAccount)
+	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
+	return taskCtx
+}
+
+// nolint
 func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate, outputReaderPutError bool) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
@@ -170,6 +238,7 @@ func generateMockTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTemplate,
 	validationBlobLoc := storage.DataReference("validation-blob-loc")
 	shp := map[string]string{"a": "1", "b": "2"}
 	shpStructObj, _ := utils.MarshalObjToStruct(shp)
+
 	inputReader.OnGetMatch(mock.Anything).Return(
 		&flyteIdlCore.LiteralMap{
 			Literals: map[string]*flyteIdlCore.Literal{
@@ -453,7 +522,8 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 		expectedCmd := "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --a 1 --b 2"
 		expectedCmd = strings.ReplaceAll(expectedCmd, " ", "+")
 		expectedHPs := []*commonv1.KeyValuePair{
-			{Name: FlyteSageMakerCmdKey, Value: expectedCmd},
+			{Name: "a", Value: "1"},
+			{Name: "b", Value: "2"},
 		}
 		// expectedHPs := []*commonv1.KeyValuePair{
 		// 	{Name: "a", Value: "1"}, {Name: "b", Value: "2"},
@@ -473,6 +543,54 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 				}
 				return ret
 			}(trainingJob.Spec.HyperParameters))
+	})
+}
+
+func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
+	// Default config does not contain a roleAnnotationKey -> expecting to get the role from default config
+	ctx := context.TODO()
+	defaultCfg := config.GetSagemakerConfig()
+	defer func() {
+		_ = config.SetSagemakerConfig(defaultCfg)
+	}()
+	t.Run("In a custom training job we should see the FLYTE_SAGEMAKER_CMD being injected", func(t *testing.T) {
+		// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+		configAccessor := viper.NewAccessor(stdConfig.Options{
+			StrictMode: true,
+			// Use a different
+			SearchPaths: []string{"testdata/config2.yaml"},
+		})
+
+		err := configAccessor.UpdateConfig(context.TODO())
+		assert.NoError(t, err)
+
+		awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: customTrainingJobTaskType}
+
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockCustomTrainingJobTaskContext(taskTemplate, false))
+		assert.NoError(t, err)
+		assert.NotNil(t, trainingJobResource)
+
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+		assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
+		assert.Equal(t, 1, len(trainingJob.Spec.HyperParameters))
+		expectedCmd := "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --hp_int 1 --hp_float 1.5 --hp_bool false --hp_string a"
+		expectedCmd = strings.ReplaceAll(expectedCmd, " ", "+")
+		expectedHPs := []*commonv1.KeyValuePair{
+			{Name: FlyteSageMakerCmdKey, Value: expectedCmd},
+		}
+		assert.Equal(t, expectedHPs[0].Name, trainingJob.Spec.HyperParameters[0].Name)
+
+		expectedSplit := strings.Split(expectedHPs[0].Value, "+")
+		sort.Strings(expectedSplit)
+		gotSplit := strings.Split(trainingJob.Spec.HyperParameters[0].Value, "+")
+		sort.Strings(gotSplit)
+		assert.Equal(t, expectedSplit, gotSplit)
 	})
 }
 

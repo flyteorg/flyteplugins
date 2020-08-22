@@ -272,6 +272,7 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		} else {
 			// Add to hyperparameters
 			v, err := dataHandler.handleLiteral(ctx, inLiteral)
+			fmt.Printf("v = %v", v)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Unable to handle a non-Blob non-Schema input")
 			}
@@ -296,6 +297,8 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		metricDefinitions = append(metricDefinitions,
 			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
 	}
+
+	// We might be able to just remove the following if we don't want to concat all the inputs into one single command
 
 	// If the task is a custom training job, we need to de-templatize the command and args of the container in the taskTemplate
 	// Currently we de-templatize it with the raw output prefix.

@@ -50,6 +50,7 @@ func (d DataHandler) handleBinary(_ context.Context, b *core.Binary) (interface{
 //}
 
 func (d DataHandler) handleGeneric(_ context.Context, b *structpb.Struct) (interface{}, error) {
+	// Maybe we should return a json of the struct
 	return b, nil
 }
 
@@ -107,10 +108,10 @@ func (d DataHandler) handleScalar(ctx context.Context, scalar *core.Scalar) (int
 	//	b := scalar.GetError()
 	//	i, err := d.handleError(ctx, b, toFilePath, writeToFile)
 	//	return i, scalar, err
-	case *core.Scalar_Generic:
-		b := scalar.GetGeneric()
-		i, err := d.handleGeneric(ctx, b)
-		return i, err
+	//case *core.Scalar_Generic:
+	//	b := scalar.GetGeneric()
+	//	i, err := d.handleGeneric(ctx, b)
+	//	return i, err
 	case *core.Scalar_NoneType:
 		return nil, nil
 	default:
