@@ -6,6 +6,11 @@ const (
 )
 
 const (
+	customTrainingJobTaskPluginID = "sagemaker_custom_training"
+	customTrainingJobTaskType     = "sagemaker_custom_training_job_task"
+)
+
+const (
 	hyperparameterTuningJobTaskPluginID = "sagemaker_hyperparameter_tuning"
 	hyperparameterTuningJobTaskType     = "sagemaker_hyperparameter_tuning_job_task"
 )

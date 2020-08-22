@@ -43,7 +43,7 @@ type awsSagemakerPlugin struct {
 }
 
 func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
-	if m.TaskType == trainingJobTaskType {
+	if m.TaskType == trainingJobTaskType || m.TaskType == customTrainingJobTaskType {
 		return &trainingjobv1.TrainingJob{}, nil
 	}
 	if m.TaskType == hyperparameterTuningJobTaskType {
@@ -233,6 +233,135 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		},
 	}
 	logger.Infof(ctx, "Successfully built a training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	return trainingJob, nil
+}
+
+func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+
+	logger.Infof(ctx, "Building a training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the custom field of the task template back into the Hyperparameter Tuning Job struct generated in flyteidl
+	sagemakerTrainingJob := sagemakerSpec.TrainingJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
+	}
+
+	taskInput, err := taskCtx.InputReader().Get(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to fetch task inputs")
+	}
+
+	// Get inputs from literals
+	inputLiterals := taskInput.GetLiterals()
+	dataHandler := DataHandler{}
+	hyperParameters := make([]*commonv1.KeyValuePair, 0)
+	inputChannels := make([]commonv1.Channel, 0)
+	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
+	for inKey, inLiteral := range inputLiterals {
+		if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetBlob() != nil {
+			v, err := dataHandler.handleLiteral(ctx, inLiteral)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Unable to handle a Blob")
+			}
+			inputChannels = append(inputChannels, commonv1.Channel{
+				ChannelName: ToStringPtr(inKey),
+				DataSource: &commonv1.DataSource{
+					S3DataSource: &commonv1.S3DataSource{
+						S3DataType: "S3Prefix",
+						S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
+					},
+				},
+				ContentType: ToStringPtr("*/*"),
+				InputMode:   inputModeString,
+			})
+		} else if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetSchema() != nil {
+			// Add to "input channel"
+			v, err := dataHandler.handleLiteral(ctx, inLiteral)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Unable to handle a Schema input")
+			}
+			inputChannels = append(inputChannels, commonv1.Channel{
+				ChannelName: ToStringPtr(inKey),
+				DataSource: &commonv1.DataSource{
+					S3DataSource: &commonv1.S3DataSource{
+						S3DataType: "S3Prefix",
+						S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
+					},
+				},
+				ContentType: ToStringPtr("*/*"),
+				InputMode:   inputModeString,
+			})
+		} else {
+			// Add to hyperparameters
+			v, err := dataHandler.handleLiteral(ctx, inLiteral)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Unable to handle a non-Blob non-Schema input")
+			}
+			hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: inKey, Value: fmt.Sprintf("%v", v)})
+		}
+	}
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
+	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
+
+	trainingImageStr, err := getTrainingImage(ctx, &sagemakerTrainingJob)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to find the training image")
+	}
+
+	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
+
+	cfg := config.GetSagemakerConfig()
+
+	var metricDefinitions []commonv1.MetricDefinition
+	idlMetricDefinitions := sagemakerTrainingJob.GetAlgorithmSpecification().GetMetricDefinitions()
+	for _, md := range idlMetricDefinitions {
+		metricDefinitions = append(metricDefinitions,
+			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
+	}
+
+	trainingJob := &trainingjobv1.TrainingJob{
+		Spec: trainingjobv1.TrainingJobSpec{
+			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
+				// If the specify a value for this AlgorithmName parameter, the user can't specify a value for TrainingImage.
+				// in this Flyte plugin, we always use the algorithm name and version the user provides via Flytekit to map to an image
+				// so we intentionally leave this field nil
+				AlgorithmName:     nil,
+				TrainingImage:     ToStringPtr(trainingImageStr),
+				TrainingInputMode: commonv1.TrainingInputMode(inputModeString),
+				MetricDefinitions: metricDefinitions,
+			},
+			// The support of spot training will come in a later version
+			EnableManagedSpotTraining: nil,
+			HyperParameters:           hyperParameters,
+			InputDataConfig:           inputChannels,
+			OutputDataConfig: &commonv1.OutputDataConfig{
+				S3OutputPath: ToStringPtr(outputPath),
+			},
+			CheckpointConfig: nil,
+			ResourceConfig: &commonv1.ResourceConfig{
+				InstanceType:   sagemakerTrainingJob.GetTrainingJobResourceConfig().GetInstanceType(),
+				InstanceCount:  ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobResourceConfig().GetInstanceCount()),
+				VolumeSizeInGB: ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobResourceConfig().GetVolumeSizeInGb()),
+				VolumeKmsKeyId: ToStringPtr(""), // TODO: Not yet supported. Need to add to proto and flytekit in the future
+			},
+			RoleArn: ToStringPtr(cfg.RoleArn),
+			Region:  ToStringPtr(cfg.Region),
+			StoppingCondition: &commonv1.StoppingCondition{
+				MaxRuntimeInSeconds:  ToInt64Ptr(86400), // TODO: decide how to coordinate this and Flyte's timeout
+				MaxWaitTimeInSeconds: nil,               // TODO: decide how to coordinate this and Flyte's timeout and queueing budget
+			},
+			TensorBoardOutputConfig: nil,
+			Tags:                    nil,
+			TrainingJobName:         &taskName,
+		},
+	}
+	logger.Infof(ctx, "Successfully built a custom training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 	return trainingJob, nil
 }
 
@@ -431,6 +560,9 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	// Unmarshal the custom field of the task template back into the HyperparameterTuningJob struct generated in flyteidl
 	if m.TaskType == trainingJobTaskType {
 		return m.BuildResourceForTrainingJob(ctx, taskCtx)
+	}
+	if m.TaskType == customTrainingJobTaskType {
+		return m.BuildResourceForCustomTrainingJob(ctx, taskCtx)
 	}
 	if m.TaskType == hyperparameterTuningJobTaskType {
 		return m.BuildResourceForHyperparameterTuningJob(ctx, taskCtx)
@@ -641,7 +773,7 @@ func (m awsSagemakerPlugin) GetTaskPhaseForHyperparameterTuningJob(
 }
 
 func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
-	if m.TaskType == trainingJobTaskType {
+	if m.TaskType == trainingJobTaskType || m.TaskType == customTrainingJobTaskType {
 		job := resource.(*trainingjobv1.TrainingJob)
 		return m.GetTaskPhaseForTrainingJob(ctx, pluginContext, job)
 	} else if m.TaskType == hyperparameterTuningJobTaskType {
@@ -673,6 +805,16 @@ func init() {
 			RegisteredTaskTypes: []pluginsCore.TaskType{trainingJobTaskType},
 			ResourceToWatch:     &trainingjobv1.TrainingJob{},
 			Plugin:              awsSagemakerPlugin{TaskType: trainingJobTaskType},
+			IsDefault:           false,
+		})
+
+	// Registering the plugin for custom TrainingJob
+	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
+		k8s.PluginEntry{
+			ID:                  customTrainingJobTaskPluginID,
+			RegisteredTaskTypes: []pluginsCore.TaskType{customTrainingJobTaskType},
+			ResourceToWatch:     &trainingjobv1.TrainingJob{},
+			Plugin:              awsSagemakerPlugin{TaskType: customTrainingJobTaskType},
 			IsDefault:           false,
 		})
 }
