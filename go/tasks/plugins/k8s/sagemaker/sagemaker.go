@@ -145,34 +145,6 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 		role = cfg.RoleArn
 	}
 
-	if sagemakerTrainingJob.AlgorithmSpecification.AlgorithmName == flyteSageMakerIdl.AlgorithmName_CUSTOM {
-		// If the task is a custom training job, we need to de-templatize the command and args of the container in the taskTemplate
-		// Currently we de-templatize it with the raw output prefix.
-		// An alternative is to fill in both the metadata prefix and the raw output prefix.
-		cmd, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetCommand(), taskCtx.InputReader(), taskCtx.OutputWriter())
-		if err != nil {
-			return nil, err
-		}
-
-		args, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
-		if err != nil {
-			return nil, err
-		}
-
-		// pyflyte-execute+--output-prefix=s3://path+--inputs=s3://input+--extra
-		runnerCmd := strings.Join(append(cmd, args...)[:], CustomTrainingCmdArgSeparator)
-
-		// Extend the runnerCmd with all the static hyperparameters
-
-		for _, pair := range staticHyperparams {
-			runnerCmd += CustomTrainingCmdArgSeparator + "--" + pair.Name + CustomTrainingCmdArgSeparator + pair.Value
-		}
-
-		// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
-		// staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
-		staticHyperparams = []*commonv1.KeyValuePair{{Name: FlyteSageMakerCmdKey, Value: runnerCmd}}
-	}
-
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{
 			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
@@ -324,6 +296,32 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		metricDefinitions = append(metricDefinitions,
 			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
 	}
+
+	// If the task is a custom training job, we need to de-templatize the command and args of the container in the taskTemplate
+	// Currently we de-templatize it with the raw output prefix.
+	// An alternative is to fill in both the metadata prefix and the raw output prefix.
+	cmd, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetCommand(), taskCtx.InputReader(), taskCtx.OutputWriter())
+	if err != nil {
+		return nil, err
+	}
+
+	args, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
+	if err != nil {
+		return nil, err
+	}
+
+	// pyflyte-execute+--output-prefix=s3://path+--inputs=s3://input+--extra
+	runnerCmd := strings.Join(append(cmd, args...)[:], CustomTrainingCmdArgSeparator)
+
+	// Extend the runnerCmd with all the static hyperparameters
+
+	for _, pair := range hyperParameters {
+		runnerCmd += CustomTrainingCmdArgSeparator + "--" + pair.Name + CustomTrainingCmdArgSeparator + pair.Value
+	}
+
+	// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
+	// staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
+	hyperParameters = []*commonv1.KeyValuePair{{Name: FlyteSageMakerCmdKey, Value: runnerCmd}}
 
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{
