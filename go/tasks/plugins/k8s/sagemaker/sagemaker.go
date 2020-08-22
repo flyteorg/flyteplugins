@@ -246,7 +246,7 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	}
 
 	// Unmarshal the custom field of the task template back into the Hyperparameter Tuning Job struct generated in flyteidl
-	sagemakerTrainingJob := sagemakerSpec.TrainingJob{}
+	sagemakerTrainingJob := flyteSageMakerIdl.TrainingJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
@@ -306,10 +306,10 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 			hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: inKey, Value: fmt.Sprintf("%v", v)})
 		}
 	}
-	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String())
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), TrainingJobOutputPathSubDir)
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
-	trainingImageStr, err := getTrainingImage(ctx, &sagemakerTrainingJob)
+	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
