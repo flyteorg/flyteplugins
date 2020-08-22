@@ -519,15 +519,12 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 		assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
-		expectedCmd := "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --a 1 --b 2"
-		expectedCmd = strings.ReplaceAll(expectedCmd, " ", "+")
+
 		expectedHPs := []*commonv1.KeyValuePair{
 			{Name: "a", Value: "1"},
 			{Name: "b", Value: "2"},
 		}
-		// expectedHPs := []*commonv1.KeyValuePair{
-		// 	{Name: "a", Value: "1"}, {Name: "b", Value: "2"},
-		//	{Name: FlyteSageMakerCmdKey, Value: "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --a 1 --b 2"}}
+
 		assert.ElementsMatch(t,
 			func(kvs []*commonv1.KeyValuePair) []commonv1.KeyValuePair {
 				ret := make([]commonv1.KeyValuePair, 0, len(kvs))

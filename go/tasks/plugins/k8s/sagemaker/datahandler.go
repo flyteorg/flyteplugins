@@ -8,7 +8,6 @@ import (
 	"github.com/lyft/flytestdlib/futures"
 
 	"github.com/golang/protobuf/ptypes"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
 	"github.com/pkg/errors"
@@ -37,6 +36,9 @@ func (d DataHandler) handleSchema(ctx context.Context, schema *core.Schema) (int
 
 func (d DataHandler) handleBinary(_ context.Context, b *core.Binary) (interface{}, error) {
 	// maybe we should return a map
+	if b.GetValue() == nil {
+		return nil, errors.Errorf("nil binary value")
+	}
 	v := b.GetValue()
 	return v, nil
 }
@@ -49,10 +51,10 @@ func (d DataHandler) handleBinary(_ context.Context, b *core.Binary) (interface{
 //	return b.Message, nil
 //}
 
-func (d DataHandler) handleGeneric(_ context.Context, b *structpb.Struct) (interface{}, error) {
-	// Maybe we should return a json of the struct
-	return b, nil
-}
+//func (d DataHandler) handleGeneric(_ context.Context, b *structpb.Struct) (interface{}, error) {
+//	// Maybe we should return a json of the struct
+//	return b, nil
+//}
 
 // Returns the primitive value in Golang native format and if the filePath is not empty, then writes the value to the given file path.
 func (d DataHandler) handlePrimitive(primitive *core.Primitive) (interface{}, error) {
