@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
-	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -456,7 +454,7 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 		tjObj := generateMockTrainingJobCustomObj(
 			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
-		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job x", tjObj)
 
 		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate, false))
 		assert.NoError(t, err)
@@ -483,7 +481,7 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 		tjObj := generateMockTrainingJobCustomObj(
 			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
-		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job y", tjObj)
 
 		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, generateMockTrainingJobTaskContext(taskTemplate, false))
 		assert.NoError(t, err)
@@ -575,19 +573,34 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 		assert.Equal(t, "config_role", *trainingJob.Spec.RoleArn)
-		assert.Equal(t, 1, len(trainingJob.Spec.HyperParameters))
-		expectedCmd := "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --hp_int 1 --hp_float 1.5 --hp_bool false --hp_string a"
-		expectedCmd = strings.ReplaceAll(expectedCmd, " ", "+")
+		//assert.Equal(t, 1, len(trainingJob.Spec.HyperParameters))
+		fmt.Printf("%v", trainingJob.Spec.HyperParameters)
 		expectedHPs := []*commonv1.KeyValuePair{
-			{Name: FlyteSageMakerCmdKey, Value: expectedCmd},
+			{Name: FlyteSageMakerCmdKey, Value: "pyflyte-execute"},
+			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_opt1", FlyteSageMakerOptionKeySuffix), Value: "value1"},
+			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_opt2", FlyteSageMakerOptionKeySuffix), Value: "value2"},
+			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_flag", FlyteSageMakerOptionKeySuffix), Value: ""},
 		}
-		assert.Equal(t, expectedHPs[0].Name, trainingJob.Spec.HyperParameters[0].Name)
+		assert.Equal(t, len(expectedHPs), len(trainingJob.Spec.HyperParameters))
+		for i := range expectedHPs {
+			assert.Equal(t, expectedHPs[i].Name, trainingJob.Spec.HyperParameters[i].Name)
+			assert.Equal(t, expectedHPs[i].Value, trainingJob.Spec.HyperParameters[i].Value)
+		}
 
-		expectedSplit := strings.Split(expectedHPs[0].Value, "+")
-		sort.Strings(expectedSplit)
-		gotSplit := strings.Split(trainingJob.Spec.HyperParameters[0].Value, "+")
-		sort.Strings(gotSplit)
-		assert.Equal(t, expectedSplit, gotSplit)
+		//assert.Equal(t, 1, len(trainingJob.Spec.HyperParameters))
+		//expectedCmd := "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --hp_int 1 --hp_float 1.5 --hp_bool false --hp_string a"
+		//expectedCmd = strings.ReplaceAll(expectedCmd, " ", "+")
+		//expectedHPs := []*commonv1.KeyValuePair{
+		//	{Name: FlyteSageMakerCmdKey, Value: expectedCmd},
+		//}
+		//assert.Equal(t, expectedHPs[0].Name, trainingJob.Spec.HyperParameters[0].Name)
+
+		//expectedSplit := strings.Split(expectedHPs[0].Value, "+")
+		//sort.Strings(expectedSplit)
+		//gotSplit := strings.Split(trainingJob.Spec.HyperParameters[0].Value, "+")
+		//sort.Strings(gotSplit)
+		//assert.Equal(t, expectedSplit, gotSplit)
+
 		assert.Equal(t, testImage, *trainingJob.Spec.AlgorithmSpecification.TrainingImage)
 	})
 }

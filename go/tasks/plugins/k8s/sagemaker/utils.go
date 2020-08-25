@@ -46,7 +46,7 @@ func getLatestTrainingImage(versionConfigs []config.VersionConfig) (string, erro
 	return latestImg, nil
 }
 
-func getTrainingJobImage(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, job *flyteSagemakerIdl.TrainingJob) (string, error) {
+func getTrainingJobImage(ctx context.Context, _ pluginsCore.TaskExecutionContext, job *flyteSagemakerIdl.TrainingJob) (string, error) {
 	image, err := getPrebuiltTrainingImage(ctx, job)
 	if err != nil {
 		return "", errors.Wrapf(err, "Failed to get prebuilt image for job [%v]", *job)
@@ -280,4 +280,22 @@ func deleteConflictingStaticHyperparameters(
 		}
 	}
 	return resolvedStaticHPs
+}
+
+func makeHyperparametersKeysValuesFromOptions(ctx context.Context, cmd, keys, values []string) ([]string, []string) {
+	for i := range cmd {
+		if strings.HasPrefix(cmd[i], "--") {
+			option := strings.ReplaceAll(cmd[i][2:], "-", "_")
+			option = fmt.Sprintf("%s%s%s", FlyteSageMakerOptionKeyPrefix, option, FlyteSageMakerOptionKeySuffix)
+			keys = append(keys, option)
+			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
+				values = append(values, cmd[i+1])
+			} else {
+				values = append(values, "")
+			}
+		}
+	}
+	logger.Infof(ctx, "Hyperparameter Keys from Options: %v", keys)
+	logger.Infof(ctx, "Hyperparameter Values from Options: %v", values)
+	return keys, values
 }

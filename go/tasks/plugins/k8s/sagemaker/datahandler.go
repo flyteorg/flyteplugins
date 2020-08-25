@@ -1,5 +1,6 @@
 package sagemaker
 
+/*
 import (
 	"context"
 	"fmt"
@@ -168,3 +169,4 @@ func (d DataHandler) handleLiteral(ctx context.Context, lit *core.Literal) (inte
 //	}
 //	return collection, litCollection, nil
 //}
+*/

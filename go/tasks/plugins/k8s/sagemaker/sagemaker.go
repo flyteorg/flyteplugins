@@ -224,66 +224,68 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
 	}
 
-	taskInput, err := taskCtx.InputReader().Get(ctx)
+	//taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to fetch task inputs")
 	}
 
 	// Get inputs from literals
-	inputLiterals := taskInput.GetLiterals()
-	dataHandler := DataHandler{}
-	hyperParameters := make([]*commonv1.KeyValuePair, 0)
+	//inputLiterals := taskInput.GetLiterals()
+	//dataHandler := DataHandler{}
+
 	inputChannels := make([]commonv1.Channel, 0)
 	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
-	for inKey, inLiteral := range inputLiterals {
-		if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetBlob() != nil {
-			v, err := dataHandler.handleLiteral(ctx, inLiteral)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Unable to handle a Blob")
-			}
-			inputChannels = append(inputChannels, commonv1.Channel{
-				ChannelName: ToStringPtr(inKey),
-				DataSource: &commonv1.DataSource{
-					S3DataSource: &commonv1.S3DataSource{
-						S3DataType: "S3Prefix",
-						S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
-					},
-				},
-				ContentType: ToStringPtr("*/*"),
-				InputMode:   inputModeString,
-			})
-		} else if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetSchema() != nil {
-			// Add to "input channel"
-			v, err := dataHandler.handleLiteral(ctx, inLiteral)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Unable to handle a Schema input")
-			}
-			inputChannels = append(inputChannels, commonv1.Channel{
-				ChannelName: ToStringPtr(inKey),
-				DataSource: &commonv1.DataSource{
-					S3DataSource: &commonv1.S3DataSource{
-						S3DataType: "S3Prefix",
-						S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
-					},
-				},
-				ContentType: ToStringPtr("*/*"),
-				InputMode:   inputModeString,
-			})
-		} else {
-			// Add to hyperparameters
-			v, err := dataHandler.handleLiteral(ctx, inLiteral)
-			fmt.Printf("v = %v", v)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Unable to handle a non-Blob non-Schema input")
-			}
-			hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: inKey, Value: fmt.Sprintf("%v", v)})
-		}
-	}
+
+	//for inKey, inLiteral := range inputLiterals {
+	//	if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetBlob() != nil {
+	//		v, err := dataHandler.handleLiteral(ctx, inLiteral)
+	//		if err != nil {
+	//			return nil, errors.Wrapf(err, "Unable to handle a Blob")
+	//		}
+	//		inputChannels = append(inputChannels, commonv1.Channel{
+	//			ChannelName: ToStringPtr(inKey),
+	//			DataSource: &commonv1.DataSource{
+	//				S3DataSource: &commonv1.S3DataSource{
+	//					S3DataType: "S3Prefix",
+	//					S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
+	//				},
+	//			},
+	//			ContentType: ToStringPtr("*/*"),
+	//			InputMode:   inputModeString,
+	//		})
+	//	} else if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetSchema() != nil {
+	//		// Add to "input channel"
+	//		v, err := dataHandler.handleLiteral(ctx, inLiteral)
+	//		if err != nil {
+	//			return nil, errors.Wrapf(err, "Unable to handle a Schema input")
+	//		}
+	//		inputChannels = append(inputChannels, commonv1.Channel{
+	//			ChannelName: ToStringPtr(inKey),
+	//			DataSource: &commonv1.DataSource{
+	//				S3DataSource: &commonv1.S3DataSource{
+	//					S3DataType: "S3Prefix",
+	//					S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
+	//				},
+	//			},
+	//			ContentType: ToStringPtr("*/*"),
+	//			InputMode:   inputModeString,
+	//		})
+	//	} else {
+	//		// Add to hyperparameters
+	//		v, err := dataHandler.handleLiteral(ctx, inLiteral)
+	//		fmt.Printf("v = %v", v)
+	//		if err != nil {
+	//			return nil, errors.Wrapf(err, "Unable to handle a non-Blob non-Schema input")
+	//		}
+	//		hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: inKey, Value: fmt.Sprintf("%v", v)})
+	//	}
+	//}
+
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), TrainingJobOutputPathSubDir)
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
 	if taskTemplate.GetContainer() == nil {
-		return nil, errors.Errorf("The task template's container is nil")
+		return nil, errors.Errorf("The task template points to a nil container")
 	}
 
 	if taskTemplate.GetContainer().GetImage() == "" {
@@ -291,8 +293,6 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	}
 
 	trainingImageStr := taskTemplate.GetContainer().GetImage()
-
-	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
 
 	cfg := config.GetSagemakerConfig()
 
@@ -308,28 +308,47 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	// If the task is a custom training job, we need to de-templatize the command and args of the container in the taskTemplate
 	// Currently we de-templatize it with the raw output prefix.
 	// An alternative is to fill in both the metadata prefix and the raw output prefix.
-	cmd, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetCommand(), taskCtx.InputReader(), taskCtx.OutputWriter())
+
+	//templateCmd := taskTemplate.GetContainer().GetCommand()
+	templateArgs := taskTemplate.GetContainer().GetArgs()
+
+	hyperparameterKeys := make([]string, 0)
+	hyperparameterValues := make([]string, 0)
+
+	hyperparameterKeys = append(hyperparameterKeys, FlyteSageMakerCmdKey)
+	hyperparameterValues = append(hyperparameterValues, templateArgs[0])
+
+	hyperparameterKeys, hyperparameterValues = makeHyperparametersKeysValuesFromOptions(ctx, templateArgs[1:], hyperparameterKeys, hyperparameterValues)
+
+	hyperparameterValues, err = utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
 	}
 
-	args, err := utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, taskTemplate.GetContainer().GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
-	if err != nil {
-		return nil, err
+	if len(hyperparameterKeys) != len(hyperparameterValues) {
+		return nil, errors.Errorf("Error(s) happened when converting cmd and args to hyperparameters")
 	}
 
-	// pyflyte-execute+--output-prefix=s3://path+--inputs=s3://input+--extra
-	runnerCmd := strings.Join(append(cmd, args...)[:], CustomTrainingCmdArgSeparator)
-
-	// Extend the runnerCmd with all the static hyperparameters
-
-	for _, pair := range hyperParameters {
-		runnerCmd += CustomTrainingCmdArgSeparator + "--" + pair.Name + CustomTrainingCmdArgSeparator + pair.Value
+	hyperParameters := make([]*commonv1.KeyValuePair, 0, len(hyperparameterKeys))
+	for i := range hyperparameterKeys {
+		hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: hyperparameterKeys[i], Value: hyperparameterValues[i]})
 	}
 
-	// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
-	// staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
-	hyperParameters = []*commonv1.KeyValuePair{{Name: FlyteSageMakerCmdKey, Value: runnerCmd}}
+	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
+	/*
+		// pyflyte-execute+--output-prefix=s3://path+--inputs=s3://input+--extra
+		runnerCmd := strings.Join(append(cmd, args...)[:], CustomTrainingCmdArgSeparator)
+
+		// Extend the runnerCmd with all the static hyperparameters
+
+		for _, pair := range hyperParameters {
+			runnerCmd += CustomTrainingCmdArgSeparator + "--" + pair.Name + CustomTrainingCmdArgSeparator + pair.Value
+		}
+
+		// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
+		// staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
+		hyperParameters = []*commonv1.KeyValuePair{{Name: FlyteSageMakerCmdKey, Value: runnerCmd}}
+	*/
 
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{

@@ -20,7 +20,9 @@ const (
 )
 
 const (
-	FlyteSageMakerCmdKey string = "__FLYTE_SAGEMAKER_CMD__"
+	FlyteSageMakerCmdKey          string = "__FLYTE_SAGEMAKER_CMD__"
+	FlyteSageMakerOptionKeyPrefix string = "__FLYTE_"
+	FlyteSageMakerOptionKeySuffix string = "__"
 )
 
 const (
