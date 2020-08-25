@@ -282,10 +282,15 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), TrainingJobOutputPathSubDir)
 	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
-	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to find the training image")
+	if taskTemplate.GetContainer() == nil {
+		return nil, errors.Errorf("The task template's container is nil")
 	}
+
+	if taskTemplate.GetContainer().GetImage() == "" {
+		return nil, errors.Errorf("Invalid image of the container")
+	}
+
+	trainingImageStr := taskTemplate.GetContainer().GetImage()
 
 	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
 

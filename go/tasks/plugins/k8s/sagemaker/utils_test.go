@@ -326,37 +326,6 @@ func Test_getTrainingJobImage(t *testing.T) {
 		wantErr bool
 	}
 
-	expectedResult := Result{
-		"custom training job should get image from task template", testImage, false,
-	}
-	t.Run(expectedResult.name, func(t *testing.T) {
-		tjObj := generateMockTrainingJobCustomObj(
-			flyteSagemakerIdl.InputMode_FILE,
-			flyteSagemakerIdl.AlgorithmName_CUSTOM,
-			"0.90",
-			[]*flyteSagemakerIdl.MetricDefinition{},
-			flyteSagemakerIdl.InputContentType_TEXT_CSV,
-			1,
-			"ml.m4.xlarge",
-			25)
-		taskTemplate := generateMockTrainingJobTaskTemplate("training job", tjObj)
-		taskCtx := generateMockTrainingJobTaskContext(taskTemplate, false)
-		sagemakerTrainingJob := flyteSagemakerIdl.TrainingJob{}
-		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
-		if err != nil {
-			panic(err)
-		}
-
-		got, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
-		if (err != nil) != expectedResult.wantErr {
-			t.Errorf("getTrainingJobImage() error = %v, wantErr %v", err, expectedResult.wantErr)
-			return
-		}
-		if got != expectedResult.want {
-			t.Errorf("getTrainingJobImage() got = %v, want %v", got, expectedResult.want)
-		}
-	})
-
 	configAccessor := viper.NewAccessor(stdConfig.Options{
 		StrictMode:  true,
 		SearchPaths: []string{"testdata/config.yaml"},
@@ -365,7 +334,7 @@ func Test_getTrainingJobImage(t *testing.T) {
 	err := configAccessor.UpdateConfig(context.TODO())
 	assert.NoError(t, err)
 
-	expectedResult = Result{
+	expectedResult := Result{
 		"Should retrieve image url from config for built-in algorithms", "XGBOOST_us-west-2_image-0.90", false,
 	}
 	t.Run(expectedResult.name, func(t *testing.T) {

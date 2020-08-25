@@ -46,19 +46,7 @@ func getLatestTrainingImage(versionConfigs []config.VersionConfig) (string, erro
 	return latestImg, nil
 }
 
-func getTrainingJobImage(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, job *flyteSagemakerIdl.TrainingJob) (string, error) {
-	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
-	if err != nil {
-		return "", err
-	}
-
-	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg == flyteSagemakerIdl.AlgorithmName_CUSTOM {
-		image := taskTemplate.GetContainer().GetImage()
-		if len(image) == 0 {
-			return "", errors.Errorf("Empty image specified in the task template")
-		}
-		return image, nil
-	}
+func getTrainingJobImage(ctx context.Context, _ pluginsCore.TaskExecutionContext, job *flyteSagemakerIdl.TrainingJob) (string, error) {
 	image, err := getPrebuiltTrainingImage(ctx, job)
 	if err != nil {
 		return "", errors.Wrapf(err, "Failed to get prebuilt image for job [%v]", *job)
