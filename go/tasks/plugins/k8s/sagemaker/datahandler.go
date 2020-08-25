@@ -52,7 +52,7 @@ func (d DataHandler) handleBinary(_ context.Context, b *core.Binary) (interface{
 //}
 
 //func (d DataHandler) handleGeneric(_ context.Context, b *structpb.Struct) (interface{}, error) {
-//	// Maybe we should return a json of the struct
+//	// TODO: Maybe we should return a json of the struct
 //	return b, nil
 //}
 

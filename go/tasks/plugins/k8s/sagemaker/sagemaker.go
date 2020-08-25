@@ -580,6 +580,12 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 		jobName = *trainingJob.Spec.TrainingJobName
 		jobTypeInURL = "jobs"
 		sagemakerLinkName = "SageMaker Training Job"
+	} else if m.TaskType == customTrainingJobTaskType {
+		trainingJob := job.(*trainingjobv1.TrainingJob)
+		jobRegion = *trainingJob.Spec.Region
+		jobName = *trainingJob.Spec.TrainingJobName
+		jobTypeInURL = "jobs"
+		sagemakerLinkName = "SageMaker Custom Training Job"
 	} else if m.TaskType == hyperparameterTuningJobTaskType {
 		trainingJob := job.(*hpojobv1.HyperparameterTuningJob)
 		jobRegion = *trainingJob.Spec.Region
