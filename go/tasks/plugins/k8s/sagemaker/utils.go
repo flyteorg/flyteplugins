@@ -46,7 +46,7 @@ func getLatestTrainingImage(versionConfigs []config.VersionConfig) (string, erro
 	return latestImg, nil
 }
 
-func getTrainingJobImage(ctx context.Context, _ pluginsCore.TaskExecutionContext, job *flyteSagemakerIdl.TrainingJob) (string, error) {
+func getTrainingJobImage(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, job *flyteSagemakerIdl.TrainingJob) (string, error) {
 	image, err := getPrebuiltTrainingImage(ctx, job)
 	if err != nil {
 		return "", errors.Wrapf(err, "Failed to get prebuilt image for job [%v]", *job)

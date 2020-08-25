@@ -508,7 +508,7 @@ func Test_awsSagemakerPlugin_BuildResourceForTrainingJob(t *testing.T) {
 		awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
 
 		tjObj := generateMockTrainingJobCustomObj(
-			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 
@@ -588,6 +588,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		gotSplit := strings.Split(trainingJob.Spec.HyperParameters[0].Value, "+")
 		sort.Strings(gotSplit)
 		assert.Equal(t, expectedSplit, gotSplit)
+		assert.Equal(t, testImage, *trainingJob.Spec.AlgorithmSpecification.TrainingImage)
 	})
 }
 
@@ -643,7 +644,7 @@ func Test_awsSagemakerPlugin_getEventInfoForJob(t *testing.T) {
 		awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
 
 		tjObj := generateMockTrainingJobCustomObj(
-			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
 			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
 		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 		taskCtx := generateMockTrainingJobTaskContext(taskTemplate, false)
@@ -774,7 +775,7 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForTrainingJob(t *testing.T) {
 	awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: trainingJobTaskType}
 
 	tjObj := generateMockTrainingJobCustomObj(
-		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "0.90", []*sagemakerIdl.MetricDefinition{},
+		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
 		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
 	taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
 	taskCtx := generateMockTrainingJobTaskContext(taskTemplate, false)
