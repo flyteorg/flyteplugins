@@ -282,20 +282,36 @@ func deleteConflictingStaticHyperparameters(
 	return resolvedStaticHPs
 }
 
-func makeHyperparametersKeysValuesFromOptions(ctx context.Context, cmd, keys, values []string) ([]string, []string) {
-	for i := range cmd {
-		if strings.HasPrefix(cmd[i], "--") {
-			option := strings.ReplaceAll(cmd[i][2:], "-", "_")
+func makeHyperparametersKeysValuesFromArgs(ctx context.Context, args []string) ([]string, []string) {
+	var keys, values []string
+	var argsCmd []string
+	var optionsStart int
+	logger.Debugf(ctx, "ARGS: %v", args)
+	for optionsStart = 0; optionsStart < len(args); optionsStart++ {
+		if !strings.HasPrefix(args[optionsStart], "--") {
+			argsCmd = append(argsCmd, args[optionsStart])
+		} else {
+			break
+		}
+	}
+	logger.Debugf(ctx, "CMD: %v", strings.Join(argsCmd, "+"))
+	keys = append(keys, FlyteSageMakerCmdKey)
+	values = append(values, strings.Join(argsCmd, "+"))
+
+	for i := optionsStart; i < len(args); i++ {
+		logger.Infof(ctx, "Processing args %v", args[i])
+		if strings.HasPrefix(args[i], "--") {
+			option := strings.ReplaceAll(args[i][2:], "-", "_")
 			option = fmt.Sprintf("%s%s%s", FlyteSageMakerOptionKeyPrefix, option, FlyteSageMakerOptionKeySuffix)
 			keys = append(keys, option)
-			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
-				values = append(values, cmd[i+1])
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "--") {
+				values = append(values, args[i+1])
 			} else {
 				values = append(values, "")
 			}
 		}
 	}
-	logger.Infof(ctx, "Hyperparameter Keys from Options: %v", keys)
-	logger.Infof(ctx, "Hyperparameter Values from Options: %v", values)
+	logger.Infof(ctx, "KEYs: %v", keys)
+	logger.Infof(ctx, "Values: %v", values)
 	return keys, values
 }

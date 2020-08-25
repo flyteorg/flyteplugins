@@ -315,10 +315,7 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	hyperparameterKeys := make([]string, 0)
 	hyperparameterValues := make([]string, 0)
 
-	hyperparameterKeys = append(hyperparameterKeys, FlyteSageMakerCmdKey)
-	hyperparameterValues = append(hyperparameterValues, templateArgs[0])
-
-	hyperparameterKeys, hyperparameterValues = makeHyperparametersKeysValuesFromOptions(ctx, templateArgs[1:], hyperparameterKeys, hyperparameterValues)
+	hyperparameterKeys, hyperparameterValues = makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
 
 	hyperparameterValues, err = utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {

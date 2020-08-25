@@ -52,6 +52,7 @@ var (
 	}
 
 	testArgs = []string{
+		"service_venv",
 		"pyflyte-execute",
 		"--test-opt1",
 		"value1",
@@ -576,7 +577,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		//assert.Equal(t, 1, len(trainingJob.Spec.HyperParameters))
 		fmt.Printf("%v", trainingJob.Spec.HyperParameters)
 		expectedHPs := []*commonv1.KeyValuePair{
-			{Name: FlyteSageMakerCmdKey, Value: "pyflyte-execute"},
+			{Name: FlyteSageMakerCmdKey, Value: "service_venv+pyflyte-execute"},
 			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_opt1", FlyteSageMakerOptionKeySuffix), Value: "value1"},
 			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_opt2", FlyteSageMakerOptionKeySuffix), Value: "value2"},
 			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_flag", FlyteSageMakerOptionKeySuffix), Value: ""},
