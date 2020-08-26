@@ -182,6 +182,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"${{input}}",
 			"{{ .OutputPrefix }}",
+			"--switch {{ .rawOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -189,6 +190,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"${{input}}",
 			"output/blah",
+			"--switch s3://custom-bucket",
 		}, actual)
 	})
 
@@ -209,6 +211,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"{{ .OutputPrefix }}",
+			"{{ $RawOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -216,6 +219,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"--someArg [a,b]",
 			"output/blah",
+			"s3://custom-bucket",
 		}, actual)
 	})
 
@@ -230,6 +234,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.date }}`,
 			"{{ .OutputPrefix }}",
+			"{{ .rawOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -237,6 +242,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"--someArg 1900-01-01T01:01:01.000000001Z",
 			"output/blah",
+			"s3://custom-bucket",
 		}, actual)
 	})
 
@@ -251,6 +257,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"{{ .OutputPrefix }}",
+			"{{ .wrongOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -258,6 +265,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"--someArg [[a,b],[1,2]]",
 			"output/blah",
+			"{{ .wrongOutputDataPrefix }}",
 		}, actual)
 	})
 
@@ -269,6 +277,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"{{ .OutputPrefix }}",
+			"--raw-data-output-prefix {{ .rawOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -276,6 +285,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"output/blah",
+			"--raw-data-output-prefix s3://custom-bucket",
 		}, actual)
 	})
 
