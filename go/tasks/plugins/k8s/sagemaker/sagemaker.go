@@ -744,6 +744,65 @@ func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
 
+func (m awsSagemakerPlugin) GetTaskPhaseForCustomTrainingJob(
+	ctx context.Context, pluginContext k8s.PluginContext, trainingJob *trainingjobv1.TrainingJob) (pluginsCore.PhaseInfo, error) {
+
+	logger.Infof(ctx, "Getting task phase for sagemaker training job [%v]", trainingJob.Status.SageMakerTrainingJobName)
+	info, err := m.getEventInfoForJob(ctx, trainingJob)
+	if err != nil {
+		return pluginsCore.PhaseInfoUndefined, err
+	}
+
+	occurredAt := time.Now()
+
+	switch trainingJob.Status.TrainingJobStatus {
+	case trainingjobController.ReconcilingTrainingJobStatus:
+		logger.Errorf(ctx, "Job stuck in reconciling status, assuming retryable failure [%s]", trainingJob.Status.Additional)
+		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call errors
+		execError := &flyteIdlCore.ExecutionError{
+			Message: trainingJob.Status.Additional,
+			Kind:    flyteIdlCore.ExecutionError_USER,
+			Code:    trainingjobController.ReconcilingTrainingJobStatus,
+		}
+		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, execError, info), nil
+	case sagemaker.TrainingJobStatusFailed:
+		execError := &flyteIdlCore.ExecutionError{
+			Message: trainingJob.Status.Additional,
+			Kind:    flyteIdlCore.ExecutionError_USER,
+			Code:    sagemaker.TrainingJobStatusFailed,
+		}
+		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
+	case sagemaker.TrainingJobStatusStopped:
+		reason := fmt.Sprintf("Training Job Stopped")
+		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
+	case sagemaker.TrainingJobStatusCompleted:
+		// Now that it is a success we will set the outputs as expected by the task
+
+		// We have specified an output path in the CRD, and we know SageMaker will automatically upload the
+		// model tarball to s3://<specified-output-path>/<training-job-name>/output/model.tar.gz
+		// The rest of the output will be uploaded by Flytekit
+
+		// Therefore, here we create a output literal map, where we fill in the above path to the URI field of the
+		// blob output, which will later be written out by the OutputWriter to the output.pb remotely on S3
+		// outputLiteralMap, err := getOutputLiteralMapFromTaskInterface(ctx, pluginContext.TaskReader(),
+		// 	createModelOutputPath(trainingJob, pluginContext.OutputWriter().GetRawOutputPrefix().String(), trainingJob.Status.SageMakerTrainingJobName))
+		//if err != nil {
+		//	logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
+		//	return pluginsCore.PhaseInfoUndefined, errors.Wrapf(err, "failed to create outputs for the task")
+		//}
+		//// Instantiate a output reader with the literal map, and write the output to the remote location referred to by the OutputWriter
+		//if err := pluginContext.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(outputLiteralMap, nil)); err != nil {
+		//	return pluginsCore.PhaseInfoUndefined, err
+		//}
+		//logger.Debugf(ctx, "Successfully produced and returned outputs")
+		return pluginsCore.PhaseInfoSuccess(info), nil
+	case "":
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
+	}
+
+	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
+}
+
 func (m awsSagemakerPlugin) GetTaskPhaseForHyperparameterTuningJob(
 	ctx context.Context, pluginContext k8s.PluginContext, hpoJob *hpojobv1.HyperparameterTuningJob) (pluginsCore.PhaseInfo, error) {
 
@@ -801,9 +860,12 @@ func (m awsSagemakerPlugin) GetTaskPhaseForHyperparameterTuningJob(
 }
 
 func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
-	if m.TaskType == trainingJobTaskType || m.TaskType == customTrainingJobTaskType {
+	if m.TaskType == trainingJobTaskType {
 		job := resource.(*trainingjobv1.TrainingJob)
 		return m.GetTaskPhaseForTrainingJob(ctx, pluginContext, job)
+	} else if m.TaskType == customTrainingJobTaskType {
+		job := resource.(*trainingjobv1.TrainingJob)
+		return m.GetTaskPhaseForCustomTrainingJob(ctx, pluginContext, job)
 	} else if m.TaskType == hyperparameterTuningJobTaskType {
 		job := resource.(*hpojobv1.HyperparameterTuningJob)
 		return m.GetTaskPhaseForHyperparameterTuningJob(ctx, pluginContext, job)
