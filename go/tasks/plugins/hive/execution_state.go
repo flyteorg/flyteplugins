@@ -145,7 +145,7 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 }
 
 func composeResourceNamespaceWithClusterPrimaryLabel(ctx context.Context, tCtx core.TaskExecutionContext) (core.ResourceNamespace, error) {
-	_, clusterLabelOverride, _, _, err := GetQueryInfo(ctx, tCtx)
+	_, clusterLabelOverride, _, _, _,  err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return "", err
 	}
@@ -230,26 +230,29 @@ func validateQuboleHiveJob(hiveJob plugins.QuboleHiveJob) error {
 // This function is the link between the output written by the SDK, and the execution side. It extracts the query
 // out of the task template.
 func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
-	query string, cluster string, tags []string, timeoutSec uint32, err error) {
+	query string, cluster string, tags []string, timeoutSec uint32, task_name string, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
+
+
 
 	hiveJob := plugins.QuboleHiveJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &hiveJob)
 	if err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	if err := validateQuboleHiveJob(hiveJob); err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	query = hiveJob.Query.GetQuery()
 	cluster = hiveJob.ClusterLabel
 	timeoutSec = hiveJob.Query.TimeoutSec
+	task_name = taskTemplate.Id.Name
 	tags = hiveJob.Tags
 	tags = append(tags, fmt.Sprintf("ns:%s", tCtx.TaskExecutionMetadata().GetNamespace()))
 	for k, v := range tCtx.TaskExecutionMetadata().GetLabels() {
@@ -334,15 +337,18 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
 	}
 
-	query, clusterLabelOverride, tags, timeoutSec, err := GetQueryInfo(ctx, tCtx)
+	query, clusterLabelOverride, tags, timeoutSec, taskName,  err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return currentState, err
 	}
 
 	clusterPrimaryLabel := getClusterPrimaryLabel(ctx, tCtx, clusterLabelOverride)
 
+	commandMetadata := client.CommandMetadata{TaskName: taskName,
+		Domain: tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId.Domain}
+
 	cmdDetails, err := quboleClient.ExecuteHiveCommand(ctx, query, timeoutSec,
-		clusterPrimaryLabel, apiKey, tags)
+		clusterPrimaryLabel, apiKey, tags, commandMetadata)
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
 		currentState.CreationFailureCount = currentState.CreationFailureCount + 1
