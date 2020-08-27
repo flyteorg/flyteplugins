@@ -12,7 +12,7 @@ func TestNewOutputSandbox(t *testing.T) {
 	assert.Equal(t, NewRawOutputPaths(context.TODO(), "x").GetRawOutputPrefix(), storage.DataReference("x"))
 }
 
-func TestNewRandomPrefixShardedOutputSandbox(t *testing.T) {
+func TestNewShardedDeterministicRawOutputPath(t *testing.T) {
 	ctx := context.TODO()
 
 	t.Run("success-path", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestNewRandomPrefixShardedOutputSandbox(t *testing.T) {
 	})
 }
 
-func TestNewShardedOutputSandbox(t *testing.T) {
+func TestNewShardedRawOutputPath(t *testing.T) {
 	ctx := context.TODO()
 	t.Run("", func(t *testing.T) {
 		ss := NewConstantShardSelector([]string{"x"})
@@ -42,5 +42,21 @@ func TestNewShardedOutputSandbox(t *testing.T) {
 		ss := NewConstantShardSelector([]string{"s3:// abc"})
 		sd, err := NewShardedRawOutputPath(ctx, ss, "s3://bucket", "m", storage.URLPathConstructor{})
 		assert.Error(t, err, "%s", sd)
+	})
+}
+
+func TestNewDeterministicUniqueRawOutputPath(t *testing.T) {
+	ctx := context.TODO()
+
+	t.Run("success-path", func(t *testing.T) {
+		sd, err := NewDeterministicUniqueRawOutputPath(ctx, "s3://bucket", "m", storage.URLPathConstructor{})
+		assert.NoError(t, err)
+		assert.Equal(t, storage.DataReference("s3://bucket/6b0d31c0d563223024da45691584643ac78c96e8"), sd.GetRawOutputPrefix())
+	})
+
+	t.Run("error-not-possible", func(t *testing.T) {
+		sd, err := NewDeterministicUniqueRawOutputPath(ctx, "bucket", "m", storage.URLPathConstructor{})
+		assert.NoError(t, err)
+		assert.Equal(t, "/bucket/6b0d31c0d563223024da45691584643ac78c96e8", sd.GetRawOutputPrefix().String())
 	})
 }
