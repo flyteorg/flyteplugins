@@ -328,7 +328,7 @@ func TestKickOffQuery(t *testing.T) {
 	}
 	mockQubole := &quboleMocks.QuboleClient{}
 	mockQubole.OnExecuteHiveCommandMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything,
-		mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
+		mock.Anything, mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		quboleCalled = true
 	}).Return(quboleCommandDetails, nil)
 
@@ -337,6 +337,7 @@ func TestKickOffQuery(t *testing.T) {
 	mockCache.OnGetOrCreate(mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		getOrCreateCalled = true
 	}).Return(ExecutionStateCacheItem{}, nil)
+
 
 	state := ExecutionState{}
 	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, mockCache, config.GetQuboleConfig())

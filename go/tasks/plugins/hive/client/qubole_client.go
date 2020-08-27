@@ -129,7 +129,8 @@ func closeBody(ctx context.Context, response *http.Response) {
 }
 
 // Helper method to execute the requests
-func (q *quboleClient) executeRequest(ctx context.Context, method string, u *url.URL, body *RequestBody, accountKey string) (*http.Response, error) {
+func (q *quboleClient) executeRequest(ctx context.Context, method string, u *url.URL,
+	body *RequestBody, accountKey string) (*http.Response, error) {
 	var req *http.Request
 	var err error
 
@@ -164,6 +165,7 @@ func (q *quboleClient) executeRequest(ctx context.Context, method string, u *url
 	param: string commandStr: the query to execute
 	param: uint32 timeoutVal: timeout for the query to execute in seconds
 	param: string ClusterLabel: label for cluster on which to execute the Hive Command.
+	param: CommandMetadata _: additional labels for the command
 	return: *int64: CommandID for the command executed
 	return: error: error in-case of a failure
 */
@@ -173,7 +175,8 @@ func (q *quboleClient) ExecuteHiveCommand(
 	timeoutVal uint32,
 	clusterPrimaryLabel string,
 	accountKey string,
-	tags []string) (*QuboleCommandDetails, error) {
+	tags []string,
+	_ CommandMetadata) (*QuboleCommandDetails, error) {
 
 	requestBody := RequestBody{
 		CommandType:  hiveCommandType,
