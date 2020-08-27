@@ -68,8 +68,8 @@ func TestNewTaskIDRawOutputPath(t *testing.T) {
 			NodeId: "n1",
 			ExecutionId: &core2.WorkflowExecutionIdentifier{
 				Project: "project",
-				Domain: "domain",
-				Name: "exec",
+				Domain:  "domain",
+				Name:    "exec",
 			},
 		},
 		RetryAttempt: 0,
