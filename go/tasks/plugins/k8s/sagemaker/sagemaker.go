@@ -316,7 +316,7 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 
 	hyperparameterKeys, hyperparameterValues := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
 
-	hyperparameterValues, err = utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
+	hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
 	}
