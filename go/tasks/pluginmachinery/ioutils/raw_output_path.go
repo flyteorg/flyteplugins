@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/sha1" // #nosec
 	"encoding/hex"
+	"strconv"
 
+	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
@@ -75,6 +77,17 @@ func NewDeterministicUniqueRawOutputPath(ctx context.Context, rawOutputPrefix, o
 		return nil, err
 	}
 	path, err := store.ConstructReference(ctx, rawOutputPrefix, hex.EncodeToString(m.Sum(nil)))
+	if err != nil {
+		return nil, err
+	}
+	return precomputedRawOutputPaths{
+		path: path,
+	}, nil
+}
+
+// Generates a RawOutput Path that looks like the TaskExecutionID and can be easily cross referenced with Flyte generated TaskExecution ID
+func NewTaskIDRawOutputPath(ctx context.Context, rawOutputPrefix storage.DataReference, taskID *core2.TaskExecutionIdentifier, store storage.ReferenceConstructor) (io.RawOutputPaths, error) {
+	path, err := store.ConstructReference(ctx, rawOutputPrefix, taskID.GetNodeExecutionId().GetExecutionId().GetProject(), taskID.GetNodeExecutionId().GetExecutionId().GetDomain(), taskID.GetNodeExecutionId().GetExecutionId().GetName(), taskID.GetNodeExecutionId().GetNodeId(), strconv.Itoa(int(taskID.GetRetryAttempt())), taskID.GetTaskId().GetName())
 	if err != nil {
 		return nil, err
 	}
