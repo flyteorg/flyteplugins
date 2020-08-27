@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lyft/flytestdlib/storage"
+
 	awsUtils "github.com/lyft/flyteplugins/go/tasks/plugins/awsutils"
 
 	hpojobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/hyperparametertuningjob"
@@ -312,10 +314,7 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	//templateCmd := taskTemplate.GetContainer().GetCommand()
 	templateArgs := taskTemplate.GetContainer().GetArgs()
 
-	hyperparameterKeys := make([]string, 0)
-	hyperparameterValues := make([]string, 0)
-
-	hyperparameterKeys, hyperparameterValues = makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
+	hyperparameterKeys, hyperparameterValues := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
 
 	hyperparameterValues, err = utils.ReplaceTemplateCommandArgsWithRawOutput(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
@@ -784,17 +783,27 @@ func (m awsSagemakerPlugin) GetTaskPhaseForCustomTrainingJob(
 
 		// Therefore, here we create a output literal map, where we fill in the above path to the URI field of the
 		// blob output, which will later be written out by the OutputWriter to the output.pb remotely on S3
-		// outputLiteralMap, err := getOutputLiteralMapFromTaskInterface(ctx, pluginContext.TaskReader(),
-		// 	createModelOutputPath(trainingJob, pluginContext.OutputWriter().GetRawOutputPrefix().String(), trainingJob.Status.SageMakerTrainingJobName))
+
+		urlPathConstructor := storage.URLPathConstructor{}
+		outputPaths := NewJobOutputPaths(ctx,
+			urlPathConstructor,
+			pluginContext.OutputWriter().GetOutputPrefixPath(),
+			*trainingJob.Spec.TrainingJobName)
+		outputReader := ioutils.NewRemoteFileOutputReader(ctx, pluginContext.DataStore(), outputPaths, pluginContext.MaxDatasetSizeBytes())
+
+		//outputReader := ioutils.NewRemoteFileOutputReader()
+		//ioutils.NewRemoteFileInputReader(outputLiteralMap, nil)
+		//outputLiteralMap, err := getOutputLiteralMapFromTaskInterface(ctx, pluginContext.TaskReader(),
+		//	createModelOutputPath(trainingJob, pluginContext.OutputWriter().GetRawOutputPrefix().String(), trainingJob.Status.SageMakerTrainingJobName))
 		//if err != nil {
 		//	logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
 		//	return pluginsCore.PhaseInfoUndefined, errors.Wrapf(err, "failed to create outputs for the task")
 		//}
-		//// Instantiate a output reader with the literal map, and write the output to the remote location referred to by the OutputWriter
-		//if err := pluginContext.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(outputLiteralMap, nil)); err != nil {
-		//	return pluginsCore.PhaseInfoUndefined, err
-		//}
-		//logger.Debugf(ctx, "Successfully produced and returned outputs")
+		// Instantiate a output reader with the literal map, and write the output to the remote location referred to by the OutputWriter
+		if err := pluginContext.OutputWriter().Put(ctx, outputReader); err != nil {
+			return pluginsCore.PhaseInfoUndefined, err
+		}
+		logger.Debugf(ctx, "Successfully produced and returned outputs")
 		return pluginsCore.PhaseInfoSuccess(info), nil
 	case "":
 		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
