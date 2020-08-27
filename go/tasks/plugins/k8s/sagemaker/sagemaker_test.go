@@ -594,9 +594,10 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		fmt.Printf("%v", trainingJob.Spec.HyperParameters)
 		expectedHPs := []*commonv1.KeyValuePair{
 			{Name: FlyteSageMakerCmdKey, Value: "service_venv+pyflyte-execute"},
-			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_opt1", FlyteSageMakerOptionKeySuffix), Value: "value1"},
-			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_opt2", FlyteSageMakerOptionKeySuffix), Value: "value2"},
-			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerOptionKeyPrefix, "test_flag", FlyteSageMakerOptionKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerCmdArgKeyPrefix, "test_opt1", FlyteSageMakerKeySuffix), Value: "value1"},
+			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerCmdArgKeyPrefix, "test_opt2", FlyteSageMakerKeySuffix), Value: "value2"},
+			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerCmdArgKeyPrefix, "test_flag", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%v%v%v", FlyteSageMakerEnvVarKeyPrefix, "Env_Var", FlyteSageMakerKeySuffix), Value: "Env_Val"},
 		}
 		assert.Equal(t, len(expectedHPs), len(trainingJob.Spec.HyperParameters))
 		for i := range expectedHPs {

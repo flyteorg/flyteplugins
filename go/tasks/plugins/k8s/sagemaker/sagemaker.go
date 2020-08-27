@@ -330,6 +330,11 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: hyperparameterKeys[i], Value: hyperparameterValues[i]})
 	}
 
+	hyperParameters, err = injectTaskTemplateEnvVarToHyperparameters(ctx, taskTemplate, hyperParameters)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to inject the task template's container env vars to the hyperparameter list")
+	}
+
 	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
 	/*
 		// pyflyte-execute+--output-prefix=s3://path+--inputs=s3://input+--extra

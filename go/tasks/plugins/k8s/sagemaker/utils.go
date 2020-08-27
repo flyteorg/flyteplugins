@@ -15,6 +15,7 @@ import (
 	awssagemaker "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/controllertest"
 	"github.com/golang/protobuf/proto"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	flyteSagemakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 	"github.com/pkg/errors"
@@ -302,7 +303,7 @@ func makeHyperparametersKeysValuesFromArgs(ctx context.Context, args []string) (
 		logger.Infof(ctx, "Processing args %v", args[i])
 		if strings.HasPrefix(args[i], "--") {
 			option := strings.ReplaceAll(args[i][2:], "-", "_")
-			option = fmt.Sprintf("%s%s%s", FlyteSageMakerOptionKeyPrefix, option, FlyteSageMakerOptionKeySuffix)
+			option = fmt.Sprintf("%s%s%s", FlyteSageMakerCmdArgKeyPrefix, option, FlyteSageMakerKeySuffix)
 			keys = append(keys, option)
 			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "--") {
 				values = append(values, args[i+1])
@@ -314,4 +315,24 @@ func makeHyperparametersKeysValuesFromArgs(ctx context.Context, args []string) (
 	logger.Infof(ctx, "KEYs: %v", keys)
 	logger.Infof(ctx, "Values: %v", values)
 	return keys, values
+}
+
+func injectTaskTemplateEnvVarToHyperparameters(ctx context.Context, taskTemplate *flyteIdlCore.TaskTemplate, hps []*commonv1.KeyValuePair) ([]*commonv1.KeyValuePair, error) {
+	if taskTemplate == nil || taskTemplate.GetContainer() == nil {
+		return hps, errors.Errorf("The taskTemplate is nil or the container is nil")
+	}
+
+	if hps == nil {
+		return nil, errors.Errorf("A nil slice of hyperparameters is passed in")
+	}
+
+	for _, ev := range taskTemplate.GetContainer().GetEnv() {
+		hpKey := fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, ev.Key, FlyteSageMakerKeySuffix)
+		logger.Infof(ctx, "Injecting env var {%v: %v} into the hyperparameter list", hpKey, ev.Value)
+		hps = append(hps, &commonv1.KeyValuePair{
+			Name:  hpKey,
+			Value: ev.Value})
+	}
+
+	return hps, nil
 }
