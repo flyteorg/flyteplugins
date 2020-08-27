@@ -117,7 +117,8 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetRawOutputPrefix().String(), TrainingJobOutputPathSubDir)
 
-	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
+	// taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
+	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
 	if err != nil {
@@ -203,7 +204,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			},
 			TensorBoardOutputConfig: nil,
 			Tags:                    nil,
-			TrainingJobName:         &taskName,
+			TrainingJobName:         &jobName,
 		},
 	}
 	logger.Infof(ctx, "Successfully built a training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
@@ -282,9 +283,10 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	//		hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: inKey, Value: fmt.Sprintf("%v", v)})
 	//	}
 	//}
+	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), jobName)
 
-	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), TrainingJobOutputPathSubDir)
-	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
+	//taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
 	if taskTemplate.GetContainer() == nil {
 		return nil, errors.Errorf("The task template points to a nil container")
@@ -316,7 +318,8 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 
 	hyperparameterKeys, hyperparameterValues := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
 
-	hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
+	jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
+	hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), jobOutputPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
 	}
@@ -384,7 +387,7 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 			},
 			TensorBoardOutputConfig: nil,
 			Tags:                    nil,
-			TrainingJobName:         &taskName,
+			TrainingJobName:         &jobName,
 		},
 	}
 	logger.Infof(ctx, "Successfully built a custom training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
@@ -461,7 +464,8 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	// in the static map and let the one in the map of the tunable hyperparameters take precedence
 	staticHyperparams = deleteConflictingStaticHyperparameters(ctx, staticHyperparams, hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap())
 
-	taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
+	// taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
+	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, sagemakerHPOJob.GetTrainingJob()) // TODO: replace this
 	if err != nil {
@@ -502,7 +506,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	hpoJob := &hpojobv1.HyperparameterTuningJob{
 		Spec: hpojobv1.HyperparameterTuningJobSpec{
-			HyperParameterTuningJobName: &taskName,
+			HyperParameterTuningJobName: &jobName,
 			HyperParameterTuningJobConfig: &commonv1.HyperParameterTuningJobConfig{
 				ResourceLimits: &commonv1.ResourceLimits{
 					MaxNumberOfTrainingJobs: ToInt64Ptr(sagemakerHPOJob.GetMaxNumberOfTrainingJobs()),
@@ -790,20 +794,14 @@ func (m awsSagemakerPlugin) GetTaskPhaseForCustomTrainingJob(
 		// blob output, which will later be written out by the OutputWriter to the output.pb remotely on S3
 
 		urlPathConstructor := storage.URLPathConstructor{}
+		//outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), TrainingJobOutputPathSubDir)
 		outputPaths := NewJobOutputPaths(ctx,
 			urlPathConstructor,
 			pluginContext.OutputWriter().GetOutputPrefixPath(),
 			*trainingJob.Spec.TrainingJobName)
+		logger.Infof(ctx, "Looking for the output.pb under %s", outputPaths.GetOutputPath())
 		outputReader := ioutils.NewRemoteFileOutputReader(ctx, pluginContext.DataStore(), outputPaths, pluginContext.MaxDatasetSizeBytes())
 
-		//outputReader := ioutils.NewRemoteFileOutputReader()
-		//ioutils.NewRemoteFileInputReader(outputLiteralMap, nil)
-		//outputLiteralMap, err := getOutputLiteralMapFromTaskInterface(ctx, pluginContext.TaskReader(),
-		//	createModelOutputPath(trainingJob, pluginContext.OutputWriter().GetRawOutputPrefix().String(), trainingJob.Status.SageMakerTrainingJobName))
-		//if err != nil {
-		//	logger.Errorf(ctx, "Failed to create outputs, err: %s", err)
-		//	return pluginsCore.PhaseInfoUndefined, errors.Wrapf(err, "failed to create outputs for the task")
-		//}
 		// Instantiate a output reader with the literal map, and write the output to the remote location referred to by the OutputWriter
 		if err := pluginContext.OutputWriter().Put(ctx, outputReader); err != nil {
 			return pluginsCore.PhaseInfoUndefined, err

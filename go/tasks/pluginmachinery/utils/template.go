@@ -51,6 +51,7 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.Inp
 	return res, nil
 }
 
+/*
 func ReplaceTemplateCommandArgsWithRawOutput(ctx context.Context, command []string, in io.InputReader, out io.OutputFilePaths) ([]string, error) {
 	if len(command) == 0 {
 		return []string{}, nil
@@ -70,6 +71,7 @@ func ReplaceTemplateCommandArgsWithRawOutput(ctx context.Context, command []stri
 
 	return res, nil
 }
+*/
 
 func transformVarNameToStringVal(ctx context.Context, varName string, inputs *core.LiteralMap) (string, error) {
 	inputVal, exists := inputs.Literals[varName]
@@ -120,6 +122,7 @@ func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in 
 	return replaceInputVarsTemplateCommandArgs(ctx, in, val)
 }
 
+/*
 func replaceTemplateCommandArgsWithRawOutput(ctx context.Context, commandTemplate string, in io.InputReader, out io.OutputFilePaths) (string, error) {
 	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
 	val = outputRegex.ReplaceAllString(val, out.GetRawOutputPrefix().String())
@@ -127,6 +130,7 @@ func replaceTemplateCommandArgsWithRawOutput(ctx context.Context, commandTemplat
 
 	return replaceInputVarsTemplateCommandArgs(ctx, in, val)
 }
+*/
 
 func serializePrimitive(p *core.Primitive) (string, error) {
 	switch o := p.Value.(type) {
