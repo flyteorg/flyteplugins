@@ -6,6 +6,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lyft/flytestdlib/contextutils"
+	"github.com/lyft/flytestdlib/promutils/labeled"
+
+	"github.com/lyft/flytestdlib/promutils"
+
 	"github.com/pkg/errors"
 
 	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
@@ -187,7 +192,9 @@ func generateMockCustomTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTem
 	outputReader.OnGetOutputPrefixPath().Return(storage.DataReference("/data/"))
 	outputReader.OnGetRawOutputPrefix().Return(storage.DataReference("/raw/"))
 	if outputReaderPutError {
-		outputReader.OnPutMatch(mock.Anything).Return(errors.Errorf("err"))
+		outputReader.OnPutMatch(mock.Anything, mock.Anything).Return(errors.Errorf("err"))
+	} else {
+		outputReader.OnPutMatch(mock.Anything, mock.Anything).Return(nil)
 	}
 	taskCtx.OnOutputWriter().Return(outputReader)
 
@@ -223,6 +230,15 @@ func generateMockCustomTrainingJobTaskContext(taskTemplate *flyteIdlCore.TaskTem
 	taskExecutionMetadata.OnGetOverrides().Return(resources)
 	taskExecutionMetadata.OnGetK8sServiceAccount().Return(serviceAccount)
 	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
+
+	dataStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	if err != nil {
+		panic(err)
+	}
+	taskCtx.OnDataStore().Return(dataStore)
+
+	taskCtx.OnMaxDatasetSizeBytes().Return(10000)
+
 	return taskCtx
 }
 
@@ -851,4 +867,61 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForTrainingJob(t *testing.T) {
 			assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseUndefined)
 		})
 	*/
+}
+
+func Test_awsSagemakerPlugin_GetTaskPhaseForCustomTrainingJob(t *testing.T) {
+	ctx := context.TODO()
+	// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+	configAccessor := viper.NewAccessor(stdConfig.Options{
+		StrictMode: true,
+		// Use a different
+		SearchPaths: []string{"testdata/config2.yaml"},
+	})
+
+	err := configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: customTrainingJobTaskType}
+
+	tjObj := generateMockTrainingJobCustomObj(
+		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
+		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+	taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+	taskCtx := generateMockCustomTrainingJobTaskContext(taskTemplate, false)
+	trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
+	assert.NoError(t, err)
+	assert.NotNil(t, trainingJobResource)
+
+	t.Run("TrainingJobStatusCompleted", func(t *testing.T) {
+		taskCtx = generateMockCustomTrainingJobTaskContext(taskTemplate, false)
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
+		assert.NoError(t, err)
+		assert.NotNil(t, trainingJobResource)
+
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+
+		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusCompleted
+		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForCustomTrainingJob(ctx, taskCtx, trainingJob)
+		assert.Nil(t, err)
+		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseSuccess)
+	})
+	t.Run("OutputWriter.Put returns an error", func(t *testing.T) {
+		taskCtx = generateMockCustomTrainingJobTaskContext(taskTemplate, true)
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
+		assert.NoError(t, err)
+		assert.NotNil(t, trainingJobResource)
+
+		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
+		assert.True(t, ok)
+
+		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusCompleted
+		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForCustomTrainingJob(ctx, taskCtx, trainingJob)
+		assert.NotNil(t, err)
+		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseUndefined)
+	})
+}
+
+func init() {
+	labeled.SetMetricKeys(contextutils.NamespaceKey)
 }
