@@ -338,7 +338,6 @@ func TestKickOffQuery(t *testing.T) {
 		getOrCreateCalled = true
 	}).Return(ExecutionStateCacheItem{}, nil)
 
-
 	state := ExecutionState{}
 	newState, err := KickOffQuery(ctx, tCtx, state, mockQubole, mockCache, config.GetQuboleConfig())
 	assert.NoError(t, err)

@@ -145,7 +145,7 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 }
 
 func composeResourceNamespaceWithClusterPrimaryLabel(ctx context.Context, tCtx core.TaskExecutionContext) (core.ResourceNamespace, error) {
-	_, clusterLabelOverride, _, _, _,  err := GetQueryInfo(ctx, tCtx)
+	_, clusterLabelOverride, _, _, _, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return "", err
 	}
@@ -236,8 +236,6 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 	if err != nil {
 		return "", "", []string{}, 0, "", err
 	}
-
-
 
 	hiveJob := plugins.QuboleHiveJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &hiveJob)
@@ -337,7 +335,7 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
 	}
 
-	query, clusterLabelOverride, tags, timeoutSec, taskName,  err := GetQueryInfo(ctx, tCtx)
+	query, clusterLabelOverride, tags, timeoutSec, taskName, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return currentState, err
 	}
