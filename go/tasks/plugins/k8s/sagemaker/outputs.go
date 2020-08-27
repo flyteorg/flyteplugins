@@ -26,7 +26,7 @@ func constructPath(store storage.ReferenceConstructor, base storage.DataReferenc
 }
 
 func (s JobOutputPaths) GetOutputPrefixPath() storage.DataReference {
-	return constructPath(s.store, s.GetOutputPrefixPath(), s.jobName)
+	return constructPath(s.store, s.outputPrefix, s.jobName)
 }
 
 func (s JobOutputPaths) GetOutputPath() storage.DataReference {
