@@ -694,13 +694,13 @@ func Test_awsSagemakerPlugin_getEventInfoForJob(t *testing.T) {
 		expectedTaskLogs := []*flyteIdlCore.TaskLog{
 			{
 				Uri: fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
-					"us-west-2", "us-west-2", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()),
+					"us-west-2", "us-west-2", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
 				Name:          "CloudWatch Logs",
 				MessageFormat: flyteIdlCore.TaskLog_JSON,
 			},
 			{
 				Uri: fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
-					"us-west-2", "us-west-2", "jobs", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()),
+					"us-west-2", "us-west-2", "jobs", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
 				Name:          "SageMaker Training Job",
 				MessageFormat: flyteIdlCore.TaskLog_UNKNOWN,
 			},
