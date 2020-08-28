@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lyft/flytestdlib/storage"
-
 	awsUtils "github.com/lyft/flyteplugins/go/tasks/plugins/awsutils"
 
 	hpojobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/hyperparametertuningjob"
@@ -284,7 +282,8 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	//	}
 	//}
 	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), jobName)
+	// outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), jobName)
+	outputPath := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
 	//taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
@@ -318,8 +317,9 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 
 	hyperparameterKeys, hyperparameterValues := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
 
-	jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
-	hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), jobOutputPath)
+	// TODO: When dealing with HPO job, we will need to deal with
+	//jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
+	hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
 	}
@@ -793,14 +793,15 @@ func (m awsSagemakerPlugin) GetTaskPhaseForCustomTrainingJob(
 		// Therefore, here we create a output literal map, where we fill in the above path to the URI field of the
 		// blob output, which will later be written out by the OutputWriter to the output.pb remotely on S3
 
-		urlPathConstructor := storage.URLPathConstructor{}
-		//outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), TrainingJobOutputPathSubDir)
-		outputPaths := NewJobOutputPaths(ctx,
-			urlPathConstructor,
-			pluginContext.OutputWriter().GetOutputPrefixPath(),
-			*trainingJob.Spec.TrainingJobName)
-		logger.Infof(ctx, "Looking for the output.pb under %s", outputPaths.GetOutputPath())
-		outputReader := ioutils.NewRemoteFileOutputReader(ctx, pluginContext.DataStore(), outputPaths, pluginContext.MaxDatasetSizeBytes())
+		// TODO: The following will be needed for hpo
+		// urlPathConstructor := storage.URLPathConstructor{}
+		//outputPaths := NewJobOutputPaths(ctx,
+		//	urlPathConstructor,
+		//	pluginContext.OutputWriter().GetOutputPrefixPath(),
+		//	*trainingJob.Spec.TrainingJobName)
+
+		logger.Infof(ctx, "Looking for the output.pb under %s", pluginContext.OutputWriter().GetOutputPrefixPath())
+		outputReader := ioutils.NewRemoteFileOutputReader(ctx, pluginContext.DataStore(), pluginContext.OutputWriter(), pluginContext.MaxDatasetSizeBytes())
 
 		// Instantiate a output reader with the literal map, and write the output to the remote location referred to by the OutputWriter
 		if err := pluginContext.OutputWriter().Put(ctx, outputReader); err != nil {
