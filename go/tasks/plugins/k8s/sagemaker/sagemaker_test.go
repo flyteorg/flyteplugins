@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/lyft/flytestdlib/contextutils"
@@ -601,6 +602,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 5, "value2", FlyteSageMakerKeySuffix), Value: ""},
 			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 6, "--test-flag", FlyteSageMakerKeySuffix), Value: ""},
 			{Name: fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, "Env_Var", FlyteSageMakerKeySuffix), Value: "Env_Val"},
+			{Name: fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, "FLYTE_STATSD_DISABLED", FlyteSageMakerKeySuffix), Value: strconv.FormatBool(true)},
 		}
 		assert.Equal(t, len(expectedHPs), len(trainingJob.Spec.HyperParameters))
 		for i := range expectedHPs {

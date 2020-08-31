@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -237,50 +238,6 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	inputChannels := make([]commonv1.Channel, 0)
 	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
 
-	//for inKey, inLiteral := range inputLiterals {
-	//	if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetBlob() != nil {
-	//		v, err := dataHandler.handleLiteral(ctx, inLiteral)
-	//		if err != nil {
-	//			return nil, errors.Wrapf(err, "Unable to handle a Blob")
-	//		}
-	//		inputChannels = append(inputChannels, commonv1.Channel{
-	//			ChannelName: ToStringPtr(inKey),
-	//			DataSource: &commonv1.DataSource{
-	//				S3DataSource: &commonv1.S3DataSource{
-	//					S3DataType: "S3Prefix",
-	//					S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
-	//				},
-	//			},
-	//			ContentType: ToStringPtr("*/*"),
-	//			InputMode:   inputModeString,
-	//		})
-	//	} else if inLiteral.GetScalar() != nil && inLiteral.GetScalar().GetSchema() != nil {
-	//		// Add to "input channel"
-	//		v, err := dataHandler.handleLiteral(ctx, inLiteral)
-	//		if err != nil {
-	//			return nil, errors.Wrapf(err, "Unable to handle a Schema input")
-	//		}
-	//		inputChannels = append(inputChannels, commonv1.Channel{
-	//			ChannelName: ToStringPtr(inKey),
-	//			DataSource: &commonv1.DataSource{
-	//				S3DataSource: &commonv1.S3DataSource{
-	//					S3DataType: "S3Prefix",
-	//					S3Uri:      ToStringPtr(fmt.Sprintf("%v", v)),
-	//				},
-	//			},
-	//			ContentType: ToStringPtr("*/*"),
-	//			InputMode:   inputModeString,
-	//		})
-	//	} else {
-	//		// Add to hyperparameters
-	//		v, err := dataHandler.handleLiteral(ctx, inLiteral)
-	//		fmt.Printf("v = %v", v)
-	//		if err != nil {
-	//			return nil, errors.Wrapf(err, "Unable to handle a non-Blob non-Schema input")
-	//		}
-	//		hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: inKey, Value: fmt.Sprintf("%v", v)})
-	//	}
-	//}
 	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	// outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), jobName)
 	outputPath := taskCtx.OutputWriter().GetOutputPrefixPath().String()
@@ -329,21 +286,15 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		return nil, errors.Wrapf(err, "Failed to inject the task template's container env vars to the hyperparameter list")
 	}
 
+	// Injecting a env var to disable statsd for sagemaker tasks
+	statsdDisableEnvVarName := fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, FlytesageMakerEnvVarKeyStatsdDisabled, FlyteSageMakerKeySuffix)
+	logger.Infof(ctx, "Injecting %v=%v to force disable statsd for SageMaker tasks only", statsdDisableEnvVarName, strconv.FormatBool(true))
+	hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{
+		Name:  statsdDisableEnvVarName,
+		Value: strconv.FormatBool(true),
+	})
+
 	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
-	/*
-		// pyflyte-execute+--output-prefix=s3://path+--inputs=s3://input+--extra
-		runnerCmd := strings.Join(append(cmd, args...)[:], CustomTrainingCmdArgSeparator)
-
-		// Extend the runnerCmd with all the static hyperparameters
-
-		for _, pair := range hyperParameters {
-			runnerCmd += CustomTrainingCmdArgSeparator + "--" + pair.Name + CustomTrainingCmdArgSeparator + pair.Value
-		}
-
-		// Injecting hyperparameters necessary for SageMaker to select the correct script to execute
-		// staticHyperparams = append(staticHyperparams, &commonv1.KeyValuePair{Name: FlyteSageMakerCmdKey, Value: selectorCmd})
-		hyperParameters = []*commonv1.KeyValuePair{{Name: FlyteSageMakerCmdKey, Value: runnerCmd}}
-	*/
 
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{

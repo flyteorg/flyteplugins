@@ -20,11 +20,10 @@ const (
 )
 
 const (
-	FlyteSageMakerCmdKey          string = "__FLYTE_SAGEMAKER_CMD__"
-	FlyteSageMakerEnvVarKeyPrefix string = "__FLYTE_ENV_VAR_"
-	FlyteSageMakerCmdArgKeyPrefix string = "__FLYTE_CMD_ARG_"
-	FlyteSageMakerKeySuffix       string = "__"
-	FlytesageMakerCmdKeyPrefix    string = "__FLYTE_CMD_"
+	FlyteSageMakerEnvVarKeyPrefix         string = "__FLYTE_ENV_VAR_"
+	FlyteSageMakerKeySuffix               string = "__"
+	FlytesageMakerCmdKeyPrefix            string = "__FLYTE_CMD_"
+	FlytesageMakerEnvVarKeyStatsdDisabled string = "FLYTE_STATSD_DISABLED"
 )
 
 const (
