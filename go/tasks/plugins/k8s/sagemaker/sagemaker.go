@@ -313,27 +313,18 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	// An alternative is to fill in both the metadata prefix and the raw output prefix.
 
 	//templateCmd := taskTemplate.GetContainer().GetCommand()
-	templateArgs := taskTemplate.GetContainer().GetArgs()
+	// templateArgs := taskTemplate.GetContainer().GetArgs()
 
-	hyperparameterKeys, hyperparameterValues := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
+	// hyperparameterKeys, hyperparameterValues := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
+	//
+	// // TODO: When dealing with HPO job, we will need to deal with
+	// //jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
+	// hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
+	// if err != nil {
+	// 	return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
+	// }
 
-	// TODO: When dealing with HPO job, we will need to deal with
-	//jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
-	hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
-	}
-
-	if len(hyperparameterKeys) != len(hyperparameterValues) {
-		return nil, errors.Errorf("Error(s) happened when converting cmd and args to hyperparameters")
-	}
-
-	hyperParameters := make([]*commonv1.KeyValuePair, 0, len(hyperparameterKeys))
-	for i := range hyperparameterKeys {
-		hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{Name: hyperparameterKeys[i], Value: hyperparameterValues[i]})
-	}
-
-	hyperParameters, err = injectTaskTemplateEnvVarToHyperparameters(ctx, taskTemplate, hyperParameters)
+	hyperParameters, err := injectArgsAndEnvVars(ctx, taskCtx, taskTemplate)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to inject the task template's container env vars to the hyperparameter list")
 	}

@@ -2,6 +2,7 @@ package sagemaker
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -365,4 +366,57 @@ func Test_getTrainingJobImage(t *testing.T) {
 		}
 	})
 
+}
+
+func Test_makeHyperparametersKeysValuesFromArgs(t *testing.T) {
+	outputPrefix := "s3://abcdefghijklmnopqrtsuvwxyz/abcdefghijklmnopqrtsuvwxyz/abcdefghijklmnopqrtsuvwxyz"
+	inputs := "s3://abcdefghijklmnopqrtsuvwxyz/abcdefghijklmnopqrtsuvwxyz/abcdefghijklmnopqrtsuvwxyz/inputs.pb"
+	type args struct {
+		in0  context.Context
+		args []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*commonv1.KeyValuePair
+	}{
+		{name: "service pyflyte-execute",
+			args: args{
+				in0: context.TODO(),
+				args: []string{
+					"service_venv",
+					"pyflyte-execute",
+					"--task-module",
+					"abc",
+					"--task-name",
+					"abc",
+					"--output-prefix",
+					outputPrefix,
+					"--inputs",
+					inputs,
+					"--test",
+				},
+			},
+			want: []*commonv1.KeyValuePair{
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 0, "service_venv", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 1, "pyflyte-execute", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 2, "--task-module", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 3, "abc", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 4, "--task-name", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 5, "abc", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 6, "--output-prefix", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 7, outputPrefix, FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 8, "--inputs", FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 9, inputs, FlyteSageMakerKeySuffix), Value: ""},
+				{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 10, "--test", FlyteSageMakerKeySuffix), Value: ""},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := makeHyperparametersKeysValuesFromArgs(tt.args.in0, tt.args.args); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("makeHyperparametersKeysValuesFromArgs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -283,6 +285,7 @@ func deleteConflictingStaticHyperparameters(
 	return resolvedStaticHPs
 }
 
+/*
 func makeHyperparametersKeysValuesFromArgs(ctx context.Context, args []string) ([]string, []string) {
 	var keys, values []string
 	var argsCmd []string
@@ -316,6 +319,18 @@ func makeHyperparametersKeysValuesFromArgs(ctx context.Context, args []string) (
 	logger.Infof(ctx, "Values: %v", values)
 	return keys, values
 }
+*/
+
+func makeHyperparametersKeysValuesFromArgs(_ context.Context, args []string) []*commonv1.KeyValuePair {
+	ret := make([]*commonv1.KeyValuePair, 0)
+	for argOrder, arg := range args {
+		ret = append(ret, &commonv1.KeyValuePair{
+			Name:  fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, argOrder, arg, FlyteSageMakerKeySuffix),
+			Value: "",
+		})
+	}
+	return ret
+}
 
 func injectTaskTemplateEnvVarToHyperparameters(ctx context.Context, taskTemplate *flyteIdlCore.TaskTemplate, hps []*commonv1.KeyValuePair) ([]*commonv1.KeyValuePair, error) {
 	if taskTemplate == nil || taskTemplate.GetContainer() == nil {
@@ -335,4 +350,18 @@ func injectTaskTemplateEnvVarToHyperparameters(ctx context.Context, taskTemplate
 	}
 
 	return hps, nil
+}
+
+func injectArgsAndEnvVars(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate *flyteIdlCore.TaskTemplate) ([]*commonv1.KeyValuePair, error) {
+	templateArgs := taskTemplate.GetContainer().GetArgs()
+	templateArgs, err := utils.ReplaceTemplateCommandArgs(ctx, templateArgs, taskCtx.InputReader(), taskCtx.OutputWriter())
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
+	}
+	hyperParameters := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
+	hyperParameters, err = injectTaskTemplateEnvVarToHyperparameters(ctx, taskTemplate, hyperParameters)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to inject the task template's container env vars to the hyperparameter list")
+	}
+	return hyperParameters, nil
 }
