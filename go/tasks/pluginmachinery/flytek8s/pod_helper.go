@@ -124,8 +124,11 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 			// If the pod is interruptible and is waiting to be scheduled for an extended amount of time,  it is possible there are
 			// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
 			// non spot instance AZ.
+			fmt.Print("PodReasonUnschedulable")
 			if val, ok := pod.ObjectMeta.Labels[Interruptible]; ok {
+				fmt.Printf("pod is interruptible with timeout: %v", timeout)
 				if val == "true" && timeout > 0 && timeout > time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time) {
+					fmt.Printf("timeout: %v greater than %v", timeout, time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time))
 					return pluginsCore.PhaseInfoSystemRetryableFailure(
 						"systemLevelTimeout",
 						fmt.Sprintf("system timeout reached at status %v", v1.PodReasonUnschedulable),
