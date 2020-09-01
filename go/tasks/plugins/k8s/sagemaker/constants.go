@@ -31,7 +31,3 @@ const (
 	TrainingJobOutputPathSubDir    = "training_outputs"
 	HyperparameterOutputPathSubDir = "hyperparameter_tuning_outputs"
 )
-
-const (
-	CustomTrainingCmdArgSeparator = "+"
-)
