@@ -19,6 +19,7 @@ var inputFileRegex = regexp.MustCompile(`(?i){{\s*[\.$]Input\s*}}`)
 var inputPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]InputPrefix\s*}}`)
 var outputRegex = regexp.MustCompile(`(?i){{\s*[\.$]OutputPrefix\s*}}`)
 var inputVarRegex = regexp.MustCompile(`(?i){{\s*[\.$]Inputs\.(?P<input_name>[^}\s]+)\s*}}`)
+var rawOutputDataPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]RawOutputDataPrefix\s*}}`)
 
 // Evaluates templates in each command with the equivalent value from passed args. Templates are case-insensitive
 // Supported templates are:
@@ -50,28 +51,6 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.Inp
 
 	return res, nil
 }
-
-/*
-func ReplaceTemplateCommandArgsWithRawOutput(ctx context.Context, command []string, in io.InputReader, out io.OutputFilePaths) ([]string, error) {
-	if len(command) == 0 {
-		return []string{}, nil
-	}
-	if in == nil || out == nil {
-		return nil, fmt.Errorf("input reader and output path cannot be nil")
-	}
-	res := make([]string, 0, len(command))
-	for _, commandTemplate := range command {
-		updated, err := replaceTemplateCommandArgsWithRawOutput(ctx, commandTemplate, in, out)
-		if err != nil {
-			return res, err
-		}
-
-		res = append(res, updated)
-	}
-
-	return res, nil
-}
-*/
 
 func transformVarNameToStringVal(ctx context.Context, varName string, inputs *core.LiteralMap) (string, error) {
 	inputVal, exists := inputs.Literals[varName]
@@ -121,16 +100,6 @@ func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in 
 
 	return replaceInputVarsTemplateCommandArgs(ctx, in, val)
 }
-
-/*
-func replaceTemplateCommandArgsWithRawOutput(ctx context.Context, commandTemplate string, in io.InputReader, out io.OutputFilePaths) (string, error) {
-	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
-	val = outputRegex.ReplaceAllString(val, out.GetRawOutputPrefix().String())
-	val = inputPrefixRegex.ReplaceAllString(val, in.GetInputPrefixPath().String())
-
-	return replaceInputVarsTemplateCommandArgs(ctx, in, val)
-}
-*/
 
 func serializePrimitive(p *core.Primitive) (string, error) {
 	switch o := p.Value.(type) {
