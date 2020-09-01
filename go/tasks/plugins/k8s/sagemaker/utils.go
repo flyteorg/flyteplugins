@@ -285,42 +285,6 @@ func deleteConflictingStaticHyperparameters(
 	return resolvedStaticHPs
 }
 
-/*
-func makeHyperparametersKeysValuesFromArgs(ctx context.Context, args []string) ([]string, []string) {
-	var keys, values []string
-	var argsCmd []string
-	var optionsStart int
-	logger.Debugf(ctx, "ARGS: %v", args)
-	for optionsStart = 0; optionsStart < len(args); optionsStart++ {
-		if !strings.HasPrefix(args[optionsStart], "--") {
-			argsCmd = append(argsCmd, args[optionsStart])
-		} else {
-			break
-		}
-	}
-	logger.Debugf(ctx, "CMD: %v", strings.Join(argsCmd, "+"))
-	keys = append(keys, FlyteSageMakerCmdKey)
-	values = append(values, strings.Join(argsCmd, "+"))
-
-	for i := optionsStart; i < len(args); i++ {
-		logger.Infof(ctx, "Processing args %v", args[i])
-		if strings.HasPrefix(args[i], "--") {
-			option := strings.ReplaceAll(args[i][2:], "-", "_")
-			option = fmt.Sprintf("%s%s%s", FlyteSageMakerCmdArgKeyPrefix, option, FlyteSageMakerKeySuffix)
-			keys = append(keys, option)
-			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "--") {
-				values = append(values, args[i+1])
-			} else {
-				values = append(values, "")
-			}
-		}
-	}
-	logger.Infof(ctx, "KEYs: %v", keys)
-	logger.Infof(ctx, "Values: %v", values)
-	return keys, values
-}
-*/
-
 func makeHyperparametersKeysValuesFromArgs(_ context.Context, args []string) []*commonv1.KeyValuePair {
 	ret := make([]*commonv1.KeyValuePair, 0)
 	for argOrder, arg := range args {

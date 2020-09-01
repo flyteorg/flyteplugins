@@ -610,20 +610,6 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 			assert.Equal(t, expectedHPs[i].Value, trainingJob.Spec.HyperParameters[i].Value)
 		}
 
-		//assert.Equal(t, 1, len(trainingJob.Spec.HyperParameters))
-		//expectedCmd := "test-cmds1 test-cmds2 pyflyte-execute --test-opt1 value1 --test-opt2 value2 --test-flag --hp_int 1 --hp_float 1.5 --hp_bool false --hp_string a"
-		//expectedCmd = strings.ReplaceAll(expectedCmd, " ", "+")
-		//expectedHPs := []*commonv1.KeyValuePair{
-		//	{Name: FlyteSageMakerCmdKey, Value: expectedCmd},
-		//}
-		//assert.Equal(t, expectedHPs[0].Name, trainingJob.Spec.HyperParameters[0].Name)
-
-		//expectedSplit := strings.Split(expectedHPs[0].Value, "+")
-		//sort.Strings(expectedSplit)
-		//gotSplit := strings.Split(trainingJob.Spec.HyperParameters[0].Value, "+")
-		//sort.Strings(gotSplit)
-		//assert.Equal(t, expectedSplit, gotSplit)
-
 		assert.Equal(t, testImage, *trainingJob.Spec.AlgorithmSpecification.TrainingImage)
 	})
 }
@@ -857,22 +843,6 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForTrainingJob(t *testing.T) {
 		// We have a default message for TrainingJobStatusStopped
 		assert.Equal(t, phaseInfo.Err().GetMessage(), "Training Job Stopped")
 	})
-	/*
-		t.Run("TrainingJobStatusCompleted", func(t *testing.T) {
-			taskCtx = generateMockTrainingJobTaskContext(taskTemplate, true)
-			trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
-			assert.NoError(t, err)
-			assert.NotNil(t, trainingJobResource)
-
-			trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
-			assert.True(t, ok)
-
-			trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusCompleted
-			phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
-			assert.NotNil(t, err)
-			assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseUndefined)
-		})
-	*/
 }
 
 func Test_awsSagemakerPlugin_GetTaskPhaseForCustomTrainingJob(t *testing.T) {

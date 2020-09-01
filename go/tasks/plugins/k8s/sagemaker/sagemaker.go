@@ -226,15 +226,6 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
 	}
 
-	//taskInput, err := taskCtx.InputReader().Get(ctx)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to fetch task inputs")
-	}
-
-	// Get inputs from literals
-	//inputLiterals := taskInput.GetLiterals()
-	//dataHandler := DataHandler{}
-
 	inputChannels := make([]commonv1.Channel, 0)
 	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
 
@@ -265,21 +256,8 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 
 	// We might be able to just remove the following if we don't want to concat all the inputs into one single command
 
-	// If the task is a custom training job, we need to de-templatize the command and args of the container in the taskTemplate
-	// Currently we de-templatize it with the raw output prefix.
-	// An alternative is to fill in both the metadata prefix and the raw output prefix.
-
-	//templateCmd := taskTemplate.GetContainer().GetCommand()
-	// templateArgs := taskTemplate.GetContainer().GetArgs()
-
-	// hyperparameterKeys, hyperparameterValues := makeHyperparametersKeysValuesFromArgs(ctx, templateArgs)
-	//
 	// // TODO: When dealing with HPO job, we will need to deal with
 	// //jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
-	// hyperparameterValues, err = utils.ReplaceTemplateCommandArgs(ctx, hyperparameterValues, taskCtx.InputReader(), taskCtx.OutputWriter())
-	// if err != nil {
-	// 	return nil, errors.Wrapf(err, "Failed to de-template the hyperparameter values")
-	// }
 
 	hyperParameters, err := injectArgsAndEnvVars(ctx, taskCtx, taskTemplate)
 	if err != nil {
@@ -671,10 +649,9 @@ func (m awsSagemakerPlugin) GetTaskPhaseForTrainingJob(
 
 		// We have specified an output path in the CRD, and we know SageMaker will automatically upload the
 		// model tarball to s3://<specified-output-path>/<training-job-name>/output/model.tar.gz
-		// The rest of the output will be uploaded by Flytekit
 
 		// Therefore, here we create a output literal map, where we fill in the above path to the URI field of the
-		// blob output, which will later be written out by the OutputWriter to the output.pb remotely on S3
+		// blob output, which will later be written out by the OutputWriter to the outputs.pb remotely on S3
 		outputLiteralMap, err := getOutputLiteralMapFromTaskInterface(ctx, pluginContext.TaskReader(),
 			createModelOutputPath(trainingJob, pluginContext.OutputWriter().GetRawOutputPrefix().String(), trainingJob.Status.SageMakerTrainingJobName))
 		if err != nil {
@@ -727,20 +704,6 @@ func (m awsSagemakerPlugin) GetTaskPhaseForCustomTrainingJob(
 		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
 	case sagemaker.TrainingJobStatusCompleted:
 		// Now that it is a success we will set the outputs as expected by the task
-
-		// We have specified an output path in the CRD, and we know SageMaker will automatically upload the
-		// model tarball to s3://<specified-output-path>/<training-job-name>/output/model.tar.gz
-		// The rest of the output will be uploaded by Flytekit
-
-		// Therefore, here we create a output literal map, where we fill in the above path to the URI field of the
-		// blob output, which will later be written out by the OutputWriter to the output.pb remotely on S3
-
-		// TODO: The following will be needed for hpo
-		// urlPathConstructor := storage.URLPathConstructor{}
-		//outputPaths := NewJobOutputPaths(ctx,
-		//	urlPathConstructor,
-		//	pluginContext.OutputWriter().GetOutputPrefixPath(),
-		//	*trainingJob.Spec.TrainingJobName)
 
 		logger.Infof(ctx, "Looking for the output.pb under %s", pluginContext.OutputWriter().GetOutputPrefixPath())
 		outputReader := ioutils.NewRemoteFileOutputReader(ctx, pluginContext.DataStore(), pluginContext.OutputWriter(), pluginContext.MaxDatasetSizeBytes())
