@@ -342,8 +342,10 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 
 	clusterPrimaryLabel := getClusterPrimaryLabel(ctx, tCtx, clusterLabelOverride)
 
+	taskExecutionIdentifier := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	commandMetadata := client.CommandMetadata{TaskName: taskName,
-		Domain: tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId.Domain}
+		Domain:  taskExecutionIdentifier.TaskId.Domain,
+		Project: taskExecutionIdentifier.GetNodeExecutionId().ExecutionId.Domain}
 
 	cmdDetails, err := quboleClient.ExecuteHiveCommand(ctx, query, timeoutSec,
 		clusterPrimaryLabel, apiKey, tags, commandMetadata)
@@ -370,7 +372,7 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
 			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]. Error %s",
-				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID,
+				taskExecutionIdentifier, uniqueID,
 				tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 			return currentState, err
 		}

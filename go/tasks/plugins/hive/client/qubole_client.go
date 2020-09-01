@@ -46,6 +46,7 @@ type QuboleCommandDetails struct {
 type CommandMetadata struct {
 	TaskName string
 	Domain   string
+	Project  string
 }
 
 // QuboleClient API Request Body, meant to be passed into JSON.marshal
