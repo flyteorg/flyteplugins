@@ -107,6 +107,19 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 		case v1.PodScheduled:
 			if c.Status == v1.ConditionFalse {
 				// Waiting to be scheduled. This usually refers to inability to acquire resources.
+
+				// If the pod is interruptible and is waiting to be scheduled for an extended amount of time,  it is possible there are
+				// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
+				// non spot instance AZ.
+				if val, ok := pod.ObjectMeta.Labels[Interruptible]; ok {
+					if val == "true" && timeout > 0 && timeout < time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time) {
+						return pluginsCore.PhaseInfoSystemRetryableFailure(
+							"systemLevelTimeout",
+							fmt.Sprintf("system timeout reached at status %v", v1.PodReasonUnschedulable),
+							&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
+					}
+				}
+
 				return pluginsCore.PhaseInfoQueued(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 			}
 
@@ -120,21 +133,6 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 			//  reason: Unschedulable
 			// 	status: "False"
 			// 	type: PodScheduled
-
-			// If the pod is interruptible and is waiting to be scheduled for an extended amount of time,  it is possible there are
-			// no spot instances availabled in the AZ. In this case, we timeout with a system level error and will retry on a
-			// non spot instance AZ.
-			fmt.Print("PodReasonUnschedulable")
-			if val, ok := pod.ObjectMeta.Labels[Interruptible]; ok {
-				fmt.Printf("pod is interruptible with timeout: %v", timeout)
-				if val == "true" && timeout > 0 && timeout > time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time) {
-					fmt.Printf("timeout: %v greater than %v", timeout, time.Since(pod.GetObjectMeta().GetCreationTimestamp().Time))
-					return pluginsCore.PhaseInfoSystemRetryableFailure(
-						"systemLevelTimeout",
-						fmt.Sprintf("system timeout reached at status %v", v1.PodReasonUnschedulable),
-						&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
-				}
-			}
 
 			return pluginsCore.PhaseInfoQueued(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("%s:%s", c.Reason, c.Message)), nil
 
@@ -176,12 +174,12 @@ func DemystifyPending(pod *v1.Pod) (pluginsCore.PhaseInfo, error) {
 								// If we are in any of these states for an extended period of time there could be a system level error.
 								// To help mitigate the pod being stuck in this state we have a system level timeout that will error out
 								// as a system error and retry launching the pod.
-								// if timeout > 0 && timeout > time.Since(status.StartTime.Time) {
-								// 	return pluginsCore.PhaseInfoSystemRetryableFailure(
-								// 		"systemLevelTimeout",
-								// 		fmt.Sprintf("system timeout reached, %s", finalMessage),
-								// 		&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
-								// }
+								if timeout > 0 && timeout < time.Since(status.StartTime.Time) {
+									return pluginsCore.PhaseInfoSystemRetryableFailure(
+										"systemLevelTimeout",
+										fmt.Sprintf("system timeout reached, %s", finalMessage),
+										&pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
+								}
 
 								// But, there are only two "reasons" when a pod is successfully being created and hence it is in
 								// waiting state
