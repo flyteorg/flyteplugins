@@ -206,13 +206,7 @@ func convertStaticHyperparamsLiteralToSpecType(hyperparamLiteral *core.Literal) 
 		}
 		retValue = append(retValue, &newElem)
 	}
-	//for k, v := range hyperFields {
-	//	var newElem = commonv1.KeyValuePair{
-	//		Name:  k,
-	//		Value: v.GetStringValue(),
-	//	}
-	//	retValue = append(retValue, &newElem)
-	//}
+
 	return retValue, nil
 }
 

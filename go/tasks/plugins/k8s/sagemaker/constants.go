@@ -31,3 +31,9 @@ const (
 	TrainingJobOutputPathSubDir    = "training_outputs"
 	HyperparameterOutputPathSubDir = "hyperparameter_tuning_outputs"
 )
+
+const (
+	TrainPredefinedInputVariable                 = "train"
+	ValidationPredefinedInputVariable            = "validation"
+	StaticHyperparametersPredefinedInputVariable = "static_hyperparameters"
+)

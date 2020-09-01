@@ -92,14 +92,15 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	// Get inputs from literals
 	inputLiterals := taskInput.GetLiterals()
-	err = m.checkIfRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
+	err = m.checkIfRequiredInputLiteralsExist(inputLiterals,
+		[]string{TrainPredefinedInputVariable, ValidationPredefinedInputVariable, StaticHyperparametersPredefinedInputVariable})
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error occurred when checking if all the required inputs exist")
 	}
 
-	trainPathLiteral := inputLiterals["train"]
-	validationPathLiteral := inputLiterals["validation"]
-	staticHyperparamsLiteral := inputLiterals["static_hyperparameters"]
+	trainPathLiteral := inputLiterals[TrainPredefinedInputVariable]
+	validationPathLiteral := inputLiterals[ValidationPredefinedInputVariable]
+	staticHyperparamsLiteral := inputLiterals[StaticHyperparametersPredefinedInputVariable]
 
 	if trainPathLiteral.GetScalar() == nil || trainPathLiteral.GetScalar().GetBlob() == nil {
 		return nil, errors.Errorf("[train] Input is required and should be of Type [Scalar.Blob]")
@@ -116,7 +117,6 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetRawOutputPrefix().String(), TrainingJobOutputPathSubDir)
 
-	// taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, &sagemakerTrainingJob)
@@ -163,7 +163,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 			HyperParameters:           staticHyperparams,
 			InputDataConfig: []commonv1.Channel{
 				{
-					ChannelName: ToStringPtr("train"),
+					ChannelName: ToStringPtr(TrainPredefinedInputVariable),
 					DataSource: &commonv1.DataSource{
 						S3DataSource: &commonv1.S3DataSource{
 							S3DataType: "S3Prefix",
@@ -174,7 +174,7 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 					InputMode:   inputModeString,
 				},
 				{
-					ChannelName: ToStringPtr("validation"),
+					ChannelName: ToStringPtr(ValidationPredefinedInputVariable),
 					DataSource: &commonv1.DataSource{
 						S3DataSource: &commonv1.S3DataSource{
 							S3DataType: "S3Prefix",
@@ -226,14 +226,14 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
 	}
 
+	if sagemakerTrainingJob.GetAlgorithmSpecification() == nil {
+		return nil, errors.Errorf("The unmarshaled training job does not have a AlgorithmSpecification field")
+	}
 	inputChannels := make([]commonv1.Channel, 0)
 	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
 
 	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	// outputPath := createOutputPath(taskCtx.OutputWriter().GetOutputPrefixPath().String(), jobName)
 	outputPath := taskCtx.OutputWriter().GetOutputPrefixPath().String()
-
-	//taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 
 	if taskTemplate.GetContainer() == nil {
 		return nil, errors.Errorf("The task template points to a nil container")
@@ -347,20 +347,21 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 
 	// Get inputs from literals
 	inputLiterals := taskInput.GetLiterals()
-	err = m.checkIfRequiredInputLiteralsExist(inputLiterals, []string{"train", "validation", "static_hyperparameters"})
+	err = m.checkIfRequiredInputLiteralsExist(inputLiterals,
+		[]string{TrainPredefinedInputVariable, ValidationPredefinedInputVariable, StaticHyperparametersPredefinedInputVariable})
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error occurred when checking if all the required inputs exist")
 	}
 
-	trainPathLiteral := inputLiterals["train"]
-	validatePathLiteral := inputLiterals["validation"]
-	staticHyperparamsLiteral := inputLiterals["static_hyperparameters"]
+	trainPathLiteral := inputLiterals[TrainPredefinedInputVariable]
+	validatePathLiteral := inputLiterals[ValidationPredefinedInputVariable]
+	staticHyperparamsLiteral := inputLiterals[StaticHyperparametersPredefinedInputVariable]
 	hpoJobConfigLiteral := inputLiterals["hyperparameter_tuning_job_config"]
 	if trainPathLiteral.GetScalar() == nil || trainPathLiteral.GetScalar().GetBlob() == nil {
-		return nil, errors.Errorf("[train] Input is required and should be of Type [Scalar.Blob]")
+		return nil, errors.Errorf("[%v] Input is required and should be of Type [Scalar.Blob]", TrainPredefinedInputVariable)
 	}
 	if validatePathLiteral.GetScalar() == nil || validatePathLiteral.GetScalar().GetBlob() == nil {
-		return nil, errors.Errorf("[validation] Input is required and should be of Type [Scalar.Blob]")
+		return nil, errors.Errorf("[%v] Input is required and should be of Type [Scalar.Blob]", ValidationPredefinedInputVariable)
 	}
 	// Convert the hyperparameters to the spec value
 	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
@@ -384,10 +385,9 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 	// in the static map and let the one in the map of the tunable hyperparameters take precedence
 	staticHyperparams = deleteConflictingStaticHyperparameters(ctx, staticHyperparams, hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap())
 
-	// taskName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId().GetName()
 	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
-	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, sagemakerHPOJob.GetTrainingJob()) // TODO: replace this
+	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, sagemakerHPOJob.GetTrainingJob())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find the training image")
 	}
@@ -450,7 +450,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 				},
 				InputDataConfig: []commonv1.Channel{
 					{
-						ChannelName: ToStringPtr("train"),
+						ChannelName: ToStringPtr(TrainPredefinedInputVariable),
 						DataSource: &commonv1.DataSource{
 							S3DataSource: &commonv1.S3DataSource{
 								S3DataType: "S3Prefix",
@@ -461,7 +461,7 @@ func (m awsSagemakerPlugin) BuildResourceForHyperparameterTuningJob(
 						InputMode:   inputModeString,
 					},
 					{
-						ChannelName: ToStringPtr("validation"),
+						ChannelName: ToStringPtr(ValidationPredefinedInputVariable),
 						DataSource: &commonv1.DataSource{
 							S3DataSource: &commonv1.S3DataSource{
 								S3DataType: "S3Prefix",
@@ -590,7 +590,6 @@ func getOutputLiteralMapFromTaskInterface(ctx context.Context, tr pluginsCore.Ta
 	}
 
 	// We know that for XGBoost task there is only one output to be generated
-	// TODO to accommodate the custom training, this needs to be changed. We shouldn't assume there's only one output
 	if len(tk.Interface.Outputs.Variables) > 1 {
 		return nil, fmt.Errorf("expected to generate more than one outputs of type [%v]", tk.Interface.Outputs.Variables)
 	}
