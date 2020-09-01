@@ -594,13 +594,13 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		//assert.Equal(t, 1, len(trainingJob.Spec.HyperParameters))
 		fmt.Printf("%v", trainingJob.Spec.HyperParameters)
 		expectedHPs := []*commonv1.KeyValuePair{
-			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 0, "service_venv", FlyteSageMakerKeySuffix), Value: ""},
-			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 1, "pyflyte-execute", FlyteSageMakerKeySuffix), Value: ""},
-			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 2, "--test-opt1", FlyteSageMakerKeySuffix), Value: ""},
-			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 3, "value1", FlyteSageMakerKeySuffix), Value: ""},
-			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 4, "--test-opt2", FlyteSageMakerKeySuffix), Value: ""},
-			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 5, "value2", FlyteSageMakerKeySuffix), Value: ""},
-			{Name: fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, 6, "--test-flag", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 0, "service_venv", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 1, "pyflyte-execute", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 2, "--test-opt1", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 3, "value1", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 4, "--test-opt2", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 5, "value2", FlyteSageMakerKeySuffix), Value: ""},
+			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 6, "--test-flag", FlyteSageMakerKeySuffix), Value: ""},
 			{Name: fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, "Env_Var", FlyteSageMakerKeySuffix), Value: "Env_Val"},
 			{Name: fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, "FLYTE_STATSD_DISABLED", FlyteSageMakerKeySuffix), Value: strconv.FormatBool(true)},
 		}

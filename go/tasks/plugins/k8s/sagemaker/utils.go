@@ -325,8 +325,8 @@ func makeHyperparametersKeysValuesFromArgs(_ context.Context, args []string) []*
 	ret := make([]*commonv1.KeyValuePair, 0)
 	for argOrder, arg := range args {
 		ret = append(ret, &commonv1.KeyValuePair{
-			Name:  fmt.Sprintf("%s%d_%s%s", FlytesageMakerCmdKeyPrefix, argOrder, arg, FlyteSageMakerKeySuffix),
-			Value: "",
+			Name:  fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, argOrder, arg, FlyteSageMakerKeySuffix),
+			Value: FlyteSageMakerCmdDummyValue,
 		})
 	}
 	return ret

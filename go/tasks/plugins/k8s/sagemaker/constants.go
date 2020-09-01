@@ -22,7 +22,8 @@ const (
 const (
 	FlyteSageMakerEnvVarKeyPrefix         string = "__FLYTE_ENV_VAR_"
 	FlyteSageMakerKeySuffix               string = "__"
-	FlytesageMakerCmdKeyPrefix            string = "__FLYTE_CMD_"
+	FlyteSageMakerCmdKeyPrefix            string = "__FLYTE_CMD_"
+	FlyteSageMakerCmdDummyValue           string = "__FLYTE_CMD_DUMMY_VALUE__"
 	FlytesageMakerEnvVarKeyStatsdDisabled string = "FLYTE_STATSD_DISABLED"
 )
 
