@@ -7,28 +7,23 @@ import (
 	"strings"
 	"time"
 
-	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
 	trainingjobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/trainingjob"
-
+	"github.com/aws/aws-sdk-go/service/sagemaker"
+	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/lyft/flytestdlib/logger"
 	"github.com/pkg/errors"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
-	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
-	"github.com/aws/aws-sdk-go/service/sagemaker"
-
-	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
-
-	flyteSageMakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
+
+	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
+	flyteSageMakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 )
 
 func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
