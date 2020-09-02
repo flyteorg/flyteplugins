@@ -810,7 +810,7 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 		trainingJob.Status.TrainingJobStatus = trainingjobController.ReconcilingTrainingJobStatus
-		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
+		phaseInfo, err := awsSageMakerTrainingJobHandler.getTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
 		assert.Nil(t, err)
 		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseRetryableFailure)
 		assert.Equal(t, phaseInfo.Err().GetKind(), flyteIdlCore.ExecutionError_USER)
@@ -822,7 +822,7 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForTrainingJob(t *testing.T) {
 		assert.True(t, ok)
 		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusFailed
 
-		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
+		phaseInfo, err := awsSageMakerTrainingJobHandler.getTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
 		assert.Nil(t, err)
 		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhasePermanentFailure)
 		assert.Equal(t, phaseInfo.Err().GetKind(), flyteIdlCore.ExecutionError_USER)
@@ -835,7 +835,7 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForTrainingJob(t *testing.T) {
 		assert.True(t, ok)
 		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusStopped
 
-		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
+		phaseInfo, err := awsSageMakerTrainingJobHandler.getTaskPhaseForTrainingJob(ctx, taskCtx, trainingJob)
 		assert.Nil(t, err)
 		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseRetryableFailure)
 		assert.Equal(t, phaseInfo.Err().GetKind(), flyteIdlCore.ExecutionError_USER)
@@ -884,7 +884,7 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForCustomTrainingJob(t *testing.T) {
 		assert.True(t, ok)
 
 		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusCompleted
-		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForCustomTrainingJob(ctx, taskCtx, trainingJob)
+		phaseInfo, err := awsSageMakerTrainingJobHandler.getTaskPhaseForCustomTrainingJob(ctx, taskCtx, trainingJob)
 		assert.Nil(t, err)
 		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseSuccess)
 	})
@@ -902,7 +902,7 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForCustomTrainingJob(t *testing.T) {
 		assert.True(t, ok)
 
 		trainingJob.Status.TrainingJobStatus = sagemaker.TrainingJobStatusCompleted
-		phaseInfo, err := awsSageMakerTrainingJobHandler.GetTaskPhaseForCustomTrainingJob(ctx, taskCtx, trainingJob)
+		phaseInfo, err := awsSageMakerTrainingJobHandler.getTaskPhaseForCustomTrainingJob(ctx, taskCtx, trainingJob)
 		assert.NotNil(t, err)
 		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseUndefined)
 	})

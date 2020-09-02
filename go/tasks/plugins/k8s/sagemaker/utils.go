@@ -238,29 +238,6 @@ func ToFloat64Ptr(f float64) *float64 {
 	return &f
 }
 
-func createOutputLiteralMap(tk *core.TaskTemplate, outputPath string) *core.LiteralMap {
-	op := &core.LiteralMap{}
-	for k := range tk.Interface.Outputs.Variables {
-		// if v != core.LiteralType_Blob{}
-		op.Literals = make(map[string]*core.Literal)
-		op.Literals[k] = &core.Literal{
-			Value: &core.Literal_Scalar{
-				Scalar: &core.Scalar{
-					Value: &core.Scalar_Blob{
-						Blob: &core.Blob{
-							Metadata: &core.BlobMetadata{
-								Type: &core.BlobType{Dimensionality: core.BlobType_SINGLE},
-							},
-							Uri: outputPath,
-						},
-					},
-				},
-			},
-		}
-	}
-	return op
-}
-
 func deleteConflictingStaticHyperparameters(
 	ctx context.Context,
 	staticHPs []*commonv1.KeyValuePair,
@@ -322,4 +299,24 @@ func injectArgsAndEnvVars(ctx context.Context, taskCtx pluginsCore.TaskExecution
 		return nil, errors.Wrapf(err, "Failed to inject the task template's container env vars to the hyperparameter list")
 	}
 	return hyperParameters, nil
+}
+
+func checkIfRequiredInputLiteralsExist(inputLiterals map[string]*flyteIdlCore.Literal, inputKeys []string) error {
+	for _, inputKey := range inputKeys {
+		_, ok := inputLiterals[inputKey]
+		if !ok {
+			return errors.Errorf("Required input not specified: [%v]", inputKey)
+		}
+	}
+	return nil
+}
+
+func getTaskTemplate(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (*flyteIdlCore.TaskTemplate, error) {
+	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to fetch task specification")
+	} else if taskTemplate == nil {
+		return nil, errors.Errorf("nil task specification")
+	}
+	return taskTemplate, nil
 }
