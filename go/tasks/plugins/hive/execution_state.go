@@ -344,8 +344,8 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 
 	taskExecutionIdentifier := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	commandMetadata := client.CommandMetadata{TaskName: taskName,
-		Domain:  taskExecutionIdentifier.TaskId.Domain,
-		Project: taskExecutionIdentifier.GetNodeExecutionId().ExecutionId.Domain}
+		Domain:  taskExecutionIdentifier.GetTaskId().GetDomain(),
+		Project: taskExecutionIdentifier.GetNodeExecutionId().GetExecutionId().GetProject()}
 
 	cmdDetails, err := quboleClient.ExecuteHiveCommand(ctx, query, timeoutSec,
 		clusterPrimaryLabel, apiKey, tags, commandMetadata)
