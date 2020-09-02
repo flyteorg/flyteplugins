@@ -859,17 +859,23 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForCustomTrainingJob(t *testing.T) {
 
 	awsSageMakerTrainingJobHandler := awsSagemakerPlugin{TaskType: customTrainingJobTaskType}
 
-	tjObj := generateMockTrainingJobCustomObj(
-		sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
-		sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
-	taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
-	taskCtx := generateMockCustomTrainingJobTaskContext(taskTemplate, false)
-	trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
-	assert.NoError(t, err)
-	assert.NotNil(t, trainingJobResource)
+	t.Run("TrainingJobStatusCompleted", func(t *testing.T) {
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskCtx := generateMockCustomTrainingJobTaskContext(taskTemplate, false)
+		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
+		assert.Error(t, err)
+		assert.Nil(t, trainingJobResource)
+	})
 
 	t.Run("TrainingJobStatusCompleted", func(t *testing.T) {
-		taskCtx = generateMockCustomTrainingJobTaskContext(taskTemplate, false)
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskCtx := generateMockCustomTrainingJobTaskContext(taskTemplate, false)
 		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
 		assert.NoError(t, err)
 		assert.NotNil(t, trainingJobResource)
@@ -883,7 +889,11 @@ func Test_awsSagemakerPlugin_GetTaskPhaseForCustomTrainingJob(t *testing.T) {
 		assert.Equal(t, phaseInfo.Phase(), pluginsCore.PhaseSuccess)
 	})
 	t.Run("OutputWriter.Put returns an error", func(t *testing.T) {
-		taskCtx = generateMockCustomTrainingJobTaskContext(taskTemplate, true)
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_CUSTOM, "", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		taskTemplate := generateMockTrainingJobTaskTemplate("the job", tjObj)
+		taskCtx := generateMockCustomTrainingJobTaskContext(taskTemplate, true)
 		trainingJobResource, err := awsSageMakerTrainingJobHandler.BuildResource(ctx, taskCtx)
 		assert.NoError(t, err)
 		assert.NotNil(t, trainingJobResource)

@@ -84,6 +84,9 @@ func (m awsSagemakerPlugin) BuildResourceForTrainingJob(
 	if sagemakerTrainingJob.GetAlgorithmSpecification() == nil {
 		return nil, errors.Errorf("Required field [AlgorithmSpecification] does not exist")
 	}
+	if sagemakerTrainingJob.GetAlgorithmSpecification().GetAlgorithmName() == flyteSageMakerIdl.AlgorithmName_CUSTOM {
+		return nil, errors.Errorf("Custom algorithm is not supported by the built-in training job plugin")
+	}
 
 	taskInput, err := taskCtx.InputReader().Get(ctx)
 	if err != nil {
@@ -229,6 +232,11 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 	if sagemakerTrainingJob.GetAlgorithmSpecification() == nil {
 		return nil, errors.Errorf("The unmarshaled training job does not have a AlgorithmSpecification field")
 	}
+	if sagemakerTrainingJob.GetAlgorithmSpecification().GetAlgorithmName() != flyteSageMakerIdl.AlgorithmName_CUSTOM {
+		return nil, errors.Errorf("The algorithm name [%v] is not supported by the custom training job plugin",
+			sagemakerTrainingJob.GetAlgorithmSpecification().GetAlgorithmName().String())
+	}
+
 	inputChannels := make([]commonv1.Channel, 0)
 	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
 
@@ -254,10 +262,8 @@ func (m awsSagemakerPlugin) BuildResourceForCustomTrainingJob(
 			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
 	}
 
-	// We might be able to just remove the following if we don't want to concat all the inputs into one single command
-
-	// // TODO: When dealing with HPO job, we will need to deal with
-	// //jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
+	// TODO: When dealing with HPO job, we will need to deal with the following
+	// jobOutputPath := NewJobOutputPaths(ctx, taskCtx.DataStore(), taskCtx.OutputWriter().GetOutputPrefixPath(), jobName)
 
 	hyperParameters, err := injectArgsAndEnvVars(ctx, taskCtx, taskTemplate)
 	if err != nil {
