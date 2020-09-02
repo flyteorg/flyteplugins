@@ -89,7 +89,7 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 	}
 
 	// Injecting a env var to disable statsd for sagemaker tasks
-	statsdDisableEnvVarName := fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, FlytesageMakerEnvVarKeyStatsdDisabled, FlyteSageMakerKeySuffix)
+	statsdDisableEnvVarName := fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, FlyteSageMakerEnvVarKeyStatsdDisabled, FlyteSageMakerKeySuffix)
 	logger.Infof(ctx, "Injecting %v=%v to force disable statsd for SageMaker tasks only", statsdDisableEnvVarName, strconv.FormatBool(true))
 	hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{
 		Name:  statsdDisableEnvVarName,

@@ -24,7 +24,7 @@ const (
 	FlyteSageMakerKeySuffix               string = "__"
 	FlyteSageMakerCmdKeyPrefix            string = "__FLYTE_CMD_"
 	FlyteSageMakerCmdDummyValue           string = "__FLYTE_CMD_DUMMY_VALUE__"
-	FlytesageMakerEnvVarKeyStatsdDisabled string = "FLYTE_STATSD_DISABLED"
+	FlyteSageMakerEnvVarKeyStatsdDisabled string = "FLYTE_STATSD_DISABLED"
 )
 
 const (
@@ -33,6 +33,10 @@ const (
 )
 
 const (
+	// These constants are the default input channel names for built-in algorithms
+	// When dealing with built-in algorithm training tasks, the plugin would assume these inputs exist and
+	// access these keys in the input literal map
+	// The same keys (except for the static hyperparameter key) would also be used when filling out the inputDataConfig fields of the CRD
 	TrainPredefinedInputVariable                 = "train"
 	ValidationPredefinedInputVariable            = "validation"
 	StaticHyperparametersPredefinedInputVariable = "static_hyperparameters"
