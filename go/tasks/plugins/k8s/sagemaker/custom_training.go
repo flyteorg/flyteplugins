@@ -16,7 +16,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/lyft/flytestdlib/logger"
-	"github.com/pkg/errors"
+
+	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
 
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 
@@ -39,14 +40,15 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 	sagemakerTrainingJob := flyteSageMakerIdl.TrainingJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
+
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
 	}
 
 	if sagemakerTrainingJob.GetAlgorithmSpecification() == nil {
-		return nil, errors.Errorf("The unmarshaled training job does not have a AlgorithmSpecification field")
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The unmarshaled training job does not have a AlgorithmSpecification field")
 	}
 	if sagemakerTrainingJob.GetAlgorithmSpecification().GetAlgorithmName() != flyteSageMakerIdl.AlgorithmName_CUSTOM {
-		return nil, errors.Errorf("The algorithm name [%v] is not supported by the custom training job plugin",
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The algorithm name [%v] is not supported by the custom training job plugin",
 			sagemakerTrainingJob.GetAlgorithmSpecification().GetAlgorithmName().String())
 	}
 
@@ -57,11 +59,11 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 	outputPath := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
 	if taskTemplate.GetContainer() == nil {
-		return nil, errors.Errorf("The task template points to a nil container")
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The task template points to a nil container")
 	}
 
 	if taskTemplate.GetContainer().GetImage() == "" {
-		return nil, errors.Errorf("Invalid image of the container")
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Invalid image of the container")
 	}
 
 	trainingImageStr := taskTemplate.GetContainer().GetImage()
@@ -80,10 +82,11 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 
 	hyperParameters, err := injectArgsAndEnvVars(ctx, taskCtx, taskTemplate)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to inject the task template's container env vars to the hyperparameter list")
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "Failed to inject the task template's container env vars to the hyperparameter list")
 	}
 
-	// Injecting a env var to disable statsd for sagemaker tasks
+	// Statsd is not available in SM because we are not allowed kick off a side car container nor are we allowed to customize our own AMI in an SM environment
+	// Therefore we need to inject a env var to disable statsd for sagemaker tasks
 	statsdDisableEnvVarName := fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, FlyteSageMakerEnvVarKeyStatsdDisabled, FlyteSageMakerKeySuffix)
 	logger.Infof(ctx, "Injecting %v=%v to force disable statsd for SageMaker tasks only", statsdDisableEnvVarName, strconv.FormatBool(true))
 	hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{
@@ -139,7 +142,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForCustomTrainingJob(
 	logger.Infof(ctx, "Getting task phase for sagemaker training job [%v]", trainingJob.Status.SageMakerTrainingJobName)
 	info, err := m.getEventInfoForJob(ctx, trainingJob)
 	if err != nil {
-		return pluginsCore.PhaseInfoUndefined, err
+		return pluginsCore.PhaseInfoUndefined, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "Failed to get event info for the job")
 	}
 
 	occurredAt := time.Now()
@@ -147,7 +150,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForCustomTrainingJob(
 	switch trainingJob.Status.TrainingJobStatus {
 	case trainingjobController.ReconcilingTrainingJobStatus:
 		logger.Errorf(ctx, "Job stuck in reconciling status, assuming retryable failure [%s]", trainingJob.Status.Additional)
-		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call errors
+		// TODO talk to AWS about why there cannot be an explicit condition that signals AWS API call pluginErrors
 		execError := &flyteIdlCore.ExecutionError{
 			Message: trainingJob.Status.Additional,
 			Kind:    flyteIdlCore.ExecutionError_USER,
@@ -172,7 +175,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForCustomTrainingJob(
 
 		// Instantiate a output reader with the literal map, and write the output to the remote location referred to by the OutputWriter
 		if err := pluginContext.OutputWriter().Put(ctx, outputReader); err != nil {
-			return pluginsCore.PhaseInfoUndefined, err
+			return pluginsCore.PhaseInfoUndefined, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "Failed to write output to the remote location")
 		}
 		logger.Debugf(ctx, "Successfully produced and returned outputs")
 		return pluginsCore.PhaseInfoSuccess(info), nil

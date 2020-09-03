@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -35,7 +36,7 @@ func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCo
 	if m.TaskType == hyperparameterTuningJobTaskType {
 		return &hpojobv1.HyperparameterTuningJob{}, nil
 	}
-	return nil, errors.Errorf("The sagemaker plugin is unable to build identity resource for an unknown task type [%v]", m.TaskType)
+	return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The sagemaker plugin is unable to build identity resource for an unknown task type [%v]", m.TaskType)
 }
 
 func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
@@ -50,7 +51,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	if m.TaskType == hyperparameterTuningJobTaskType {
 		return m.buildResourceForHyperparameterTuningJob(ctx, taskCtx)
 	}
-	return nil, errors.Errorf("The SageMaker plugin is unable to build resource for unknown task type [%s]", m.TaskType)
+	return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The SageMaker plugin is unable to build resource for unknown task type [%s]", m.TaskType)
 }
 
 func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Resource) (*pluginsCore.TaskInfo, error) {
@@ -75,7 +76,7 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 		jobTypeInURL = "hyper-tuning-jobs"
 		sagemakerLinkName = "SageMaker Hyperparameter Tuning Job"
 	} else {
-		return nil, errors.Errorf("The plugin is unable to get event info for unknown task type {%v}", m.TaskType)
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The plugin is unable to get event info for unknown task type {%v}", m.TaskType)
 	}
 
 	logger.Infof(ctx, "Getting event information for task type: [%v], job region: [%v], job name: [%v], "+
@@ -103,7 +104,7 @@ func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Reso
 
 	customInfo, err := utils.MarshalObjToStruct(customInfoMap)
 	if err != nil {
-		return nil, err
+		return nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "Unable to create a custom info object")
 	}
 
 	return &pluginsCore.TaskInfo{
@@ -123,7 +124,7 @@ func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.
 		job := resource.(*hpojobv1.HyperparameterTuningJob)
 		return m.getTaskPhaseForHyperparameterTuningJob(ctx, pluginContext, job)
 	}
-	return pluginsCore.PhaseInfoUndefined, errors.Errorf("cannot get task phase for unknown task type [%s]", m.TaskType)
+	return pluginsCore.PhaseInfoUndefined, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "cannot get task phase for unknown task type [%s]", m.TaskType)
 }
 
 func init() {
