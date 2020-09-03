@@ -2,8 +2,14 @@ package sagemaker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	stdConfig "github.com/lyft/flytestdlib/config"
+	"github.com/lyft/flytestdlib/config/viper"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 
 	hpojobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/hyperparametertuningjob"
@@ -43,4 +49,78 @@ func Test_awsSagemakerPlugin_BuildResourceForHyperparameterTuningJob(t *testing.
 	if err != nil {
 		panic(err)
 	}
+}
+
+func Test_awsSagemakerPlugin_getEventInfoForHyperparameterTuningJob(t *testing.T) {
+	// Default config does not contain a roleAnnotationKey -> expecting to get the role from default config
+	ctx := context.TODO()
+	defaultCfg := config.GetSagemakerConfig()
+	defer func() {
+		_ = config.SetSagemakerConfig(defaultCfg)
+	}()
+
+	t.Run("get event info should return correctly formatted log links for custom training job", func(t *testing.T) {
+		// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
+		configAccessor := viper.NewAccessor(stdConfig.Options{
+			StrictMode: true,
+			// Use a different
+			SearchPaths: []string{"testdata/config2.yaml"},
+		})
+
+		err := configAccessor.UpdateConfig(context.TODO())
+		assert.NoError(t, err)
+
+		awsSageMakerHPOJobHandler := awsSagemakerPlugin{TaskType: hyperparameterTuningJobTaskType}
+
+		tjObj := generateMockTrainingJobCustomObj(
+			sagemakerIdl.InputMode_FILE, sagemakerIdl.AlgorithmName_XGBOOST, "0.90", []*sagemakerIdl.MetricDefinition{},
+			sagemakerIdl.InputContentType_TEXT_CSV, 1, "ml.m4.xlarge", 25)
+		htObj := generateMockHyperparameterTuningJobCustomObj(tjObj, 10, 5)
+		taskTemplate := generateMockHyperparameterTuningJobTaskTemplate("the job", htObj)
+		taskCtx := generateMockHyperparameterTuningJobTaskContext(taskTemplate)
+		hpoJobResource, err := awsSageMakerHPOJobHandler.BuildResource(ctx, taskCtx)
+		assert.NoError(t, err)
+		assert.NotNil(t, hpoJobResource)
+
+		hpoJob, ok := hpoJobResource.(*hpojobv1.HyperparameterTuningJob)
+		assert.True(t, ok)
+
+		taskInfo, err := awsSageMakerHPOJobHandler.getEventInfoForHyperparameterTuningJob(ctx, hpoJob)
+		if err != nil {
+			panic(err)
+		}
+
+		expectedTaskLogs := []*flyteIdlCore.TaskLog{
+			{
+				Uri: fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
+					"us-west-2", "us-west-2", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
+				Name:          CloudWatchLogLinkName,
+				MessageFormat: flyteIdlCore.TaskLog_JSON,
+			},
+			{
+				Uri: fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
+					"us-west-2", "us-west-2", "hyper-tuning-jobs", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
+				Name:          HyperparameterTuningJobSageMakerLinkName,
+				MessageFormat: flyteIdlCore.TaskLog_UNKNOWN,
+			},
+		}
+
+		expectedCustomInfo, _ := utils.MarshalObjToStruct(map[string]string{})
+		assert.Equal(t,
+			func(tis []*flyteIdlCore.TaskLog) []flyteIdlCore.TaskLog {
+				ret := make([]flyteIdlCore.TaskLog, 0, len(tis))
+				for _, ti := range tis {
+					ret = append(ret, *ti)
+				}
+				return ret
+			}(expectedTaskLogs),
+			func(tis []*flyteIdlCore.TaskLog) []flyteIdlCore.TaskLog {
+				ret := make([]flyteIdlCore.TaskLog, 0, len(tis))
+				for _, ti := range tis {
+					ret = append(ret, *ti)
+				}
+				return ret
+			}(taskInfo.Logs))
+		assert.Equal(t, *expectedCustomInfo, *taskInfo.CustomInfo)
+	})
 }

@@ -2,14 +2,8 @@ package sagemaker
 
 import (
 	"context"
-	"fmt"
 
 	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
-
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-
-	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flytestdlib/logger"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -52,65 +46,6 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 		return m.buildResourceForHyperparameterTuningJob(ctx, taskCtx)
 	}
 	return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The SageMaker plugin is unable to build resource for unknown task type [%s]", m.TaskType)
-}
-
-func (m awsSagemakerPlugin) getEventInfoForJob(ctx context.Context, job k8s.Resource) (*pluginsCore.TaskInfo, error) {
-
-	var jobRegion, jobName, jobTypeInURL, sagemakerLinkName string
-	if m.TaskType == trainingJobTaskType {
-		trainingJob := job.(*trainingjobv1.TrainingJob)
-		jobRegion = *trainingJob.Spec.Region
-		jobName = *trainingJob.Spec.TrainingJobName
-		jobTypeInURL = "jobs"
-		sagemakerLinkName = "SageMaker Training Job"
-	} else if m.TaskType == customTrainingJobTaskType {
-		trainingJob := job.(*trainingjobv1.TrainingJob)
-		jobRegion = *trainingJob.Spec.Region
-		jobName = *trainingJob.Spec.TrainingJobName
-		jobTypeInURL = "jobs"
-		sagemakerLinkName = "SageMaker Custom Training Job"
-	} else if m.TaskType == hyperparameterTuningJobTaskType {
-		trainingJob := job.(*hpojobv1.HyperparameterTuningJob)
-		jobRegion = *trainingJob.Spec.Region
-		jobName = *trainingJob.Spec.HyperParameterTuningJobName
-		jobTypeInURL = "hyper-tuning-jobs"
-		sagemakerLinkName = "SageMaker Hyperparameter Tuning Job"
-	} else {
-		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The plugin is unable to get event info for unknown task type {%v}", m.TaskType)
-	}
-
-	logger.Infof(ctx, "Getting event information for task type: [%v], job region: [%v], job name: [%v], "+
-		"job type in url: [%v], sagemaker link name: [%v]", m.TaskType, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
-
-	cwLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
-		jobRegion, jobRegion, jobName)
-	smLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
-		jobRegion, jobRegion, jobTypeInURL, jobName)
-
-	taskLogs := []*flyteIdlCore.TaskLog{
-		{
-			Uri:           cwLogURL,
-			Name:          "CloudWatch Logs",
-			MessageFormat: flyteIdlCore.TaskLog_JSON,
-		},
-		{
-			Uri:           smLogURL,
-			Name:          sagemakerLinkName,
-			MessageFormat: flyteIdlCore.TaskLog_UNKNOWN,
-		},
-	}
-
-	customInfoMap := make(map[string]string)
-
-	customInfo, err := utils.MarshalObjToStruct(customInfoMap)
-	if err != nil {
-		return nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "Unable to create a custom info object")
-	}
-
-	return &pluginsCore.TaskInfo{
-		Logs:       taskLogs,
-		CustomInfo: customInfo,
-	}, nil
 }
 
 func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {

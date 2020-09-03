@@ -41,3 +41,10 @@ const (
 	ValidationPredefinedInputVariable            = "validation"
 	StaticHyperparametersPredefinedInputVariable = "static_hyperparameters"
 )
+
+const (
+	CloudWatchLogLinkName                    = "CloudWatch Logs"
+	TrainingJobSageMakerLinkName             = "SageMaker Built-in Algorithm Training Job"
+	CustomTrainingJobSageMakerLinkName       = "SageMaker Custom Training Job"
+	HyperparameterTuningJobSageMakerLinkName = "SageMaker Hyperparameter Tuning Job"
+)

@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -319,4 +321,36 @@ func getTaskTemplate(ctx context.Context, taskCtx pluginsCore.TaskExecutionConte
 		return nil, errors.Errorf("nil task specification")
 	}
 	return taskTemplate, nil
+}
+
+func createTaskInfo(_ context.Context, jobRegion string, jobName string, jobTypeInURL string, sagemakerLinkName string) (*pluginsCore.TaskInfo, error) {
+	cwLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
+		jobRegion, jobRegion, jobName)
+	smLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
+		jobRegion, jobRegion, jobTypeInURL, jobName)
+
+	taskLogs := []*flyteIdlCore.TaskLog{
+		{
+			Uri:           cwLogURL,
+			Name:          CloudWatchLogLinkName,
+			MessageFormat: flyteIdlCore.TaskLog_JSON,
+		},
+		{
+			Uri:           smLogURL,
+			Name:          sagemakerLinkName,
+			MessageFormat: flyteIdlCore.TaskLog_UNKNOWN,
+		},
+	}
+
+	customInfoMap := make(map[string]string)
+
+	customInfo, err := utils.MarshalObjToStruct(customInfoMap)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "Unable to create a custom info object")
+	}
+
+	return &pluginsCore.TaskInfo{
+		Logs:       taskLogs,
+		CustomInfo: customInfo,
+	}, nil
 }
