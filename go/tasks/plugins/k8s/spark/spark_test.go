@@ -274,7 +274,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	taskTemplate := dummySparkTaskTemplate("blah-1")
 
 	// Set spark custom feature config.
-	setSparkConfig(&Config{
+	assert.NoError(t, setSparkConfig(&Config{
 		Features: []Feature{
 			{
 				Name:        "feature1",
@@ -285,7 +285,7 @@ func TestBuildResourceSpark(t *testing.T) {
 				SparkConfig: map[string]string{"spark.hadoop.feature2": "true"},
 			},
 		},
-	})
+	}))
 	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate))
 	assert.Nil(t, err)
 
