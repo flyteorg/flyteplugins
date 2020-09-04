@@ -44,6 +44,7 @@ type Config struct {
 	Features              []Feature         `json:"features" pflag:",List of optional features supported."`
 }
 
+// Optional feature with name and corresponding spark-config to use.
 type Feature struct {
 	Name        string            `json:"name"`
 	SparkConfig map[string]string `json:"spark-config"`
@@ -201,22 +202,24 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 func addConfig(sparkConfig map[string]string, key string, value string) {
 
-	if strings.TrimSpace(value) != "true" {
+	if strings.ToLower(strings.TrimSpace(value)) != "true" {
 		return
 	}
 
 	matches := featureRegex.FindAllStringSubmatch(key, -1)
-	if len(matches) == 0 {
+	if len(matches) == 0 || len(matches[0]) == 0 {
 		return
 	}
 	featureName := matches[0][len(matches[0])-1]
-
+	// Use the first matching feature in-case of duplicates.
 	for _, feature := range GetSparkConfig().Features {
 		if feature.Name == featureName {
 			for k, v := range feature.SparkConfig {
 				sparkConfig[k] = v
 			}
+			break
 		}
+
 	}
 }
 
