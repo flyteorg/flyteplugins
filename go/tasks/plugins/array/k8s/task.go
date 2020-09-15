@@ -189,7 +189,7 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 }
 
 func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string) (core.AllocationStatus, error) {
-	if !IsResourceConfigSet() {
+	if config.ResourceConfig == nil {
 		return core.AllocationStatusGranted, nil
 	}
 
@@ -208,7 +208,7 @@ func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, confi
 }
 
 func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, childIdx int) error {
-	if !IsResourceConfigSet() {
+	if config.ResourceConfig == nil {
 		return nil
 	}
 	indexStr := strconv.Itoa((childIdx))
@@ -228,11 +228,6 @@ func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionCont
 	constraintsSpec := core.ResourceConstraintsSpec{
 		ProjectScopeResourceConstraint:   nil,
 		NamespaceScopeResourceConstraint: nil,
-	}
-
-	if !IsResourceConfigSet() {
-		logger.Infof(ctx, "No Resource config is found. Returning an empty resource constraints spec")
-		return constraintsSpec
 	}
 
 	constraintsSpec.ProjectScopeResourceConstraint = &core.ResourceConstraint{Value: int64(1)}

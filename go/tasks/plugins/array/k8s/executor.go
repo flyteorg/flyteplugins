@@ -3,6 +3,9 @@ package k8s
 import (
 	"context"
 
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
@@ -24,6 +27,24 @@ type Executor struct {
 	kubeClient       core.KubeClient
 	outputsAssembler array.OutputAssembler
 	errorAssembler   array.OutputAssembler
+}
+
+type KubeClientObj struct {
+	client client.Client
+}
+
+func (k KubeClientObj) GetClient() client.Client {
+	return k.client
+}
+
+func (k KubeClientObj) GetCache() cache.Cache {
+	return nil
+}
+
+func NewKubeClientObj(c client.Client) core.KubeClient {
+	return &KubeClientObj{
+		client: c,
+	}
 }
 
 func NewExecutor(kubeClient core.KubeClient, cfg *Config, scope promutils.Scope) (Executor, error) {
@@ -159,7 +180,18 @@ func init() {
 }
 
 func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
-	exec, err := NewExecutor(iCtx.KubeClient(), GetConfig(), iCtx.MetricsScope())
+	var kubeClient core.KubeClient
+	remoteClusterConfig := GetConfig().RemoteClusterConfig
+	if remoteClusterConfig != nil && remoteClusterConfig.Enabled {
+		client, err := core.GetK8sClient(*remoteClusterConfig)
+		if err != nil {
+			return nil, err
+		}
+		kubeClient = NewKubeClientObj(client)
+	} else {
+		kubeClient = iCtx.KubeClient()
+	}
+	exec, err := NewExecutor(kubeClient, GetConfig(), iCtx.MetricsScope())
 	if err != nil {
 		return nil, err
 	}
@@ -168,9 +200,10 @@ func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plu
 		return nil, err
 	}
 
-	if IsResourceConfigSet() {
-		primaryLabel := GetConfig().ResourceConfig.PrimaryLabel
-		limit := GetConfig().ResourceConfig.Limit
+	resourceConfig := GetConfig().ResourceConfig
+	if resourceConfig != nil {
+		primaryLabel := resourceConfig.PrimaryLabel
+		limit := resourceConfig.Limit
 		if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(primaryLabel), limit); err != nil {
 			logger.Errorf(ctx, "Token Resource registration for [%v] failed due to error [%v]", primaryLabel, err)
 			return nil, err
