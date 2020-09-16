@@ -119,7 +119,7 @@ func TestCheckSubTasksState(t *testing.T) {
 	t.Run("Resource exhausted", func(t *testing.T) {
 		config := Config{
 			MaxArrayJobSize: 100,
-			ResourceConfig: &ResourceConfig{
+			ResourceConfig: ResourceConfig{
 				PrimaryLabel: "p",
 				Limit:        10,
 			},
@@ -153,7 +153,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 	t.Run("Resource granted", func(t *testing.T) {
 		config := Config{
 			MaxArrayJobSize: 100,
-			ResourceConfig: &ResourceConfig{
+			ResourceConfig: ResourceConfig{
 				PrimaryLabel: "p",
 				Limit:        10,
 			},
@@ -175,7 +175,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 	t.Run("All tasks success", func(t *testing.T) {
 		config := Config{
 			MaxArrayJobSize: 100,
-			ResourceConfig: &ResourceConfig{
+			ResourceConfig: ResourceConfig{
 				PrimaryLabel: "p",
 				Limit:        10,
 			},

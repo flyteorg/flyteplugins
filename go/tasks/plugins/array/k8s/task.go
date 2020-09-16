@@ -189,7 +189,7 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 }
 
 func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string) (core.AllocationStatus, error) {
-	if config.ResourceConfig == nil {
+	if !IsResourceConfigSet(config.ResourceConfig) {
 		return core.AllocationStatusGranted, nil
 	}
 
@@ -208,7 +208,7 @@ func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, confi
 }
 
 func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, childIdx int) error {
-	if config.ResourceConfig == nil {
+	if !IsResourceConfigSet(config.ResourceConfig) {
 		return nil
 	}
 	indexStr := strconv.Itoa((childIdx))

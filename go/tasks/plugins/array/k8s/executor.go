@@ -182,8 +182,8 @@ func init() {
 func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plugin, error) {
 	var kubeClient core.KubeClient
 	remoteClusterConfig := GetConfig().RemoteClusterConfig
-	if remoteClusterConfig != nil && remoteClusterConfig.Enabled {
-		client, err := core.GetK8sClient(*remoteClusterConfig)
+	if remoteClusterConfig.Enabled {
+		client, err := GetK8sClient(remoteClusterConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +201,7 @@ func GetNewExecutorPlugin(ctx context.Context, iCtx core.SetupContext) (core.Plu
 	}
 
 	resourceConfig := GetConfig().ResourceConfig
-	if resourceConfig != nil {
+	if IsResourceConfigSet(resourceConfig) {
 		primaryLabel := resourceConfig.PrimaryLabel
 		limit := resourceConfig.Limit
 		if err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, core.ResourceNamespace(primaryLabel), limit); err != nil {
