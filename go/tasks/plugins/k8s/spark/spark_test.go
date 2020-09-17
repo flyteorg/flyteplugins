@@ -34,11 +34,13 @@ const sparkUIAddress = "spark-ui.flyte"
 
 var (
 	dummySparkConf = map[string]string{
-		"spark.driver.memory":      "500M",
-		"spark.driver.cores":       "1",
-		"spark.executor.cores":     "1",
-		"spark.executor.instances": "3",
-		"spark.executor.memory":    "500M",
+		"spark.driver.memory":          "500M",
+		"spark.driver.cores":           "1",
+		"spark.executor.cores":         "1",
+		"spark.executor.instances":     "3",
+		"spark.executor.memory":        "500M",
+		"spark.flyte.feature1.enabled": "true",
+		"spark.lyft.feature2.enabled":  "true",
 	}
 
 	dummyEnvVars = []*core.KeyValuePair{
@@ -67,6 +69,7 @@ func TestGetEventInfo(t *testing.T) {
 	}))
 	info, err := getEventInfoForSpark(dummySparkApplication(sj.RunningState))
 	assert.NoError(t, err)
+	assert.Len(t, info.Logs, 5)
 	assert.Equal(t, fmt.Sprintf("https://%s", sparkUIAddress), info.CustomInfo.Fields[sparkDriverUI].GetStringValue())
 	assert.Equal(t, "k8s.com/#!/log/spark-namespace/spark-pod/pod?namespace=spark-namespace", info.Logs[0].Uri)
 	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-pod;streamFilter=typeLogStreamPrefix", info.Logs[1].Uri)
@@ -74,12 +77,18 @@ func TestGetEventInfo(t *testing.T) {
 	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-app-name;streamFilter=typeLogStreamPrefix", info.Logs[3].Uri)
 	assert.Equal(t, "https://spark-ui.flyte", info.Logs[4].Uri)
 
+	info, err = getEventInfoForSpark(dummySparkApplication(sj.SubmittedState))
+	assert.NoError(t, err)
+	assert.Len(t, info.Logs, 1)
+	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-app-name;streamFilter=typeLogStreamPrefix", info.Logs[0].Uri)
+
 	assert.NoError(t, setSparkConfig(&Config{
 		SparkHistoryServerURL: "spark-history.flyte",
 	}))
 
 	info, err = getEventInfoForSpark(dummySparkApplication(sj.FailedState))
 	assert.NoError(t, err)
+	assert.Len(t, info.Logs, 5)
 	assert.Equal(t, "spark-history.flyte/history/app-id", info.CustomInfo.Fields[sparkHistoryUI].GetStringValue())
 	assert.Equal(t, "k8s.com/#!/log/spark-namespace/spark-pod/pod?namespace=spark-namespace", info.Logs[0].Uri)
 	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-pod;streamFilter=typeLogStreamPrefix", info.Logs[1].Uri)
@@ -100,7 +109,7 @@ func TestGetTaskPhase(t *testing.T) {
 
 	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.SubmittedState))
 	assert.NoError(t, err)
-	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseQueued)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseInitializing)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
@@ -224,6 +233,8 @@ func dummySparkTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExec
 	outputReader := &pluginIOMocks.OutputWriter{}
 	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
 	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
+	outputReader.On("GetRawOutputPrefix").Return(storage.DataReference(""))
+
 	taskCtx.On("OutputWriter").Return(outputReader)
 
 	taskReader := &mocks.TaskReader{}
@@ -262,6 +273,19 @@ func TestBuildResourceSpark(t *testing.T) {
 	// Case1: Valid Spark Task-Template
 	taskTemplate := dummySparkTaskTemplate("blah-1")
 
+	// Set spark custom feature config.
+	assert.NoError(t, setSparkConfig(&Config{
+		Features: []Feature{
+			{
+				Name:        "feature1",
+				SparkConfig: map[string]string{"spark.hadoop.feature1": "true"},
+			},
+			{
+				Name:        "feature2",
+				SparkConfig: map[string]string{"spark.hadoop.feature2": "true"},
+			},
+		},
+	}))
 	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate))
 	assert.Nil(t, err)
 
@@ -276,10 +300,25 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	for confKey, confVal := range dummySparkConf {
 		exists := false
-		for k, v := range sparkApp.Spec.SparkConf {
-			if k == confKey {
-				assert.Equal(t, v, confVal)
-				exists = true
+
+		if featureRegex.MatchString(confKey) {
+			match := featureRegex.FindAllStringSubmatch(confKey, -1)
+			feature := match[0][len(match[0])-1]
+			assert.True(t, feature == "feature1" || feature == "feature2")
+			for k, v := range sparkApp.Spec.SparkConf {
+				key := "spark.hadoop." + feature
+				if k == key {
+					assert.Equal(t, v, "true")
+					exists = true
+				}
+			}
+		} else {
+			for k, v := range sparkApp.Spec.SparkConf {
+
+				if k == confKey {
+					assert.Equal(t, v, confVal)
+					exists = true
+				}
 			}
 		}
 		assert.True(t, exists)

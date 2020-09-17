@@ -160,8 +160,9 @@ func PhaseInfoQueued(t time.Time, version uint32, reason string) PhaseInfo {
 	return pi
 }
 
-func PhaseInfoInitializing(t time.Time, version uint32, reason string) PhaseInfo {
-	pi := phaseInfo(PhaseInitializing, version, nil, &TaskInfo{OccurredAt: &t})
+func PhaseInfoInitializing(t time.Time, version uint32, reason string, info *TaskInfo) PhaseInfo {
+
+	pi := phaseInfo(PhaseInitializing, version, nil, info)
 	pi.reason = reason
 	return pi
 }
@@ -184,8 +185,12 @@ func PhaseInfoSuccess(info *TaskInfo) PhaseInfo {
 	return phaseInfo(PhaseSuccess, DefaultPhaseVersion, nil, info)
 }
 
+func PhaseInfoSystemFailure(code, reason string, info *TaskInfo) PhaseInfo {
+	return PhaseInfoFailed(PhasePermanentFailure, &core.ExecutionError{Code: code, Message: reason, Kind: core.ExecutionError_SYSTEM}, info)
+}
+
 func PhaseInfoFailure(code, reason string, info *TaskInfo) PhaseInfo {
-	return PhaseInfoFailed(PhasePermanentFailure, &core.ExecutionError{Code: code, Message: reason}, info)
+	return PhaseInfoFailed(PhasePermanentFailure, &core.ExecutionError{Code: code, Message: reason, Kind: core.ExecutionError_USER}, info)
 }
 
 func PhaseInfoRetryableFailure(code, reason string, info *TaskInfo) PhaseInfo {

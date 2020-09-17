@@ -35,11 +35,9 @@ func createSubJobList(count int) []*Job {
 }
 
 func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, outputPrefix, baseOutputSandbox storage.DataReference, jobStore *JobStore,
-	dataStore *storage.DataStore, cfg *config.Config, currentState *State) (newState *State, err error) {
-
+	dataStore *storage.DataStore, cfg *config.Config, currentState *State, metrics ExecutorMetrics) (newState *State, err error) {
 	newState = currentState
 	parentState := currentState.State
-
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
 	job := jobStore.Get(jobName)
 	// If job isn't currently being monitored (recovering from a restart?), add it to the sync-cache and return
@@ -65,9 +63,13 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 
+	queued := 0
 	for childIdx, subJob := range job.SubJobs {
 		actualPhase := subJob.Status.Phase
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
+		if subJob.Status.Phase == core.PhaseQueued {
+			queued++
+		}
 		if subJob.Status.Phase.IsFailure() {
 			if len(subJob.Status.Message) > 0 {
 				// If the service reported an error but there is no error.pb written, write one with the
@@ -112,14 +114,23 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		newArrayStatus.Summary.Inc(actualPhase)
 	}
 
+	if queued > 0 {
+		metrics.SubTasksQueued.Add(ctx, float64(queued))
+	}
+
 	parentState = parentState.SetArrayStatus(newArrayStatus)
 	// Based on the summary produced above, deduce the overall phase of the task.
 	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
+
+	if phase != arrayCore.PhaseCheckingSubTaskExecutions {
+		metrics.SubTasksSucceeded.Add(ctx, float64(newArrayStatus.Summary[core.PhaseSuccess]))
+		totalFailed := newArrayStatus.Summary[core.PhasePermanentFailure] + newArrayStatus.Summary[core.PhaseRetryableFailure]
+		metrics.SubTasksFailed.Add(ctx, float64(totalFailed))
+	}
 	if phase == arrayCore.PhaseWriteToDiscoveryThenFail {
 		errorMsg := msg.Summary(cfg.MaxErrorStringLength)
 		parentState = parentState.SetReason(errorMsg)
 	}
-
 	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
 		// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.

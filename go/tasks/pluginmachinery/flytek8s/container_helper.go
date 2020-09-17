@@ -85,7 +85,7 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 }
 
 // Returns a K8s Container for the execution
-func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskContainer *core.Container,
+func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskContainer *core.Container, iFace *core.TypedInterface,
 	inputReader io.InputReader, outputPaths io.OutputFilePaths) (*v1.Container, error) {
 	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetCommand(), inputReader, outputPaths)
 	if err != nil {
@@ -118,16 +118,20 @@ func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskE
 		containerName = rand.String(4)
 	}
 	c := &v1.Container{
-		Name:    containerName,
-		Image:   taskContainer.GetImage(),
-		Args:    modifiedArgs,
-		Command: modifiedCommand,
-		Env:     envVars,
+		Name:                     containerName,
+		Image:                    taskContainer.GetImage(),
+		Args:                     modifiedArgs,
+		Command:                  modifiedCommand,
+		Env:                      envVars,
+		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
 
 	if res != nil {
 		c.Resources = *res
 	}
 
+	if err := AddCoPilotToContainer(ctx, config.GetK8sPluginConfig().CoPilot, c, iFace, taskContainer.DataConfig); err != nil {
+		return nil, err
+	}
 	return c, nil
 }

@@ -42,11 +42,12 @@ func (d dummyInputReader) Get(ctx context.Context) (*core.LiteralMap, error) {
 }
 
 type dummyOutputPaths struct {
-	outputPath storage.DataReference
+	outputPath          storage.DataReference
+	rawOutputDataPrefix storage.DataReference
 }
 
 func (d dummyOutputPaths) GetRawOutputPrefix() storage.DataReference {
-	panic("should not be called")
+	return d.rawOutputDataPrefix
 }
 
 func (d dummyOutputPaths) GetOutputPrefixPath() storage.DataReference {
@@ -96,7 +97,10 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 	})
 
 	in := dummyInputReader{inputPath: "input/blah"}
-	out := dummyOutputPaths{outputPath: "output/blah"}
+	out := dummyOutputPaths{
+		outputPath:          "output/blah",
+		rawOutputDataPrefix: "s3://custom-bucket",
+	}
 
 	t.Run("nothing to substitute", func(t *testing.T) {
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
@@ -178,6 +182,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"${{input}}",
 			"{{ .OutputPrefix }}",
+			"--switch {{ .rawOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -185,6 +190,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"${{input}}",
 			"output/blah",
+			"--switch s3://custom-bucket",
 		}, actual)
 	})
 
@@ -205,6 +211,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"{{ .OutputPrefix }}",
+			"{{ $RawOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -212,6 +219,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"--someArg [a,b]",
 			"output/blah",
+			"s3://custom-bucket",
 		}, actual)
 	})
 
@@ -226,6 +234,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.date }}`,
 			"{{ .OutputPrefix }}",
+			"{{ .rawOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -233,6 +242,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"--someArg 1900-01-01T01:01:01.000000001Z",
 			"output/blah",
+			"s3://custom-bucket",
 		}, actual)
 	})
 
@@ -247,6 +257,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"{{ .OutputPrefix }}",
+			"{{ .wrongOutputDataPrefix }}",
 		}, in, out)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
@@ -254,18 +265,105 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 			"world",
 			"--someArg [[a,b],[1,2]]",
 			"output/blah",
+			"{{ .wrongOutputDataPrefix }}",
 		}, actual)
 	})
 
 	t.Run("nil input", func(t *testing.T) {
 		in := dummyInputReader{inputs: &core.LiteralMap{}}
 
-		_, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
 			"hello",
 			"world",
 			`--someArg {{ .Inputs.arr }}`,
 			"{{ .OutputPrefix }}",
+			"--raw-data-output-prefix {{ .rawOutputDataPrefix }}",
+		}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.arr }}`,
+			"output/blah",
+			"--raw-data-output-prefix s3://custom-bucket",
+		}, actual)
+	})
+
+	t.Run("multi-input", func(t *testing.T) {
+		in := dummyInputReader{inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"ds":    coreutils.MustMakeLiteral(time.Date(1900, 01, 01, 01, 01, 01, 000000001, time.UTC)),
+				"table": coreutils.MustMakeLiteral("my_table"),
+				"hr":    coreutils.MustMakeLiteral("hr"),
+				"min":   coreutils.MustMakeLiteral(15),
+			},
+		}}
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			`SELECT
+        	COUNT(*) as total_count
+    	FROM
+        	hive.events.{{ .Inputs.table }}
+    	WHERE
+        	ds = '{{ .Inputs.ds }}' AND hr = '{{ .Inputs.hr }}' AND min = {{ .Inputs.min }}
+	    `}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			`SELECT
+        	COUNT(*) as total_count
+    	FROM
+        	hive.events.my_table
+    	WHERE
+        	ds = '1900-01-01T01:01:01.000000001Z' AND hr = 'hr' AND min = 15
+	    `}, actual)
+	})
+
+	t.Run("missing input", func(t *testing.T) {
+		in := dummyInputReader{inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"arr": coreutils.MustMakeLiteral([]interface{}{[]interface{}{"a", "b"}, []interface{}{1, 2}}),
+			},
+		}}
+		_, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.blah }}`,
+			"{{ .OutputPrefix }}",
 		}, in, out)
 		assert.Error(t, err)
+	})
+
+	t.Run("bad template", func(t *testing.T) {
+		in := dummyInputReader{inputs: &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"arr": coreutils.MustMakeLiteral([]interface{}{[]interface{}{"a", "b"}, []interface{}{1, 2}}),
+			},
+		}}
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.blah blah }}`,
+			"{{ .OutputPrefix }}",
+		}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"hello",
+			"world",
+			`--someArg {{ .Inputs.blah blah }}`,
+			"output/blah",
+		}, actual)
+	})
+
+	t.Run("sub raw output data prefix", func(t *testing.T) {
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), []string{
+			"hello",
+			"world",
+			"{{ .rawOutputDataPrefix }}",
+		}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"hello",
+			"world",
+			"s3://custom-bucket",
+		}, actual)
 	})
 }

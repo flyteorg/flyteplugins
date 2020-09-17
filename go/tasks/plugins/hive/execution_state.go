@@ -116,7 +116,7 @@ func MapExecutionStateToPhaseInfo(state ExecutionState, quboleClient client.Qubo
 		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
 
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
 	}
 
 	return phaseInfo
@@ -145,7 +145,7 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 }
 
 func composeResourceNamespaceWithClusterPrimaryLabel(ctx context.Context, tCtx core.TaskExecutionContext) (core.ResourceNamespace, error) {
-	_, clusterLabelOverride, _, _, err := GetQueryInfo(ctx, tCtx)
+	_, clusterLabelOverride, _, _, _, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return "", err
 	}
@@ -203,10 +203,13 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext, cur
 	metric.ResourceWaitTime.Observe(waitTime.Seconds())
 
 	if allocationStatus == core.AllocationStatusGranted {
+		metric.AllocationGranted.Inc(ctx)
 		newState.Phase = PhaseQueued
 	} else if allocationStatus == core.AllocationStatusExhausted {
+		metric.AllocationNotGranted.Inc(ctx)
 		newState.Phase = PhaseNotStarted
 	} else if allocationStatus == core.AllocationStatusNamespaceQuotaExceeded {
+		metric.AllocationNotGranted.Inc(ctx)
 		newState.Phase = PhaseNotStarted
 	} else {
 		return newState, errors.Errorf(errors.ResourceManagerFailure, "Got bad allocation result [%s] for token [%s]",
@@ -227,26 +230,27 @@ func validateQuboleHiveJob(hiveJob plugins.QuboleHiveJob) error {
 // This function is the link between the output written by the SDK, and the execution side. It extracts the query
 // out of the task template.
 func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
-	query string, cluster string, tags []string, timeoutSec uint32, err error) {
+	query string, cluster string, tags []string, timeoutSec uint32, taskName string, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	hiveJob := plugins.QuboleHiveJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &hiveJob)
 	if err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	if err := validateQuboleHiveJob(hiveJob); err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	query = hiveJob.Query.GetQuery()
 	cluster = hiveJob.ClusterLabel
 	timeoutSec = hiveJob.Query.TimeoutSec
+	taskName = taskTemplate.Id.Name
 	tags = hiveJob.Tags
 	tags = append(tags, fmt.Sprintf("ns:%s", tCtx.TaskExecutionMetadata().GetNamespace()))
 	for k, v := range tCtx.TaskExecutionMetadata().GetLabels() {
@@ -256,13 +260,13 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 	return
 }
 
-func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label string) (string, bool) {
-	primaryLabel := DefaultClusterPrimaryLabel
-	found := false
+func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label string) (primaryLabel string, found bool) {
+	primaryLabel = quboleCfg.DefaultClusterLabel
+	found = false
 
 	if label == "" {
-		logger.Debugf(ctx, "Input cluster label is an empty string; falling back to using the default primary label [%v]", label, DefaultClusterPrimaryLabel)
-		return primaryLabel, found
+		logger.Debugf(ctx, "Input cluster label is an empty string; falling back to using the default primary label [%v]", label, primaryLabel)
+		return
 	}
 
 	// Using a linear search because N is small and because of ClusterConfig's struct definition
@@ -277,8 +281,11 @@ func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label
 		}
 	}
 
-	logger.Debugf(ctx, "Cannot find the primary cluster label for label [%v] in configmap; "+
-		"falling back to using the default primary label [%v]", label, DefaultClusterPrimaryLabel)
+	if !found {
+		logger.Debugf(ctx, "Cannot find the primary cluster label for label [%v] in configmap; "+
+			"falling back to using the default primary label [%v]", label, primaryLabel)
+	}
+
 	return primaryLabel, found
 }
 
@@ -316,7 +323,7 @@ func getClusterPrimaryLabel(ctx context.Context, tCtx core.TaskExecutionContext,
 	}
 
 	// Else we return the default primary label
-	return DefaultClusterPrimaryLabel
+	return cfg.DefaultClusterLabel
 }
 
 func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState, quboleClient client.QuboleClient,
@@ -328,15 +335,20 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		return currentState, errors.Wrapf(errors.RuntimeFailure, err, "Failed to read token from secrets manager")
 	}
 
-	query, clusterLabelOverride, tags, timeoutSec, err := GetQueryInfo(ctx, tCtx)
+	query, clusterLabelOverride, tags, timeoutSec, taskName, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return currentState, err
 	}
 
 	clusterPrimaryLabel := getClusterPrimaryLabel(ctx, tCtx, clusterLabelOverride)
 
+	taskExecutionIdentifier := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+	commandMetadata := client.CommandMetadata{TaskName: taskName,
+		Domain:  taskExecutionIdentifier.GetTaskId().GetDomain(),
+		Project: taskExecutionIdentifier.GetNodeExecutionId().GetExecutionId().GetProject()}
+
 	cmdDetails, err := quboleClient.ExecuteHiveCommand(ctx, query, timeoutSec,
-		clusterPrimaryLabel, apiKey, tags)
+		clusterPrimaryLabel, apiKey, tags, commandMetadata)
 	if err != nil {
 		// If we failed, we'll keep the NotStarted state
 		currentState.CreationFailureCount = currentState.CreationFailureCount + 1
@@ -360,7 +372,7 @@ func KickOffQuery(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		if err != nil {
 			// This means that our cache has fundamentally broken... return a system error
 			logger.Errorf(ctx, "Cache failed to GetOrCreate for execution [%s] cache key [%s], owner [%s]. Error %s",
-				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID,
+				taskExecutionIdentifier, uniqueID,
 				tCtx.TaskExecutionMetadata().GetOwnerReference(), err)
 			return currentState, err
 		}
@@ -411,7 +423,7 @@ func Abort(ctx context.Context, tCtx core.TaskExecutionContext, currentState Exe
 	return nil
 }
 
-func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState) error {
+func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionState, metrics QuboleHiveExecutorMetrics) error {
 	// Release allocation token
 	uniqueID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	clusterPrimaryLabel, err := composeResourceNamespaceWithClusterPrimaryLabel(ctx, tCtx)
@@ -422,9 +434,11 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionSt
 	err = tCtx.ResourceManager().ReleaseResource(ctx, clusterPrimaryLabel, uniqueID)
 
 	if err != nil {
+		metrics.ResourceReleaseFailed.Inc(ctx)
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", uniqueID, err)
 		return err
 	}
+	metrics.ResourceReleased.Inc(ctx)
 	return nil
 }
 

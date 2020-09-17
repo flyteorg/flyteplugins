@@ -3,17 +3,17 @@ package spark
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
+	"github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-
 	"k8s.io/client-go/kubernetes/scheme"
 
 	sparkOp "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta1"
@@ -22,7 +22,9 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/errors"
+	"regexp"
+	"strings"
+	"time"
 
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/config"
 )
@@ -31,12 +33,21 @@ const KindSparkApplication = "SparkApplication"
 const sparkDriverUI = "sparkDriverUI"
 const sparkHistoryUI = "sparkHistoryUI"
 
+var featureRegex = regexp.MustCompile(`^spark.((lyft)|(flyte)).(.+).enabled$`)
+
 var sparkTaskType = "spark"
 
 // Spark-specific configs
 type Config struct {
 	DefaultSparkConfig    map[string]string `json:"spark-config-default" pflag:",Key value pairs of default spark configuration that should be applied to every SparkJob"`
 	SparkHistoryServerURL string            `json:"spark-history-server-url" pflag:",URL for SparkHistory Server that each job will publish the execution history to."`
+	Features              []Feature         `json:"features" pflag:",List of optional features supported."`
+}
+
+// Optional feature with name and corresponding spark-config to use.
+type Feature struct {
+	Name        string            `json:"name"`
+	SparkConfig map[string]string `json:"spark-config"`
 }
 
 var (
@@ -139,7 +150,12 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 
 	for k, v := range sparkJob.GetSparkConf() {
-		sparkConfig[k] = v
+		// Add optional features if present.
+		if featureRegex.MatchString(k) {
+			addConfig(sparkConfig, k, v)
+		} else {
+			sparkConfig[k] = v
+		}
 	}
 
 	// Set pod limits.
@@ -149,6 +165,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	if sparkConfig["spark.kubernetes.executor.limit.cores"] == "" && sparkConfig["spark.executor.cores"] != "" {
 		sparkConfig["spark.kubernetes.executor.limit.cores"] = sparkConfig["spark.executor.cores"]
 	}
+	sparkConfig["spark.kubernetes.executor.podNamePrefix"] = taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	j := &sparkOp.SparkApplication{
 		TypeMeta: metav1.TypeMeta{
@@ -183,6 +200,29 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	return j, nil
 }
 
+func addConfig(sparkConfig map[string]string, key string, value string) {
+
+	if strings.ToLower(strings.TrimSpace(value)) != "true" {
+		return
+	}
+
+	matches := featureRegex.FindAllStringSubmatch(key, -1)
+	if len(matches) == 0 || len(matches[0]) == 0 {
+		return
+	}
+	featureName := matches[0][len(matches[0])-1]
+	// Use the first matching feature in-case of duplicates.
+	for _, feature := range GetSparkConfig().Features {
+		if feature.Name == featureName {
+			for k, v := range feature.SparkConfig {
+				sparkConfig[k] = v
+			}
+			break
+		}
+
+	}
+}
+
 // Convert SparkJob ApplicationType to Operator CRD ApplicationType
 func getApplicationType(applicationType plugins.SparkApplication_Type) sparkOp.SparkApplicationType {
 	switch applicationType {
@@ -212,7 +252,13 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 	customInfoMap := make(map[string]string)
 
 	logConfig := logs.GetLogConfig()
-	if logConfig.IsKubernetesEnabled && sj.Status.DriverInfo.PodName != "" {
+
+	state := sj.Status.AppState.State
+	isQueued := state == sparkOp.NewState ||
+		state == sparkOp.PendingSubmissionState ||
+		state == sparkOp.SubmittedState
+
+	if logConfig.IsKubernetesEnabled && !isQueued && sj.Status.DriverInfo.PodName != "" {
 		k8sLog, err := logUtils.NewKubernetesLogPlugin(logConfig.KubernetesURL).GetTaskLog(
 			sj.Status.DriverInfo.PodName,
 			sj.Namespace,
@@ -226,7 +272,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 		taskLogs = append(taskLogs, &k8sLog)
 	}
 
-	if logConfig.IsCloudwatchEnabled {
+	if logConfig.IsCloudwatchEnabled && !isQueued {
 		cwUserLogs := core.TaskLog{
 			Uri: fmt.Sprintf(
 				"https://console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=%s;prefix=var.log.containers.%s;streamFilter=typeLogStreamPrefix",
@@ -245,6 +291,14 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 			Name:          "System Logs (via Cloudwatch)",
 			MessageFormat: core.TaskLog_JSON,
 		}
+
+		taskLogs = append(taskLogs, &cwUserLogs)
+		taskLogs = append(taskLogs, &cwSystemLogs)
+
+	}
+
+	if logConfig.IsCloudwatchEnabled {
+
 		allUserLogs := core.TaskLog{
 			Uri: fmt.Sprintf(
 				"https://console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=%s;prefix=var.log.containers.%s;streamFilter=typeLogStreamPrefix",
@@ -254,8 +308,6 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 			Name:          "Spark-Submit/All User Logs (via Cloudwatch)",
 			MessageFormat: core.TaskLog_JSON,
 		}
-		taskLogs = append(taskLogs, &cwUserLogs)
-		taskLogs = append(taskLogs, &cwSystemLogs)
 		taskLogs = append(taskLogs, &allUserLogs)
 	}
 
@@ -302,8 +354,10 @@ func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.
 
 	occurredAt := time.Now()
 	switch app.Status.AppState.State {
-	case sparkOp.NewState, sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
-		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted"), nil
+	case sparkOp.NewState:
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job queued"), nil
+	case sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
+		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted", info), nil
 	case sparkOp.FailedSubmissionState:
 		reason := fmt.Sprintf("Spark Job  Submission Failed with Error: %s", app.Status.AppState.ErrorMessage)
 		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
