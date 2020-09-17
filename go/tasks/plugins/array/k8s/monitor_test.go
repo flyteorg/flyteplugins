@@ -77,10 +77,12 @@ func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContex
 
 	ow := &mocks2.OutputWriter{}
 	ow.OnGetOutputPrefixPath().Return("/prefix/")
+	ow.OnGetRawOutputPrefix().Return("/raw_prefix/")
 
 	ir := &mocks2.InputReader{}
 	ir.OnGetInputPrefixPath().Return("/prefix/")
 	ir.OnGetInputPath().Return("/prefix/inputs.pb")
+	ir.OnGetMatch(mock.Anything).Return(&core2.LiteralMap{}, nil)
 
 	tCtx := &mocks.TaskExecutionContext{}
 	tCtx.OnTaskReader().Return(tr)
