@@ -114,7 +114,6 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		if monitorResult != MonitorSuccess {
 			return currentState, logLinks, err
 		}
-
 	}
 
 	newState = newState.SetArrayStatus(*newArrayStatus)

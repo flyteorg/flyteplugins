@@ -106,7 +106,7 @@ func GetK8sClient(config ClusterConfig) (client.Client, error) {
 // Defines custom config for K8s Array plugin
 type Config struct {
 	DefaultScheduler     string            `json:"scheduler" pflag:",Decides the scheduler to use when launching array-pods."`
-	MaxErrorStringLength int               `json:"maxErrLength" pflag:",Determines the maximum length of the error string returned for the array."`
+	MaxErrorStringLength int               `json:"maxErrorLength" pflag:",Determines the maximum length of the error string returned for the array."`
 	MaxArrayJobSize      int64             `json:"maxArrayJobSize" pflag:",Maximum size of array job."`
 	ResourceConfig       ResourceConfig    `json:"resourceConfig" pflag:"-,ResourceConfiguration to limit number of resources used by k8s-array."`
 	RemoteClusterConfig  ClusterConfig     `json:"remoteClusterConfig" pflag:"-,Configuration of remote K8s cluster for array jobs"`
