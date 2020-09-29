@@ -13,8 +13,8 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/workqueue"
-	"github.com/lyft/flytestdlib/config"
 )
 
 //go:generate pflags Config --default-var=defaultConfig
@@ -37,7 +37,7 @@ var (
 		},
 	}
 
-	configSection = config.MustRegisterSection(configSectionKey, defaultConfig)
+	configSection = pluginsConfig.MustRegisterSubSection(configSectionKey, defaultConfig)
 )
 
 type ResourceConfig struct {
