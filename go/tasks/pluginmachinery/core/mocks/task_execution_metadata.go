@@ -246,6 +246,40 @@ func (_m *TaskExecutionMetadata) GetOwnerReference() v1.OwnerReference {
 	return r0
 }
 
+type TaskExecutionMetadata_GetProjectLabels struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionMetadata_GetProjectLabels) Return(_a0 map[string]string) *TaskExecutionMetadata_GetProjectLabels {
+	return &TaskExecutionMetadata_GetProjectLabels{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionMetadata) OnGetProjectLabels() *TaskExecutionMetadata_GetProjectLabels {
+	c := _m.On("GetProjectLabels")
+	return &TaskExecutionMetadata_GetProjectLabels{Call: c}
+}
+
+func (_m *TaskExecutionMetadata) OnGetProjectLabelsMatch(matchers ...interface{}) *TaskExecutionMetadata_GetProjectLabels {
+	c := _m.On("GetProjectLabels", matchers...)
+	return &TaskExecutionMetadata_GetProjectLabels{Call: c}
+}
+
+// GetProjectLabels provides a mock function with given fields:
+func (_m *TaskExecutionMetadata) GetProjectLabels() map[string]string {
+	ret := _m.Called()
+
+	var r0 map[string]string
+	if rf, ok := ret.Get(0).(func() map[string]string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	return r0
+}
+
 type TaskExecutionMetadata_GetTaskExecutionID struct {
 	*mock.Call
 }
