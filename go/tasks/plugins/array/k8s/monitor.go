@@ -60,6 +60,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
+		logger.Debugf(ctx, "Current phase and index %v - %v", childIdx, existingPhase)
 		indexStr := strconv.Itoa(childIdx)
 		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 		if existingPhase.IsTerminal() {
@@ -68,6 +69,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 			// Since we know we have already "processed" this terminal phase we can safely deallocate resource
 			err = deallocateResource(ctx, tCtx, config, childIdx)
+			logger.Debugf(ctx, "K8s array - deallocate resource")
 			if err != nil {
 				logger.Errorf(ctx, "Error releasing allocation token [%s] in LaunchAndCheckSubTasks [%s]", podName, err)
 				return currentState, logLinks, errors2.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")

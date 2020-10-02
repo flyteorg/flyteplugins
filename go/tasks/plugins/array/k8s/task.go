@@ -194,7 +194,10 @@ func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, confi
 	}
 
 	resourceNamespace := core.ResourceNamespace(config.ResourceConfig.PrimaryLabel)
-	resourceConstraintSpec := createResourceConstraintsSpec(ctx, tCtx)
+	resourceConstraintSpec := core.ResourceConstraintsSpec{
+		ProjectScopeResourceConstraint:   nil,
+		NamespaceScopeResourceConstraint: nil,
+	}
 
 	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, resourceConstraintSpec)
 	if err != nil {
@@ -222,17 +225,4 @@ func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, con
 	}
 
 	return nil
-}
-
-func createResourceConstraintsSpec(ctx context.Context, _ core.TaskExecutionContext) core.ResourceConstraintsSpec {
-	constraintsSpec := core.ResourceConstraintsSpec{
-		ProjectScopeResourceConstraint:   nil,
-		NamespaceScopeResourceConstraint: nil,
-	}
-
-	constraintsSpec.ProjectScopeResourceConstraint = &core.ResourceConstraint{Value: int64(1)}
-	constraintsSpec.NamespaceScopeResourceConstraint = &core.ResourceConstraint{Value: int64(1)}
-	logger.Infof(ctx, "Created a resource constraints spec: [%v]", constraintsSpec)
-
-	return constraintsSpec
 }
