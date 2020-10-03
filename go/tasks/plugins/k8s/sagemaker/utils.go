@@ -132,45 +132,59 @@ func getPrebuiltTrainingImage(ctx context.Context, job *flyteSagemakerIdl.Traini
 	return "", errors.Errorf(ERR_SAGEMAKER, "It is invalid to try getting a prebuilt image for AlgorithmName == CUSTOM ")
 }
 
-func buildParameterRanges(hpoJobConfig *flyteSagemakerIdl.HyperparameterTuningJobConfig) *commonv1.ParameterRanges {
-	prMap := hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap()
+func buildParameterRanges(literals map[string]*core.Literal) (*commonv1.ParameterRanges, error) {
 	var retValue = &commonv1.ParameterRanges{
 		CategoricalParameterRanges: []commonv1.CategoricalParameterRange{},
 		ContinuousParameterRanges:  []commonv1.ContinuousParameterRange{},
 		IntegerParameterRanges:     []commonv1.IntegerParameterRange{},
 	}
 
-	for prName, pr := range prMap {
-		scalingTypeString := strings.Title(strings.ToLower(pr.GetContinuousParameterRange().GetScalingType().String()))
-		switch pr.GetParameterRangeType().(type) {
+	errs := errors.ErrorCollection{}
+	for name, literal := range literals {
+		if literal.GetScalar() == nil || literal.GetScalar().GetGeneric() == nil {
+			continue
+		}
+
+		p := &flyteSagemakerIdl.ParameterRangeOneOf{}
+		err := utils.UnmarshalStruct(literal.GetScalar().GetGeneric(), p)
+		if err != nil {
+			continue
+		}
+
+		switch p.GetParameterRangeType().(type) {
 		case *flyteSagemakerIdl.ParameterRangeOneOf_CategoricalParameterRange:
 			var newElem = commonv1.CategoricalParameterRange{
-				Name:   awssagemaker.ToStringPtr(prName),
-				Values: pr.GetCategoricalParameterRange().GetValues(),
+				Name:   awssagemaker.ToStringPtr(name),
+				Values: p.GetCategoricalParameterRange().GetValues(),
 			}
+
 			retValue.CategoricalParameterRanges = append(retValue.CategoricalParameterRanges, newElem)
 
 		case *flyteSagemakerIdl.ParameterRangeOneOf_ContinuousParameterRange:
+			scalingTypeString := strings.Title(strings.ToLower(p.GetContinuousParameterRange().GetScalingType().String()))
 			var newElem = commonv1.ContinuousParameterRange{
-				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMaxValue())),
-				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", pr.GetContinuousParameterRange().GetMinValue())),
-				Name:        awssagemaker.ToStringPtr(prName),
+				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", p.GetContinuousParameterRange().GetMaxValue())),
+				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%f", p.GetContinuousParameterRange().GetMinValue())),
+				Name:        awssagemaker.ToStringPtr(name),
 				ScalingType: commonv1.HyperParameterScalingType(scalingTypeString),
 			}
+
 			retValue.ContinuousParameterRanges = append(retValue.ContinuousParameterRanges, newElem)
 
 		case *flyteSagemakerIdl.ParameterRangeOneOf_IntegerParameterRange:
+			scalingTypeString := strings.Title(strings.ToLower(p.GetIntegerParameterRange().GetScalingType().String()))
 			var newElem = commonv1.IntegerParameterRange{
-				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMaxValue())),
-				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", pr.GetIntegerParameterRange().GetMinValue())),
-				Name:        awssagemaker.ToStringPtr(prName),
+				MaxValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", p.GetIntegerParameterRange().GetMaxValue())),
+				MinValue:    awssagemaker.ToStringPtr(fmt.Sprintf("%d", p.GetIntegerParameterRange().GetMinValue())),
+				Name:        awssagemaker.ToStringPtr(name),
 				ScalingType: commonv1.HyperParameterScalingType(scalingTypeString),
 			}
+
 			retValue.IntegerParameterRanges = append(retValue.IntegerParameterRanges, newElem)
 		}
 	}
 
-	return retValue
+	return retValue, errs.ErrorOrDefault()
 }
 
 func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*flyteSagemakerIdl.HyperparameterTuningJobConfig, error) {

@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flytestdlib/errors"
 	"strings"
 	"time"
 
@@ -85,14 +86,14 @@ func (m awsSagemakerPlugin) buildResourceForHyperparameterTuningJob(
 	if err != nil {
 		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "could not convert static hyperparameters to spec type")
 	}
-	// hyperparameter_tuning_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
+
+	// hyperparameter_tuning_job_config is marshaled into a struct in flytekit, so will have to unmarshal it back
 	hpoJobConfig, err := convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral)
 	if err != nil {
 		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "failed to convert hyperparameter tuning job config literal to spec type")
 	}
 
 	outputPath := createOutputPath(taskCtx.OutputWriter().GetRawOutputPrefix().String(), HyperparameterOutputPathSubDir)
-
 	if hpoJobConfig.GetTuningObjective() == nil {
 		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Required field [TuningObjective] does not exist")
 	}
@@ -109,7 +110,10 @@ func (m awsSagemakerPlugin) buildResourceForHyperparameterTuningJob(
 		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "failed to find the training image")
 	}
 
-	hpoJobParameterRanges := buildParameterRanges(hpoJobConfig)
+	hpoJobParameterRanges, err := buildParameterRanges(inputLiterals)
+	if err != nil {
+		return nil, errors.Wrapf(pluginErrors.BadTaskSpecification, err, "Failed to build hyperparameter ranges.")
+	}
 
 	logger.Infof(ctx, "The Sagemaker HyperparameterTuningJob Task plugin received the following inputs: \n"+
 		"static hyperparameters: [%v]\n"+
