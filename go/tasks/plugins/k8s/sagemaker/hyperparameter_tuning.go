@@ -110,7 +110,7 @@ func (m awsSagemakerPlugin) buildResourceForHyperparameterTuningJob(
 		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "failed to find the training image")
 	}
 
-	hpoJobParameterRanges, err := buildParameterRanges(inputLiterals)
+	hpoJobParameterRanges, err := buildParameterRanges(ctx, inputLiterals)
 	if err != nil {
 		return nil, errors.Wrapf(pluginErrors.BadTaskSpecification, err, "Failed to build hyperparameter ranges.")
 	}

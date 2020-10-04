@@ -188,7 +188,7 @@ func Test_buildParameterRanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildParameterRanges(tt.args.inputs)
+			got, err := buildParameterRanges(context.TODO(), tt.args.inputs)
 			assert.NoError(t, err)
 
 			wantCatPr := tt.want.CategoricalParameterRanges[0]

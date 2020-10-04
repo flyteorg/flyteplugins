@@ -132,7 +132,7 @@ func getPrebuiltTrainingImage(ctx context.Context, job *flyteSagemakerIdl.Traini
 	return "", errors.Errorf(ERR_SAGEMAKER, "It is invalid to try getting a prebuilt image for AlgorithmName == CUSTOM ")
 }
 
-func buildParameterRanges(literals map[string]*core.Literal) (*commonv1.ParameterRanges, error) {
+func buildParameterRanges(ctx context.Context, literals map[string]*core.Literal) (*commonv1.ParameterRanges, error) {
 	var retValue = &commonv1.ParameterRanges{
 		CategoricalParameterRanges: []commonv1.CategoricalParameterRange{},
 		ContinuousParameterRanges:  []commonv1.ContinuousParameterRange{},
@@ -142,12 +142,14 @@ func buildParameterRanges(literals map[string]*core.Literal) (*commonv1.Paramete
 	errs := errors.ErrorCollection{}
 	for name, literal := range literals {
 		if literal.GetScalar() == nil || literal.GetScalar().GetGeneric() == nil {
+			logger.Infof(ctx, "Input [%v] is not of type Generic, won't be considered for parameter ranges.", name)
 			continue
 		}
 
 		p := &flyteSagemakerIdl.ParameterRangeOneOf{}
 		err := utils.UnmarshalStruct(literal.GetScalar().GetGeneric(), p)
 		if err != nil {
+			logger.Infof(ctx, "Failed to unmarshal input [%v] as a ParameterRangeOneOf. Skipping. Error: %v", name, err)
 			continue
 		}
 
