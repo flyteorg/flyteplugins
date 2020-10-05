@@ -31,6 +31,248 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 )
 
+func (m awsSagemakerPlugin) getMetricDefinitions(_ context.Context, flyteTrainingJob *flyteSageMakerIdl.TrainingJob) ([]commonv1.MetricDefinition, error) {
+	if flyteTrainingJob == nil || flyteTrainingJob.GetAlgorithmSpecification() == nil || flyteTrainingJob.GetAlgorithmSpecification().GetMetricDefinitions() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Failed to get metric definitions from Flyte's TrainingJob message")
+	}
+	var metricDefinitions []commonv1.MetricDefinition
+	idlMetricDefinitions := flyteTrainingJob.GetAlgorithmSpecification().GetMetricDefinitions()
+	for _, md := range idlMetricDefinitions {
+		metricDefinitions = append(metricDefinitions,
+			commonv1.MetricDefinition{Name: ToStringPtr(md.Name), Regex: ToStringPtr(md.Regex)})
+	}
+	return metricDefinitions, nil
+}
+
+func (m awsSagemakerPlugin) getHyperparameterTuningJobConfig(_ context.Context,
+	hpoJob *flyteSageMakerIdl.HyperparameterTuningJob, hpoJobConfigLiteral *flyteIdlCore.Literal) (*commonv1.HyperParameterTuningJobConfig, error) {
+
+	// hyperparameter_tuning_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
+	hpoJobConfig, err := convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "failed to convert hyperparameter tuning job config literal to spec type")
+	}
+	if hpoJobConfig.GetTuningObjective() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Required field [TuningObjective] does not exist")
+	}
+
+	hpoJobParameterRanges := buildParameterRanges(hpoJobConfig)
+
+	tuningStrategyString := strings.Title(strings.ToLower(hpoJobConfig.GetTuningStrategy().String()))
+	tuningObjectiveTypeString := strings.Title(strings.ToLower(hpoJobConfig.GetTuningObjective().GetObjectiveType().String()))
+	trainingJobEarlyStoppingTypeString := strings.Title(strings.ToLower(hpoJobConfig.TrainingJobEarlyStoppingType.String()))
+	return &commonv1.HyperParameterTuningJobConfig{
+		ResourceLimits: &commonv1.ResourceLimits{
+			MaxNumberOfTrainingJobs: ToInt64Ptr(hpoJob.GetMaxNumberOfTrainingJobs()),
+			MaxParallelTrainingJobs: ToInt64Ptr(hpoJob.GetMaxParallelTrainingJobs()),
+		},
+		Strategy: commonv1.HyperParameterTuningJobStrategyType(tuningStrategyString),
+		HyperParameterTuningJobObjective: &commonv1.HyperParameterTuningJobObjective{
+			Type:       commonv1.HyperParameterTuningJobObjectiveType(tuningObjectiveTypeString),
+			MetricName: ToStringPtr(hpoJobConfig.GetTuningObjective().GetMetricName()),
+		},
+		ParameterRanges:              hpoJobParameterRanges,
+		TrainingJobEarlyStoppingType: commonv1.TrainingJobEarlyStoppingType(trainingJobEarlyStoppingTypeString),
+	}, nil
+}
+
+func (m awsSagemakerPlugin) getTrainingJobResourceConfig(_ context.Context, trainingJob *flyteSageMakerIdl.TrainingJob) (*commonv1.ResourceConfig, error) {
+
+	if trainingJob == nil || trainingJob.GetTrainingJobResourceConfig() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "nil training job or the training job contains a nil TrainingJobResourceConfig")
+	}
+
+	return &commonv1.ResourceConfig{
+		InstanceType:   trainingJob.GetTrainingJobResourceConfig().GetInstanceType(),
+		InstanceCount:  ToInt64Ptr(trainingJob.GetTrainingJobResourceConfig().GetInstanceCount()),
+		VolumeSizeInGB: ToInt64Ptr(trainingJob.GetTrainingJobResourceConfig().GetVolumeSizeInGb()),
+		VolumeKmsKeyId: ToStringPtr(""), // TODO: Not yet supported. Need to add to proto and flytekit in the future
+	}, nil
+}
+
+func (m awsSagemakerPlugin) getHyperParameterAlgorithmSpecification(ctx context.Context,
+	taskCtx pluginsCore.TaskExecutionContext, trainingJob *flyteSageMakerIdl.TrainingJob) (*commonv1.HyperParameterAlgorithmSpecification, error) {
+	trainingImageStr, err := getTrainingJobImage(ctx, taskCtx, trainingJob)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "failed to find the training image")
+	}
+	inputModeString := strings.Title(strings.ToLower(trainingJob.GetAlgorithmSpecification().GetInputMode().String()))
+
+	sagemakerMetricDefinitions, err := m.getMetricDefinitions(ctx, trainingJob)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "Failed to create SageMaker metric definitions")
+	}
+
+	return &commonv1.HyperParameterAlgorithmSpecification{
+		TrainingImage:     ToStringPtr(trainingImageStr),
+		TrainingInputMode: commonv1.TrainingInputMode(inputModeString),
+		MetricDefinitions: sagemakerMetricDefinitions,
+		AlgorithmName:     nil,
+	}, nil
+}
+
+func (m awsSagemakerPlugin) buildResourceForHyperparameterTuningJobBuiltinTraining(
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+
+	logger.Infof(ctx, "Building a hyperparameter tuning job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+
+	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the custom field of the task template back into the HyperparameterTuningJob struct generated in flyteidl
+	flyteHPOJob := flyteSageMakerIdl.HyperparameterTuningJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &flyteHPOJob)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "invalid HyperparameterTuningJob task specification: not able to unmarshal the custom field to [%s]", hyperparameterTuningJobTaskType)
+	}
+
+	err := validateTrainingJob(flyteHPOJob.GetTrainingJob())
+	resource, err2, done := m.validateTrainingJobMessage(flyteHPOJob)
+	if done {
+		return resource, err2
+	}
+
+	taskInput, err := taskCtx.InputReader().Get(ctx)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "unable to fetch task inputs")
+	}
+
+	// Get inputs from literals
+	inputLiterals := taskInput.GetLiterals()
+	err = checkIfRequiredInputLiteralsExist(inputLiterals,
+		[]string{TrainPredefinedInputVariable, ValidationPredefinedInputVariable, StaticHyperparametersPredefinedInputVariable})
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "Error occurred when checking if all the required inputs exist")
+	}
+
+	trainPathLiteral := inputLiterals[TrainPredefinedInputVariable]
+	validatePathLiteral := inputLiterals[ValidationPredefinedInputVariable]
+	staticHyperparamsLiteral := inputLiterals[StaticHyperparametersPredefinedInputVariable]
+	hpoJobConfigLiteral := inputLiterals["hyperparameter_tuning_job_config"]
+	if trainPathLiteral.GetScalar() == nil || trainPathLiteral.GetScalar().GetBlob() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "[%v] Input is required and should be of Type [Scalar.Blob]", TrainPredefinedInputVariable)
+	}
+	if validatePathLiteral.GetScalar() == nil || validatePathLiteral.GetScalar().GetBlob() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "[%v] Input is required and should be of Type [Scalar.Blob]", ValidationPredefinedInputVariable)
+	}
+	// Convert the hyperparameters to the spec value
+	staticHyperparams, err := convertStaticHyperparamsLiteralToSpecType(staticHyperparamsLiteral)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "could not convert static hyperparameters to spec type")
+	}
+
+	outputPath := createOutputPath(taskCtx.OutputWriter().GetRawOutputPrefix().String(), HyperparameterOutputPathSubDir)
+
+	// hyperparameter_tuning_job_config is marshaled into a byte array in flytekit, so will have to unmarshal it back
+	hpoJobConfig, err := convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral)
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "failed to convert hyperparameter tuning job config literal to spec type")
+	}
+	if hpoJobConfig.GetTuningObjective() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Required field [TuningObjective] does not exist")
+	}
+
+	// Deleting the conflicting static hyperparameters: if a hyperparameter exist in both the map of static hyperparameter
+	// and the map of the tunable hyperparameter inside the Hyperparameter Tuning Job Config, we delete the entry
+	// in the static map and let the one in the map of the tunable hyperparameters take precedence
+	staticHyperparams = deleteConflictingStaticHyperparameters(ctx, staticHyperparams, hpoJobConfig.GetHyperparameterRanges().GetParameterRangeMap())
+
+	jobName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+
+	// ok
+	sagemakerHPOJobConfig, err := m.getHyperparameterTuningJobConfig(ctx, &flyteHPOJob, hpoJobConfigLiteral)
+
+	logger.Infof(ctx, "The Sagemaker HyperparameterTuningJob Task plugin received the following inputs: \n"+
+		"static hyperparameters: [%v]\n"+
+		"hyperparameter tuning job config: [%v]\n"+
+		"parameter ranges: [%v]", staticHyperparams, hpoJobConfig, hpoJobParameterRanges)
+
+	cfg := config.GetSagemakerConfig()
+
+	apiContentType, err := getAPIContentType(flyteHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputContentType())
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "Unsupported input file type [%v]",
+			flyteHPOJob.GetTrainingJob().GetAlgorithmSpecification().GetInputContentType().String())
+	}
+
+	sagemakerHyperParameterAlgorithmSpecification, err := m.getHyperParameterAlgorithmSpecification(ctx, taskCtx, flyteHPOJob.GetTrainingJob())
+
+	// ok
+	sagemakerTrainingJobResourceConfig, err := m.getTrainingJobResourceConfig(ctx, flyteHPOJob.GetTrainingJob())
+	if err != nil {
+		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "Failed to get resource config of the training job")
+	}
+
+	// ok
+	role := awsUtils.GetRole(ctx, cfg.RoleAnnotationKey, taskCtx.TaskExecutionMetadata().GetAnnotations())
+	if role == "" {
+		role = cfg.RoleArn
+	}
+
+	hpoJob := &hpojobv1.HyperparameterTuningJob{
+		Spec: hpojobv1.HyperparameterTuningJobSpec{
+			HyperParameterTuningJobName:   &jobName,
+			HyperParameterTuningJobConfig: sagemakerHPOJobConfig,
+			TrainingJobDefinition: &commonv1.HyperParameterTrainingJobDefinition{
+				StaticHyperParameters:  staticHyperparams,
+				AlgorithmSpecification: sagemakerHyperParameterAlgorithmSpecification,
+				InputDataConfig: []commonv1.Channel{
+					{
+						ChannelName: ToStringPtr(TrainPredefinedInputVariable),
+						DataSource: &commonv1.DataSource{
+							S3DataSource: &commonv1.S3DataSource{
+								S3DataType: "S3Prefix",
+								S3Uri:      ToStringPtr(trainPathLiteral.GetScalar().GetBlob().GetUri()),
+							},
+						},
+						ContentType: ToStringPtr(apiContentType), // TODO: can this be derived from the BlobMetadata
+						InputMode:   string(sagemakerHyperParameterAlgorithmSpecification.TrainingInputMode),
+					},
+					{
+						ChannelName: ToStringPtr(ValidationPredefinedInputVariable),
+						DataSource: &commonv1.DataSource{
+							S3DataSource: &commonv1.S3DataSource{
+								S3DataType: "S3Prefix",
+								S3Uri:      ToStringPtr(validatePathLiteral.GetScalar().GetBlob().GetUri()),
+							},
+						},
+						ContentType: ToStringPtr(apiContentType), // TODO: can this be derived from the BlobMetadata
+						InputMode:   string(sagemakerHyperParameterAlgorithmSpecification.TrainingInputMode),
+					},
+				},
+				OutputDataConfig: &commonv1.OutputDataConfig{
+					S3OutputPath: ToStringPtr(outputPath),
+				},
+				ResourceConfig: sagemakerTrainingJobResourceConfig,
+				RoleArn:        ToStringPtr(role),
+				StoppingCondition: &commonv1.StoppingCondition{
+					MaxRuntimeInSeconds:  ToInt64Ptr(86400),
+					MaxWaitTimeInSeconds: nil,
+				},
+			},
+			Region: ToStringPtr(cfg.Region),
+		},
+	}
+
+	logger.Infof(ctx, "Successfully built a hyperparameter tuning job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	return hpoJob, nil
+}
+
+func (m awsSagemakerPlugin) validateTrainingJobMessage(flyteTrainingJob *flyteSageMakerIdl.TrainingJob) (k8s.Resource, error, bool) {
+	if flyteTrainingJob == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Required field [TrainingJob] of the HyperparameterTuningJob does not exist"), true
+	}
+	if flyteHPOJob.GetTrainingJob().GetAlgorithmSpecification() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Required field [AlgorithmSpecification] of the HyperparameterTuningJob's underlying TrainingJob does not exist"), true
+	}
+	if flyteHPOJob.GetTrainingJob().GetTrainingJobResourceConfig() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "Required field [TrainingJobResourceConfig] of the HyperparameterTuningJob's underlying TrainingJob does not exist"), true
+	}
+	return nil, nil, false
+}
+
 func (m awsSagemakerPlugin) buildResourceForHyperparameterTuningJob(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
 
