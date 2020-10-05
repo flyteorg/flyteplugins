@@ -48,6 +48,10 @@ const (
 
 func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (LaunchResult, error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
+	// Do not owner references for remote cluster execution
+	if t.Config.RemoteClusterConfig.Enabled {
+		podTemplate.OwnerReferences = nil
+	}
 	if err != nil {
 		return LaunchError, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for a task")
 	}

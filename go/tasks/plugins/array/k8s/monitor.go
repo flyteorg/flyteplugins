@@ -95,6 +95,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		var launchResult LaunchResult
 		launchResult, err = task.Launch(ctx, tCtx, kubeClient)
 		if err != nil {
+			logger.Errorf(ctx, "K8s array - Launch error %v", err)
 			return currentState, logLinks, err
 		}
 
@@ -114,6 +115,9 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		var monitorResult MonitorResult
 		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
 		if monitorResult != MonitorSuccess {
+			if err != nil {
+				logger.Errorf(ctx, "K8s array - Monitor error %v", err)
+			}
 			return currentState, logLinks, err
 		}
 	}
