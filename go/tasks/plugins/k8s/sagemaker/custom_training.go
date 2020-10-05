@@ -94,6 +94,14 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 		Value: strconv.FormatBool(true),
 	})
 
+	// inject sagemaker_mpi_enabled into hyperparameters if the user code designates MPI as its distributed training framework
+	if sagemakerTrainingJob.GetTrainingJobResourceConfig().GetDistributedProtocol() == flyteSageMakerIdl.DistributedProtocol_MPI {
+		logger.Infof(ctx, "MPI is enabled by the user. TrainingJob.TrainingJobResourceConfig.DistributedProtocol=[%v]", sagemakerTrainingJob.GetTrainingJobResourceConfig().GetDistributedProtocol().String())
+		hyperParameters = append(hyperParameters, &commonv1.KeyValuePair{
+			Name:  SageMakerMpiEnableEnvVarName,
+			Value: strconv.FormatBool(true),
+		})
+	}
 	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
 
 	trainingJob := &trainingjobv1.TrainingJob{

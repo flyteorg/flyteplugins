@@ -25,6 +25,7 @@ const (
 	FlyteSageMakerCmdKeyPrefix            string = "__FLYTE_CMD_"
 	FlyteSageMakerCmdDummyValue           string = "__FLYTE_CMD_DUMMY_VALUE__"
 	FlyteSageMakerEnvVarKeyStatsdDisabled string = "FLYTE_STATSD_DISABLED"
+	SageMakerMpiEnableEnvVarName          string = "sagemaker_mpi_enabled"
 )
 
 const (
@@ -48,3 +49,5 @@ const (
 	CustomTrainingJobSageMakerLinkName       = "SageMaker Custom Training Job"
 	HyperparameterTuningJobSageMakerLinkName = "SageMaker Hyperparameter Tuning Job"
 )
+
+const ()

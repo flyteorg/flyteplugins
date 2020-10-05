@@ -298,6 +298,12 @@ github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f h1:PGuAMDzAen0Au
 github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f/go.mod h1:llRdnznGEAqC3DcNm6yEj472xaFVfLM7hnYofMb12tQ=
 github.com/lyft/flyteidl v0.18.0 h1:f4yv1MafE26wpMC6QlthM02EeTEDXpy/waL54dRDiSs=
 github.com/lyft/flyteidl v0.18.0/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
+github.com/lyft/flyteidl v0.18.9-0.20201005181333-4251dc6f6775 h1:KgA4712euEGRRTE5yN1oeT55d3vnZkBsyMDxtBA/ino=
+github.com/lyft/flyteidl v0.18.9-0.20201005181333-4251dc6f6775/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
+github.com/lyft/flyteidl v0.18.9-0.20201005224349-a6be845b054c h1:mRBh2uoY7QTP4rvT/fsJRHgRK/1gZ1AI2uNs+TOZkQs=
+github.com/lyft/flyteidl v0.18.9-0.20201005224349-a6be845b054c/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
+github.com/lyft/flyteidl v0.18.9-0.20201005230624-0942c33ea265 h1:ZwkHFZuHwFZHJFiqdO9LJpG5V9RhLb6sbK8wCG+yH5Y=
+github.com/lyft/flyteidl v0.18.9-0.20201005230624-0942c33ea265/go.mod h1:/zQXxuHO11u/saxTTZc8oYExIGEShXB+xCB1/F1Cu20=
 github.com/lyft/flytestdlib v0.3.0/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
 github.com/lyft/flytestdlib v0.3.9 h1:NaKp9xkeWWwhVvqTOcR/FqlASy1N2gu/kN7PVe4S7YI=
 github.com/lyft/flytestdlib v0.3.9/go.mod h1:LJPPJlkFj+wwVWMrQT3K5JZgNhZi2mULsCG4ZYhinhU=
