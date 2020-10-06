@@ -114,6 +114,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		var monitorResult MonitorResult
 		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
+		logger.Debugf(ctx, "Log links %v", logLinks)
+
 		if monitorResult != MonitorSuccess {
 			if err != nil {
 				logger.Errorf(ctx, "K8s array - Monitor error %v", err)

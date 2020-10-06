@@ -127,6 +127,7 @@ func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeC
 		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
 	}
 
+	logger.Debugf(ctx, "Monitor - phase info %v", phaseInfo)
 	if phaseInfo.Info() != nil {
 		t.LogLinks = append(t.LogLinks, phaseInfo.Info().Logs...)
 	}
