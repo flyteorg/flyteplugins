@@ -3,9 +3,10 @@ package sagemaker
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flytestdlib/errors"
 	"strings"
 	"time"
+
+	"github.com/lyft/flytestdlib/errors"
 
 	awsUtils "github.com/lyft/flyteplugins/go/tasks/plugins/awsutils"
 

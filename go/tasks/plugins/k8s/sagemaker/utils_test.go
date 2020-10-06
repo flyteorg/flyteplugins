@@ -94,18 +94,6 @@ func generateNonConflictingStaticHPs() []*commonv1.KeyValuePair {
 	return ret
 }
 
-func generateMockHyperparameterTuningJobConfig() *sagemakerSpec.HyperparameterTuningJobConfig {
-	return &sagemakerSpec.HyperparameterTuningJobConfig{
-		HyperparameterRanges: &sagemakerSpec.ParameterRanges{ParameterRangeMap: generateMockTunableHPMap()},
-		TuningStrategy:       sagemakerSpec.HyperparameterTuningStrategy_BAYESIAN,
-		TuningObjective: &sagemakerSpec.HyperparameterTuningObjective{
-			ObjectiveType: sagemakerSpec.HyperparameterTuningObjectiveType_MINIMIZE,
-			MetricName:    "validate:mse",
-		},
-		TrainingJobEarlyStoppingType: sagemakerSpec.TrainingJobEarlyStoppingType_AUTO,
-	}
-}
-
 func generateMockSageMakerConfig() *sagemakerConfig.Config {
 	return &sagemakerConfig.Config{
 		RoleArn:           "default",
