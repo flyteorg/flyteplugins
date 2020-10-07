@@ -48,14 +48,13 @@ const (
 
 func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (LaunchResult, error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
-	// Do not owner references for remote cluster execution
-	if t.Config.RemoteClusterConfig.Enabled {
-		podTemplate.OwnerReferences = nil
-	}
 	if err != nil {
 		return LaunchError, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for a task")
 	}
-
+	// Remove owner references for remote cluster execution
+	if t.Config.RemoteClusterConfig.Enabled {
+		podTemplate.OwnerReferences = nil
+	}
 	var args []string
 	if len(podTemplate.Spec.Containers) > 0 {
 		args = append(podTemplate.Spec.Containers[0].Command, podTemplate.Spec.Containers[0].Args...)
@@ -127,7 +126,6 @@ func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeC
 		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
 	}
 
-	logger.Debugf(ctx, "Monitor - phase info %v", phaseInfo)
 	if phaseInfo.Info() != nil {
 		t.LogLinks = append(t.LogLinks, phaseInfo.Info().Logs...)
 	}

@@ -74,6 +74,7 @@ func (auth Auth) GetToken() (string, error) {
 	return string(token), nil
 }
 
+// TODO: Move logic to flytestdlib
 // Reads secret values from paths specified in the config to initialize a Kubernetes rest client Config.
 func RemoteClusterConfig(host string, auth Auth) (*restclient.Config, error) {
 	tokenString, err := auth.GetToken()
