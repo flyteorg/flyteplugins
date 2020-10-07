@@ -66,7 +66,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 			{Name: fmt.Sprintf("%s%d_%s%s", FlyteSageMakerCmdKeyPrefix, 6, "--test-flag", FlyteSageMakerKeySuffix), Value: FlyteSageMakerCmdDummyValue},
 			{Name: fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, "Env_Var", FlyteSageMakerKeySuffix), Value: "Env_Val"},
 			{Name: fmt.Sprintf("%s%s%s", FlyteSageMakerEnvVarKeyPrefix, FlyteSageMakerEnvVarKeyStatsdDisabled, FlyteSageMakerKeySuffix), Value: strconv.FormatBool(true)},
-			{Name: fmt.Sprintf("%s", SageMakerMpiEnableEnvVarName), Value: strconv.FormatBool(false)},
+			{Name: SageMakerMpiEnableEnvVarName, Value: strconv.FormatBool(false)},
 		}
 		assert.Equal(t, len(expectedHPs), len(trainingJob.Spec.HyperParameters))
 		for i := range expectedHPs {
@@ -80,7 +80,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		count := 0
 		for i := range trainingJob.Spec.HyperParameters {
 			if trainingJob.Spec.HyperParameters[i].Name == SageMakerMpiEnableEnvVarName && trainingJob.Spec.HyperParameters[i].Value == strconv.FormatBool(false) {
-				count += 1
+				count++
 			}
 		}
 		assert.Equal(t, 1, count)
@@ -115,7 +115,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		count := 0
 		for i := range trainingJob.Spec.HyperParameters {
 			if trainingJob.Spec.HyperParameters[i].Name == SageMakerMpiEnableEnvVarName && trainingJob.Spec.HyperParameters[i].Value == strconv.FormatBool(false) {
-				count += 1
+				count++
 			}
 		}
 		assert.Equal(t, 1, count)
@@ -150,7 +150,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		count := 0
 		for i := range trainingJob.Spec.HyperParameters {
 			if trainingJob.Spec.HyperParameters[i].Name == SageMakerMpiEnableEnvVarName && trainingJob.Spec.HyperParameters[i].Value == strconv.FormatBool(true) {
-				count += 1
+				count++
 			}
 		}
 		assert.Equal(t, 1, count)
