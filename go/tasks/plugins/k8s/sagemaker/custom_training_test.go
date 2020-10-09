@@ -111,7 +111,6 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 
-		// Since the instance count is 1, even though the distributed protocol is MPI, we should find sagemaker_mpi_enabled=false in the hyperparameters
 		count := 0
 		for i := range trainingJob.Spec.HyperParameters {
 			if trainingJob.Spec.HyperParameters[i].Name == SageMakerMpiEnableEnvVarName {
@@ -122,7 +121,7 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		assert.Equal(t, 1, count)
 	})
 
-	t.Run("In a custom training job when the instance count > 1 and when users specify the MPI distributed protocol, we should find sagemaker_mpi_enabled=true in the hyperparameters", func(t *testing.T) {
+	t.Run("When users specify the MPI distributed protocol, we should find sagemaker_mpi_enabled=true in the hyperparameters", func(t *testing.T) {
 		// Injecting a config which contains a mismatched roleAnnotationKey -> expecting to get the role from the config
 		configAccessor := viper.NewAccessor(stdConfig.Options{
 			StrictMode: true,
@@ -147,7 +146,6 @@ func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 
-		// In a custom training job when the instance count > 1 and when users specify the MPI distributed protocol, we should inject the sagemaker_mpi_enabled hyperparameter
 		count := 0
 		for i := range trainingJob.Spec.HyperParameters {
 			if trainingJob.Spec.HyperParameters[i].Name == SageMakerMpiEnableEnvVarName {
