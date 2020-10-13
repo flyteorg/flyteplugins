@@ -22,24 +22,27 @@ const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
 
-// Returns the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
-func GetBasePodSpec(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
-	resourceRequirements []v1.ResourceRequirements) *v1.PodSpec {
-	// If you change any of these defaults, be sure to update mergePodSpecs in sidecar task so that it also picks
-	// up on these new defaults.
-	pod := &v1.PodSpec{
-		// We could specify Scheduler, Affinity, nodename etc
-		RestartPolicy:      v1.RestartPolicyNever,
-		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), resourceRequirements...),
-		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
-		SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
-		NodeSelector:       config.GetK8sPluginConfig().DefaultNodeSelector,
-		Affinity:           config.GetK8sPluginConfig().DefaultAffinity,
+// Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
+func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
+	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
+	if len(podSpec.RestartPolicy) == 0 {
+		podSpec.RestartPolicy = v1.RestartPolicyNever
 	}
+	podSpec.Tolerations = append(
+		GetPodTolerations(taskExecutionMetadata.IsInterruptible(), resourceRequirements...), podSpec.Tolerations...)
+	if len(podSpec.ServiceAccountName) == 0 {
+		podSpec.ServiceAccountName = taskExecutionMetadata.GetK8sServiceAccount()
+	}
+	if len(podSpec.SchedulerName) == 0 {
+		podSpec.SchedulerName = config.GetK8sPluginConfig().SchedulerName
+	}
+	podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().DefaultNodeSelector)
 	if taskExecutionMetadata.IsInterruptible() {
-		pod.NodeSelector = utils.UnionMaps(pod.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
+		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
-	return pod
+	if podSpec.Affinity == nil {
+		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity
+	}
 }
 
 func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
@@ -61,9 +64,10 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 	containers := []v1.Container{
 		*c,
 	}
-
-	pod := GetBasePodSpec(taskExecutionMetadata, []v1.ResourceRequirements{c.Resources})
-	pod.Containers = containers
+	pod := &v1.PodSpec{
+		Containers: containers,
+	}
+	UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{c.Resources}, pod)
 
 	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), taskExecutionMetadata, inputs, outputPaths, task.GetContainer().GetDataConfig()); err != nil {
 		return nil, err

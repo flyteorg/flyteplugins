@@ -80,7 +80,81 @@ func dummyInputReader() io.InputReader {
 	return inputReader
 }
 
-func TestToK8sPodIterruptible(t *testing.T) {
+func TestUpdatePod(t *testing.T) {
+	taskExecutionMetadata := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+			ResourceNvidiaGPU:  resource.MustParse("1"),
+		},
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+		},
+	})
+
+	tolGPU := v1.Toleration{
+		Key:      "flyte/gpu",
+		Value:    "dedicated",
+		Operator: v1.TolerationOpEqual,
+		Effect:   v1.TaintEffectNoSchedule,
+	}
+
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		ResourceTolerations: map[v1.ResourceName][]v1.Toleration{
+			ResourceNvidiaGPU: {tolGPU},
+		},
+		DefaultCPURequest:    "1024m",
+		DefaultMemoryRequest: "1024Mi",
+		SchedulerName:        "scheduler-name",
+		DefaultNodeSelector: map[string]string{
+			"flyte": "configured",
+		},
+	}))
+	resourceRequirements := []v1.ResourceRequirements{
+		{
+			Requests: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceName("nvidia.com/gpu"): {},
+			},
+		},
+	}
+
+	pod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Tolerations: []v1.Toleration{
+				{
+					Key:   "my toleration key",
+					Value: "my toleration value",
+				},
+			},
+			NodeSelector: map[string]string{
+				"user": "also configured",
+			},
+		},
+	}
+	UpdatePod(taskExecutionMetadata, resourceRequirements, &pod.Spec)
+	assert.Equal(t, v1.RestartPolicyNever, pod.Spec.RestartPolicy)
+	for _, tol := range pod.Spec.Tolerations {
+		if tol.Key == "flyte/gpu" {
+			assert.Equal(t, tol.Value, "dedicated")
+			assert.Equal(t, tol.Operator, v1.TolerationOperator("Equal"))
+			assert.Equal(t, tol.Effect, v1.TaintEffect("NoSchedule"))
+		} else if tol.Key == "my toleration key" {
+			assert.Equal(t, tol.Value, "my toleration value")
+		} else {
+			t.Fatalf("unexpected toleration [%+v]", tol)
+		}
+	}
+	assert.Equal(t, "service-account", pod.Spec.ServiceAccountName)
+	assert.Equal(t, "scheduler-name", pod.Spec.SchedulerName)
+	assert.Len(t, pod.Spec.Tolerations, 2)
+	assert.EqualValues(t, map[string]string{
+		"flyte": "configured",
+		"user":  "also configured",
+	}, pod.Spec.NodeSelector)
+}
+
+func TestToK8sPodInterruptible(t *testing.T) {
 	ctx := context.TODO()
 	configAccessor := viper.NewAccessor(config1.Options{
 		StrictMode:  true,

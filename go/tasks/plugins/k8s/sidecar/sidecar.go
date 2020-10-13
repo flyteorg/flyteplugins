@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -26,23 +24,6 @@ const (
 )
 
 type sidecarResourceHandler struct{}
-
-func mergePodSpecs(flyteConfiguredPodSpec, userSpecified *v1.PodSpec) {
-	if len(userSpecified.RestartPolicy) == 0 {
-		userSpecified.RestartPolicy = flyteConfiguredPodSpec.RestartPolicy
-	}
-	userSpecified.Tolerations = append(userSpecified.Tolerations, flyteConfiguredPodSpec.Tolerations...)
-	if len(userSpecified.ServiceAccountName) == 0 {
-		userSpecified.ServiceAccountName = flyteConfiguredPodSpec.ServiceAccountName
-	}
-	if len(userSpecified.SchedulerName) == 0 {
-		userSpecified.SchedulerName = flyteConfiguredPodSpec.SchedulerName
-	}
-	userSpecified.NodeSelector = utils.UnionMaps(userSpecified.NodeSelector, flyteConfiguredPodSpec.NodeSelector)
-	if userSpecified.Affinity == nil {
-		userSpecified.Affinity = flyteConfiguredPodSpec.Affinity
-	}
-}
 
 // This method handles templatizing primary container input args, env variables and adds a GPU toleration to the pod
 // spec if necessary.
@@ -78,8 +59,7 @@ func validateAndFinalizePod(
 
 	}
 	pod.Spec.Containers = finalizedContainers
-	flyteConfiguredPodSpec := flytek8s.GetBasePodSpec(taskCtx.TaskExecutionMetadata(), resReqs)
-	mergePodSpecs(flyteConfiguredPodSpec, &pod.Spec)
+	flytek8s.UpdatePod(taskCtx.TaskExecutionMetadata(), resReqs, &pod.Spec)
 	return &pod, nil
 }
 
