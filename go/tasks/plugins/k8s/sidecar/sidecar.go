@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -26,6 +26,23 @@ const (
 )
 
 type sidecarResourceHandler struct{}
+
+func mergePodSpecs(flyteConfiguredPodSpec, userSpecified *v1.PodSpec) {
+	if len(userSpecified.RestartPolicy) == 0 {
+		userSpecified.RestartPolicy = flyteConfiguredPodSpec.RestartPolicy
+	}
+	userSpecified.Tolerations = append(userSpecified.Tolerations, flyteConfiguredPodSpec.Tolerations...)
+	if len(userSpecified.ServiceAccountName) == 0 {
+		userSpecified.ServiceAccountName = flyteConfiguredPodSpec.ServiceAccountName
+	}
+	if len(userSpecified.SchedulerName) == 0 {
+		userSpecified.SchedulerName = flyteConfiguredPodSpec.SchedulerName
+	}
+	userSpecified.NodeSelector = utils.UnionMaps(userSpecified.NodeSelector, flyteConfiguredPodSpec.NodeSelector)
+	if userSpecified.Affinity == nil {
+		userSpecified.Affinity = flyteConfiguredPodSpec.Affinity
+	}
+}
 
 // This method handles templatizing primary container input args, env variables and adds a GPU toleration to the pod
 // spec if necessary.
@@ -61,15 +78,8 @@ func validateAndFinalizePod(
 
 	}
 	pod.Spec.Containers = finalizedContainers
-	if pod.Spec.Tolerations == nil {
-		pod.Spec.Tolerations = make([]k8sv1.Toleration, 0)
-	}
-	pod.Spec.Tolerations = append(
-		flytek8s.GetPodTolerations(taskCtx.TaskExecutionMetadata().IsInterruptible(), resReqs...), pod.Spec.Tolerations...)
-	if taskCtx.TaskExecutionMetadata().IsInterruptible() && len(config.GetK8sPluginConfig().InterruptibleNodeSelector) > 0 {
-		pod.Spec.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
-	}
-
+	flyteConfiguredPodSpec := flytek8s.GetBasePodSpec(taskCtx.TaskExecutionMetadata(), resReqs)
+	mergePodSpecs(flyteConfiguredPodSpec, &pod.Spec)
 	return &pod, nil
 }
 

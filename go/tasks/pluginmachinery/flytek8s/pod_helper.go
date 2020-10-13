@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	"github.com/lyft/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,13 +15,32 @@ import (
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
 
 const PodKind = "pod"
 const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
+
+// Returns the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
+func GetBasePodSpec(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
+	resourceRequirements []v1.ResourceRequirements) *v1.PodSpec {
+	// If you change any of these defaults, be sure to update mergePodSpecs in sidecar task so that it also picks
+	// up on these new defaults.
+	pod := &v1.PodSpec{
+		// We could specify Scheduler, Affinity, nodename etc
+		RestartPolicy:      v1.RestartPolicyNever,
+		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), resourceRequirements...),
+		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
+		SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
+		NodeSelector:       config.GetK8sPluginConfig().DefaultNodeSelector,
+		Affinity:           config.GetK8sPluginConfig().DefaultAffinity,
+	}
+	if taskExecutionMetadata.IsInterruptible() {
+		pod.NodeSelector = utils.UnionMaps(pod.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
+	}
+	return pod
+}
 
 func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
 	inputs io.InputReader, outputPaths io.OutputFilePaths) (*v1.PodSpec, error) {
@@ -41,20 +62,8 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 		*c,
 	}
 
-	pod := &v1.PodSpec{
-		// We could specify Scheduler, Affinity, nodename etc
-		RestartPolicy:      v1.RestartPolicyNever,
-		Containers:         containers,
-		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
-		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
-		SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
-		NodeSelector:       config.GetK8sPluginConfig().DefaultNodeSelector,
-		Affinity:           config.GetK8sPluginConfig().DefaultAffinity,
-	}
-
-	if taskExecutionMetadata.IsInterruptible() {
-		pod.NodeSelector = utils.UnionMaps(pod.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
-	}
+	pod := GetBasePodSpec(taskExecutionMetadata, []v1.ResourceRequirements{c.Resources})
+	pod.Containers = containers
 
 	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), taskExecutionMetadata, inputs, outputPaths, task.GetContainer().GetDataConfig()); err != nil {
 		return nil, err

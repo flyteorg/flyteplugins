@@ -114,6 +114,56 @@ func getDummySidecarTaskContext(taskTemplate *core.TaskTemplate, resources *v1.R
 	return taskCtx
 }
 
+func TestMergePodSpecs(t *testing.T) {
+	flyteConfiguredPodSpec := &v1.PodSpec{
+		RestartPolicy: v1.RestartPolicyNever,
+		Tolerations: []v1.Toleration{
+			{
+				Key:      "flyte/gpu",
+				Value:    "dedicated",
+				Operator: v1.TolerationOpEqual,
+				Effect:   v1.TaintEffectNoSchedule,
+			},
+		},
+		ServiceAccountName: "serviceaccountname",
+		SchedulerName:      "schedulername",
+		NodeSelector: map[string]string{
+			"flyte": "configured",
+		},
+	}
+	sidecarPodSpec := &v1.PodSpec{
+		Tolerations: []v1.Toleration{
+			{
+				Key:   "my toleration key",
+				Value: "my toleration value",
+			},
+		},
+		NodeSelector: map[string]string{
+			"user": "also configured",
+		},
+	}
+	mergePodSpecs(flyteConfiguredPodSpec, sidecarPodSpec)
+	assert.Equal(t, v1.RestartPolicyNever, sidecarPodSpec.RestartPolicy)
+	for _, tol := range sidecarPodSpec.Tolerations {
+		if tol.Key == "flyte/gpu" {
+			assert.Equal(t, tol.Value, "dedicated")
+			assert.Equal(t, tol.Operator, v1.TolerationOperator("Equal"))
+			assert.Equal(t, tol.Effect, v1.TaintEffect("NoSchedule"))
+		} else if tol.Key == "my toleration key" {
+			assert.Equal(t, tol.Value, "my toleration value")
+		} else {
+			t.Fatalf("unexpected toleration [%+v]", tol)
+		}
+	}
+	assert.Equal(t, "serviceaccountname", sidecarPodSpec.ServiceAccountName)
+	assert.Equal(t, "schedulername", sidecarPodSpec.SchedulerName)
+	assert.Len(t, sidecarPodSpec.Tolerations, 2)
+	assert.EqualValues(t, map[string]string{
+		"flyte": "configured",
+		"user":  "also configured",
+	}, sidecarPodSpec.NodeSelector)
+}
+
 func TestBuildSidecarResource(t *testing.T) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -181,19 +231,17 @@ func TestBuildSidecarResource(t *testing.T) {
 
 	// Assert user-specified tolerations don't get overridden
 	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 2)
-	expectedTolerations := []v1.Toleration{
-		{
-			Key:      "flyte/gpu",
-			Operator: "Equal",
-			Value:    "dedicated",
-			Effect:   "NoSchedule",
-		},
-		{
-			Key:   "my toleration key",
-			Value: "my toleration value",
-		},
+	for _, tol := range res.(*v1.Pod).Spec.Tolerations {
+		if tol.Key == "flyte/gpu" {
+			assert.Equal(t, tol.Value, "dedicated")
+			assert.Equal(t, tol.Operator, v1.TolerationOperator("Equal"))
+			assert.Equal(t, tol.Effect, v1.TaintEffect("NoSchedule"))
+		} else if tol.Key == "my toleration key" {
+			assert.Equal(t, tol.Value, "my toleration value")
+		} else {
+			t.Fatalf("unexpected toleration [%+v]", tol)
+		}
 	}
-	assert.EqualValues(t, expectedTolerations, res.(*v1.Pod).Spec.Tolerations)
 }
 
 func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
