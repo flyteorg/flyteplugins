@@ -5,6 +5,7 @@ plugins:
     - container
   # All k8s plugins default configuration
   k8s:
+    scheduler-name: flyte-scheduler
     default-annotations:
       - annotationKey1: annotationValue1
       - annotationKey2: annotationValue2
@@ -12,11 +13,6 @@ plugins:
       - label1: labelValue1
       - label2: labelValue2
     resource-tolerations:
-      nvidia.com/gpu:
-        key: flyte/gpu
-        value: dedicated
-        operator: Equal
-        effect: NoSchedule
       storage:
         - key: storage
           value: special

@@ -8,7 +8,6 @@ require (
 	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a
 	github.com/aws/aws-sdk-go v1.29.23
 	github.com/coocood/freecache v1.1.0
-	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-test/deep v1.0.5
 	github.com/gogo/protobuf v1.3.1

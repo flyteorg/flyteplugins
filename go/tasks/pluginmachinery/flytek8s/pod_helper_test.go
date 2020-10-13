@@ -85,7 +85,6 @@ func TestUpdatePod(t *testing.T) {
 		Limits: v1.ResourceList{
 			v1.ResourceCPU:     resource.MustParse("1024m"),
 			v1.ResourceStorage: resource.MustParse("100M"),
-			ResourceNvidiaGPU:  resource.MustParse("1"),
 		},
 		Requests: v1.ResourceList{
 			v1.ResourceCPU:     resource.MustParse("1024m"),
@@ -93,31 +92,12 @@ func TestUpdatePod(t *testing.T) {
 		},
 	})
 
-	tolGPU := v1.Toleration{
-		Key:      "flyte/gpu",
-		Value:    "dedicated",
-		Operator: v1.TolerationOpEqual,
-		Effect:   v1.TaintEffectNoSchedule,
-	}
-
-	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
-		ResourceTolerations: map[v1.ResourceName][]v1.Toleration{
-			ResourceNvidiaGPU: {tolGPU},
-		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
-		SchedulerName:        "scheduler-name",
-		DefaultNodeSelector: map[string]string{
-			"flyte": "configured",
-		},
-	}))
-	resourceRequirements := []v1.ResourceRequirements{
-		{
-			Requests: map[v1.ResourceName]resource.Quantity{
-				v1.ResourceName("nvidia.com/gpu"): {},
-			},
-		},
-	}
+	configAccessor := viper.NewAccessor(config1.Options{
+		StrictMode:  true,
+		SearchPaths: []string{"testdata/config.yaml"},
+	})
+	err := configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
 
 	pod := &v1.Pod{
 		Spec: v1.PodSpec{
@@ -132,11 +112,11 @@ func TestUpdatePod(t *testing.T) {
 			},
 		},
 	}
-	UpdatePod(taskExecutionMetadata, resourceRequirements, &pod.Spec)
+	UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{}, &pod.Spec)
 	assert.Equal(t, v1.RestartPolicyNever, pod.Spec.RestartPolicy)
 	for _, tol := range pod.Spec.Tolerations {
-		if tol.Key == "flyte/gpu" {
-			assert.Equal(t, tol.Value, "dedicated")
+		if tol.Key == "x/flyte" {
+			assert.Equal(t, tol.Value, "interruptible")
 			assert.Equal(t, tol.Operator, v1.TolerationOperator("Equal"))
 			assert.Equal(t, tol.Effect, v1.TaintEffect("NoSchedule"))
 		} else if tol.Key == "my toleration key" {
@@ -146,11 +126,11 @@ func TestUpdatePod(t *testing.T) {
 		}
 	}
 	assert.Equal(t, "service-account", pod.Spec.ServiceAccountName)
-	assert.Equal(t, "scheduler-name", pod.Spec.SchedulerName)
+	assert.Equal(t, "flyte-scheduler", pod.Spec.SchedulerName)
 	assert.Len(t, pod.Spec.Tolerations, 2)
 	assert.EqualValues(t, map[string]string{
-		"flyte": "configured",
-		"user":  "also configured",
+		"x/interruptible": "true",
+		"user":            "also configured",
 	}, pod.Spec.NodeSelector)
 }
 
@@ -181,9 +161,9 @@ func TestToK8sPodInterruptible(t *testing.T) {
 
 	p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
 	assert.NoError(t, err)
-	assert.Len(t, p.Tolerations, 2)
-	assert.Equal(t, "x/flyte", p.Tolerations[1].Key)
-	assert.Equal(t, "interruptible", p.Tolerations[1].Value)
+	assert.Len(t, p.Tolerations, 1)
+	assert.Equal(t, "x/flyte", p.Tolerations[0].Key)
+	assert.Equal(t, "interruptible", p.Tolerations[0].Value)
 	assert.Equal(t, 1, len(p.NodeSelector))
 	assert.Equal(t, "true", p.NodeSelector["x/interruptible"])
 }
