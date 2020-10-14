@@ -80,7 +80,19 @@ func dummyInputReader() io.InputReader {
 	return inputReader
 }
 
-func TestUpdatePod(t *testing.T) {
+func TestPodSetup(t *testing.T) {
+	configAccessor := viper.NewAccessor(config1.Options{
+		StrictMode:  true,
+		SearchPaths: []string{"testdata/config.yaml"},
+	})
+	err := configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	t.Run("UpdatePod", updatePod)
+	t.Run("ToK8sPodInterruptible", toK8sPodInterruptible)
+}
+
+func updatePod(t *testing.T) {
 	taskExecutionMetadata := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
 		Limits: v1.ResourceList{
 			v1.ResourceCPU:     resource.MustParse("1024m"),
@@ -91,13 +103,6 @@ func TestUpdatePod(t *testing.T) {
 			v1.ResourceStorage: resource.MustParse("100M"),
 		},
 	})
-
-	configAccessor := viper.NewAccessor(config1.Options{
-		StrictMode:  true,
-		SearchPaths: []string{"testdata/config.yaml"},
-	})
-	err := configAccessor.UpdateConfig(context.TODO())
-	assert.NoError(t, err)
 
 	pod := &v1.Pod{
 		Spec: v1.PodSpec{
@@ -134,14 +139,8 @@ func TestUpdatePod(t *testing.T) {
 	}, pod.Spec.NodeSelector)
 }
 
-func TestToK8sPodInterruptible(t *testing.T) {
+func toK8sPodInterruptible(t *testing.T) {
 	ctx := context.TODO()
-	configAccessor := viper.NewAccessor(config1.Options{
-		StrictMode:  true,
-		SearchPaths: []string{"testdata/config.yaml"},
-	})
-	err := configAccessor.UpdateConfig(context.TODO())
-	assert.NoError(t, err)
 
 	op := &pluginsIOMock.OutputFilePaths{}
 	op.On("GetOutputPrefixPath").Return(storage.DataReference(""))
@@ -161,9 +160,9 @@ func TestToK8sPodInterruptible(t *testing.T) {
 
 	p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
 	assert.NoError(t, err)
-	assert.Len(t, p.Tolerations, 1)
-	assert.Equal(t, "x/flyte", p.Tolerations[0].Key)
-	assert.Equal(t, "interruptible", p.Tolerations[0].Value)
+	assert.Len(t, p.Tolerations, 2)
+	assert.Equal(t, "x/flyte", p.Tolerations[1].Key)
+	assert.Equal(t, "interruptible", p.Tolerations[1].Value)
 	assert.Equal(t, 1, len(p.NodeSelector))
 	assert.Equal(t, "true", p.NodeSelector["x/interruptible"])
 }

@@ -13,6 +13,11 @@ plugins:
       - label1: labelValue1
       - label2: labelValue2
     resource-tolerations:
+      nvidia.com/gpu:
+        key: flyte/gpu
+        value: dedicated
+        operator: Equal
+        effect: NoSchedule
       storage:
         - key: storage
           value: special
