@@ -139,7 +139,6 @@ func buildParameterRanges(ctx context.Context, literals map[string]*core.Literal
 		IntegerParameterRanges:     []commonv1.IntegerParameterRange{},
 	}
 
-	errs := errors.ErrorCollection{}
 	for name, literal := range literals {
 		if literal.GetScalar() == nil || literal.GetScalar().GetGeneric() == nil {
 			logger.Infof(ctx, "Input [%v] is not of type Generic, won't be considered for parameter ranges.", name)
@@ -186,7 +185,10 @@ func buildParameterRanges(ctx context.Context, literals map[string]*core.Literal
 		}
 	}
 
-	return retValue, errs.ErrorOrDefault()
+	// TODO: Inspect input interface to determine the inputs of type ParameterRange and fail if any of them is not
+	// marshalled correctly. This is currently not easy to do because there is no universal way to compactly refer to a
+	// protobuf type and version. This might be a useful addition to Flyte's programming language for advanced usecases.
+	return retValue, nil
 }
 
 func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*flyteSagemakerIdl.HyperparameterTuningJobConfig, error) {

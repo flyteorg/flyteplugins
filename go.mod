@@ -11,11 +11,10 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-test/deep v1.0.5
 	github.com/golang/protobuf v1.3.5
-	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
-	github.com/lyft/flyteidl v0.18.8
+	github.com/lyft/flyteidl v0.18.9
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
@@ -24,7 +23,6 @@ require (
 	github.com/spf13/cobra v0.0.6 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
-	go.opencensus.io v0.22.3 // indirect
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 	google.golang.org/api v0.16.0 // indirect
 	google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67 // indirect
@@ -36,7 +34,6 @@ require (
 	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible
 	k8s.io/utils v0.0.0-20200124190032-861946025e34 // indirect
 	sigs.k8s.io/controller-runtime v0.5.1
-	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
 // Pin the version of client-go to something that's compatible with katrogan's fork of api and apimachinery
