@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lyft/flytestdlib/errors"
-
 	awsUtils "github.com/lyft/flyteplugins/go/tasks/plugins/awsutils"
 
 	hpojobController "github.com/aws/amazon-sagemaker-operator-for-k8s/controllers/hyperparametertuningjob"
@@ -111,11 +109,7 @@ func (m awsSagemakerPlugin) buildResourceForHyperparameterTuningJob(
 		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "failed to find the training image")
 	}
 
-	hpoJobParameterRanges, err := buildParameterRanges(ctx, inputLiterals)
-	if err != nil {
-		return nil, errors.Wrapf(pluginErrors.BadTaskSpecification, err, "Failed to build hyperparameter ranges.")
-	}
-
+	hpoJobParameterRanges := buildParameterRanges(ctx, inputLiterals)
 	logger.Infof(ctx, "The Sagemaker HyperparameterTuningJob Task plugin received the following inputs: \n"+
 		"static hyperparameters: [%v]\n"+
 		"hyperparameter tuning job config: [%v]\n"+

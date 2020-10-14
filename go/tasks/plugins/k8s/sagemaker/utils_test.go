@@ -176,9 +176,7 @@ func Test_buildParameterRanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildParameterRanges(context.TODO(), tt.args.inputs)
-			assert.NoError(t, err)
-
+			got := buildParameterRanges(context.TODO(), tt.args.inputs)
 			wantCatPr := tt.want.CategoricalParameterRanges[0]
 			gotCatPr := got.CategoricalParameterRanges[0]
 			if *wantCatPr.Name != *gotCatPr.Name || !reflect.DeepEqual(wantCatPr.Values, gotCatPr.Values) {

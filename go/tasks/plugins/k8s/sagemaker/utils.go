@@ -132,7 +132,7 @@ func getPrebuiltTrainingImage(ctx context.Context, job *flyteSagemakerIdl.Traini
 	return "", errors.Errorf(ErrSagemaker, "It is invalid to try getting a prebuilt image for AlgorithmName == CUSTOM ")
 }
 
-func buildParameterRanges(ctx context.Context, literals map[string]*core.Literal) (*commonv1.ParameterRanges, error) {
+func buildParameterRanges(ctx context.Context, literals map[string]*core.Literal) *commonv1.ParameterRanges {
 	var retValue = &commonv1.ParameterRanges{
 		CategoricalParameterRanges: []commonv1.CategoricalParameterRange{},
 		ContinuousParameterRanges:  []commonv1.ContinuousParameterRange{},
@@ -188,7 +188,7 @@ func buildParameterRanges(ctx context.Context, literals map[string]*core.Literal
 	// TODO: Inspect input interface to determine the inputs of type ParameterRange and fail if any of them is not
 	// marshalled correctly. This is currently not easy to do because there is no universal way to compactly refer to a
 	// protobuf type and version. This might be a useful addition to Flyte's programming language for advanced usecases.
-	return retValue, nil
+	return retValue
 }
 
 func convertHyperparameterTuningJobConfigToSpecType(hpoJobConfigLiteral *core.Literal) (*flyteSagemakerIdl.HyperparameterTuningJobConfig, error) {
