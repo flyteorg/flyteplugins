@@ -46,7 +46,8 @@ func init() {
 	// can reference in other handler definitions.
 	// NOTE: these should match the constants defined flytekit
 	taskTypes := []core.TaskType{
-		"container", "sidecar", "container_array", "hive", "presto",
+		"container", "sidecar", "container_array", "hive", "presto", "spark", "pytorch",
+		"sagemaker_custom_training_job_task", "sagemaker_training_job_task", "sagemaker_hyperparameter_tuning_job_task",
 	}
 	pluginMachinery.PluginRegistry().RegisterCorePlugin(
 		core.PluginEntry{
