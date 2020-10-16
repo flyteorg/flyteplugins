@@ -2,6 +2,7 @@ package bundle
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -21,10 +22,11 @@ func (h failFastHandler) GetProperties() core.PluginProperties {
 	return core.PluginProperties{}
 }
 
-func (h failFastHandler) Handle(_ context.Context, _ core.TaskExecutionContext) (core.Transition, error) {
+func (h failFastHandler) Handle(_ context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	occuredAt := time.Now()
 	return core.DoTransition(core.PhaseInfoFailure("AlwaysFail",
-		"Task type not supported by platform for this project/domain/workflow", &core.TaskInfo{
+		fmt.Sprintf("Task type [%v] not supported by platform for this project/domain/workflow",
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID()), &core.TaskInfo{
 			OccurredAt: &occuredAt,
 		})), nil
 }
