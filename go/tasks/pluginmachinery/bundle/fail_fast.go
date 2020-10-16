@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/errors"
+
 	pluginMachinery "github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
@@ -22,11 +24,16 @@ func (h failFastHandler) GetProperties() core.PluginProperties {
 	return core.PluginProperties{}
 }
 
-func (h failFastHandler) Handle(_ context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
+func (h failFastHandler) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	occuredAt := time.Now()
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return core.UnknownTransition,
+			errors.Errorf(errors.BadTaskSpecification, "unable to fetch task specification [%v]", err.Error())
+	}
 	return core.DoTransition(core.PhaseInfoFailure("AlwaysFail",
-		fmt.Sprintf("Task type [%v] not supported by platform for this project/domain/workflow",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID()), &core.TaskInfo{
+		fmt.Sprintf("Task [%s] type [%+v] not supported by platform for this project/domain/workflow",
+			taskTemplate.Type, tCtx.TaskExecutionMetadata().GetTaskExecutionID()), &core.TaskInfo{
 			OccurredAt: &occuredAt,
 		})), nil
 }

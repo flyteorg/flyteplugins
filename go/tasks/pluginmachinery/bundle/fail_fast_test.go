@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 
@@ -38,10 +40,17 @@ func TestHandleAlwaysFails(t *testing.T) {
 
 	taskCtx := &mocks.TaskExecutionContext{}
 	taskCtx.On("TaskExecutionMetadata").Return(taskExecutionMetadata)
+	taskReader := &mocks.TaskReader{}
+	taskReader.On("Read", mock.Anything).Return(&idlCore.TaskTemplate{
+		Type: "unsupportedtype",
+	}, nil)
+	taskCtx.On("TaskReader").Return(taskReader)
 
 	transition, err := testHandler.Handle(context.TODO(), taskCtx)
 	assert.NoError(t, err)
 	assert.Equal(t, core.PhasePermanentFailure, transition.Info().Phase())
+	assert.Equal(t, "AlwaysFail", transition.Info().Err().Code)
+	assert.Contains(t, transition.Info().Err().Message, "Task [unsupportedtype]")
 }
 
 func TestAbort(t *testing.T) {
