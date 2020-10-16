@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +22,24 @@ func TestGetProperties(t *testing.T) {
 }
 
 func TestHandleAlwaysFails(t *testing.T) {
-	transition, err := testHandler.Handle(context.TODO(), nil)
+	tID := &mocks.TaskExecutionID{}
+	tID.On("GetID").Return(idlCore.TaskExecutionIdentifier{
+		NodeExecutionId: &idlCore.NodeExecutionIdentifier{
+			ExecutionId: &idlCore.WorkflowExecutionIdentifier{
+				Name:    "my_name",
+				Project: "my_project",
+				Domain:  "my_domain",
+			},
+		},
+	})
+
+	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
+	taskExecutionMetadata.On("GetTaskExecutionID").Return(tID)
+
+	taskCtx := &mocks.TaskExecutionContext{}
+	taskCtx.On("TaskExecutionMetadata").Return(taskExecutionMetadata)
+
+	transition, err := testHandler.Handle(context.TODO(), taskCtx)
 	assert.NoError(t, err)
 	assert.Equal(t, core.PhasePermanentFailure, transition.Info().Phase())
 }
