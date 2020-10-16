@@ -3,8 +3,9 @@ package spark
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"testing"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	"github.com/stretchr/testify/mock"
 
@@ -292,8 +293,8 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	// Set Interruptible Config
 	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
-		InterruptibleNodeSelector:map[string]string{
-			"x/interruptible" : "true",
+		InterruptibleNodeSelector: map[string]string{
+			"x/interruptible": "true",
 		},
 		InterruptibleTolerations: []corev1.Toleration{
 			{
@@ -316,11 +317,11 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, testArgs, sparkApp.Spec.Arguments)
 	assert.Equal(t, testImage, *sparkApp.Spec.Image)
 	// Validate Interruptible Toleration and NodeSelector set for Executor but not Driver.
-	assert.Equal(t, 0 , len(sparkApp.Spec.Driver.Tolerations))
-	assert.Equal(t, 0 , len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, 0, len(sparkApp.Spec.Driver.Tolerations))
+	assert.Equal(t, 0, len(sparkApp.Spec.Driver.NodeSelector))
 
-	assert.Equal(t, 1 , len(sparkApp.Spec.Executor.Tolerations))
-	assert.Equal(t, 1 , len(sparkApp.Spec.Executor.NodeSelector))
+	assert.Equal(t, 1, len(sparkApp.Spec.Executor.Tolerations))
+	assert.Equal(t, 1, len(sparkApp.Spec.Executor.NodeSelector))
 
 	tol := sparkApp.Spec.Executor.Tolerations[0]
 	assert.Equal(t, tol.Key, "x/flyte")
@@ -368,10 +369,10 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.True(t, ok)
 
 	// Validate Interruptible Toleration and NodeSelector not set  for both Driver and Executors.
-	assert.Equal(t, 0 , len(sparkApp.Spec.Driver.Tolerations))
-	assert.Equal(t, 0 , len(sparkApp.Spec.Driver.NodeSelector))
-	assert.Equal(t, 0 , len(sparkApp.Spec.Executor.Tolerations))
-	assert.Equal(t, 0 , len(sparkApp.Spec.Executor.NodeSelector))
+	assert.Equal(t, 0, len(sparkApp.Spec.Driver.Tolerations))
+	assert.Equal(t, 0, len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, 0, len(sparkApp.Spec.Executor.Tolerations))
+	assert.Equal(t, 0, len(sparkApp.Spec.Executor.NodeSelector))
 
 	// Case2: Invalid Spark Task-Template
 	taskTemplate.Custom = nil
