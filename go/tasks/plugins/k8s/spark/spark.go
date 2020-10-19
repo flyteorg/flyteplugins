@@ -3,6 +3,7 @@ package spark
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -111,6 +112,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	for _, envVar := range envVars {
 		sparkEnvVars[envVar.Name] = envVar.Value
 	}
+	sparkEnvVars["FLYTE_MAX_ATTEMPTS"] = strconv.Itoa(int(taskCtx.TaskExecutionMetadata().GetMaxAttempts()))
 
 	driverSpec := sparkOp.DriverSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
@@ -197,6 +199,11 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.MainClass = &sparkJob.MainClass
 	}
 
+	// Add Tolerations/NodeSelector to only Executor pods.
+	if taskCtx.TaskExecutionMetadata().IsInterruptible() {
+		j.Spec.Executor.Tolerations = config.GetK8sPluginConfig().InterruptibleTolerations
+		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
+	}
 	return j, nil
 }
 
