@@ -40,21 +40,6 @@ func (p *taskPluginRegistry) RegisterK8sPlugin(info k8s.PluginEntry) {
 	if info.ResourceToWatch == nil {
 		logger.Panicf(context.TODO(), "The framework requires a K8s resource to watch, for valid plugin registration")
 	}
-	if len(info.DefaultForTaskTypes) > 0 {
-		for _, taskType := range info.DefaultForTaskTypes {
-			defaultIsAlsoRegistered := false
-			for _, registeredTaskType := range info.RegisteredTaskTypes {
-				if taskType == registeredTaskType {
-					defaultIsAlsoRegistered = true
-					break
-				}
-			}
-			if !defaultIsAlsoRegistered {
-				logger.Panicf(context.TODO(),
-					"K8sPlugin cannot be the default handler for [%s] when task is not a registered task type", taskType)
-			}
-		}
-	}
 
 	p.m.Lock()
 	defer p.m.Unlock()
