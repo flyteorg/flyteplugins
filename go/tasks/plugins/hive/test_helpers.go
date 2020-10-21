@@ -64,6 +64,7 @@ func GetMockTaskExecutionMetadata() core.TaskExecutionMetadata {
 	taskMetadata.On("GetNamespace").Return("test-namespace")
 	taskMetadata.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
 	taskMetadata.On("GetLabels").Return(map[string]string{"label-1": "val1"})
+	taskMetadata.On("GetMaxAttempts").Return(uint32(1))
 	taskMetadata.On("GetOwnerReference").Return(metav1.OwnerReference{
 		Kind: "node",
 		Name: "blah",
@@ -77,6 +78,9 @@ func GetMockTaskExecutionMetadata() core.TaskExecutionMetadata {
 
 	tID := &coreMock.TaskExecutionID{}
 	tID.On("GetID").Return(idlCore.TaskExecutionIdentifier{
+		TaskId: &idlCore.Identifier{
+			Domain: "production",
+		},
 		NodeExecutionId: &idlCore.NodeExecutionIdentifier{
 			ExecutionId: &idlCore.WorkflowExecutionIdentifier{
 				Name:    "my_wf_exec_name",
@@ -84,6 +88,7 @@ func GetMockTaskExecutionMetadata() core.TaskExecutionMetadata {
 				Domain:  "my_wf_exec_domain",
 			},
 		},
+		RetryAttempt: 1,
 	})
 	tID.On("GetGeneratedName").Return("my_wf_exec_project:my_wf_exec_domain:my_wf_exec_name")
 	taskMetadata.On("GetTaskExecutionID").Return(tID)

@@ -3,7 +3,8 @@ package remote
 import (
 	"context"
 	"fmt"
-	"time"
+
+	clock2 "k8s.io/utils/clock"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -12,12 +13,24 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
+var (
+	clock clock2.Clock
+)
+
+func SetClockForTest(clck clock2.Clock) {
+	clock = clck
+}
+
+func init() {
+	clock = clock2.RealClock{}
+}
+
 func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
 	if len(p.GetPluginProperties().ResourceQuotas) == 0 {
 		// No quota, return success
 		return &State{
-			AllocationTokenRequestStartTime: time.Now(),
+			AllocationTokenRequestStartTime: clock.Now(),
 			Phase:                           PhaseAllocationTokenAcquired,
 		}, core.PhaseInfo{}, nil
 	}
@@ -38,9 +51,9 @@ func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecution
 	switch allocationStatus {
 	case core.AllocationStatusGranted:
 		metrics.AllocationGranted.Inc(ctx)
-		metrics.ResourceWaitTime.Observe(float64(time.Since(state.AllocationTokenRequestStartTime).Milliseconds()))
+		metrics.ResourceWaitTime.Observe(float64(clock.Since(state.AllocationTokenRequestStartTime).Milliseconds()))
 		return &State{
-			AllocationTokenRequestStartTime: time.Now(),
+			AllocationTokenRequestStartTime: clock.Now(),
 			Phase:                           PhaseAllocationTokenAcquired,
 		}, core.PhaseInfo{}, nil
 	case core.AllocationStatusNamespaceQuotaExceeded:
@@ -49,7 +62,7 @@ func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecution
 		logger.Infof(ctx, "Couldn't allocate token because allocation status is [%v].", allocationStatus.String())
 		startTime := state.AllocationTokenRequestStartTime
 		if startTime.IsZero() {
-			startTime = time.Now()
+			startTime = clock.Now()
 		}
 
 		return &State{

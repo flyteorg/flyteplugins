@@ -7,10 +7,8 @@ import (
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
 
 	"github.com/lyft/flyteplugins/go/tasks/errors"
@@ -29,7 +27,7 @@ type sidecarResourceHandler struct{}
 
 // This method handles templatizing primary container input args, env variables and adds a GPU toleration to the pod
 // spec if necessary.
-func validateAndFinalizeContainers(
+func validateAndFinalizePod(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, pod k8sv1.Pod) (*k8sv1.Pod, error) {
 	var hasPrimaryContainer bool
 
@@ -61,11 +59,7 @@ func validateAndFinalizeContainers(
 
 	}
 	pod.Spec.Containers = finalizedContainers
-	pod.Spec.Tolerations = flytek8s.GetPodTolerations(taskCtx.TaskExecutionMetadata().IsInterruptible(), resReqs...)
-	if taskCtx.TaskExecutionMetadata().IsInterruptible() && len(config.GetK8sPluginConfig().InterruptibleNodeSelector) > 0 {
-		pod.Spec.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
-	}
-
+	flytek8s.UpdatePod(taskCtx.TaskExecutionMetadata(), resReqs, &pod.Spec)
 	return &pod, nil
 }
 
@@ -90,7 +84,7 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 	// We want to Also update the serviceAccount to the serviceaccount of the workflow
 	pod.Spec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
 
-	pod, err = validateAndFinalizeContainers(ctx, taskCtx, sidecarJob.PrimaryContainerName, *pod)
+	pod, err = validateAndFinalizePod(ctx, taskCtx, sidecarJob.PrimaryContainerName, *pod)
 	if err != nil {
 		return nil, err
 	}
@@ -181,5 +175,6 @@ func init() {
 			ResourceToWatch:     &k8sv1.Pod{},
 			Plugin:              sidecarResourceHandler{},
 			IsDefault:           false,
+			DefaultForTaskTypes: []pluginsCore.TaskType{sidecarTaskType},
 		})
 }

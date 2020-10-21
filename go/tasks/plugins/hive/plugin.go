@@ -49,15 +49,25 @@ func (q QuboleHivePlugin) ResourceRequirements(ctx context.Context, tCtx remote.
 
 func (q QuboleHivePlugin) Create(ctx context.Context, tCtx remote.TaskExecutionContext) (
 	createdResources remote.ResourceMeta, err error) {
-	query, clusterLabelOverride, tags, timeoutSec, err := GetQueryInfo(ctx, tCtx)
+	query, clusterLabelOverride, tags, timeoutSec, taskName, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return nil, err
 	}
 
 	clusterPrimaryLabel := getClusterPrimaryLabel(ctx, tCtx, clusterLabelOverride)
 
+	taskExecutionIdentifier := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+	commandMetadata := client.CommandMetadata{
+		TaskName:      taskName,
+		Domain:        taskExecutionIdentifier.GetTaskId().GetDomain(),
+		Project:       taskExecutionIdentifier.GetNodeExecutionId().GetExecutionId().GetProject(),
+		Labels:        tCtx.TaskExecutionMetadata().GetLabels(),
+		AttemptNumber: taskExecutionIdentifier.GetRetryAttempt(),
+		MaxAttempts:   tCtx.TaskExecutionMetadata().GetMaxAttempts(),
+	}
+
 	cmdDetails, err := q.client.ExecuteHiveCommand(ctx, query, timeoutSec,
-		clusterPrimaryLabel, q.apiKey, tags)
+		clusterPrimaryLabel, q.apiKey, tags, commandMetadata)
 	if err != nil {
 		return nil, err
 	}
@@ -142,8 +152,9 @@ func QuboleHivePluginLoader(ctx context.Context, iCtx remote.PluginSetupContext)
 func init() {
 	pluginMachinery.PluginRegistry().RegisterRemotePlugin(
 		remote.PluginEntry{
-			ID:                 quboleHiveExecutorID,
-			SupportedTaskTypes: []core.TaskType{hiveTaskType},
-			PluginLoader:       QuboleHivePluginLoader,
+			ID:                  quboleHiveExecutorID,
+			SupportedTaskTypes:  []core.TaskType{hiveTaskType},
+			PluginLoader:        QuboleHivePluginLoader,
+			DefaultForTaskTypes: []core.TaskType{hiveTaskType},
 		})
 }

@@ -80,8 +80,7 @@ func dummyInputReader() io.InputReader {
 	return inputReader
 }
 
-func TestToK8sPodIterruptible(t *testing.T) {
-	ctx := context.TODO()
+func TestPodSetup(t *testing.T) {
 	configAccessor := viper.NewAccessor(config1.Options{
 		StrictMode:  true,
 		SearchPaths: []string{"testdata/config.yaml"},
@@ -89,8 +88,63 @@ func TestToK8sPodIterruptible(t *testing.T) {
 	err := configAccessor.UpdateConfig(context.TODO())
 	assert.NoError(t, err)
 
+	t.Run("UpdatePod", updatePod)
+	t.Run("ToK8sPodInterruptible", toK8sPodInterruptible)
+}
+
+func updatePod(t *testing.T) {
+	taskExecutionMetadata := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+		},
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+		},
+	})
+
+	pod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Tolerations: []v1.Toleration{
+				{
+					Key:   "my toleration key",
+					Value: "my toleration value",
+				},
+			},
+			NodeSelector: map[string]string{
+				"user": "also configured",
+			},
+		},
+	}
+	UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{}, &pod.Spec)
+	assert.Equal(t, v1.RestartPolicyNever, pod.Spec.RestartPolicy)
+	for _, tol := range pod.Spec.Tolerations {
+		if tol.Key == "x/flyte" {
+			assert.Equal(t, tol.Value, "interruptible")
+			assert.Equal(t, tol.Operator, v1.TolerationOperator("Equal"))
+			assert.Equal(t, tol.Effect, v1.TaintEffect("NoSchedule"))
+		} else if tol.Key == "my toleration key" {
+			assert.Equal(t, tol.Value, "my toleration value")
+		} else {
+			t.Fatalf("unexpected toleration [%+v]", tol)
+		}
+	}
+	assert.Equal(t, "service-account", pod.Spec.ServiceAccountName)
+	assert.Equal(t, "flyte-scheduler", pod.Spec.SchedulerName)
+	assert.Len(t, pod.Spec.Tolerations, 2)
+	assert.EqualValues(t, map[string]string{
+		"x/interruptible": "true",
+		"user":            "also configured",
+	}, pod.Spec.NodeSelector)
+}
+
+func toK8sPodInterruptible(t *testing.T) {
+	ctx := context.TODO()
+
 	op := &pluginsIOMock.OutputFilePaths{}
 	op.On("GetOutputPrefixPath").Return(storage.DataReference(""))
+	op.On("GetRawOutputPrefix").Return(storage.DataReference(""))
 
 	x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
 		Limits: v1.ResourceList{
@@ -106,7 +160,7 @@ func TestToK8sPodIterruptible(t *testing.T) {
 
 	p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(p.Tolerations))
+	assert.Len(t, p.Tolerations, 2)
 	assert.Equal(t, "x/flyte", p.Tolerations[1].Key)
 	assert.Equal(t, "interruptible", p.Tolerations[1].Value)
 	assert.Equal(t, 1, len(p.NodeSelector))
@@ -139,6 +193,7 @@ func TestToK8sPod(t *testing.T) {
 
 	op := &pluginsIOMock.OutputFilePaths{}
 	op.On("GetOutputPrefixPath").Return(storage.DataReference(""))
+	op.On("GetRawOutputPrefix").Return(storage.DataReference(""))
 
 	t.Run("WithGPU", func(t *testing.T) {
 		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
@@ -173,6 +228,39 @@ func TestToK8sPod(t *testing.T) {
 		p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 0)
+		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
+	})
+
+	t.Run("Default toleration, selector, scheduler", func(t *testing.T) {
+		x := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
+			Limits: v1.ResourceList{
+				v1.ResourceCPU:     resource.MustParse("1024m"),
+				v1.ResourceStorage: resource.MustParse("100M"),
+			},
+			Requests: v1.ResourceList{
+				v1.ResourceCPU:     resource.MustParse("1024m"),
+				v1.ResourceStorage: resource.MustParse("100M"),
+			},
+		})
+
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+			DefaultTolerations: []v1.Toleration{
+				{
+					Key:   "tolerationKey",
+					Value: flyteDataConfigVolume,
+				},
+			},
+			DefaultNodeSelector: map[string]string{
+				"nodeId": "123",
+			},
+			SchedulerName: "myScheduler",
+		}))
+
+		p, err := ToK8sPodSpec(ctx, x, dummyTaskReader(), dummyInputReader(), op)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(p.Tolerations))
+		assert.Equal(t, 1, len(p.NodeSelector))
+		assert.Equal(t, "myScheduler", p.SchedulerName)
 		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
 	})
 }

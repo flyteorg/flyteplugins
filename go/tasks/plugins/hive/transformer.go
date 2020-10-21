@@ -64,26 +64,27 @@ func validateQuboleHiveJob(hiveJob plugins.QuboleHiveJob) error {
 // This function is the link between the output written by the SDK, and the execution side. It extracts the query
 // out of the task template.
 func GetQueryInfo(ctx context.Context, tCtx remote.TaskExecutionContext) (
-	query string, cluster string, tags []string, timeoutSec uint32, err error) {
+	query string, cluster string, tags []string, timeoutSec uint32, taskName string, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	hiveJob := plugins.QuboleHiveJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &hiveJob)
 	if err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	if err := validateQuboleHiveJob(hiveJob); err != nil {
-		return "", "", []string{}, 0, err
+		return "", "", []string{}, 0, "", err
 	}
 
 	query = hiveJob.Query.GetQuery()
 	cluster = hiveJob.ClusterLabel
 	timeoutSec = hiveJob.Query.TimeoutSec
+	taskName = taskTemplate.Id.Name
 	tags = hiveJob.Tags
 	tags = append(tags, fmt.Sprintf("ns:%s", tCtx.TaskExecutionMetadata().GetNamespace()))
 	for k, v := range tCtx.TaskExecutionMetadata().GetLabels() {

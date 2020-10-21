@@ -78,10 +78,12 @@ func TestLaunchSubTasks(t *testing.T) {
 
 	ow := &mocks3.OutputWriter{}
 	ow.OnGetOutputPrefixPath().Return("/prefix/")
+	ow.OnGetRawOutputPrefix().Return("s3://")
 
 	ir := &mocks3.InputReader{}
 	ir.OnGetInputPrefixPath().Return("/prefix/")
 	ir.OnGetInputPath().Return("/prefix/inputs.pb")
+	ir.OnGetMatch(mock.Anything).Return(nil, nil)
 
 	tCtx := &mocks.TaskExecutionContext{}
 	tCtx.OnTaskReader().Return(tr)

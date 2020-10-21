@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	"github.com/lyft/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +22,29 @@ const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
 
+// Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
+func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
+	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
+	if len(podSpec.RestartPolicy) == 0 {
+		podSpec.RestartPolicy = v1.RestartPolicyNever
+	}
+	podSpec.Tolerations = append(
+		GetPodTolerations(taskExecutionMetadata.IsInterruptible(), resourceRequirements...), podSpec.Tolerations...)
+	if len(podSpec.ServiceAccountName) == 0 {
+		podSpec.ServiceAccountName = taskExecutionMetadata.GetK8sServiceAccount()
+	}
+	if len(podSpec.SchedulerName) == 0 {
+		podSpec.SchedulerName = config.GetK8sPluginConfig().SchedulerName
+	}
+	podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().DefaultNodeSelector)
+	if taskExecutionMetadata.IsInterruptible() {
+		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
+	}
+	if podSpec.Affinity == nil {
+		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity
+	}
+}
+
 func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskReader pluginsCore.TaskReader,
 	inputs io.InputReader, outputPaths io.OutputFilePaths) (*v1.PodSpec, error) {
 	task, err := taskReader.Read(ctx)
@@ -27,7 +52,11 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
 		return nil, err
 	}
-	c, err := ToK8sContainer(ctx, taskExecutionMetadata, task.GetContainer(), inputs, outputPaths)
+	if task.GetContainer() == nil {
+		logger.Errorf(ctx, "Default Pod creation logic works for default container in the task template only.")
+		return nil, fmt.Errorf("container not specified in task template")
+	}
+	c, err := ToK8sContainer(ctx, taskExecutionMetadata, task.GetContainer(), task.Interface, inputs, outputPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -35,26 +64,16 @@ func ToK8sPodSpec(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExe
 	containers := []v1.Container{
 		*c,
 	}
-	if taskExecutionMetadata.IsInterruptible() && len(config.GetK8sPluginConfig().InterruptibleNodeSelector) > 0 {
-		return &v1.PodSpec{
-			// We could specify Scheduler, Affinity, nodename etc
-			RestartPolicy:      v1.RestartPolicyNever,
-			Containers:         containers,
-			Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
-			ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
-			NodeSelector:       config.GetK8sPluginConfig().InterruptibleNodeSelector,
-			SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
-		}, nil
+	pod := &v1.PodSpec{
+		Containers: containers,
 	}
-	return &v1.PodSpec{
-		// We could specify Scheduler, Affinity, nodename etc
-		RestartPolicy:      v1.RestartPolicyNever,
-		Containers:         containers,
-		Tolerations:        GetPodTolerations(taskExecutionMetadata.IsInterruptible(), c.Resources),
-		ServiceAccountName: taskExecutionMetadata.GetK8sServiceAccount(),
-		SchedulerName:      config.GetK8sPluginConfig().SchedulerName,
-	}, nil
+	UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{c.Resources}, pod)
 
+	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), taskExecutionMetadata, inputs, outputPaths, task.GetContainer().GetDataConfig()); err != nil {
+		return nil, err
+	}
+
+	return pod, nil
 }
 
 func BuildPodWithSpec(podSpec *v1.PodSpec) *v1.Pod {
@@ -153,7 +172,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								// ErrImagePull -> Transitionary phase to ImagePullBackOff
 								// ContainerCreating -> Image is being downloaded
 								// PodInitializing -> Init containers are running
-								return pluginsCore.PhaseInfoInitializing(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("[%s]: %s", finalReason, finalMessage)), nil
+								return pluginsCore.PhaseInfoInitializing(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("[%s]: %s", finalReason, finalMessage), &pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
 
 							case "CreateContainerError":
 								// This happens if for instance the command to the container is incorrect, ie doesn't run
@@ -202,7 +221,7 @@ func DemystifySuccess(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 
 func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 	code = "UnknownError"
-	message = "Container/Pod failed. No message received from kubernetes."
+	message = "Pod failed. No message received from kubernetes."
 	if len(status.Reason) > 0 {
 		code = status.Reason
 	}
@@ -228,11 +247,15 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 				code = Interrupted
 			}
 
-			message += fmt.Sprintf("\r\nContainer [%v] terminated with exit code (%v). Reason [%v]. Message: [%v].",
-				c.Name,
-				containerState.Terminated.ExitCode,
-				containerState.Terminated.Reason,
-				containerState.Terminated.Message)
+			if containerState.Terminated.ExitCode == 0 {
+				message += fmt.Sprintf("\r\n[%v] terminated with ExitCode 0.", c.Name)
+			} else {
+				message += fmt.Sprintf("\r\n[%v] terminated with exit code (%v). Reason [%v]. Message: \n%v.",
+					c.Name,
+					containerState.Terminated.ExitCode,
+					containerState.Terminated.Reason,
+					containerState.Terminated.Message)
+			}
 		}
 	}
 	return code, message
