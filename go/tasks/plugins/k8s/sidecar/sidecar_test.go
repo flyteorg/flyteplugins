@@ -103,6 +103,7 @@ func getDummySidecarTaskContext(taskTemplate *core.TaskTemplate, resources *v1.R
 	outputReader := &pluginsIOMock.OutputWriter{}
 	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
 	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
+	outputReader.On("GetRawOutputPrefix").Return(storage.DataReference(""))
 	taskCtx.On("OutputWriter").Return(outputReader)
 
 	taskReader := &pluginsCoreMock.TaskReader{}
@@ -148,6 +149,8 @@ func TestBuildSidecarResource(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
+		DefaultCPURequest:    "1024m",
+		DefaultMemoryRequest: "1024Mi",
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -168,6 +171,27 @@ func TestBuildSidecarResource(t *testing.T) {
 	actualGpuLimit, ok := res.(*v1.Pod).Spec.Containers[0].Resources.Limits[ResourceNvidiaGPU]
 	assert.True(t, ok)
 	assert.True(t, expectedGpuLimit.Equal(actualGpuLimit))
+
+	// Assert volumes & volume mounts are preserved
+	assert.Len(t, res.(*v1.Pod).Spec.Volumes, 1)
+	assert.Equal(t, "dshm", res.(*v1.Pod).Spec.Volumes[0].Name)
+
+	assert.Len(t, res.(*v1.Pod).Spec.Containers[0].VolumeMounts, 1)
+	assert.Equal(t, "volume mount", res.(*v1.Pod).Spec.Containers[0].VolumeMounts[0].Name)
+
+	// Assert user-specified tolerations don't get overridden
+	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 2)
+	for _, tol := range res.(*v1.Pod).Spec.Tolerations {
+		if tol.Key == "flyte/gpu" {
+			assert.Equal(t, tol.Value, "dedicated")
+			assert.Equal(t, tol.Operator, v1.TolerationOperator("Equal"))
+			assert.Equal(t, tol.Effect, v1.TaintEffect("NoSchedule"))
+		} else if tol.Key == "my toleration key" {
+			assert.Equal(t, tol.Value, "my toleration value")
+		} else {
+			t.Fatalf("unexpected toleration [%+v]", tol)
+		}
+	}
 }
 
 func TestBuildSidecarResourceMissingPrimary(t *testing.T) {

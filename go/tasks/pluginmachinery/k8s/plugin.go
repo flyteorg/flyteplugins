@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 
+	"github.com/lyft/flytestdlib/storage"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,6 +31,10 @@ type PluginEntry struct {
 	// Boolean that indicates if this plugin can be used as the default for unknown task types. There can only be
 	// one default in the system
 	IsDefault bool
+	// A list of all task types for which this plugin should be default handler when multiple registered plugins
+	// support the same task type. This must be a subset of RegisteredTaskTypes and at most one default per task type
+	// is supported.
+	DefaultForTaskTypes []pluginsCore.TaskType
 }
 
 // A proxy object for k8s resource
@@ -48,6 +54,12 @@ type PluginContext interface {
 
 	// Provides an output sync of type io.OutputWriter
 	OutputWriter() io.OutputWriter
+
+	// Returns a handle to the currently configured storage backend that can be used to communicate with the tasks or write metadata
+	DataStore() *storage.DataStore
+
+	// Returns the max allowed dataset size that the outputwriter will accept
+	MaxDatasetSizeBytes() int64
 }
 
 // Defines a simplified interface to author plugins for k8s resources.

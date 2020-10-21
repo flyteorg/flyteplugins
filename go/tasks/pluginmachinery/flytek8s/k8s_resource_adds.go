@@ -3,6 +3,7 @@ package flytek8s
 import (
 	"context"
 	"os"
+	"strconv"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
@@ -41,6 +42,7 @@ func GetExecutionEnvVars(id pluginsCore.TaskExecutionID) []v1.EnvVar {
 
 	// Execution level env variables.
 	nodeExecutionID := id.GetID().NodeExecutionId.ExecutionId
+	attemptNumber := strconv.Itoa(int(id.GetID().RetryAttempt))
 	envVars := []v1.EnvVar{
 		{
 			Name:  "FLYTE_INTERNAL_EXECUTION_ID",
@@ -53,6 +55,10 @@ func GetExecutionEnvVars(id pluginsCore.TaskExecutionID) []v1.EnvVar {
 		{
 			Name:  "FLYTE_INTERNAL_EXECUTION_DOMAIN",
 			Value: nodeExecutionID.Domain,
+		},
+		{
+			Name:  "FLYTE_ATTEMPT_NUMBER",
+			Value: attemptNumber,
 		},
 		// TODO: Fill in these
 		// {
@@ -136,6 +142,7 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 			resourceNames.Insert(r.String())
 		}
 	}
+
 	resourceTols := config.GetK8sPluginConfig().ResourceTolerations
 	for _, r := range resourceNames.UnsortedList() {
 		if v, ok := resourceTols[v1.ResourceName(r)]; ok {
@@ -144,9 +151,12 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 	}
 
 	// 2. Get the tolerations for interruptible pods
-	if interruptible && len(config.GetK8sPluginConfig().InterruptibleTolerations) > 0 {
+	if interruptible {
 		tolerations = append(tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
 	}
+
+	// 3. Add default tolerations
+	tolerations = append(tolerations, config.GetK8sPluginConfig().DefaultTolerations...)
 
 	return tolerations
 }
