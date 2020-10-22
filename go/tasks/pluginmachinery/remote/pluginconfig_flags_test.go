@@ -14,22 +14,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dereferencableKindsPluginProperties = map[reflect.Kind]struct{}{
+var dereferencableKindsPluginConfig = map[reflect.Kind]struct{}{
 	reflect.Array: {}, reflect.Chan: {}, reflect.Map: {}, reflect.Ptr: {}, reflect.Slice: {},
 }
 
 // Checks if t is a kind that can be dereferenced to get its underlying type.
-func canGetElementPluginProperties(t reflect.Kind) bool {
-	_, exists := dereferencableKindsPluginProperties[t]
+func canGetElementPluginConfig(t reflect.Kind) bool {
+	_, exists := dereferencableKindsPluginConfig[t]
 	return exists
 }
 
 // This decoder hook tests types for json unmarshaling capability. If implemented, it uses json unmarshal to build the
 // object. Otherwise, it'll just pass on the original data.
-func jsonUnmarshalerHookPluginProperties(_, to reflect.Type, data interface{}) (interface{}, error) {
+func jsonUnmarshalerHookPluginConfig(_, to reflect.Type, data interface{}) (interface{}, error) {
 	unmarshalerType := reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
 	if to.Implements(unmarshalerType) || reflect.PtrTo(to).Implements(unmarshalerType) ||
-		(canGetElementPluginProperties(to.Kind()) && to.Elem().Implements(unmarshalerType)) {
+		(canGetElementPluginConfig(to.Kind()) && to.Elem().Implements(unmarshalerType)) {
 
 		raw, err := json.Marshal(data)
 		if err != nil {
@@ -50,7 +50,7 @@ func jsonUnmarshalerHookPluginProperties(_, to reflect.Type, data interface{}) (
 	return data, nil
 }
 
-func decode_PluginProperties(input, result interface{}) error {
+func decode_PluginConfig(input, result interface{}) error {
 	config := &mapstructure.DecoderConfig{
 		TagName:          "json",
 		WeaklyTypedInput: true,
@@ -58,7 +58,7 @@ func decode_PluginProperties(input, result interface{}) error {
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
-			jsonUnmarshalerHookPluginProperties,
+			jsonUnmarshalerHookPluginConfig,
 		),
 	}
 
@@ -70,7 +70,7 @@ func decode_PluginProperties(input, result interface{}) error {
 	return decoder.Decode(input)
 }
 
-func join_PluginProperties(arr interface{}, sep string) string {
+func join_PluginConfig(arr interface{}, sep string) string {
 	listValue := reflect.ValueOf(arr)
 	strs := make([]string, 0, listValue.Len())
 	for i := 0; i < listValue.Len(); i++ {
@@ -80,22 +80,22 @@ func join_PluginProperties(arr interface{}, sep string) string {
 	return strings.Join(strs, sep)
 }
 
-func testDecodeJson_PluginProperties(t *testing.T, val, result interface{}) {
-	assert.NoError(t, decode_PluginProperties(val, result))
+func testDecodeJson_PluginConfig(t *testing.T, val, result interface{}) {
+	assert.NoError(t, decode_PluginConfig(val, result))
 }
 
-func testDecodeSlice_PluginProperties(t *testing.T, vStringSlice, result interface{}) {
-	assert.NoError(t, decode_PluginProperties(vStringSlice, result))
+func testDecodeSlice_PluginConfig(t *testing.T, vStringSlice, result interface{}) {
+	assert.NoError(t, decode_PluginConfig(vStringSlice, result))
 }
 
-func TestPluginProperties_GetPFlagSet(t *testing.T) {
-	val := PluginProperties{}
+func TestPluginConfig_GetPFlagSet(t *testing.T) {
+	val := PluginConfig{}
 	cmdFlags := val.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 }
 
-func TestPluginProperties_SetFlags(t *testing.T) {
-	actual := PluginProperties{}
+func TestPluginConfig_SetFlags(t *testing.T) {
+	actual := PluginConfig{}
 	cmdFlags := actual.GetPFlagSet("")
 	assert.True(t, cmdFlags.HasFlags())
 
@@ -103,7 +103,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("readRateLimiter.qps"); err == nil {
-				assert.Equal(t, int(DefaultPluginProperties.ReadRateLimiter.QPS), vInt)
+				assert.Equal(t, int(DefaultPluginConfig.ReadRateLimiter.QPS), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -114,7 +114,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("readRateLimiter.qps", testValue)
 			if vInt, err := cmdFlags.GetInt("readRateLimiter.qps"); err == nil {
-				testDecodeJson_PluginProperties(t, fmt.Sprintf("%v", vInt), &actual.ReadRateLimiter.QPS)
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vInt), &actual.ReadRateLimiter.QPS)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -125,7 +125,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("readRateLimiter.burst"); err == nil {
-				assert.Equal(t, int(DefaultPluginProperties.ReadRateLimiter.Burst), vInt)
+				assert.Equal(t, int(DefaultPluginConfig.ReadRateLimiter.Burst), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -136,7 +136,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("readRateLimiter.burst", testValue)
 			if vInt, err := cmdFlags.GetInt("readRateLimiter.burst"); err == nil {
-				testDecodeJson_PluginProperties(t, fmt.Sprintf("%v", vInt), &actual.ReadRateLimiter.Burst)
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vInt), &actual.ReadRateLimiter.Burst)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -147,7 +147,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("writeRateLimiter.qps"); err == nil {
-				assert.Equal(t, int(DefaultPluginProperties.WriteRateLimiter.QPS), vInt)
+				assert.Equal(t, int(DefaultPluginConfig.WriteRateLimiter.QPS), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -158,7 +158,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("writeRateLimiter.qps", testValue)
 			if vInt, err := cmdFlags.GetInt("writeRateLimiter.qps"); err == nil {
-				testDecodeJson_PluginProperties(t, fmt.Sprintf("%v", vInt), &actual.WriteRateLimiter.QPS)
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vInt), &actual.WriteRateLimiter.QPS)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -169,7 +169,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("writeRateLimiter.burst"); err == nil {
-				assert.Equal(t, int(DefaultPluginProperties.WriteRateLimiter.Burst), vInt)
+				assert.Equal(t, int(DefaultPluginConfig.WriteRateLimiter.Burst), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -180,7 +180,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("writeRateLimiter.burst", testValue)
 			if vInt, err := cmdFlags.GetInt("writeRateLimiter.burst"); err == nil {
-				testDecodeJson_PluginProperties(t, fmt.Sprintf("%v", vInt), &actual.WriteRateLimiter.Burst)
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vInt), &actual.WriteRateLimiter.Burst)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -191,7 +191,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("caching.size"); err == nil {
-				assert.Equal(t, int(DefaultPluginProperties.Caching.Size), vInt)
+				assert.Equal(t, int(DefaultPluginConfig.Caching.Size), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -202,7 +202,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("caching.size", testValue)
 			if vInt, err := cmdFlags.GetInt("caching.size"); err == nil {
-				testDecodeJson_PluginProperties(t, fmt.Sprintf("%v", vInt), &actual.Caching.Size)
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vInt), &actual.Caching.Size)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -213,18 +213,18 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vString, err := cmdFlags.GetString("caching.resyncInterval"); err == nil {
-				assert.Equal(t, string(DefaultPluginProperties.Caching.ResyncInterval.String()), vString)
+				assert.Equal(t, string(DefaultPluginConfig.Caching.ResyncInterval.String()), vString)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
 		})
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := DefaultPluginProperties.Caching.ResyncInterval.String()
+			testValue := DefaultPluginConfig.Caching.ResyncInterval.String()
 
 			cmdFlags.Set("caching.resyncInterval", testValue)
 			if vString, err := cmdFlags.GetString("caching.resyncInterval"); err == nil {
-				testDecodeJson_PluginProperties(t, fmt.Sprintf("%v", vString), &actual.Caching.ResyncInterval)
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vString), &actual.Caching.ResyncInterval)
 
 			} else {
 				assert.FailNow(t, err.Error())
@@ -235,7 +235,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
 			if vInt, err := cmdFlags.GetInt("caching.workers"); err == nil {
-				assert.Equal(t, int(DefaultPluginProperties.Caching.Workers), vInt)
+				assert.Equal(t, int(DefaultPluginConfig.Caching.Workers), vInt)
 			} else {
 				assert.FailNow(t, err.Error())
 			}
@@ -246,7 +246,7 @@ func TestPluginProperties_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("caching.workers", testValue)
 			if vInt, err := cmdFlags.GetInt("caching.workers"); err == nil {
-				testDecodeJson_PluginProperties(t, fmt.Sprintf("%v", vInt), &actual.Caching.Workers)
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vInt), &actual.Caching.Workers)
 
 			} else {
 				assert.FailNow(t, err.Error())

@@ -27,7 +27,7 @@ func init() {
 
 func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
-	if len(p.GetPluginProperties().ResourceQuotas) == 0 {
+	if len(p.GetConfig().ResourceQuotas) == 0 {
 		// No quota, return success
 		return &State{
 			AllocationTokenRequestStartTime: clock.Now(),
@@ -77,7 +77,7 @@ func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecution
 }
 
 func releaseToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, metrics Metrics) error {
-	if len(p.GetPluginProperties().ResourceQuotas) == 0 {
+	if len(p.GetConfig().ResourceQuotas) == 0 {
 		// No quota, return success
 		return nil
 	}

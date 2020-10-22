@@ -26,8 +26,9 @@ func (p Phase) IsTerminal() bool {
 type State struct {
 	Phase Phase `json:"phase"`
 
-	// ResourceKeys contain the resource keys of the launched resources. If this is empty, it means
-	// the job used the default (preferred) name from tCtx.GetGeneratedName()
+	// ResourceMeta contain metadata about resource this task created. This can be a complex structure or a simple type
+	// (e.g. a string). It should contain enough information for the plugin to interact (retrieve, check status, delete)
+	// with the resource through the remote service.
 	ResourceMeta remote.ResourceMeta `json:"resourceMeta,omitempty"`
 
 	// This number keeps track of the number of failures within the sync function. Without this, what happens in
@@ -35,6 +36,8 @@ type State struct {
 	// level retries, just errors from hitting API, inside the sync loop
 	SyncFailureCount int `json:"syncFailureCount,omitempty"`
 
+	// The latest phase info constructed about this resource. This will be refreshed everytime a sync loop runs and
+	// fetches the resource.
 	LatestPhaseInfo core.PhaseInfo `json:"latestPhaseInfo,omitEmpty"`
 
 	// In creating the resource, this is the number of failures

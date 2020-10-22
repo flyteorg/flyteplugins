@@ -3,6 +3,10 @@ package remote
 import (
 	"context"
 	"encoding/gob"
+	"fmt"
+	"time"
+
+	stdErrs "github.com/lyft/flytestdlib/errors"
 
 	"github.com/lyft/flytestdlib/cache"
 
@@ -15,6 +19,16 @@ import (
 
 const (
 	pluginStateVersion = 1
+	minCacheSize       = 10
+	maxCacheSize       = 500000
+	minWorkers         = 1
+	maxWorkers         = 100
+	minSyncDuration    = 5 * time.Second
+	maxSyncDuration    = time.Hour
+	minBurst           = 5
+	maxBurst           = 10000
+	minQPS             = 1
+	maxQPS             = 100000
 )
 
 type CorePlugin struct {
@@ -105,6 +119,36 @@ func (c CorePlugin) Finalize(ctx context.Context, tCtx core.TaskExecutionContext
 	return releaseToken(ctx, c.p, tCtx, c.metrics)
 }
 
+func validateRangeInt(fieldName string, min, max, provided int) error {
+	if provided > max || provided < min {
+		return fmt.Errorf("%v is expected to be between %v and %v. Provided value is %v",
+			fieldName, min, max, provided)
+	}
+
+	return nil
+}
+
+func validateRangeFloat64(fieldName string, min, max, provided float64) error {
+	if provided > max || provided < min {
+		return fmt.Errorf("%v is expected to be between %v and %v. Provided value is %v",
+			fieldName, min, max, provided)
+	}
+
+	return nil
+}
+func validateConfig(cfg remote.PluginConfig) error {
+	errs := stdErrs.ErrorCollection{}
+	errs.Append(validateRangeInt("cache size", minCacheSize, maxCacheSize, cfg.Caching.Size))
+	errs.Append(validateRangeInt("workers count", minWorkers, maxWorkers, cfg.Caching.Workers))
+	errs.Append(validateRangeFloat64("resync interval", minSyncDuration.Seconds(), maxSyncDuration.Seconds(), cfg.Caching.ResyncInterval.Seconds()))
+	errs.Append(validateRangeInt("read burst", minBurst, maxBurst, cfg.ReadRateLimiter.Burst))
+	errs.Append(validateRangeInt("read qps", minQPS, maxQPS, cfg.ReadRateLimiter.QPS))
+	errs.Append(validateRangeInt("write burst", minBurst, maxBurst, cfg.WriteRateLimiter.Burst))
+	errs.Append(validateRangeInt("write qps", minQPS, maxQPS, cfg.WriteRateLimiter.QPS))
+
+	return errs.ErrorOrDefault()
+}
+
 func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
 	return core.PluginEntry{
 		ID:                  pluginEntry.ID,
@@ -116,13 +160,18 @@ func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
 				return nil, err
 			}
 
+			err = validateConfig(p.GetConfig())
+			if err != nil {
+				return nil, fmt.Errorf("config validation failed. Error: %w", err)
+			}
+
 			// If the plugin will use a custom state, register it to be able to
 			// serialize/deserialize interfaces later.
-			if customState := p.GetPluginProperties().ResourceMeta; customState != nil {
+			if customState := p.GetConfig().ResourceMeta; customState != nil {
 				gob.Register(customState)
 			}
 
-			if quotas := p.GetPluginProperties().ResourceQuotas; len(quotas) > 0 {
+			if quotas := p.GetConfig().ResourceQuotas; len(quotas) > 0 {
 				for ns, quota := range quotas {
 					err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, ns, quota)
 					if err != nil {
@@ -131,7 +180,7 @@ func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
 				}
 			}
 
-			resourceCache, err := NewResourceCache(ctx, pluginEntry.ID, p, p.GetPluginProperties().Caching,
+			resourceCache, err := NewResourceCache(ctx, pluginEntry.ID, p, p.GetConfig().Caching,
 				iCtx.MetricsScope().NewSubScope("cache"))
 
 			if err != nil {

@@ -7,22 +7,20 @@ import (
 	"github.com/lyft/flytestdlib/config"
 )
 
-//go:generate enumer -type=MissingResourcePolicy -trimprefix=MissingResourcePolicy -json
-
-//go:generate pflags PluginProperties --default-var=DefaultPluginProperties
+//go:generate pflags PluginConfig --default-var=DefaultPluginConfig
 
 var (
-	DefaultPluginProperties = PluginProperties{
-		Caching: CachingProperties{
+	DefaultPluginConfig = PluginConfig{
+		Caching: CachingConfig{
 			Size:           100000,
 			ResyncInterval: config.Duration{Duration: 30 * time.Second},
 			Workers:        10,
 		},
-		ReadRateLimiter: RateLimiterProperties{
+		ReadRateLimiter: RateLimiterConfig{
 			QPS:   30,
 			Burst: 300,
 		},
-		WriteRateLimiter: RateLimiterProperties{
+		WriteRateLimiter: RateLimiterConfig{
 			QPS:   20,
 			Burst: 200,
 		},
@@ -30,7 +28,7 @@ var (
 )
 
 // The plugin manager automatically queries the remote API
-type RateLimiterProperties struct {
+type RateLimiterConfig struct {
 	// Queries per second from one process to the remote service
 	QPS int `json:"qps" pflag:",Defines the max rate of calls per second."`
 
@@ -38,7 +36,7 @@ type RateLimiterProperties struct {
 	Burst int `json:"burst" pflag:",Defines the maximum burst size."`
 }
 
-type CachingProperties struct {
+type CachingConfig struct {
 	// Max number of Resource's to be stored in the local cache
 	Size int `json:"size" pflag:",Defines the maximum number of items to cache."`
 
@@ -53,14 +51,14 @@ type CachingProperties struct {
 type ResourceQuotas map[core.ResourceNamespace]int
 
 // Properties that help the system optimize itself to handle the specific plugin
-type PluginProperties struct {
+type PluginConfig struct {
 	// ResourceQuotas allows the plgin to register resources' quotas to ensure the system
 	// comply with restrictions in the remote service.
-	ResourceQuotas   ResourceQuotas        `json:"resourceQuotas" pflag:"-,Defines resource quotas."`
-	ReadRateLimiter  RateLimiterProperties `json:"readRateLimiter" pflag:",Defines rate limiter properties for read actions (e.g. retrieve status)."`
-	WriteRateLimiter RateLimiterProperties `json:"writeRateLimiter" pflag:",Defines rate limiter properties for write actions."`
-	Caching          CachingProperties     `json:"caching" pflag:",Defines caching characteristics."`
+	ResourceQuotas   ResourceQuotas    `json:"resourceQuotas" pflag:"-,Defines resource quotas."`
+	ReadRateLimiter  RateLimiterConfig `json:"readRateLimiter" pflag:",Defines rate limiter properties for read actions (e.g. retrieve status)."`
+	WriteRateLimiter RateLimiterConfig `json:"writeRateLimiter" pflag:",Defines rate limiter properties for write actions."`
+	Caching          CachingConfig     `json:"caching" pflag:",Defines caching characteristics."`
 	// Gets an empty copy for the custom state that can be used in ResourceMeta when
 	// interacting with the remote service.
-	ResourceMeta ResourceMeta `json:"resourceMeta"`
+	ResourceMeta ResourceMeta `json:"resourceMeta" pflag:"-,A copy for the custom state."`
 }

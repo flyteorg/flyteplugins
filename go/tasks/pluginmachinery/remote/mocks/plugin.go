@@ -134,29 +134,29 @@ type Plugin_GetPluginProperties struct {
 	*mock.Call
 }
 
-func (_m Plugin_GetPluginProperties) Return(_a0 remote.PluginProperties) *Plugin_GetPluginProperties {
+func (_m Plugin_GetPluginProperties) Return(_a0 remote.PluginConfig) *Plugin_GetPluginProperties {
 	return &Plugin_GetPluginProperties{Call: _m.Call.Return(_a0)}
 }
 
 func (_m *Plugin) OnGetPluginProperties() *Plugin_GetPluginProperties {
-	c := _m.On("GetPluginProperties")
+	c := _m.On("GetConfig")
 	return &Plugin_GetPluginProperties{Call: c}
 }
 
 func (_m *Plugin) OnGetPluginPropertiesMatch(matchers ...interface{}) *Plugin_GetPluginProperties {
-	c := _m.On("GetPluginProperties", matchers...)
+	c := _m.On("GetConfig", matchers...)
 	return &Plugin_GetPluginProperties{Call: c}
 }
 
 // GetPluginProperties provides a mock function with given fields:
-func (_m *Plugin) GetPluginProperties() remote.PluginProperties {
+func (_m *Plugin) GetConfig() remote.PluginConfig {
 	ret := _m.Called()
 
-	var r0 remote.PluginProperties
-	if rf, ok := ret.Get(0).(func() remote.PluginProperties); ok {
+	var r0 remote.PluginConfig
+	if rf, ok := ret.Get(0).(func() remote.PluginConfig); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(remote.PluginProperties)
+		r0 = ret.Get(0).(remote.PluginConfig)
 	}
 
 	return r0
