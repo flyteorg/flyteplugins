@@ -42,11 +42,3 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, cache cache.Au
 	// If there were updates made to the state, we'll have picked them up automatically. Nothing more to do.
 	return &cacheItem.State, cacheItem.LatestPhaseInfo, nil
 }
-
-func getUniqueResourceName(resourceMetaName string, tCtx core.TaskExecutionContext) string {
-	if len(resourceMetaName) == 0 {
-		return tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	}
-
-	return resourceMetaName
-}
