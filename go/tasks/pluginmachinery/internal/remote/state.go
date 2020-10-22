@@ -38,7 +38,7 @@ type State struct {
 
 	// The latest phase info constructed about this resource. This will be refreshed everytime a sync loop runs and
 	// fetches the resource.
-	LatestPhaseInfo core.PhaseInfo `json:"latestPhaseInfo,omitEmpty"`
+	LatestPhaseInfo core.PhaseInfo `json:"latestPhaseInfo,omitempty"`
 
 	// In creating the resource, this is the number of failures
 	CreationFailureCount int `json:"creationFailureCount,omitempty"`
