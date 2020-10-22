@@ -32,7 +32,7 @@ require (
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible
-	k8s.io/utils v0.0.0-20200124190032-861946025e34 // indirect
+	k8s.io/utils v0.0.0-20200124190032-861946025e34
 	sigs.k8s.io/controller-runtime v0.5.1
 )
 

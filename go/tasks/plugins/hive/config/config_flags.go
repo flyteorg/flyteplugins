@@ -45,8 +45,13 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "commandApiPath"), defaultConfig.CommandAPIPath.String(), "API Path where commands can be launched on Qubole. Should be a valid url.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "analyzeLinkPath"), defaultConfig.AnalyzeLinkPath.String(), "URL path where queries can be visualized on qubole website. Should be a valid url.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "quboleTokenKey"), defaultConfig.TokenKey, "Name of the key where to find Qubole token in the secret manager.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "lruCacheSize"), defaultConfig.LruCacheSize, "Size of the AutoRefreshCache")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "workers"), defaultConfig.Workers, "Number of parallel workers to refresh the cache")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "defaultClusterLabel"), defaultConfig.DefaultClusterLabel, "The default cluster label. This will be used if label is not specified on the hive job.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "readRateLimiter.qps"), defaultConfig.ReadRateLimiter.QPS, "Defines the max rate of calls per second.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "readRateLimiter.burst"), defaultConfig.ReadRateLimiter.Burst, "Defines the maximum burst size.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writeRateLimiter.qps"), defaultConfig.WriteRateLimiter.QPS, "Defines the max rate of calls per second.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "writeRateLimiter.burst"), defaultConfig.WriteRateLimiter.Burst, "Defines the maximum burst size.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "caching.size"), defaultConfig.Caching.Size, "Defines the maximum number of items to cache.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "caching.resyncInterval"), defaultConfig.Caching.ResyncInterval.String(), "Defines the sync interval.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "caching.workers"), defaultConfig.Caching.Workers, "Defines the number of workers to start up to process items.")
 	return cmdFlags
 }

@@ -1,4 +1,4 @@
-package hive
+package remote
 
 import (
 	"github.com/lyft/flytestdlib/promutils"
@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type QuboleHiveExecutorMetrics struct {
+type Metrics struct {
 	Scope                 promutils.Scope
 	ResourceReleased      labeled.Counter
 	ResourceReleaseFailed labeled.Counter
@@ -19,8 +19,8 @@ var (
 	tokenAgeObjectives = map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001, 1.0: 0.0}
 )
 
-func getQuboleHiveExecutorMetrics(scope promutils.Scope) QuboleHiveExecutorMetrics {
-	return QuboleHiveExecutorMetrics{
+func newMetrics(scope promutils.Scope) Metrics {
+	return Metrics{
 		Scope: scope,
 		ResourceReleased: labeled.NewCounter("resource_release_success",
 			"Resource allocation token released", scope, labeled.EmitUnlabeledMetric),
