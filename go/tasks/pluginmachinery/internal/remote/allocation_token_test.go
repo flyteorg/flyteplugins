@@ -28,7 +28,7 @@ func init() {
 	labeled.SetMetricKeys(contextutils.NamespaceKey)
 }
 
-func newPluginWithProperties(properties remote.PluginProperties) *mocks.Plugin {
+func newPluginWithProperties(properties remote.PluginConfig) *mocks.Plugin {
 	m := &mocks.Plugin{}
 	m.OnGetPluginProperties().Return(properties)
 	return m
@@ -58,14 +58,14 @@ func Test_allocateToken(t *testing.T) {
 
 	state := &State{}
 
-	p := newPluginWithProperties(remote.PluginProperties{
+	p := newPluginWithProperties(remote.PluginConfig{
 		ResourceQuotas: map[core.ResourceNamespace]int{
 			"ns": 1,
 		},
 	})
 
 	t.Run("no quota", func(t *testing.T) {
-		p := newPluginWithProperties(remote.PluginProperties{ResourceQuotas: nil})
+		p := newPluginWithProperties(remote.PluginConfig{ResourceQuotas: nil})
 		gotNewState, _, err := allocateToken(ctx, p, nil, nil, metrics)
 		assert.NoError(t, err)
 		if diff := deep.Equal(gotNewState, &State{
@@ -138,7 +138,7 @@ func Test_releaseToken(t *testing.T) {
 	tCtx.OnTaskExecutionMetadata().Return(tMeta)
 	tCtx.OnResourceManager().Return(rm)
 
-	p := newPluginWithProperties(remote.PluginProperties{
+	p := newPluginWithProperties(remote.PluginConfig{
 		ResourceQuotas: map[core.ResourceNamespace]int{
 			"ns": 1,
 		},

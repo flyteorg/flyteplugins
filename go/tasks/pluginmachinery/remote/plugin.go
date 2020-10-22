@@ -58,12 +58,12 @@ type TaskExecutionContext interface {
 	OutputWriter() io.OutputWriter
 }
 
-// The resource to be sycned from the remote
+// Metadata about the resource to be sycned from the remote service.
 type ResourceMeta = interface{}
 
 // Defines a simplified interface to author plugins for k8s resources.
 type Plugin interface {
-	GetPluginProperties() PluginProperties
+	GetConfig() PluginConfig
 
 	// Analyzes the task to execute and determines the ResourceNamespace to be used when allocating
 	// tokens.

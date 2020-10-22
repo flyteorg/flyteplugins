@@ -163,7 +163,7 @@ func ToPluginPhase(s core.Phase) (Phase, error) {
 	}
 }
 
-func NewResourceCache(ctx context.Context, name string, client Client, cfg remote.CachingProperties,
+func NewResourceCache(ctx context.Context, name string, client Client, cfg remote.CachingConfig,
 	scope promutils.Scope) (ResourceCache, error) {
 
 	q := ResourceCache{
