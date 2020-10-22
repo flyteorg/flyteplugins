@@ -24,10 +24,11 @@ func BuildResourceConfig(cfg []config.ClusterConfig) map[core.ResourceNamespace]
 }
 
 func composeResourceNamespaceWithClusterPrimaryLabel(ctx context.Context, tCtx remote.TaskExecutionContext) (core.ResourceNamespace, error) {
-	_, clusterLabelOverride, _, _, err := GetQueryInfo(ctx, tCtx)
+	_, _, clusterLabelOverride, _, _, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return "", err
 	}
+
 	clusterPrimaryLabel := getClusterPrimaryLabel(ctx, tCtx, clusterLabelOverride)
 	return core.ResourceNamespace(clusterPrimaryLabel), nil
 }
@@ -64,21 +65,21 @@ func validateQuboleHiveJob(hiveJob plugins.QuboleHiveJob) error {
 // This function is the link between the output written by the SDK, and the execution side. It extracts the query
 // out of the task template.
 func GetQueryInfo(ctx context.Context, tCtx remote.TaskExecutionContext) (
-	query string, cluster string, tags []string, timeoutSec uint32, taskName string, err error) {
+	taskName, query, cluster string, tags []string, timeoutSec uint32, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return "", "", []string{}, 0, "", err
+		return "", "", "", []string{}, 0, err
 	}
 
 	hiveJob := plugins.QuboleHiveJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &hiveJob)
 	if err != nil {
-		return "", "", []string{}, 0, "", err
+		return "", "", "", []string{}, 0, err
 	}
 
 	if err := validateQuboleHiveJob(hiveJob); err != nil {
-		return "", "", []string{}, 0, "", err
+		return "", "", "", []string{}, 0, err
 	}
 
 	query = hiveJob.Query.GetQuery()
@@ -90,6 +91,7 @@ func GetQueryInfo(ctx context.Context, tCtx remote.TaskExecutionContext) (
 	for k, v := range tCtx.TaskExecutionMetadata().GetLabels() {
 		tags = append(tags, fmt.Sprintf("%s:%s", k, v))
 	}
+
 	logger.Debugf(ctx, "QueryInfo: query: [%v], cluster: [%v], timeoutSec: [%v], tags: [%v]", query, cluster, timeoutSec, tags)
 	return
 }

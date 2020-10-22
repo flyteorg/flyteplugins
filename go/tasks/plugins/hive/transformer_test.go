@@ -42,8 +42,9 @@ func TestGetQueryInfo(t *testing.T) {
 	taskMetadata.On("GetLabels").Return(map[string]string{"sample": "label"})
 	mockTaskExecutionContext.On("TaskExecutionMetadata").Return(taskMetadata)
 
-	query, cluster, tags, timeout, err := GetQueryInfo(ctx, &mockTaskExecutionContext)
+	taskName, query, cluster, tags, timeout, err := GetQueryInfo(ctx, &mockTaskExecutionContext)
 	assert.NoError(t, err)
+	assert.Equal(t, "sample_hive_task_test_name", taskName)
 	assert.Equal(t, "select 'one'", query)
 	assert.Equal(t, "default", cluster)
 	assert.Equal(t, []string{"flyte_plugin_test", "ns:myproject-staging", "sample:label"}, tags)

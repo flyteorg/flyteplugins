@@ -2,8 +2,6 @@ package hive
 
 import (
 	"context"
-	"fmt"
-	"reflect"
 	"strconv"
 
 	"github.com/lyft/flytestdlib/logger"
@@ -49,7 +47,7 @@ func (q QuboleHivePlugin) ResourceRequirements(ctx context.Context, tCtx remote.
 
 func (q QuboleHivePlugin) Create(ctx context.Context, tCtx remote.TaskExecutionContext) (
 	createdResources remote.ResourceMeta, err error) {
-	query, clusterLabelOverride, tags, timeoutSec, taskName, err := GetQueryInfo(ctx, tCtx)
+	taskName, query, clusterLabelOverride, tags, timeoutSec, err := GetQueryInfo(ctx, tCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,12 +116,7 @@ func (q QuboleHivePlugin) Delete(ctx context.Context, meta remote.ResourceMeta) 
 
 func (q QuboleHivePlugin) Status(_ context.Context, resource remote.ResourceMeta) (
 	phase core.PhaseInfo, err error) {
-	r, casted := resource.(Resource)
-	if !casted {
-		return core.PhaseInfo{}, fmt.Errorf("failed to cast resource to the expected type. Input type: %v",
-			reflect.TypeOf(resource))
-	}
-
+	r := resource.(Resource)
 	return r.GetPhaseInfo(), nil
 }
 
