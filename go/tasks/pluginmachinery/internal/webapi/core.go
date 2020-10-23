@@ -1,4 +1,4 @@
-package remote
+package webapi
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 
 type CorePlugin struct {
 	id      string
-	p       remote.Plugin
+	p       webapi.Plugin
 	cache   cache.AutoRefresh
 	metrics Metrics
 }
@@ -136,7 +136,7 @@ func validateRangeFloat64(fieldName string, min, max, provided float64) error {
 
 	return nil
 }
-func validateConfig(cfg remote.PluginConfig) error {
+func validateConfig(cfg webapi.PluginConfig) error {
 	errs := stdErrs.ErrorCollection{}
 	errs.Append(validateRangeInt("cache size", minCacheSize, maxCacheSize, cfg.Caching.Size))
 	errs.Append(validateRangeInt("workers count", minWorkers, maxWorkers, cfg.Caching.Workers))
@@ -149,7 +149,7 @@ func validateConfig(cfg remote.PluginConfig) error {
 	return errs.ErrorOrDefault()
 }
 
-func CreateRemotePlugin(pluginEntry remote.PluginEntry) core.PluginEntry {
+func CreateRemotePlugin(pluginEntry webapi.PluginEntry) core.PluginEntry {
 	return core.PluginEntry{
 		ID:                  pluginEntry.ID,
 		RegisteredTaskTypes: pluginEntry.SupportedTaskTypes,

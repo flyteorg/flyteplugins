@@ -1,4 +1,4 @@
-package remote
+package webapi
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 
 	"github.com/lyft/flytestdlib/cache"
 
@@ -26,13 +26,13 @@ const (
 type Client interface {
 	// Get multiple resources that match all the keys. If the plugin hits any failure, it should stop and return
 	// the failure. This batch will not be processed further.
-	Get(ctx context.Context, cached remote.ResourceMeta) (latest remote.ResourceMeta, err error)
+	Get(ctx context.Context, cached webapi.ResourceMeta) (latest webapi.ResourceMeta, err error)
 
 	// Status checks the status of a given resource and translates it to a Flyte-understandable PhaseInfo.
-	Status(ctx context.Context, resource remote.ResourceMeta) (phase core.PhaseInfo, err error)
+	Status(ctx context.Context, resource webapi.ResourceMeta) (phase core.PhaseInfo, err error)
 }
 
-// A generic AutoRefresh cache that uses remote.Plugin as a client to fetch items' status.
+// A generic AutoRefresh cache that uses webapi.Plugin as a client to fetch items' status.
 type ResourceCache struct {
 	// AutoRefresh
 	cache.AutoRefresh
@@ -163,7 +163,7 @@ func ToPluginPhase(s core.Phase) (Phase, error) {
 	}
 }
 
-func NewResourceCache(ctx context.Context, name string, client Client, cfg remote.CachingConfig,
+func NewResourceCache(ctx context.Context, name string, client Client, cfg webapi.CachingConfig,
 	scope promutils.Scope) (ResourceCache, error) {
 
 	q := ResourceCache{
