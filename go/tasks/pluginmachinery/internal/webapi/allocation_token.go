@@ -1,4 +1,4 @@
-package remote
+package webapi
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/lyft/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
@@ -25,7 +25,7 @@ func init() {
 	clock = clock2.RealClock{}
 }
 
-func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
+func allocateToken(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
 	if len(p.GetConfig().ResourceQuotas) == 0 {
 		// No quota, return success
@@ -76,7 +76,7 @@ func allocateToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecution
 	return state, core.PhaseInfo{}, nil
 }
 
-func releaseToken(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, metrics Metrics) error {
+func releaseToken(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext, metrics Metrics) error {
 	if len(p.GetConfig().ResourceQuotas) == 0 {
 		// No quota, return success
 		return nil

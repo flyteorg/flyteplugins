@@ -1,4 +1,4 @@
-package remote
+package webapi
 
 import (
 	"context"

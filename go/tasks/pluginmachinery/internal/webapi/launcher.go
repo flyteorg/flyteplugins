@@ -1,4 +1,4 @@
-package remote
+package webapi
 
 import (
 	"context"
@@ -8,10 +8,10 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
 
-func launch(ctx context.Context, p remote.Plugin, tCtx core.TaskExecutionContext, cache cache.AutoRefresh,
+func launch(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext, cache cache.AutoRefresh,
 	state *State) (newState *State, phaseInfo core.PhaseInfo, err error) {
 	r, err := p.Create(ctx, tCtx)
 	if err != nil {

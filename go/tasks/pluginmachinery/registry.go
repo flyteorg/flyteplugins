@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	internalRemote "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/internal/remote"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+	internalRemote "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/internal/webapi"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 
 	"github.com/lyft/flytestdlib/logger"
 
@@ -26,7 +26,7 @@ func PluginRegistry() TaskPluginRegistry {
 	return pluginRegistry
 }
 
-func (p *taskPluginRegistry) RegisterRemotePlugin(info remote.PluginEntry) {
+func (p *taskPluginRegistry) RegisterRemotePlugin(info webapi.PluginEntry) {
 	ctx := context.Background()
 	if info.ID == "" {
 		logger.Panicf(ctx, "ID is required attribute for k8s plugin")
@@ -102,7 +102,7 @@ func (p *taskPluginRegistry) GetK8sPlugins() []k8s.PluginEntry {
 type TaskPluginRegistry interface {
 	RegisterK8sPlugin(info k8s.PluginEntry)
 	RegisterCorePlugin(info core.PluginEntry)
-	RegisterRemotePlugin(info remote.PluginEntry)
+	RegisterRemotePlugin(info webapi.PluginEntry)
 	GetCorePlugins() []core.PluginEntry
 	GetK8sPlugins() []k8s.PluginEntry
 }

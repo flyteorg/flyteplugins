@@ -1,4 +1,4 @@
-package remote
+package webapi
 
 import (
 	"testing"
@@ -6,22 +6,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/remote"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 	"github.com/lyft/flytestdlib/config"
 )
 
 func Test_validateConfig(t *testing.T) {
 	t.Run("In range", func(t *testing.T) {
-		cfg := remote.PluginConfig{
-			ReadRateLimiter: remote.RateLimiterConfig{
+		cfg := webapi.PluginConfig{
+			ReadRateLimiter: webapi.RateLimiterConfig{
 				QPS:   10,
 				Burst: 100,
 			},
-			WriteRateLimiter: remote.RateLimiterConfig{
+			WriteRateLimiter: webapi.RateLimiterConfig{
 				QPS:   10,
 				Burst: 100,
 			},
-			Caching: remote.CachingConfig{
+			Caching: webapi.CachingConfig{
 				Size:           10,
 				ResyncInterval: config.Duration{Duration: 10 * time.Second},
 				Workers:        10,
@@ -32,16 +32,16 @@ func Test_validateConfig(t *testing.T) {
 	})
 
 	t.Run("Below min", func(t *testing.T) {
-		cfg := remote.PluginConfig{
-			ReadRateLimiter: remote.RateLimiterConfig{
+		cfg := webapi.PluginConfig{
+			ReadRateLimiter: webapi.RateLimiterConfig{
 				QPS:   0,
 				Burst: 0,
 			},
-			WriteRateLimiter: remote.RateLimiterConfig{
+			WriteRateLimiter: webapi.RateLimiterConfig{
 				QPS:   0,
 				Burst: 0,
 			},
-			Caching: remote.CachingConfig{
+			Caching: webapi.CachingConfig{
 				Size:           0,
 				ResyncInterval: config.Duration{Duration: 0 * time.Second},
 				Workers:        0,
@@ -54,16 +54,16 @@ func Test_validateConfig(t *testing.T) {
 	})
 
 	t.Run("Above max", func(t *testing.T) {
-		cfg := remote.PluginConfig{
-			ReadRateLimiter: remote.RateLimiterConfig{
+		cfg := webapi.PluginConfig{
+			ReadRateLimiter: webapi.RateLimiterConfig{
 				QPS:   1000,
 				Burst: 1000000,
 			},
-			WriteRateLimiter: remote.RateLimiterConfig{
+			WriteRateLimiter: webapi.RateLimiterConfig{
 				QPS:   1000,
 				Burst: 1000000,
 			},
-			Caching: remote.CachingConfig{
+			Caching: webapi.CachingConfig{
 				Size:           1000000000,
 				ResyncInterval: config.Duration{Duration: 10000 * time.Hour},
 				Workers:        1000000000,
