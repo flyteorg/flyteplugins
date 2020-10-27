@@ -3,7 +3,7 @@ module github.com/lyft/flyteplugins
 go 1.13
 
 require (
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200210170106-c8ae9e352035
 	github.com/Masterminds/semver v1.5.0
 	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a
 	github.com/aws/aws-sdk-go v1.29.23
