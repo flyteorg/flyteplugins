@@ -49,3 +49,7 @@ const (
 	CustomTrainingJobSageMakerLinkName       = "SageMaker Custom Training Job"
 	HyperparameterTuningJobSageMakerLinkName = "SageMaker Hyperparameter Tuning Job"
 )
+
+const (
+	DefaultCheckpointLocalPath = "/opt/ml/checkpoints/"
+)

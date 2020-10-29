@@ -116,6 +116,12 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 	}
 	logger.Infof(ctx, "The Sagemaker TrainingJob Task plugin received static hyperparameters [%v]", hyperParameters)
 
+	enableManagedSpotTraining := false
+	if taskCtx.TaskExecutionMetadata().IsInterruptible() {
+		enableManagedSpotTraining = true
+		timeout := taskCtx.TaskExecutionMetadata().Get
+	}
+
 	trainingJob := &trainingjobv1.TrainingJob{
 		Spec: trainingjobv1.TrainingJobSpec{
 			AlgorithmSpecification: &commonv1.AlgorithmSpecification{
@@ -128,13 +134,16 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 				MetricDefinitions: metricDefinitions,
 			},
 			// The support of spot training will come in a later version
-			EnableManagedSpotTraining: nil,
+			EnableManagedSpotTraining: &enableManagedSpotTraining,
 			HyperParameters:           hyperParameters,
 			InputDataConfig:           inputChannels,
 			OutputDataConfig: &commonv1.OutputDataConfig{
 				S3OutputPath: ToStringPtr(outputPath),
 			},
-			CheckpointConfig: nil,
+			CheckpointConfig: &commonv1.CheckpointConfig{
+				LocalPath: nil,
+				S3Uri:     nil,
+			},
 			ResourceConfig: &commonv1.ResourceConfig{
 				InstanceType:   sagemakerTrainingJob.GetTrainingJobResourceConfig().GetInstanceType(),
 				InstanceCount:  ToInt64Ptr(sagemakerTrainingJob.GetTrainingJobResourceConfig().GetInstanceCount()),
@@ -145,7 +154,7 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 			Region:  ToStringPtr(cfg.Region),
 			StoppingCondition: &commonv1.StoppingCondition{
 				MaxRuntimeInSeconds:  ToInt64Ptr(86400), // TODO: decide how to coordinate this and Flyte's timeout
-				MaxWaitTimeInSeconds: nil,               // TODO: decide how to coordinate this and Flyte's timeout and queueing budget
+				MaxWaitTimeInSeconds: ToInt64Ptr(86400), // TODO: decide how to coordinate this and Flyte's timeout and queueing budget
 			},
 			TensorBoardOutputConfig: nil,
 			Tags:                    nil,
