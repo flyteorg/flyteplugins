@@ -40,7 +40,6 @@ func (m awsSagemakerPlugin) buildResourceForCustomTrainingJob(
 	sagemakerTrainingJob := flyteSageMakerIdl.TrainingJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sagemakerTrainingJob)
 	if err != nil {
-
 		return nil, pluginErrors.Wrapf(pluginErrors.BadTaskSpecification, err, "invalid TrainingJob task specification: not able to unmarshal the custom field to [%s]", m.TaskType)
 	}
 
