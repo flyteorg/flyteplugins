@@ -208,6 +208,10 @@ func (q *queue) Start(ctx context.Context) error {
 						logger.Debug(ctx, "Work queue is shutting down.")
 						return
 					}
+					
+					// Mark the item as done processing. The logic below will determine whether it should go back into the queue
+					// (behind everything else) or whether it requires no further processing.
+					q.queue.Done(item)
 
 					wrapperV := item.(*workItemWrapper).Clone()
 					wrapper := &wrapperV
