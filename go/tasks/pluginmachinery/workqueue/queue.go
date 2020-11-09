@@ -208,7 +208,7 @@ func (q *queue) Start(ctx context.Context) error {
 						logger.Debug(ctx, "Work queue is shutting down.")
 						return
 					}
-					
+
 					wrapperV := item.(*workItemWrapper).Clone()
 					wrapper := &wrapperV
 					ws := wrapper.status
@@ -221,34 +221,34 @@ func (q *queue) Start(ctx context.Context) error {
 								err = e
 							}
 
-                 					// Mark the item as done processing. The logic below will determine whether it should go back into the queue
-		                   			// (behind everything else) or whether it requires no further processing.
-				                     	q.queue.Done(item)
+							// Mark the item as done processing. The logic below will determine whether it should go back into the queue
+							// (behind everything else) or whether it requires no further processing.
+							q.queue.Done(item)
 						}()
 
 						ctxWithFields := contextWithValues(ctx, wrapper.logFields)
 						ws, err = q.processor.Process(ctxWithFields, wrapper.payload)
 
-             					if err != nil {
-		           				q.metrics.ProcessorErrors.Inc()
+						if err != nil {
+							q.metrics.ProcessorErrors.Inc()
 
-			        			wrapper.retryCount++
-				        		wrapper.err = err
-					         	if wrapper.retryCount >= uint(q.maxRetries) {
-						          	logger.Debugf(ctx, "WorkItem [%v] exhausted all retries. Last Error: %v.",
-							          	wrapper.ID(), err)
-          							wrapper.status = WorkStatusFailed
-	           						ws = WorkStatusFailed
-		              					q.index.Add(wrapper)							
-				              			return
-						        }
-        					}
+							wrapper.retryCount++
+							wrapper.err = err
+							if wrapper.retryCount >= uint(q.maxRetries) {
+								logger.Debugf(ctx, "WorkItem [%v] exhausted all retries. Last Error: %v.",
+									wrapper.ID(), err)
+								wrapper.status = WorkStatusFailed
+								ws = WorkStatusFailed
+								q.index.Add(wrapper)
+								return
+							}
+						}
 
-         					wrapper.status = ws
-         					q.index.Add(wrapper)
-          					if !ws.IsTerminal() {
-              						q.queue.Add(wrapper)
-          					}
+						wrapper.status = ws
+						q.index.Add(wrapper)
+						if !ws.IsTerminal() {
+							q.queue.Add(wrapper)
+						}
 					}()
 				}
 			}
