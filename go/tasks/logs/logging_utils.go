@@ -9,13 +9,15 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-func GetLogsForContainerInPod(ctx context.Context, pod *v1.Pod, index uint32, nameSuffix string) ([]*core.TaskLog, error) {
+func GetLogsForContainerInPodCustomURL(ctx context.Context, pod *v1.Pod, index uint32, nameSuffix, kubernetesURL string) ([]*core.TaskLog, error) {
 	var logs []*core.TaskLog
 	logConfig := GetLogConfig()
 
 	logPlugins := map[string]logUtils.LogPlugin{}
 
-	if logConfig.IsKubernetesEnabled {
+	if kubernetesURL != "" {
+		logPlugins["Kubernetes Logs"] = logUtils.NewKubernetesLogPlugin(kubernetesURL)
+	} else if logConfig.IsKubernetesEnabled {
 		logPlugins["Kubernetes Logs"] = logUtils.NewKubernetesLogPlugin(logConfig.KubernetesURL)
 	}
 	if logConfig.IsCloudwatchEnabled {
@@ -58,4 +60,7 @@ func GetLogsForContainerInPod(ctx context.Context, pod *v1.Pod, index uint32, na
 		logs = append(logs, &log)
 	}
 	return logs, nil
+}
+func GetLogsForContainerInPod(ctx context.Context, pod *v1.Pod, index uint32, nameSuffix string) ([]*core.TaskLog, error) {
+	return GetLogsForContainerInPodCustomURL(ctx, pod, index, nameSuffix, "")
 }

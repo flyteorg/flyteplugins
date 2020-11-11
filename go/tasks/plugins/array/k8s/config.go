@@ -46,10 +46,11 @@ type ResourceConfig struct {
 }
 
 type ClusterConfig struct {
-	Name     string `json:"name" pflag:",Friendly name of the remote cluster"`
-	Endpoint string `json:"endpoint" pflag:", Remote K8s cluster endpoint"`
-	Auth     Auth   `json:"auth" pflag:"-, Auth setting for the cluster"`
-	Enabled  bool   `json:"enabled" pflag:", Boolean flag to enable or disable"`
+	Name          string `json:"name" pflag:",Friendly name of the remote cluster"`
+	Endpoint      string `json:"endpoint" pflag:", Remote K8s cluster endpoint"`
+	Auth          Auth   `json:"auth" pflag:"-, Auth setting for the cluster"`
+	KubernetesURL string `json:"kubernetes-url" pflag:",Console URL for Kubernetes logs"`
+	Enabled       bool   `json:"enabled" pflag:", Boolean flag to enable or disable"`
 }
 
 type Auth struct {

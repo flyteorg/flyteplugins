@@ -189,7 +189,6 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 		}
 		for childIdx := range arrayStatus.Detailed.GetItems() {
 			arrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseSuccess))
-
 		}
 		newState, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,

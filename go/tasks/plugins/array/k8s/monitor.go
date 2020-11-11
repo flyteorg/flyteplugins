@@ -62,6 +62,13 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		existingPhase := core.Phases[existingPhaseIdx]
 		indexStr := strconv.Itoa(childIdx)
 		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
+		task := &Task{
+			State:            newState,
+			NewArrayStatus:   newArrayStatus,
+			Config:           config,
+			ChildIdx:         childIdx,
+			MessageCollector: &msg,
+		}
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
@@ -75,17 +82,15 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			newArrayStatus.Summary.Inc(existingPhase)
 			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 
-			// TODO: collect log links before doing this
+			taskLogLinks, err := task.FetchLogLinks(ctx, tCtx, kubeClient)
+			if err != nil {
+				logger.Errorf(ctx, "K8s Array - Task FetchLogLinks failed %v", err)
+				return currentState, logLinks, err
+			}
+			if len(taskLogLinks) > 0 {
+				logLinks = append(logLinks, taskLogLinks...)
+			}
 			continue
-		}
-
-		task := &Task{
-			LogLinks:         logLinks,
-			State:            newState,
-			NewArrayStatus:   newArrayStatus,
-			Config:           config,
-			ChildIdx:         childIdx,
-			MessageCollector: &msg,
 		}
 
 		// The first time we enter this state we will launch every subtask. On subsequent rounds, the pod
@@ -111,12 +116,12 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		var monitorResult MonitorResult
-		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
+		monitorResult, taskLogLinks, err := task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
 
+		if len(taskLogLinks) > 0 {
+			logLinks = append(logLinks, taskLogLinks...)
+		}
 		if monitorResult != MonitorSuccess {
-			if err != nil {
-				logger.Errorf(ctx, "K8s array - Monitor error %v", err)
-			}
 			return currentState, logLinks, err
 		}
 	}
@@ -153,9 +158,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	return newState, logLinks, nil
 }
 
-func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName) (
-	info core.PhaseInfo, err error) {
-
+func GetPod(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		TypeMeta: metaV1.TypeMeta{
 			Kind:       PodKind,
@@ -163,7 +166,13 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 		},
 	}
 
-	err = client.GetClient().Get(ctx, name, pod)
+	err := client.GetClient().Get(ctx, name, pod)
+	return pod, err
+}
+
+func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName, remoteK8sURL string) (
+	info core.PhaseInfo, err error) {
+	pod, err := GetPod(ctx, client, name)
 	now := time.Now()
 
 	if err != nil {
@@ -188,7 +197,7 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 	}
 
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")
+		taskLogs, err := logs.GetLogsForContainerInPodCustomURL(ctx, pod, 0, " (User)", remoteK8sURL)
 		if err != nil {
 			return core.PhaseInfoUndefined, err
 		}

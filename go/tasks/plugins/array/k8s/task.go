@@ -23,7 +23,6 @@ import (
 )
 
 type Task struct {
-	LogLinks         []*idlCore.TaskLog
 	State            *arrayCore.State
 	NewArrayStatus   *arraystatus.ArrayStatus
 	Config           *Config
@@ -33,6 +32,8 @@ type Task struct {
 
 type LaunchResult int8
 type MonitorResult int8
+
+const finalizer = "array.k8s.finalizers.flyte.k8s.io"
 
 const (
 	LaunchSuccess LaunchResult = iota
@@ -45,6 +46,27 @@ const (
 	MonitorSuccess MonitorResult = iota
 	MonitorError
 )
+
+func addPodFinalizer(pod *corev1.Pod) *corev1.Pod {
+	pod.Finalizers = append(pod.Finalizers, finalizer)
+	return pod
+}
+
+func removeString(list []string, target string) []string {
+	ret := make([]string, 0)
+	for _, s := range list {
+		if s != target {
+			ret = append(ret, s)
+		}
+	}
+
+	return ret
+}
+
+func clearFinalizer(pod *corev1.Pod) *corev1.Pod {
+	pod.Finalizers = removeString(pod.Finalizers, finalizer)
+	return pod
+}
 
 func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (LaunchResult, error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
@@ -82,6 +104,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	pod = ApplyPodPolicies(ctx, t.Config, pod)
 	pod = applyNodeSelectorLabels(ctx, t.Config, pod)
 	pod = applyPodTolerations(ctx, t.Config, pod)
+	pod = addPodFinalizer(pod)
 
 	allocationStatus, err := allocateResource(ctx, tCtx, t.Config, podName)
 	if err != nil {
@@ -114,20 +137,26 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	return LaunchSuccess, nil
 }
 
-func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference) (MonitorResult, error) {
+func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference) (MonitorResult, []*idlCore.TaskLog, error) {
 	indexStr := strconv.Itoa(t.ChildIdx)
+	var loglinks []*idlCore.TaskLog
+
+	var kubernetesURL string
+	if t.Config.RemoteClusterConfig.Enabled {
+		kubernetesURL = t.Config.RemoteClusterConfig.KubernetesURL
+	}
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	phaseInfo, err := CheckPodStatus(ctx, kubeClient,
 		k8sTypes.NamespacedName{
 			Name:      podName,
 			Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
-		})
+		}, kubernetesURL)
 	if err != nil {
-		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
+		return MonitorError, loglinks, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
 	}
 
 	if phaseInfo.Info() != nil {
-		t.LogLinks = append(t.LogLinks, phaseInfo.Info().Logs...)
+		loglinks = phaseInfo.Info().Logs
 	}
 
 	if phaseInfo.Err() != nil {
@@ -139,14 +168,39 @@ func (t Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeC
 		originalIdx := arrayCore.CalculateOriginalIndex(t.ChildIdx, t.State.GetIndexesToCache())
 		actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputDataSandbox, t.ChildIdx, originalIdx)
 		if err != nil {
-			return MonitorError, err
+			return MonitorError, loglinks, err
 		}
 	}
 
 	t.NewArrayStatus.Detailed.SetItem(t.ChildIdx, bitarray.Item(actualPhase))
 	t.NewArrayStatus.Summary.Inc(actualPhase)
 
-	return MonitorSuccess, nil
+	return MonitorSuccess, loglinks, nil
+}
+
+func (t Task) FetchLogLinks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) ([]*idlCore.TaskLog, error){
+	indexStr := strconv.Itoa(t.ChildIdx)
+	var loglinks []*idlCore.TaskLog
+
+	var kubernetesURL string
+	if t.Config.RemoteClusterConfig.Enabled {
+		kubernetesURL = t.Config.RemoteClusterConfig.KubernetesURL
+	}
+	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
+	phaseInfo, err := CheckPodStatus(ctx, kubeClient,
+		k8sTypes.NamespacedName{
+			Name:      podName,
+			Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
+		}, kubernetesURL)
+	if err != nil {
+		return loglinks, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
+	}
+
+	if phaseInfo.Info() != nil {
+		loglinks = phaseInfo.Info().Logs
+	}
+
+	return loglinks, nil
 }
 
 func (t Task) Abort(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) error {
@@ -180,8 +234,26 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 
+	pod, err := GetPod(ctx, kubeClient,
+		k8sTypes.NamespacedName{
+			Name:      podName,
+			Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
+		})
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			logger.Errorf(ctx, "Error fetching pod [%s] in Finalize [%s]", podName, err)
+			return err
+		}
+	} else {
+		pod = clearFinalizer(pod)
+		err := kubeClient.GetClient().Update(ctx, pod)
+		if err != nil {
+			logger.Errorf(ctx, "Error updating pod finalizer [%s] in Finalize [%s]", podName, err)
+			return err
+		}
+	}
 	// Deallocate Resource
-	err := deallocateResource(ctx, tCtx, t.Config, t.ChildIdx)
+	err = deallocateResource(ctx, tCtx, t.Config, t.ChildIdx)
 	if err != nil {
 		logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
 		return err
