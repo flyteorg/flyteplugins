@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"reflect"
 	"regexp"
 	"strings"
@@ -20,6 +21,7 @@ var inputPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]InputPrefix\s*}}`)
 var outputRegex = regexp.MustCompile(`(?i){{\s*[\.$]OutputPrefix\s*}}`)
 var inputVarRegex = regexp.MustCompile(`(?i){{\s*[\.$]Inputs\.(?P<input_name>[^}\s]+)\s*}}`)
 var rawOutputDataPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]RawOutputDataPrefix\s*}}`)
+var perRetryUniqueKey = regexp.MustCompile(`(?i){{\s*[\.$]PerRetryUniqueKey\s*}}`)
 
 // Evaluates templates in each command with the equivalent value from passed args. Templates are case-insensitive
 // Supported templates are:
@@ -32,7 +34,9 @@ var rawOutputDataPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]RawOutputDataPr
 // NOTE: I wanted to do in-place replacement, until I realized that in-place replacement will alter the definition of the
 // graph. This is not desirable, as we may have to retry and in that case the replacement will not work and we want
 // to create a new location for outputs
-func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.InputReader, out io.OutputFilePaths) ([]string, error) {
+func ReplaceTemplateCommandArgs(ctx context.Context, tExecMeta pluginsCore.TaskExecutionMetadata, command []string, in io.InputReader,
+	out io.OutputFilePaths) ([]string, error) {
+
 	if len(command) == 0 {
 		return []string{}, nil
 	}
@@ -41,7 +45,7 @@ func ReplaceTemplateCommandArgs(ctx context.Context, command []string, in io.Inp
 	}
 	res := make([]string, 0, len(command))
 	for _, commandTemplate := range command {
-		updated, err := replaceTemplateCommandArgs(ctx, commandTemplate, in, out)
+		updated, err := replaceTemplateCommandArgs(ctx, tExecMeta, commandTemplate, in, out)
 		if err != nil {
 			return res, err
 		}
@@ -65,11 +69,14 @@ func transformVarNameToStringVal(ctx context.Context, varName string, inputs *co
 	return v, nil
 }
 
-func replaceTemplateCommandArgs(ctx context.Context, commandTemplate string, in io.InputReader, out io.OutputFilePaths) (string, error) {
+func replaceTemplateCommandArgs(ctx context.Context, tExecMeta pluginsCore.TaskExecutionMetadata, commandTemplate string,
+	in io.InputReader, out io.OutputFilePaths) (string, error) {
+
 	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
 	val = outputRegex.ReplaceAllString(val, out.GetOutputPrefixPath().String())
 	val = inputPrefixRegex.ReplaceAllString(val, in.GetInputPrefixPath().String())
 	val = rawOutputDataPrefixRegex.ReplaceAllString(val, out.GetRawOutputPrefix().String())
+	val = perRetryUniqueKey.ReplaceAllString(val, tExecMeta.GetTaskExecutionID().GetGeneratedName())
 
 	inputs, err := in.Get(ctx)
 	if err != nil {
