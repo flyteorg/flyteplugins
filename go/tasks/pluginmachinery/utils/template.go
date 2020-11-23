@@ -123,6 +123,8 @@ func serializeLiteralScalar(l *core.Scalar) (string, error) {
 		return serializePrimitive(o.Primitive)
 	case *core.Scalar_Blob:
 		return o.Blob.Uri, nil
+	case *core.Scalar_Schema:
+		return o.Schema.Uri, nil
 	default:
 		return "", fmt.Errorf("received an unexpected scalar type [%v]", reflect.TypeOf(l.Value))
 	}

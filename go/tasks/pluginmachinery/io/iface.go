@@ -52,7 +52,7 @@ type RawOutputPaths interface {
 }
 
 // All paths where various meta outputs produced by the task can be placed, such that the framework can directly access them.
-// All paths are reperesented using storage.DataReference -> an URN for the configured storage backend
+// All paths are represented using storage.DataReference -> an URN for the configured storage backend
 type OutputFilePaths interface {
 	// RawOutputPaths are available with OutputFilePaths
 	RawOutputPaths
@@ -64,6 +64,8 @@ type OutputFilePaths interface {
 	// A Fully qualified path (URN) where the error information should be placed as a protobuf core.ErrorDocument. It is not directly
 	// used by the framework, but could be used in the future
 	GetErrorPath() storage.DataReference
+
+	// GetPerTaskAttemptUniqueString storage.DataReference
 }
 
 // Framework Output writing interface.

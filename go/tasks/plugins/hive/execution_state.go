@@ -249,6 +249,13 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 	}
 
 	query = hiveJob.Query.GetQuery()
+
+	outputs, err := utils.ReplaceTemplateCommandArgs(ctx, []string{query}, tCtx.InputReader(), tCtx.OutputWriter())
+	if err != nil {
+		return "", "", []string{}, 0, "", err
+	}
+	formattedQuery := outputs[0]
+
 	cluster = hiveJob.ClusterLabel
 	timeoutSec = hiveJob.Query.TimeoutSec
 	taskName = taskTemplate.Id.Name
@@ -257,7 +264,8 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 	for k, v := range tCtx.TaskExecutionMetadata().GetLabels() {
 		tags = append(tags, fmt.Sprintf("%s:%s", k, v))
 	}
-	logger.Debugf(ctx, "QueryInfo: query: [%v], cluster: [%v], timeoutSec: [%v], tags: [%v]", query, cluster, timeoutSec, tags)
+	logger.Debugf(ctx, "QueryInfo: original query [%s], query: [%s], cluster: [%s], timeoutSec: [%d], tags: [%v]",
+		query, formattedQuery, cluster, timeoutSec, tags)
 	return
 }
 
