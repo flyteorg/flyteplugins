@@ -2,6 +2,7 @@ package flytek8s
 
 import (
 	"context"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"regexp"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -14,7 +15,6 @@ import (
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
 
 var isAcceptableK8sName, _ = regexp.Compile("[a-z0-9]([-a-z0-9]*[a-z0-9])?")
@@ -87,12 +87,12 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 // Returns a K8s Container for the execution
 func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskContainer *core.Container, iFace *core.TypedInterface,
 	inputReader io.InputReader, outputPaths io.OutputFilePaths) (*v1.Container, error) {
-	modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetCommand(), inputReader, outputPaths)
+	modifiedCommand, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskExecutionMetadata, taskContainer.GetCommand(), inputReader, outputPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, taskContainer.GetArgs(), inputReader, outputPaths)
+	modifiedArgs, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskExecutionMetadata, taskContainer.GetArgs(), inputReader, outputPaths)
 	if err != nil {
 		return nil, err
 	}

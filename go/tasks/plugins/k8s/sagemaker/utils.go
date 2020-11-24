@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"sort"
 	"strings"
 
@@ -323,7 +324,7 @@ func injectTaskTemplateEnvVarToHyperparameters(ctx context.Context, taskTemplate
 
 func injectArgsAndEnvVars(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate *flyteIdlCore.TaskTemplate) ([]*commonv1.KeyValuePair, error) {
 	templateArgs := taskTemplate.GetContainer().GetArgs()
-	templateArgs, err := utils.ReplaceTemplateCommandArgs(ctx, templateArgs, taskCtx.InputReader(), taskCtx.OutputWriter())
+	templateArgs, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), templateArgs, taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, errors.Wrapf(ErrSagemaker, err, "Failed to de-template the hyperparameter values")
 	}

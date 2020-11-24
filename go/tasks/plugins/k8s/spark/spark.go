@@ -3,6 +3,7 @@ package spark
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"strconv"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
@@ -133,7 +134,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		},
 	}
 
-	modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
+	modifiedArgs, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, err
 	}

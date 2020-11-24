@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
@@ -37,13 +38,13 @@ func validateAndFinalizePod(
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 		}
-		modifiedCommand, err := utils.ReplaceTemplateCommandArgs(ctx, container.Command, taskCtx.InputReader(), taskCtx.OutputWriter())
+		modifiedCommand, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.Command, taskCtx.InputReader(), taskCtx.OutputWriter())
 		if err != nil {
 			return nil, err
 		}
 		container.Command = modifiedCommand
 
-		modifiedArgs, err := utils.ReplaceTemplateCommandArgs(ctx, container.Args, taskCtx.InputReader(), taskCtx.OutputWriter())
+		modifiedArgs, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.Args, taskCtx.InputReader(), taskCtx.OutputWriter())
 		if err != nil {
 			return nil, err
 		}

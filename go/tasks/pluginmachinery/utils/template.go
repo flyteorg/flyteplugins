@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"reflect"
 	"regexp"
 	"strings"
@@ -23,39 +22,6 @@ var inputVarRegex = regexp.MustCompile(`(?i){{\s*[\.$]Inputs\.(?P<input_name>[^}
 var rawOutputDataPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]RawOutputDataPrefix\s*}}`)
 var perRetryUniqueKey = regexp.MustCompile(`(?i){{\s*[\.$]PerRetryUniqueKey\s*}}`)
 
-// Evaluates templates in each command with the equivalent value from passed args. Templates are case-insensitive
-// Supported templates are:
-// - {{ .InputFile }} to receive the input file path. The protocol used will depend on the underlying system
-// 		configuration. E.g. s3://bucket/key/to/file.pb or /var/run/local.pb are both valid.
-// - {{ .OutputPrefix }} to receive the path prefix for where to store the outputs.
-// - {{ .Inputs.myInput }} to receive the actual value of the input passed. See docs on LiteralMapToTemplateArgs for how
-// 		what to expect each literal type to be serialized as.
-// If a command isn't a valid template or failed to evaluate, it'll be returned as is.
-// NOTE: I wanted to do in-place replacement, until I realized that in-place replacement will alter the definition of the
-// graph. This is not desirable, as we may have to retry and in that case the replacement will not work and we want
-// to create a new location for outputs
-func ReplaceTemplateCommandArgs(ctx context.Context, tExecMeta pluginsCore.TaskExecutionMetadata, command []string, in io.InputReader,
-	out io.OutputFilePaths) ([]string, error) {
-
-	if len(command) == 0 {
-		return []string{}, nil
-	}
-	if in == nil || out == nil {
-		return nil, fmt.Errorf("input reader and output path cannot be nil")
-	}
-	res := make([]string, 0, len(command))
-	for _, commandTemplate := range command {
-		updated, err := replaceTemplateCommandArgs(ctx, tExecMeta, commandTemplate, in, out)
-		if err != nil {
-			return res, err
-		}
-
-		res = append(res, updated)
-	}
-
-	return res, nil
-}
-
 func transformVarNameToStringVal(ctx context.Context, varName string, inputs *core.LiteralMap) (string, error) {
 	inputVal, exists := inputs.Literals[varName]
 	if !exists {
@@ -69,14 +35,14 @@ func transformVarNameToStringVal(ctx context.Context, varName string, inputs *co
 	return v, nil
 }
 
-func replaceTemplateCommandArgs(ctx context.Context, tExecMeta pluginsCore.TaskExecutionMetadata, commandTemplate string,
+func ReplaceTemplateCommandArgs(ctx context.Context, perRetryKey string, commandTemplate string,
 	in io.InputReader, out io.OutputFilePaths) (string, error) {
 
 	val := inputFileRegex.ReplaceAllString(commandTemplate, in.GetInputPath().String())
 	val = outputRegex.ReplaceAllString(val, out.GetOutputPrefixPath().String())
 	val = inputPrefixRegex.ReplaceAllString(val, in.GetInputPrefixPath().String())
 	val = rawOutputDataPrefixRegex.ReplaceAllString(val, out.GetRawOutputPrefix().String())
-	val = perRetryUniqueKey.ReplaceAllString(val, tExecMeta.GetTaskExecutionID().GetGeneratedName())
+	val = perRetryUniqueKey.ReplaceAllString(val, perRetryKey)
 
 	inputs, err := in.Get(ctx)
 	if err != nil {

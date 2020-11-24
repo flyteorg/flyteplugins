@@ -3,6 +3,7 @@ package hive
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"strconv"
 	"time"
 
@@ -231,7 +232,7 @@ func validateQuboleHiveJob(hiveJob plugins.QuboleHiveJob) error {
 // This function is the link between the output written by the SDK, and the execution side. It extracts the query
 // out of the task template.
 func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
-	query string, cluster string, tags []string, timeoutSec uint32, taskName string, err error) {
+	formattedQuery string, cluster string, tags []string, timeoutSec uint32, taskName string, err error) {
 
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -248,13 +249,13 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 		return "", "", []string{}, 0, "", err
 	}
 
-	query = hiveJob.Query.GetQuery()
+	query := hiveJob.Query.GetQuery()
 
-	outputs, err := utils.ReplaceTemplateCommandArgs(ctx, []string{query}, tCtx.InputReader(), tCtx.OutputWriter())
+	outputs, err := coreutils.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{query}, tCtx.InputReader(), tCtx.OutputWriter())
 	if err != nil {
 		return "", "", []string{}, 0, "", err
 	}
-	formattedQuery := outputs[0]
+	formattedQuery = outputs[0]
 
 	cluster = hiveJob.ClusterLabel
 	timeoutSec = hiveJob.Query.TimeoutSec
