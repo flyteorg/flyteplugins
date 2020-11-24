@@ -3,9 +3,10 @@ package hive
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"strconv"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	"github.com/lyft/flytestdlib/cache"
 	"github.com/lyft/flytestdlib/contextutils"
@@ -267,7 +268,8 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 	}
 	logger.Debugf(ctx, "QueryInfo: original query [%s], query: [%s], cluster: [%s], timeoutSec: [%d], tags: [%v]",
 		query, formattedQuery, cluster, timeoutSec, tags)
-	return
+
+	return formattedQuery, cluster, tags, timeoutSec, taskName, err
 }
 
 func mapLabelToPrimaryLabel(ctx context.Context, quboleCfg *config.Config, label string) (primaryLabel string, found bool) {

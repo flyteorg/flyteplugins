@@ -2,8 +2,9 @@ package flytek8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"regexp"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"

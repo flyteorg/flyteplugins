@@ -3,9 +3,10 @@ package sagemaker
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"sort"
 	"strings"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"

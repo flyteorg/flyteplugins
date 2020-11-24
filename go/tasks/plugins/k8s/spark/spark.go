@@ -3,8 +3,9 @@ package spark
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"strconv"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"

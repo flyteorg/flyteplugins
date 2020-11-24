@@ -2,9 +2,10 @@ package k8s
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"strconv"
 	"strings"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"

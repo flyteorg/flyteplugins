@@ -3,6 +3,7 @@ package coreutils
 import (
 	"context"
 	"fmt"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -40,4 +41,3 @@ func ReplaceTemplateCommandArgs(ctx context.Context, tExecMeta core.TaskExecutio
 
 	return res, nil
 }
-

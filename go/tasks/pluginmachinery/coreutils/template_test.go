@@ -3,9 +3,10 @@ package coreutils
 import (
 	"context"
 	"fmt"
-	pluginsCoreMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"testing"
 	"time"
+
+	pluginsCoreMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 
 	"github.com/lyft/flyteidl/clients/go/coreutils"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -57,15 +58,14 @@ func (d dummyOutputPaths) GetErrorPath() storage.DataReference {
 	panic("should not be called")
 }
 
-
 func TestReplaceTemplateCommandArgs(t *testing.T) {
 	// Would have used these, but this caused an import cycle, because the core mocks
 	// package in this folder imports core itself.
 	// TODO: Separate interfaces/mocks from the rest of this core code so we can use the mocks
-	taskExecutionId := &pluginsCoreMocks.TaskExecutionID{}
-	taskExecutionId.On("GetGeneratedName").Return("per-retry-unique-key")
+	taskExecutionID := &pluginsCoreMocks.TaskExecutionID{}
+	taskExecutionID.On("GetGeneratedName").Return("per-retry-unique-key")
 	taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
-	taskMetadata.On("GetTaskExecutionID").Return(taskExecutionId)
+	taskMetadata.On("GetTaskExecutionID").Return(taskExecutionID)
 
 	t.Run("empty cmd", func(t *testing.T) {
 		actual, err := ReplaceTemplateCommandArgs(context.TODO(), taskMetadata,

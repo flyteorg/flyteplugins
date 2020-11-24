@@ -2,9 +2,10 @@ package awsbatch
 
 import (
 	"context"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 	"sort"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	"github.com/golang/protobuf/ptypes/duration"
 

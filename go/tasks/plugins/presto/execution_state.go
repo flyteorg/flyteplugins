@@ -2,6 +2,7 @@ package presto
 
 import (
 	"context"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
