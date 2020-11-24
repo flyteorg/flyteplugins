@@ -3,8 +3,9 @@ package coreutils
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flytestdlib/logger"
 	"regexp"
+
+	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
