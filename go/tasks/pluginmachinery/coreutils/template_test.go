@@ -3,6 +3,7 @@ package coreutils
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
@@ -60,7 +61,7 @@ func (d dummyOutputPaths) GetErrorPath() storage.DataReference {
 
 func TestReplaceTemplateCommandArgs(t *testing.T) {
 	taskExecutionID := &pluginsCoreMocks.TaskExecutionID{}
-	taskExecutionID.On("GetGeneratedName").Return("per-retry-unique-key")
+	taskExecutionID.On("GetGeneratedName").Return("per_retry_unique_key")
 	taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
 	taskMetadata.On("GetTaskExecutionID").Return(taskExecutionID)
 
@@ -323,7 +324,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		assert.Equal(t, []string{
 			"hello",
 			"world",
-			`--someArg {{ .Inputs.blah blah }} per-retry-unique-key`,
+			`--someArg {{ .Inputs.blah blah }} per_retry_unique_key`,
 			"output/blah",
 		}, actual)
 	})
@@ -338,7 +339,65 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []string{
 			"hello",
-			"per-retry-unique-key",
+			"per_retry_unique_key",
+			"world",
+			"s3://custom-bucket",
+		}, actual)
+	})
+}
+
+func TestReplaceTemplateCommandArgsSpecialChars(t *testing.T) {
+	in := dummyInputReader{inputPath: "input/blah"}
+	out := dummyOutputPaths{
+		outputPath:          "output/blah",
+		rawOutputDataPrefix: "s3://custom-bucket",
+	}
+
+	t.Run("dashes are replaced", func(t *testing.T) {
+		taskExecutionID := &pluginsCoreMocks.TaskExecutionID{}
+		taskExecutionID.On("GetGeneratedName").Return("per-retry-unique-key")
+		taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
+		taskMetadata.On("GetTaskExecutionID").Return(taskExecutionID)
+
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), taskMetadata, []string{
+			"hello",
+			"{{ .perRetryUniqueKey }}",
+			"world",
+			"{{ .rawOutputDataPrefix }}",
+		}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"hello",
+			"per_retry_unique_key",
+			"world",
+			"s3://custom-bucket",
+		}, actual)
+	})
+
+	t.Run("non-alphabet leading characters are stripped", func(t *testing.T) {
+		var startsWithAlpha = regexp.MustCompile("^[^a-zA-Z_]+")
+		taskExecutionID := &pluginsCoreMocks.TaskExecutionID{}
+		taskExecutionID.On("GetGeneratedName").Return("33 per retry-unique-key")
+		taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
+		taskMetadata.On("GetTaskExecutionID").Return(taskExecutionID)
+
+		testString := "doesn't start with a number"
+		testString2 := "1 does start with a number"
+		testString3 := "  1 3 nd spaces "
+		assert.Equal(t, testString, startsWithAlpha.ReplaceAllString(testString, "a"))
+		assert.Equal(t, "adoes start with a number", startsWithAlpha.ReplaceAllString(testString2, "a"))
+		assert.Equal(t, "and spaces ", startsWithAlpha.ReplaceAllString(testString3, "a"))
+
+		actual, err := ReplaceTemplateCommandArgs(context.TODO(), taskMetadata, []string{
+			"hello",
+			"{{ .perRetryUniqueKey }}",
+			"world",
+			"{{ .rawOutputDataPrefix }}",
+		}, in, out)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"hello",
+			"aper_retry_unique_key",
 			"world",
 			"s3://custom-bucket",
 		}, actual)

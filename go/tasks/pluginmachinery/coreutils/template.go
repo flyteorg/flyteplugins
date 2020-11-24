@@ -3,11 +3,16 @@ package coreutils
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flytestdlib/logger"
+	"regexp"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
 )
+
+var alphaNumericOnly = regexp.MustCompile("[^a-zA-Z0-9_]+")
+var startsWithAlpha = regexp.MustCompile("^[^a-zA-Z_]+")
 
 // Evaluates templates in each command with the equivalent value from passed args. Templates are case-insensitive
 // Supported templates are:
@@ -23,6 +28,12 @@ import (
 func ReplaceTemplateCommandArgs(ctx context.Context, tExecMeta core.TaskExecutionMetadata, command []string, in io.InputReader,
 	out io.OutputFilePaths) ([]string, error) {
 
+	var perRetryUniqueKey = tExecMeta.GetTaskExecutionID().GetGeneratedName()
+	perRetryUniqueKey = startsWithAlpha.ReplaceAllString(perRetryUniqueKey, "a")
+	perRetryUniqueKey = alphaNumericOnly.ReplaceAllString(perRetryUniqueKey, "_")
+
+	logger.Debugf(ctx, "Using ")
+
 	if len(command) == 0 {
 		return []string{}, nil
 	}
@@ -31,7 +42,7 @@ func ReplaceTemplateCommandArgs(ctx context.Context, tExecMeta core.TaskExecutio
 	}
 	res := make([]string, 0, len(command))
 	for _, commandTemplate := range command {
-		updated, err := utils.ReplaceTemplateCommandArgs(ctx, tExecMeta.GetTaskExecutionID().GetGeneratedName(), commandTemplate, in, out)
+		updated, err := utils.ReplaceTemplateCommandArgs(ctx, perRetryUniqueKey, commandTemplate, in, out)
 		if err != nil {
 			return res, err
 		}
