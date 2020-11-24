@@ -32,7 +32,7 @@ func ReplaceTemplateCommandArgs(ctx context.Context, tExecMeta core.TaskExecutio
 	perRetryUniqueKey = startsWithAlpha.ReplaceAllString(perRetryUniqueKey, "a")
 	perRetryUniqueKey = alphaNumericOnly.ReplaceAllString(perRetryUniqueKey, "_")
 
-	logger.Debugf(ctx, "Using ")
+	logger.Debugf(ctx, "Using [%s] from [%s]", perRetryUniqueKey, tExecMeta.GetTaskExecutionID().GetGeneratedName())
 
 	if len(command) == 0 {
 		return []string{}, nil
