@@ -59,9 +59,6 @@ func (d dummyOutputPaths) GetErrorPath() storage.DataReference {
 }
 
 func TestReplaceTemplateCommandArgs(t *testing.T) {
-	// Would have used these, but this caused an import cycle, because the core mocks
-	// package in this folder imports core itself.
-	// TODO: Separate interfaces/mocks from the rest of this core code so we can use the mocks
 	taskExecutionID := &pluginsCoreMocks.TaskExecutionID{}
 	taskExecutionID.On("GetGeneratedName").Return("per-retry-unique-key")
 	taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}

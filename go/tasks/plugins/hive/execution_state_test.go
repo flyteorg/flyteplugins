@@ -76,21 +76,6 @@ func TestIsNotYetSubmitted(t *testing.T) {
 func TestGetQueryInfo(t *testing.T) {
 	ctx := context.Background()
 	tCtx := GetMockTaskExecutionContext()
-	//taskTemplate := GetSingleHiveQueryTaskTemplate()
-	//mockTaskReader := &mocks.TaskReader{}
-	//mockTaskReader.On("Read", mock.Anything).Return(&taskTemplate, nil)
-	//
-	//mockTaskExecutionContext := mocks.TaskExecutionContext{}
-	//mockTaskExecutionContext.On("TaskReader").Return(mockTaskReader)
-	//
-	//mockTaskExecutionId := &pluginsCoreMocks.TaskExecutionID{}
-	//mockTaskExecutionId.OnGetGeneratedName().Return("unique-task-generated-name")
-	//
-	//taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
-	//taskMetadata.On("GetNamespace").Return("myproject-staging")
-	//taskMetadata.On("GetLabels").Return(map[string]string{"sample": "label"})
-	//taskMetadata.On("GetTaskExecutionID").Return(mockTaskExecutionId)
-	//mockTaskExecutionContext.On("TaskExecutionMetadata").Return(taskMetadata)
 
 	query, cluster, tags, timeout, taskName, err := GetQueryInfo(ctx, tCtx)
 	assert.NoError(t, err)
