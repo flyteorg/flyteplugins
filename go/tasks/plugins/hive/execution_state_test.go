@@ -75,24 +75,28 @@ func TestIsNotYetSubmitted(t *testing.T) {
 
 func TestGetQueryInfo(t *testing.T) {
 	ctx := context.Background()
+	tCtx := GetMockTaskExecutionContext()
+	//taskTemplate := GetSingleHiveQueryTaskTemplate()
+	//mockTaskReader := &mocks.TaskReader{}
+	//mockTaskReader.On("Read", mock.Anything).Return(&taskTemplate, nil)
+	//
+	//mockTaskExecutionContext := mocks.TaskExecutionContext{}
+	//mockTaskExecutionContext.On("TaskReader").Return(mockTaskReader)
+	//
+	//mockTaskExecutionId := &pluginsCoreMocks.TaskExecutionID{}
+	//mockTaskExecutionId.OnGetGeneratedName().Return("unique-task-generated-name")
+	//
+	//taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
+	//taskMetadata.On("GetNamespace").Return("myproject-staging")
+	//taskMetadata.On("GetLabels").Return(map[string]string{"sample": "label"})
+	//taskMetadata.On("GetTaskExecutionID").Return(mockTaskExecutionId)
+	//mockTaskExecutionContext.On("TaskExecutionMetadata").Return(taskMetadata)
 
-	taskTemplate := GetSingleHiveQueryTaskTemplate()
-	mockTaskReader := &mocks.TaskReader{}
-	mockTaskReader.On("Read", mock.Anything).Return(&taskTemplate, nil)
-
-	mockTaskExecutionContext := mocks.TaskExecutionContext{}
-	mockTaskExecutionContext.On("TaskReader").Return(mockTaskReader)
-
-	taskMetadata := &pluginsCoreMocks.TaskExecutionMetadata{}
-	taskMetadata.On("GetNamespace").Return("myproject-staging")
-	taskMetadata.On("GetLabels").Return(map[string]string{"sample": "label"})
-	mockTaskExecutionContext.On("TaskExecutionMetadata").Return(taskMetadata)
-
-	query, cluster, tags, timeout, taskName, err := GetQueryInfo(ctx, &mockTaskExecutionContext)
+	query, cluster, tags, timeout, taskName, err := GetQueryInfo(ctx, tCtx)
 	assert.NoError(t, err)
 	assert.Equal(t, "select 'one'", query)
 	assert.Equal(t, "default", cluster)
-	assert.Equal(t, []string{"flyte_plugin_test", "ns:myproject-staging", "sample:label"}, tags)
+	assert.Equal(t, []string{"flyte_plugin_test", "ns:test-namespace", "label-1:val1"}, tags)
 	assert.Equal(t, 500, int(timeout))
 	assert.Equal(t, "sample_hive_task_test_name", taskName)
 }

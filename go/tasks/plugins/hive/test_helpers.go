@@ -106,6 +106,7 @@ func GetMockTaskExecutionContext() core.TaskExecutionContext {
 	dummyTaskMetadata := GetMockTaskExecutionMetadata()
 	taskCtx := &coreMock.TaskExecutionContext{}
 	inputReader := &ioMock.InputReader{}
+	inputReader.On("GetInputPrefixPath").Return(storage.DataReference("s3://test-input-prefix"))
 	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
 	inputReader.On("Get", mock.Anything).Return(&idlCore.LiteralMap{}, nil)
 	taskCtx.On("InputReader").Return(inputReader)
@@ -113,6 +114,7 @@ func GetMockTaskExecutionContext() core.TaskExecutionContext {
 	outputReader := &ioMock.OutputWriter{}
 	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
 	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
+	outputReader.On("GetRawOutputPrefix").Return(storage.DataReference("gs://custom-output-bucket/b"))
 	taskCtx.On("OutputWriter").Return(outputReader)
 
 	taskReader := &coreMock.TaskReader{}
