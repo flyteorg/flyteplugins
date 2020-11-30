@@ -3,6 +3,7 @@ package hive
 import (
 	"context"
 	"fmt"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"strconv"
 	"time"
 
@@ -21,7 +22,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	"github.com/lyft/flytestdlib/logger"
-)
+	)
 
 type ExecutionPhase int
 
@@ -29,7 +30,7 @@ const (
 	PhaseNotStarted ExecutionPhase = iota
 	PhaseQueued                    // resource manager token gotten
 	PhaseSubmitted                 // Sent off to Qubole
-
+	PhaseWriteOutputFile
 	PhaseQuerySucceeded
 	PhaseQueryFailed
 )
@@ -42,6 +43,8 @@ func (p ExecutionPhase) String() string {
 		return "PhaseQueued"
 	case PhaseSubmitted:
 		return "PhaseSubmitted"
+	case PhaseWriteOutputFile:
+		return "PhaseWriteOutputFile"
 	case PhaseQuerySucceeded:
 		return "PhaseQuerySucceeded"
 	case PhaseQueryFailed:
@@ -86,6 +89,9 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 	case PhaseSubmitted:
 		newState, transformError = MonitorQuery(ctx, tCtx, currentState, executionsCache)
 
+	case PhaseWriteOutputFile:
+		newState, transformError = WriteOutputs(ctx, tCtx, currentState)
+
 	case PhaseQuerySucceeded:
 		newState = currentState
 		transformError = nil
@@ -113,6 +119,9 @@ func MapExecutionStateToPhaseInfo(state ExecutionState, quboleClient client.Qubo
 			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Qubole launch")
 		}
 	case PhaseSubmitted:
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
+
+	case PhaseWriteOutputFile:
 		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
 
 	case PhaseQuerySucceeded:
@@ -469,4 +478,54 @@ func IsNotYetSubmitted(e ExecutionState) bool {
 		return true
 	}
 	return false
+}
+
+func WriteOutputs(ctx context.Context, tCtx core.TaskExecutionContext, currentState ExecutionState) (
+	ExecutionState, error) {
+
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "Error reading task template: [%s]", err)
+		return currentState, err
+	}
+
+	externalLocation, err := tCtx.DataStore().ConstructReference(ctx, tCtx.OutputWriter().GetRawOutputPrefix(), "")
+	if err != nil {
+		logger.Errorf(ctx, "Error getting external location: [%s]", err)
+		return currentState, err
+	}
+
+	outputs := taskTemplate.Interface.Outputs.GetVariables()
+	if len(outputs) != 0 && len(outputs) != 1 {
+		return currentState, errors.Errorf(errors.BadTaskSpecification, "Hive tasks must have zero or one output: [%d] found", len(outputs))
+	}
+	if len(outputs) == 1 {
+		if results, ok := outputs["results"]; ok {
+			err = tCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(
+				&idlCore.LiteralMap{
+					Literals: map[string]*idlCore.Literal{
+						"results": {
+							Value: &idlCore.Literal_Scalar{
+								Scalar: &idlCore.Scalar{Value: &idlCore.Scalar_Schema{
+									Schema: &idlCore.Schema{
+										Uri:  externalLocation.String(),
+										Type: results.GetType().GetSchema(),
+									},
+								},
+								},
+							},
+						},
+					},
+				}, nil))
+			if err != nil {
+				logger.Errorf(ctx, "Error writing outputs file: [%s]", err)
+				return currentState, err
+			}
+		} else {
+			return currentState, errors.Errorf(errors.BadTaskSpecification, "One output found but wrong name [%s]", outputs)
+		}
+	}
+
+	currentState.Phase = PhaseQuerySucceeded
+	return currentState, nil
 }
