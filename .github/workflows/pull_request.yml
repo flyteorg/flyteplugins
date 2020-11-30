@@ -16,4 +16,4 @@ jobs:
           image_name: ${{ github.repository }}/flytecopilot
           image_tag: ${{ github.sha }}
           push_git_tag: true
-          registry: docker.pkg.github.com
+          registry: ghcr.io
