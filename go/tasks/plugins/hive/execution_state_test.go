@@ -349,7 +349,7 @@ func TestKickOffQuery(t *testing.T) {
 	assert.True(t, quboleCalled)
 }
 
-func TestKickOffQufdsaery(t *testing.T) {
+func TestWriteOutputs(t *testing.T) {
 	ctx := context.Background()
 	tCtx := GetMockTaskExecutionContext()
 	tCtx.OutputWriter().(*ioMock.OutputWriter).On("Put", mock.Anything, mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
