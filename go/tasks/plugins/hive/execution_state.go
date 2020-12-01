@@ -123,7 +123,7 @@ func MapExecutionStateToPhaseInfo(state ExecutionState, quboleClient client.Qubo
 		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
 
 	case PhaseWriteOutputFile:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion + 1, ConstructTaskInfo(state))
 
 	case PhaseQuerySucceeded:
 		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
