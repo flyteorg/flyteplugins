@@ -502,6 +502,7 @@ func WriteOutputs(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	}
 	if len(outputs) == 1 {
 		if results, ok := outputs["results"]; ok {
+			logger.Debugf(ctx, "Writing outputs file for Hive task at [%s]", tCtx.OutputWriter().GetOutputPrefixPath())
 			err = tCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(
 				&idlCore.LiteralMap{
 					Literals: map[string]*idlCore.Literal{
@@ -523,10 +524,12 @@ func WriteOutputs(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 				return currentState, err
 			}
 		} else {
+			logger.Errorf(ctx, "Wrong name for output [%s]", err)
 			return currentState, errors.Errorf(errors.BadTaskSpecification, "One output found but wrong name [%s]", outputs)
 		}
 	}
 
+	logger.Debugf(ctx, "Moving hive task to succeeded")
 	currentState.Phase = PhaseQuerySucceeded
 	return currentState, nil
 }
