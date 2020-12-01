@@ -490,12 +490,7 @@ func WriteOutputs(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 		return currentState, err
 	}
 
-	externalLocation, err := tCtx.DataStore().ConstructReference(ctx, tCtx.OutputWriter().GetRawOutputPrefix(), "")
-	if err != nil {
-		logger.Errorf(ctx, "Error getting external location: [%s]", err)
-		return currentState, err
-	}
-
+	externalLocation := tCtx.OutputWriter().GetRawOutputPrefix()
 	outputs := taskTemplate.Interface.Outputs.GetVariables()
 	if len(outputs) != 0 && len(outputs) != 1 {
 		return currentState, errors.Errorf(errors.BadTaskSpecification, "Hive tasks must have zero or one output: [%d] found", len(outputs))
