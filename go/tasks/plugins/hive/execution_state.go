@@ -3,9 +3,10 @@ package hive
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"strconv"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
 
@@ -22,7 +23,7 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/plugins/hive/client"
 	"github.com/lyft/flytestdlib/logger"
-	)
+)
 
 type ExecutionPhase int
 
