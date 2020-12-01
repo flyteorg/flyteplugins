@@ -157,6 +157,15 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
+
+	t.Run("Write outputs file", func(t *testing.T) {
+		e := ExecutionState{
+			Phase: PhaseWriteOutputFile,
+		}
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
+		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
+		assert.Equal(t, uint32(1), phaseInfo.Version())
+	})
 }
 
 func TestGetAllocationToken(t *testing.T) {
