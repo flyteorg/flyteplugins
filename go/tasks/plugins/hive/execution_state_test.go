@@ -2,9 +2,13 @@ package hive
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	ioMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	"github.com/lyft/flytestdlib/contextutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
@@ -343,6 +347,22 @@ func TestKickOffQuery(t *testing.T) {
 	assert.Equal(t, "453298043", newState.CommandID)
 	assert.True(t, getOrCreateCalled)
 	assert.True(t, quboleCalled)
+}
+
+func TestKickOffQufdsaery(t *testing.T) {
+	ctx := context.Background()
+	tCtx := GetMockTaskExecutionContext()
+	tCtx.OutputWriter().(*ioMock.OutputWriter).On("Put", mock.Anything, mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
+		reader := arguments.Get(1).(io.OutputReader)
+		literals, err1, err2 := reader.Read(context.Background())
+		assert.Nil(t, err1)
+		assert.NoError(t, err2)
+		assert.NotNil(t, literals.Literals["results"].GetScalar().GetSchema())
+	})
+
+	state := ExecutionState{}
+	newState, _ := WriteOutputs(ctx, tCtx, state)
+	fmt.Println(newState)
 }
 
 func createMockQuboleCfg() *config.Config {

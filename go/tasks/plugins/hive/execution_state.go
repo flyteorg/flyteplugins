@@ -497,6 +497,9 @@ func WriteOutputs(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	}
 	if len(outputs) == 1 {
 		if results, ok := outputs["results"]; ok {
+			if results.GetType().GetSchema() == nil {
+				return currentState, errors.Errorf(errors.BadTaskSpecification, "A non-SchemaType was found [%v]", results.GetType())
+			}
 			logger.Debugf(ctx, "Writing outputs file for Hive task at [%s]", tCtx.OutputWriter().GetOutputPrefixPath())
 			err = tCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(
 				&idlCore.LiteralMap{
