@@ -47,6 +47,7 @@ func (e ErrorCollection) Error() string {
 func ReplaceTemplateCommandArgs(ctx context.Context, tExecMeta core.TaskExecutionMetadata, command []string, in io.InputReader,
 	out io.OutputFilePaths) ([]string, error) {
 
+	// TODO: Change GetGeneratedName to follow these conventions
 	var perRetryUniqueKey = tExecMeta.GetTaskExecutionID().GetGeneratedName()
 	perRetryUniqueKey = startsWithAlpha.ReplaceAllString(perRetryUniqueKey, "a")
 	perRetryUniqueKey = alphaNumericOnly.ReplaceAllString(perRetryUniqueKey, "_")
