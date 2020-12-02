@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -135,7 +135,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		},
 	}
 
-	modifiedArgs, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
+	modifiedArgs, err := template.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flytestdlib/logger"
@@ -88,12 +88,12 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 // Returns a K8s Container for the execution
 func ToK8sContainer(ctx context.Context, taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskContainer *core.Container, iFace *core.TypedInterface,
 	inputReader io.InputReader, outputPaths io.OutputFilePaths) (*v1.Container, error) {
-	modifiedCommand, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskExecutionMetadata, taskContainer.GetCommand(), inputReader, outputPaths)
+	modifiedCommand, err := template.ReplaceTemplateCommandArgs(ctx, taskExecutionMetadata, taskContainer.GetCommand(), inputReader, outputPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	modifiedArgs, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskExecutionMetadata, taskContainer.GetArgs(), inputReader, outputPaths)
+	modifiedArgs, err := template.ReplaceTemplateCommandArgs(ctx, taskExecutionMetadata, taskContainer.GetArgs(), inputReader, outputPaths)
 	if err != nil {
 		return nil, err
 	}

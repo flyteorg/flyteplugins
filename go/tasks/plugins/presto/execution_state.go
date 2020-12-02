@@ -3,7 +3,7 @@ package presto
 import (
 	"context"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
@@ -221,7 +221,7 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (string, 
 		return "", "", "", "", err
 	}
 
-	outputs, err := coreutils.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{
+	outputs, err := template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{
 		prestoQuery.RoutingGroup,
 		prestoQuery.Catalog,
 		prestoQuery.Schema,

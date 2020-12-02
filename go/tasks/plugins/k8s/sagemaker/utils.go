@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -325,7 +325,7 @@ func injectTaskTemplateEnvVarToHyperparameters(ctx context.Context, taskTemplate
 
 func injectArgsAndEnvVars(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate *flyteIdlCore.TaskTemplate) ([]*commonv1.KeyValuePair, error) {
 	templateArgs := taskTemplate.GetContainer().GetArgs()
-	templateArgs, err := coreutils.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), templateArgs, taskCtx.InputReader(), taskCtx.OutputWriter())
+	templateArgs, err := template.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), templateArgs, taskCtx.InputReader(), taskCtx.OutputWriter())
 	if err != nil {
 		return nil, errors.Wrapf(ErrSagemaker, err, "Failed to de-template the hyperparameter values")
 	}

@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/coreutils"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	"github.com/lyft/flytestdlib/cache"
 	"github.com/lyft/flytestdlib/contextutils"
@@ -262,7 +262,7 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (
 
 	query := hiveJob.Query.GetQuery()
 
-	outputs, err := coreutils.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{query}, tCtx.InputReader(), tCtx.OutputWriter())
+	outputs, err := template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{query}, tCtx.InputReader(), tCtx.OutputWriter())
 	if err != nil {
 		return "", "", []string{}, 0, "", err
 	}
