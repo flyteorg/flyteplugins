@@ -187,50 +187,6 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_lruCacheSize", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("lruCacheSize"); err == nil {
-				assert.Equal(t, int(defaultConfig.LruCacheSize), vInt)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("lruCacheSize", testValue)
-			if vInt, err := cmdFlags.GetInt("lruCacheSize"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.LruCacheSize)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_workers", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vInt, err := cmdFlags.GetInt("workers"); err == nil {
-				assert.Equal(t, int(defaultConfig.Workers), vInt)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("workers", testValue)
-			if vInt, err := cmdFlags.GetInt("workers"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Workers)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
 	t.Run("Test_defaultClusterLabel", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
@@ -247,6 +203,160 @@ func TestConfig_SetFlags(t *testing.T) {
 			cmdFlags.Set("defaultClusterLabel", testValue)
 			if vString, err := cmdFlags.GetString("defaultClusterLabel"); err == nil {
 				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DefaultClusterLabel)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_readRateLimiter.qps", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("readRateLimiter.qps"); err == nil {
+				assert.Equal(t, int(defaultConfig.ReadRateLimiter.QPS), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("readRateLimiter.qps", testValue)
+			if vInt, err := cmdFlags.GetInt("readRateLimiter.qps"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ReadRateLimiter.QPS)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_readRateLimiter.burst", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("readRateLimiter.burst"); err == nil {
+				assert.Equal(t, int(defaultConfig.ReadRateLimiter.Burst), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("readRateLimiter.burst", testValue)
+			if vInt, err := cmdFlags.GetInt("readRateLimiter.burst"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.ReadRateLimiter.Burst)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_writeRateLimiter.qps", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("writeRateLimiter.qps"); err == nil {
+				assert.Equal(t, int(defaultConfig.WriteRateLimiter.QPS), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("writeRateLimiter.qps", testValue)
+			if vInt, err := cmdFlags.GetInt("writeRateLimiter.qps"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.WriteRateLimiter.QPS)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_writeRateLimiter.burst", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("writeRateLimiter.burst"); err == nil {
+				assert.Equal(t, int(defaultConfig.WriteRateLimiter.Burst), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("writeRateLimiter.burst", testValue)
+			if vInt, err := cmdFlags.GetInt("writeRateLimiter.burst"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.WriteRateLimiter.Burst)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_caching.size", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("caching.size"); err == nil {
+				assert.Equal(t, int(defaultConfig.Caching.Size), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("caching.size", testValue)
+			if vInt, err := cmdFlags.GetInt("caching.size"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Caching.Size)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_caching.resyncInterval", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vString, err := cmdFlags.GetString("caching.resyncInterval"); err == nil {
+				assert.Equal(t, string(defaultConfig.Caching.ResyncInterval.String()), vString)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := defaultConfig.Caching.ResyncInterval.String()
+
+			cmdFlags.Set("caching.resyncInterval", testValue)
+			if vString, err := cmdFlags.GetString("caching.resyncInterval"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.Caching.ResyncInterval)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_caching.workers", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("caching.workers"); err == nil {
+				assert.Equal(t, int(defaultConfig.Caching.Workers), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("caching.workers", testValue)
+			if vInt, err := cmdFlags.GetInt("caching.workers"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt), &actual.Caching.Workers)
 
 			} else {
 				assert.FailNow(t, err.Error())
