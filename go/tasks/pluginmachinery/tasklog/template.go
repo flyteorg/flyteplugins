@@ -25,12 +25,27 @@ type regexValPair struct {
 	val   string
 }
 
-var podNameRegex = mustCreateRegex("podName")
-var namespaceRegex = mustCreateRegex("namespace")
-var containerNameRegex = mustCreateRegex("containerName")
-var containerIDRegex = mustCreateRegex("containerID")
-var logNameRegex = mustCreateRegex("logName")
-var hostnameRegex = mustCreateRegex("hostname")
+type templateRegexes struct {
+	PodName       *regexp.Regexp
+	Namespace     *regexp.Regexp
+	ContainerName *regexp.Regexp
+	ContainerID   *regexp.Regexp
+	LogName       *regexp.Regexp
+	Hostname      *regexp.Regexp
+}
+
+func mustInitTemplateRegexes() templateRegexes {
+	return templateRegexes{
+		PodName:       mustCreateRegex("podName"),
+		Namespace:     mustCreateRegex("namespace"),
+		ContainerName: mustCreateRegex("containerName"),
+		ContainerID:   mustCreateRegex("containerID"),
+		LogName:       mustCreateRegex("logName"),
+		Hostname:      mustCreateRegex("hostname"),
+	}
+}
+
+var regexes = mustInitTemplateRegexes()
 
 func mustCreateRegex(varName string) *regexp.Regexp {
 	return regexp.MustCompile(fmt.Sprintf(`(?i){{\s*[\.$]%s\s*}}`, varName))
@@ -76,27 +91,27 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 				templateURI,
 				[]regexValPair{
 					{
-						regex: podNameRegex,
+						regex: regexes.PodName,
 						val:   input.PodName,
 					},
 					{
-						regex: namespaceRegex,
+						regex: regexes.Namespace,
 						val:   input.Namespace,
 					},
 					{
-						regex: containerNameRegex,
+						regex: regexes.ContainerName,
 						val:   input.ContainerName,
 					},
 					{
-						regex: containerIDRegex,
+						regex: regexes.ContainerID,
 						val:   containerID,
 					},
 					{
-						regex: logNameRegex,
+						regex: regexes.LogName,
 						val:   input.LogName,
 					},
 					{
-						regex: hostnameRegex,
+						regex: regexes.Hostname,
 						val:   input.HostName,
 					},
 				},

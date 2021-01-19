@@ -10,7 +10,7 @@ import (
 var (
 	defaultConfig = &Config{
 		LogConfig: LogConfig{
-			UserLogs: logs.LogConfig{
+			User: logs.LogConfig{
 				IsKubernetesEnabled:   true,
 				KubernetesTemplateURI: "http://localhost:30084/#!/log/{{ .namespace }}/{{ .podName }}/pod?namespace={{ .namespace }}",
 			},
@@ -29,9 +29,10 @@ type Config struct {
 }
 
 type LogConfig struct {
-	UserLogs    logs.LogConfig
-	SystemLogs  logs.LogConfig
-	AllUserLogs logs.LogConfig
+	Mixed   logs.LogConfig `json:"mixed" pflag:",Defines the log config that's not split into user/system."`
+	User    logs.LogConfig `json:"user" pflag:",Defines the log config for user logs."`
+	System  logs.LogConfig `json:"system" pflag:",Defines the log config for system logs."`
+	AllUser logs.LogConfig `json:"all-user" pflag:",All user logs across driver and executors."`
 }
 
 // Optional feature with name and corresponding spark-config to use.

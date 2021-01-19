@@ -259,7 +259,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 	taskLogs := make([]*core.TaskLog, 0, 3)
 
 	if !isQueued && sj.Status.DriverInfo.PodName != "" {
-		p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.UserLogs)
+		p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.User)
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +280,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 	}
 
 	if !isQueued {
-		p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.SystemLogs)
+		p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.System)
 		if err != nil {
 			return nil, err
 		}
@@ -300,7 +300,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 		}
 	}
 
-	p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.AllUserLogs)
+	p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.AllUser)
 	if err != nil {
 		return nil, err
 	}
