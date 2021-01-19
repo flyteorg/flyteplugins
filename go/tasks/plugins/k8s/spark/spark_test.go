@@ -3,7 +3,6 @@ package spark
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"testing"
 
@@ -92,8 +91,6 @@ func TestGetEventInfo(t *testing.T) {
 		generatedLinks = append(generatedLinks, l.Uri)
 	}
 
-	sort.Strings(generatedLinks)
-
 	expectedLinks := []string{
 		"k8s.com/#!/log/spark-namespace/spark-pod/pod?namespace=spark-namespace",
 		"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-pod;streamFilter=typeLogStreamPrefix",
@@ -101,8 +98,6 @@ func TestGetEventInfo(t *testing.T) {
 		"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-app-name;streamFilter=typeLogStreamPrefix",
 		"https://spark-ui.flyte",
 	}
-
-	sort.Strings(expectedLinks)
 
 	assert.Equal(t, expectedLinks, generatedLinks)
 
@@ -140,8 +135,6 @@ func TestGetEventInfo(t *testing.T) {
 		generatedLinks = append(generatedLinks, l.Uri)
 	}
 
-	sort.Strings(generatedLinks)
-
 	expectedLinks = []string{
 		"k8s.com/#!/log/spark-namespace/spark-pod/pod?namespace=spark-namespace",
 		"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-pod;streamFilter=typeLogStreamPrefix",
@@ -149,8 +142,6 @@ func TestGetEventInfo(t *testing.T) {
 		"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-app-name;streamFilter=typeLogStreamPrefix",
 		"spark-history.flyte/history/app-id",
 	}
-
-	sort.Strings(expectedLinks)
 
 	assert.Equal(t, expectedLinks, generatedLinks)
 }

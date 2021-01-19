@@ -258,7 +258,28 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 	sparkConfig := GetSparkConfig()
 	taskLogs := make([]*core.TaskLog, 0, 3)
 
-	if !isQueued && sj.Status.DriverInfo.PodName != "" {
+	if !isQueued {
+		if sj.Status.DriverInfo.PodName != "" {
+			p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.Mixed)
+			if err != nil {
+				return nil, err
+			}
+
+			if p != nil {
+				o, err := p.GetTaskLogs(tasklog.Input{
+					PodName:   sj.Status.DriverInfo.PodName,
+					Namespace: sj.Namespace,
+					LogName:   "Driver Logs",
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				taskLogs = append(taskLogs, o.TaskLogs...)
+			}
+		}
+
 		p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.User)
 		if err != nil {
 			return nil, err
@@ -268,7 +289,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 			o, err := p.GetTaskLogs(tasklog.Input{
 				PodName:   sj.Status.DriverInfo.PodName,
 				Namespace: sj.Namespace,
-				LogName:   "Driver Logs",
+				LogName:   "User Logs",
 			})
 
 			if err != nil {
@@ -277,10 +298,8 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 
 			taskLogs = append(taskLogs, o.TaskLogs...)
 		}
-	}
 
-	if !isQueued {
-		p, err := logs.InitializeLogPlugins(&sparkConfig.LogConfig.System)
+		p, err = logs.InitializeLogPlugins(&sparkConfig.LogConfig.System)
 		if err != nil {
 			return nil, err
 		}
