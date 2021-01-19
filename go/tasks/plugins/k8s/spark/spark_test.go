@@ -150,6 +150,8 @@ func TestGetEventInfo(t *testing.T) {
 		"spark-history.flyte/history/app-id",
 	}
 
+	sort.Strings(expectedLinks)
+
 	assert.Equal(t, expectedLinks, generatedLinks)
 }
 
