@@ -104,7 +104,7 @@ func InitializeLogPlugins(cfg *LogConfig) (tasklog.Plugin, error) {
 	}
 
 	if cfg.IsStackDriverEnabled {
-		if len(cfg.CloudwatchTemplateURI) > 0 {
+		if len(cfg.StackDriverTemplateURI) > 0 {
 			logPlugins = append(logPlugins, logPlugin{Name: "Stackdriver Logs", Plugin: tasklog.NewTemplateLogPlugin([]string{cfg.StackDriverTemplateURI}, core.TaskLog_JSON)})
 		} else {
 			logPlugins = append(logPlugins, logPlugin{Name: "Stackdriver Logs", Plugin: tasklog.NewTemplateLogPlugin(

@@ -208,31 +208,46 @@ func TestGetLogsForContainerInPod_Stackdriver(t *testing.T) {
 }
 
 func TestGetLogsForContainerInPod_LegacyTemplate(t *testing.T) {
-	assertTestSucceeded(t, &LogConfig{
-		IsKubernetesEnabled:   true,
-		KubernetesTemplateURI: "https://k8s-my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
+	t.Run("All Templates available", func(t *testing.T) {
+		assertTestSucceeded(t, &LogConfig{
+			IsKubernetesEnabled:   true,
+			KubernetesTemplateURI: "https://k8s-my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
 
-		IsCloudwatchEnabled:   true,
-		CloudwatchTemplateURI: "https://cw-my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
+			IsCloudwatchEnabled:   true,
+			CloudwatchTemplateURI: "https://cw-my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
 
-		IsStackDriverEnabled:   true,
-		StackDriverTemplateURI: "https://sd-my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
-	}, []*core.TaskLog{
-		{
-			Uri:           "https://k8s-my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
-			MessageFormat: core.TaskLog_JSON,
-			Name:          "Kubernetes Logs my-Suffix",
-		},
-		{
-			Uri:           "https://cw-my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
-			MessageFormat: core.TaskLog_JSON,
-			Name:          "Cloudwatch Logs my-Suffix",
-		},
-		{
-			Uri:           "https://sd-my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
-			MessageFormat: core.TaskLog_JSON,
-			Name:          "Stackdriver Logs my-Suffix",
-		},
+			IsStackDriverEnabled:   true,
+			StackDriverTemplateURI: "https://sd-my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
+		}, []*core.TaskLog{
+			{
+				Uri:           "https://k8s-my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
+				MessageFormat: core.TaskLog_JSON,
+				Name:          "Kubernetes Logs my-Suffix",
+			},
+			{
+				Uri:           "https://cw-my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
+				MessageFormat: core.TaskLog_JSON,
+				Name:          "Cloudwatch Logs my-Suffix",
+			},
+			{
+				Uri:           "https://sd-my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
+				MessageFormat: core.TaskLog_JSON,
+				Name:          "Stackdriver Logs my-Suffix",
+			},
+		})
+	})
+
+	t.Run("StackDriver", func(t *testing.T) {
+		assertTestSucceeded(t, &LogConfig{
+			IsStackDriverEnabled:   true,
+			StackDriverTemplateURI: "https://sd-my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
+		}, []*core.TaskLog{
+			{
+				Uri:           "https://sd-my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
+				MessageFormat: core.TaskLog_JSON,
+				Name:          "Stackdriver Logs my-Suffix",
+			},
+		})
 	})
 }
 
