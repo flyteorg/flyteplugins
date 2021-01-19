@@ -8,7 +8,14 @@ import (
 //go:generate pflags Config --default-var=defaultConfig
 
 var (
-	defaultConfig = &Config{}
+	defaultConfig = &Config{
+		LogConfig: LogConfig{
+			UserLogs: logs.LogConfig{
+				IsKubernetesEnabled:   true,
+				KubernetesTemplateURI: "http://localhost:30084/#!/log/{{ .namespace }}/{{ .podName }}/pod?namespace={{ .namespace }}",
+			},
+		},
+	}
 
 	sparkConfigSection = pluginsConfig.MustRegisterSubSection("spark", defaultConfig)
 )

@@ -64,12 +64,23 @@ func TestGetApplicationType(t *testing.T) {
 }
 
 func TestGetEventInfo(t *testing.T) {
-	assert.NoError(t, logs.SetLogConfig(&logs.LogConfig{
-		IsCloudwatchEnabled: true,
-		CloudwatchRegion:    "us-east-1",
-		CloudwatchLogGroup:  "/kubernetes/flyte",
-		IsKubernetesEnabled: true,
-		KubernetesURL:       "k8s.com",
+	assert.NoError(t, setSparkConfig(&Config{
+		LogConfig: LogConfig{
+			UserLogs: logs.LogConfig{
+				IsCloudwatchEnabled:   true,
+				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+				IsKubernetesEnabled:   true,
+				KubernetesURL:         "k8s.com",
+			},
+			SystemLogs: logs.LogConfig{
+				IsCloudwatchEnabled:   true,
+				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=system_log.var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+			},
+			AllUserLogs: logs.LogConfig{
+				IsCloudwatchEnabled:   true,
+				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+			},
+		},
 	}))
 	info, err := getEventInfoForSpark(dummySparkApplication(sj.RunningState))
 	assert.NoError(t, err)
@@ -88,6 +99,22 @@ func TestGetEventInfo(t *testing.T) {
 
 	assert.NoError(t, setSparkConfig(&Config{
 		SparkHistoryServerURL: "spark-history.flyte",
+		LogConfig: LogConfig{
+			UserLogs: logs.LogConfig{
+				IsCloudwatchEnabled:   true,
+				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+				IsKubernetesEnabled:   true,
+				KubernetesURL:         "k8s.com",
+			},
+			SystemLogs: logs.LogConfig{
+				IsCloudwatchEnabled:   true,
+				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=system_log.var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+			},
+			AllUserLogs: logs.LogConfig{
+				IsCloudwatchEnabled:   true,
+				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+			},
+		},
 	}))
 
 	info, err = getEventInfoForSpark(dummySparkApplication(sj.FailedState))
