@@ -70,10 +70,10 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 	}
 
 	taskLogs := make([]*core.TaskLog, 0, len(s.templateUris))
-	for _, templateUri := range s.templateUris {
+	for _, templateURI := range s.templateUris {
 		taskLogs = append(taskLogs, &core.TaskLog{
 			Uri: replaceAll(
-				templateUri,
+				templateURI,
 				[]regexValPair{
 					{
 						regex: podNameRegex,

@@ -1,17 +1,17 @@
 package tasklog
 
 import (
-	"github.com/go-test/deep"
 	"reflect"
 
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTemplateLog(t *testing.T) {
-	p := NewTemplateLogPlugin("https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log", core.TaskLog_JSON)
+	p := NewTemplateLogPlugin([]string{"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log"}, core.TaskLog_JSON)
 	tl, err := p.GetTaskLog(
 		"f-uuid-driver",
 		"flyteexamples-production",
@@ -26,7 +26,7 @@ func TestTemplateLog(t *testing.T) {
 
 func Test_templateLogPlugin_Regression(t *testing.T) {
 	type fields struct {
-		templateUri   string
+		templateURI   string
 		messageFormat core.TaskLog_MessageFormat
 	}
 	type args struct {
@@ -46,7 +46,7 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 		{
 			"cloudwatch",
 			fields{
-				templateUri:   "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log",
+				templateURI:   "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log",
 				messageFormat: core.TaskLog_JSON,
 			},
 			args{
@@ -66,7 +66,7 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 		{
 			"stackdriver",
 			fields{
-				templateUri:   "https://console.cloud.google.com/logs/viewer?project=test-gcp-project&angularJsUrl=%2Flogs%2Fviewer%3Fproject%3Dtest-gcp-project&resource=aws_ec2_instance&advancedFilter=resource.labels.pod_name%3D{{.podName}}",
+				templateURI:   "https://console.cloud.google.com/logs/viewer?project=test-gcp-project&angularJsUrl=%2Flogs%2Fviewer%3Fproject%3Dtest-gcp-project&resource=aws_ec2_instance&advancedFilter=resource.labels.pod_name%3D{{.podName}}",
 				messageFormat: core.TaskLog_JSON,
 			},
 			args{
@@ -86,7 +86,7 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 		{
 			"kubernetes",
 			fields{
-				templateUri:   "https://dashboard.k8s.net/#!/log/{{.namespace}}/{{.podName}}/pod?namespace={{.namespace}}",
+				templateURI:   "https://dashboard.k8s.net/#!/log/{{.namespace}}/{{.podName}}/pod?namespace={{.namespace}}",
 				messageFormat: core.TaskLog_JSON,
 			},
 			args{
@@ -107,7 +107,7 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := TemplateLogPlugin{
-				templateUri:   tt.fields.templateUri,
+				templateUris:  []string{tt.fields.templateURI},
 				messageFormat: tt.fields.messageFormat,
 			}
 
@@ -126,7 +126,7 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 
 func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 	type fields struct {
-		templateUri   string
+		templateURI   string
 		messageFormat core.TaskLog_MessageFormat
 	}
 	type args struct {
@@ -142,7 +142,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"splunk",
 			fields{
-				templateUri:   "https://prd-p-ighar.splunkcloud.com/en-US/app/search/search?q=search%20container_name%3D%22{{ .containerName }}%22",
+				templateURI:   "https://prd-p-ighar.splunkcloud.com/en-US/app/search/search?q=search%20container_name%3D%22{{ .containerName }}%22",
 				messageFormat: core.TaskLog_JSON,
 			},
 			args{
@@ -156,7 +156,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 				},
 			},
 			Output{
-				TaskLogs: []core.TaskLog{
+				TaskLogs: []*core.TaskLog{
 					{
 						Uri:           "https://prd-p-ighar.splunkcloud.com/en-US/app/search/search?q=search%20container_name%3D%22my-container%22",
 						MessageFormat: core.TaskLog_JSON,
@@ -170,10 +170,10 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := TemplateLogPlugin{
-				templateUri:   tt.fields.templateUri,
+				templateUris:  []string{tt.fields.templateURI},
 				messageFormat: tt.fields.messageFormat,
 			}
-			got, err := s.NewTaskLog(tt.args.input)
+			got, err := s.GetTaskLogs(tt.args.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTaskLog() error = %v, wantErr %v", err, tt.wantErr)
 				return
