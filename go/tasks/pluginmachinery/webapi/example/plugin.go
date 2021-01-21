@@ -101,11 +101,11 @@ func (p Plugin) Get(ctx context.Context, cached webapi.ResourceMeta) (latest web
 	return exec, nil
 }
 
-func (p Plugin) Delete(ctx context.Context, cached webapi.ResourceMeta) error {
+func (p Plugin) Delete(ctx context.Context, cached webapi.ResourceMeta, reason string) error {
 	exec := cached.(*admin2.Execution)
 	_, err := p.client.TerminateExecution(ctx, &admin2.ExecutionTerminateRequest{
 		Id:    exec.Id,
-		Cause: "WebAPI Called Delete",
+		Cause: reason,
 	})
 
 	return err

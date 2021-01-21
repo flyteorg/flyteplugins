@@ -91,7 +91,7 @@ type Plugin interface {
 
 	// Delete the object in the remote API using the resource key. Flyte will call this API at least once. If the
 	// resource has already been deleted, the API should not fail.
-	Delete(ctx context.Context, cached ResourceMeta) error
+	Delete(ctx context.Context, cached ResourceMeta, reason string) error
 
 	// Status checks the status of a given resource and translates it to a Flyte-understandable PhaseInfo. This API
 	// should avoid making any network calls and should run very efficiently.

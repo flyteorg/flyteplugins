@@ -94,7 +94,7 @@ func (c CorePlugin) Abort(ctx context.Context, tCtx core.TaskExecutionContext) e
 
 	logger.Infof(ctx, "Attempting to abort resource [%v].", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID())
 
-	err := c.p.Delete(ctx, incomingState.ResourceMeta)
+	err := c.p.Delete(ctx, incomingState.ResourceMeta, "Aborted")
 	if err != nil {
 		logger.Errorf(ctx, "Failed to abort some resources [%v]. Error: %v",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
