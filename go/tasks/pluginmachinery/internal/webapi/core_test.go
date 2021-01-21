@@ -1,8 +1,11 @@
 package webapi
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 
 	"github.com/stretchr/testify/assert"
 
@@ -73,5 +76,21 @@ func Test_validateConfig(t *testing.T) {
 		err := validateConfig(cfg)
 		assert.Error(t, err)
 		assert.Equal(t, "\ncache size is expected to be between 10 and 500000. Provided value is 1000000000\nworkers count is expected to be between 1 and 100. Provided value is 1000000000\nresync interval is expected to be between 5 and 3600. Provided value is 3.6e+07\nread burst is expected to be between 5 and 10000. Provided value is 1000000\nwrite burst is expected to be between 5 and 10000. Provided value is 1000000", err.Error())
+	})
+}
+
+func TestCreateRemotePlugin(t *testing.T) {
+	CreateRemotePlugin(webapi.PluginEntry{
+		ID:                 "MyTestPlugin",
+		SupportedTaskTypes: []core.TaskType{"test-task"},
+		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.Plugin, error) {
+			return newPluginWithProperties(webapi.PluginConfig{
+				Caching: webapi.CachingConfig{
+					Size: 10,
+				},
+			}), nil
+		},
+		IsDefault:           false,
+		DefaultForTaskTypes: []core.TaskType{"test-task"},
 	})
 }

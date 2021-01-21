@@ -30,7 +30,7 @@ func init() {
 
 func newPluginWithProperties(properties webapi.PluginConfig) *mocks.Plugin {
 	m := &mocks.Plugin{}
-	m.OnGetPluginProperties().Return(properties)
+	m.OnGetConfig().Return(properties)
 	return m
 }
 

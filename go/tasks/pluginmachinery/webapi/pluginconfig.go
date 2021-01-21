@@ -52,8 +52,8 @@ type ResourceQuotas map[core.ResourceNamespace]int
 
 // Properties that help the system optimize itself to handle the specific plugin
 type PluginConfig struct {
-	// ResourceQuotas allows the plgin to register resources' quotas to ensure the system
-	// comply with restrictions in the remote service.
+	// ResourceQuotas allows the plugin to register resources' quotas to ensure the system comply with restrictions in
+	// the remote service.
 	ResourceQuotas   ResourceQuotas    `json:"resourceQuotas" pflag:"-,Defines resource quotas."`
 	ReadRateLimiter  RateLimiterConfig `json:"readRateLimiter" pflag:",Defines rate limiter properties for read actions (e.g. retrieve status)."`
 	WriteRateLimiter RateLimiterConfig `json:"writeRateLimiter" pflag:",Defines rate limiter properties for write actions."`
