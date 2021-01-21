@@ -8,23 +8,40 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
 
+//go:generate enumer -type=Phase -trimprefix=Phase
+
 // Phase represents current phase of the execution
 type Phase int
 
 const (
+	// PhaseNotStarted the default phase.
 	PhaseNotStarted Phase = iota
+
+	// PhaseAllocationTokenAcquired once all required tokens have been acquired. The task is ready to be executed
+	// remotely.
 	PhaseAllocationTokenAcquired
+
+	// PhaseResourcesCreated indicates the task has been created remotely.
 	PhaseResourcesCreated
+
+	// The resource has successfully been executed remotely.
 	PhaseSucceeded
-	PhaseFailed
+
+	// The resource has failed to be executed.
+	PhaseUserFailure
+
+	// The resource has failed to be executed due to a system error.
+	PhaseSystemFailure
 )
 
 func (p Phase) IsTerminal() bool {
-	return p == PhaseSucceeded || p == PhaseFailed
+	return p == PhaseSucceeded || p == PhaseUserFailure || p == PhaseSystemFailure
 }
 
+// State is the persisted State of the resource.
 type State struct {
-	Phase Phase `json:"phase"`
+	// Phase current phase of the resource.
+	Phase Phase `json:"phase,omitempty"`
 
 	// ResourceMeta contain metadata about resource this task created. This can be a complex structure or a simple type
 	// (e.g. a string). It should contain enough information for the plugin to interact (retrieve, check status, delete)

@@ -18,6 +18,8 @@ import (
 	"github.com/lyft/flytestdlib/logger"
 )
 
+//go:generate mockery -all -case=underscore
+
 const (
 	BadReturnCodeError stdErrors.ErrorCode = "RETURNED_UNKNOWN"
 )
@@ -28,11 +30,12 @@ type Client interface {
 	// the failure. This batch will not be processed further.
 	Get(ctx context.Context, cached webapi.ResourceMeta) (latest webapi.ResourceMeta, err error)
 
-	// Status checks the status of a given resource and translates it to a Flyte-understandable PhaseInfo.
+	// Status checks the status of a given resource and translates it to a Flyte-understandable PhaseInfo. This API
+	// should avoid making any network calls and should run very efficiently.
 	Status(ctx context.Context, resource webapi.ResourceMeta) (phase core.PhaseInfo, err error)
 }
 
-// A generic AutoRefresh cache that uses webapi.Plugin as a client to fetch items' status.
+// A generic AutoRefresh cache that uses a client to fetch items' status.
 type ResourceCache struct {
 	// AutoRefresh
 	cache.AutoRefresh
@@ -143,7 +146,7 @@ func ToPluginPhase(s core.Phase) (Phase, error) {
 	case core.PhaseUndefined:
 		fallthrough
 	case core.PhaseNotReady:
-		fallthrough
+		return PhaseNotStarted, nil
 	case core.PhaseInitializing:
 		fallthrough
 	case core.PhaseWaitingForResources:
@@ -157,9 +160,9 @@ func ToPluginPhase(s core.Phase) (Phase, error) {
 	case core.PhasePermanentFailure:
 		fallthrough
 	case core.PhaseRetryableFailure:
-		return PhaseFailed, nil
+		return PhaseUserFailure, nil
 	default:
-		return PhaseFailed, errors.Errorf(BadReturnCodeError, "default fallthrough case")
+		return PhaseSystemFailure, errors.Errorf(BadReturnCodeError, "default fallthrough case")
 	}
 }
 

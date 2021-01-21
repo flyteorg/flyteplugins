@@ -1,78 +1,129 @@
 package webapi
 
 import (
+	"context"
 	"testing"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
+	"github.com/lyft/flytestdlib/promutils"
+
+	mocks2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/internal/webapi/mocks"
+	"github.com/lyft/flytestdlib/cache"
+	cacheMocks "github.com/lyft/flytestdlib/cache/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestQuboleHiveExecutionsCache_SyncQuboleQuery(t *testing.T) {
-	//ctx := context.Background()
-	//
-	//t.Run("terminal state return unchanged", func(t *testing.T) {
-	//	mockCache := &cacheMocks.AutoRefresh{}
-	//	mockQubole := &quboleMocks.QuboleClient{}
-	//	testScope := promutils.NewTestScope()
-	//
-	//	q := ResourceCache{
-	//		AutoRefresh: mockCache,
-	//		client:      mockQubole,
-	//		scope:       testScope,
-	//		cfg:         config.GetQuboleConfig(),
-	//	}
-	//
-	//	state := ExecutionState{
-	//		Phase: PhaseQuerySucceeded,
-	//	}
-	//	cacheItem := ExecutionStateCacheItem{
-	//		ExecutionState: state,
-	//		Identifier:     "some-id",
-	//	}
-	//
-	//	iw := &cacheMocks.ItemWrapper{}
-	//	iw.OnGetItem().Return(cacheItem)
-	//	iw.OnGetID().Return("some-id")
-	//
-	//	newCacheItem, err := q.SyncQuboleQuery(ctx, []cache.ItemWrapper{iw})
-	//	assert.NoError(t, err)
-	//	assert.Equal(t, cache.Unchanged, newCacheItem[0].Action)
-	//	assert.Equal(t, cacheItem, newCacheItem[0].Item)
-	//})
-	//
-	//t.Run("move to success", func(t *testing.T) {
-	//	mockCache := &cacheMocks.AutoRefresh{}
-	//	mockQubole := &quboleMocks.QuboleClient{}
-	//	mockSecretManager := &mocks.SecretManager{}
-	//	mockSecretManager.OnGetMatch(mock.Anything, mock.Anything).Return("fake key", nil)
-	//
-	//	testScope := promutils.NewTestScope()
-	//
-	//	q := QuboleHiveExecutionsCache{
-	//		AutoRefresh:   mockCache,
-	//		quboleClient:  mockQubole,
-	//		scope:         testScope,
-	//		secretManager: mockSecretManager,
-	//		cfg:           config.GetQuboleConfig(),
-	//	}
-	//
-	//	state := ExecutionState{
-	//		CommandID: "123456",
-	//		Phase:     PhaseSubmitted,
-	//	}
-	//	cacheItem := ExecutionStateCacheItem{
-	//		ExecutionState: state,
-	//		Identifier:     "some-id",
-	//	}
-	//	mockQubole.OnGetCommandStatusMatch(mock.Anything, mock.MatchedBy(func(commandId string) bool {
-	//		return commandId == state.CommandID
-	//	}), mock.Anything).Return(client.QuboleStatusDone, nil)
-	//
-	//	iw := &cacheMocks.ItemWrapper{}
-	//	iw.OnGetItem().Return(cacheItem)
-	//	iw.OnGetID().Return("some-id")
-	//
-	//	newCacheItem, err := q.SyncQuboleQuery(ctx, []cache.ItemWrapper{iw})
-	//	newExecutionState := newCacheItem[0].Item.(ExecutionStateCacheItem)
-	//	assert.NoError(t, err)
-	//	assert.Equal(t, cache.Update, newCacheItem[0].Action)
-	//	assert.Equal(t, PhaseQuerySucceeded, newExecutionState.Phase)
-	//})
+func TestNewResourceCache(t *testing.T) {
+	t.Run("Simple", func(t *testing.T) {
+		c, err := NewResourceCache(context.Background(), "Cache1", &mocks.Client{}, webapi.CachingConfig{
+			Size: 10,
+		}, promutils.NewTestScope())
+		assert.NoError(t, err)
+		assert.NotNil(t, c)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		_, err := NewResourceCache(context.Background(), "Cache1", &mocks.Client{}, webapi.CachingConfig{},
+			promutils.NewTestScope())
+		assert.Error(t, err)
+	})
+}
+
+func TestResourceCache_SyncResource(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Terminal state return unchanged", func(t *testing.T) {
+		mockCache := &cacheMocks.AutoRefresh{}
+		mockClient := &mocks.Client{}
+
+		q := ResourceCache{
+			AutoRefresh: mockCache,
+			client:      mockClient,
+		}
+
+		state := State{
+			Phase: PhaseSucceeded,
+		}
+
+		cacheItem := CacheItem{
+			State: state,
+		}
+
+		iw := &cacheMocks.ItemWrapper{}
+		iw.OnGetItem().Return(cacheItem)
+		iw.OnGetID().Return("some-id")
+
+		newCacheItem, err := q.SyncResource(ctx, []cache.ItemWrapper{iw})
+		assert.NoError(t, err)
+		assert.Equal(t, cache.Unchanged, newCacheItem[0].Action)
+		assert.Equal(t, cacheItem, newCacheItem[0].Item)
+	})
+
+	t.Run("move to success", func(t *testing.T) {
+		mockCache := &cacheMocks.AutoRefresh{}
+		mockClient := &mocks.Client{}
+		mockSecretManager := &mocks2.SecretManager{}
+		mockSecretManager.OnGetMatch(mock.Anything, mock.Anything).Return("fake key", nil)
+
+		q := ResourceCache{
+			AutoRefresh: mockCache,
+			client:      mockClient,
+		}
+
+		state := State{
+			ResourceMeta: "123456",
+			Phase:        PhaseResourcesCreated,
+		}
+
+		cacheItem := CacheItem{
+			State: state,
+		}
+
+		mockClient.OnStatusMatch(mock.Anything, "newID", mock.Anything).Return(core.PhaseInfoSuccess(nil), nil)
+		mockClient.OnGet(ctx, "123456").Return("newID", nil)
+
+		iw := &cacheMocks.ItemWrapper{}
+		iw.OnGetItem().Return(cacheItem)
+		iw.OnGetID().Return("some-id")
+
+		newCacheItem, err := q.SyncResource(ctx, []cache.ItemWrapper{iw})
+		newExecutionState := newCacheItem[0].Item.(CacheItem)
+		assert.NoError(t, err)
+		assert.Equal(t, cache.Update, newCacheItem[0].Action)
+		assert.Equal(t, PhaseSucceeded, newExecutionState.Phase)
+	})
+}
+
+func TestToPluginPhase(t *testing.T) {
+	tests := []struct {
+		args    core.Phase
+		want    Phase
+		wantErr bool
+	}{
+		{core.PhaseNotReady, PhaseNotStarted, false},
+		{core.PhaseUndefined, PhaseNotStarted, false},
+		{core.PhaseInitializing, PhaseResourcesCreated, false},
+		{core.PhaseWaitingForResources, PhaseResourcesCreated, false},
+		{core.PhaseQueued, PhaseResourcesCreated, false},
+		{core.PhaseRunning, PhaseResourcesCreated, false},
+		{core.PhaseSuccess, PhaseSucceeded, false},
+		{core.PhasePermanentFailure, PhaseUserFailure, false},
+		{core.PhaseRetryableFailure, PhaseUserFailure, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.args.String(), func(t *testing.T) {
+			got, err := ToPluginPhase(tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ToPluginPhase() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("ToPluginPhase() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
