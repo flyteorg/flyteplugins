@@ -65,8 +65,8 @@ func (_m Plugin_Delete) Return(_a0 error) *Plugin_Delete {
 	return &Plugin_Delete{Call: _m.Call.Return(_a0)}
 }
 
-func (_m *Plugin) OnDelete(ctx context.Context, cached interface{}) *Plugin_Delete {
-	c := _m.On("Delete", ctx, cached)
+func (_m *Plugin) OnDelete(ctx context.Context, cached interface{}, reason string) *Plugin_Delete {
+	c := _m.On("Delete", ctx, cached, reason)
 	return &Plugin_Delete{Call: c}
 }
 
@@ -75,13 +75,13 @@ func (_m *Plugin) OnDeleteMatch(matchers ...interface{}) *Plugin_Delete {
 	return &Plugin_Delete{Call: c}
 }
 
-// Delete provides a mock function with given fields: ctx, cached
-func (_m *Plugin) Delete(ctx context.Context, cached interface{}) error {
-	ret := _m.Called(ctx, cached)
+// Delete provides a mock function with given fields: ctx, cached, reason
+func (_m *Plugin) Delete(ctx context.Context, cached interface{}, reason string) error {
+	ret := _m.Called(ctx, cached, reason)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}) error); ok {
-		r0 = rf(ctx, cached)
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, string) error); ok {
+		r0 = rf(ctx, cached, reason)
 	} else {
 		r0 = ret.Error(0)
 	}
