@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	core2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
-	admin2 "github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
+	idlAdmin "github.com/lyft/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/lyft/flytestdlib/errors"
 	"github.com/lyft/flytestdlib/utils"
 	"google.golang.org/grpc/codes"
@@ -20,8 +20,6 @@ import (
 	"github.com/lyft/flytestdlib/promutils"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
-	webapi2 "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/internal/webapi"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
@@ -56,7 +54,7 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContext) (r
 	}
 
 	custom := task.GetCustom()
-	execCreateRequest := &admin2.ExecutionCreateRequest{}
+	execCreateRequest := &idlAdmin.ExecutionCreateRequest{}
 	err = utils.UnmarshalStructToPb(custom, execCreateRequest)
 	if err != nil {
 		return nil, err
@@ -72,7 +70,7 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContext) (r
 		statusCode := status.Code(err)
 		switch statusCode {
 		case codes.AlreadyExists:
-			return &admin2.Execution{Id: lpExec.Id}, nil
+			return &idlAdmin.Execution{Id: lpExec.Id}, nil
 		case codes.DataLoss, codes.DeadlineExceeded, codes.Internal, codes.Unknown, codes.Canceled:
 			return nil, errors.Wrapf(ErrRemoteSystem, err, "failed to execute Launch Plan [%s], system error", execCreateRequest.Spec.LaunchPlan)
 		default:
@@ -80,12 +78,12 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContext) (r
 		}
 	}
 
-	return &admin2.Execution{Id: lpExec.Id}, nil
+	return &idlAdmin.Execution{Id: lpExec.Id}, nil
 }
 
 func (p Plugin) Get(ctx context.Context, cached webapi.ResourceMeta) (latest webapi.ResourceMeta, err error) {
-	exec := cached.(*admin2.Execution)
-	newExec, err := p.client.GetExecution(ctx, &admin2.WorkflowExecutionGetRequest{
+	exec := cached.(*idlAdmin.Execution)
+	newExec, err := p.client.GetExecution(ctx, &idlAdmin.WorkflowExecutionGetRequest{
 		Id: exec.Id,
 	})
 
@@ -94,7 +92,7 @@ func (p Plugin) Get(ctx context.Context, cached webapi.ResourceMeta) (latest web
 	}
 
 	// Only cache fields we want to keep in memory instead of the potentially huge execution closure.
-	exec.Closure = &admin2.ExecutionClosure{
+	exec.Closure = &idlAdmin.ExecutionClosure{
 		Phase: newExec.Closure.Phase,
 	}
 
@@ -102,8 +100,8 @@ func (p Plugin) Get(ctx context.Context, cached webapi.ResourceMeta) (latest web
 }
 
 func (p Plugin) Delete(ctx context.Context, cached webapi.ResourceMeta, reason string) error {
-	exec := cached.(*admin2.Execution)
-	_, err := p.client.TerminateExecution(ctx, &admin2.ExecutionTerminateRequest{
+	exec := cached.(*idlAdmin.Execution)
+	_, err := p.client.TerminateExecution(ctx, &idlAdmin.ExecutionTerminateRequest{
 		Id:    exec.Id,
 		Cause: reason,
 	})
@@ -112,34 +110,34 @@ func (p Plugin) Delete(ctx context.Context, cached webapi.ResourceMeta, reason s
 }
 
 func (p Plugin) Status(ctx context.Context, resource webapi.ResourceMeta) (phase core.PhaseInfo, err error) {
-	exec := resource.(*admin2.Execution)
+	exec := resource.(*idlAdmin.Execution)
 	if exec.Closure == nil {
 		return core.PhaseInfoUndefined, nil
 	}
 
 	switch exec.Closure.Phase {
-	case core2.WorkflowExecution_UNDEFINED:
+	case idlCore.WorkflowExecution_UNDEFINED:
 		return core.PhaseInfoUndefined, nil
-	case core2.WorkflowExecution_QUEUED:
+	case idlCore.WorkflowExecution_QUEUED:
 		return core.PhaseInfoQueued(time.Now(), 0, "Queued"), nil
-	case core2.WorkflowExecution_FAILED:
+	case idlCore.WorkflowExecution_FAILED:
 		return core.PhaseInfoRetryableFailure("FAILED", "Remote execution failed", createTaskInfo(exec, p.cfg.AdminProtocolAndHost)), nil
-	case core2.WorkflowExecution_SUCCEEDED:
+	case idlCore.WorkflowExecution_SUCCEEDED:
 		return core.PhaseInfoSuccess(createTaskInfo(exec, p.cfg.AdminProtocolAndHost)), nil
-	case core2.WorkflowExecution_FAILING:
+	case idlCore.WorkflowExecution_FAILING:
 		fallthrough
-	case core2.WorkflowExecution_SUCCEEDING:
+	case idlCore.WorkflowExecution_SUCCEEDING:
 		fallthrough
-	case core2.WorkflowExecution_RUNNING:
+	case idlCore.WorkflowExecution_RUNNING:
 		return core.PhaseInfoRunning(0, createTaskInfo(exec, p.cfg.AdminProtocolAndHost)), nil
 	}
 
 	return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "Unknown execution phase [%v].", exec.Closure.Phase)
 }
 
-func createTaskInfo(exec *admin2.Execution, protocolAndHost string) *core.TaskInfo {
+func createTaskInfo(exec *idlAdmin.Execution, protocolAndHost string) *core.TaskInfo {
 	return &core.TaskInfo{
-		Logs: []*core2.TaskLog{
+		Logs: []*idlCore.TaskLog{
 			{
 				Uri:  fmt.Sprintf("%v/projects/%v/domains/%v/executions/%v", protocolAndHost, exec.Id.Project, exec.Id.Domain, exec.Id.Name),
 				Name: "Remote Execution",
@@ -163,14 +161,13 @@ func NewPlugin(ctx context.Context, cfg *Config, metricScope promutils.Scope) (P
 }
 
 func init() {
-	pluginmachinery.PluginRegistry().RegisterCorePlugin(
-		webapi2.CreateRemotePlugin(webapi.PluginEntry{
-			ID:                 "flyteadmin",
-			SupportedTaskTypes: []core.TaskType{"flytetask", "flytelaunchplan"},
-			PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.Plugin, error) {
-				return NewPlugin(ctx, GetConfig(), iCtx.MetricsScope())
-			},
-			IsDefault:           false,
-			DefaultForTaskTypes: []core.TaskType{"flytetask", "flytelaunchplan"},
-		}))
+	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
+		ID:                 "flyteadmin",
+		SupportedTaskTypes: []core.TaskType{"flytetask", "flytelaunchplan"},
+		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.Plugin, error) {
+			return NewPlugin(ctx, GetConfig(), iCtx.MetricsScope())
+		},
+		IsDefault:           false,
+		DefaultForTaskTypes: []core.TaskType{"flytetask", "flytelaunchplan"},
+	})
 }

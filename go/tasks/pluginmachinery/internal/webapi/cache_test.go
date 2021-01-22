@@ -2,6 +2,7 @@ package webapi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
@@ -95,6 +96,39 @@ func TestResourceCache_SyncResource(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, cache.Update, newCacheItem[0].Action)
 		assert.Equal(t, PhaseSucceeded, newExecutionState.Phase)
+	})
+
+	t.Run("Failing to retrieve latest", func(t *testing.T) {
+		mockCache := &cacheMocks.AutoRefresh{}
+		mockClient := &mocks.Client{}
+		mockSecretManager := &mocks2.SecretManager{}
+		mockSecretManager.OnGetMatch(mock.Anything, mock.Anything).Return("fake key", nil)
+
+		q := ResourceCache{
+			AutoRefresh: mockCache,
+			client:      mockClient,
+		}
+
+		state := State{
+			ResourceMeta: "123456",
+			Phase:        PhaseResourcesCreated,
+		}
+
+		cacheItem := CacheItem{
+			State: state,
+		}
+
+		mockClient.OnGet(ctx, "123456").Return("newID", fmt.Errorf("failed to retrieve resource"))
+
+		iw := &cacheMocks.ItemWrapper{}
+		iw.OnGetItem().Return(cacheItem)
+		iw.OnGetID().Return("some-id")
+
+		newCacheItem, err := q.SyncResource(ctx, []cache.ItemWrapper{iw})
+		newExecutionState := newCacheItem[0].Item.(CacheItem)
+		assert.NoError(t, err)
+		assert.Equal(t, cache.Update, newCacheItem[0].Action)
+		assert.Equal(t, PhaseResourcesCreated, newExecutionState.Phase)
 	})
 }
 
