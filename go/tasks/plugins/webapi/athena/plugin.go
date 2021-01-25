@@ -209,12 +209,10 @@ func NewPlugin(_ context.Context, cfg *Config, awsConfig *aws.Config, metricScop
 
 func init() {
 	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
-		ID:                 "flyteadmin",
-		SupportedTaskTypes: []core.TaskType{"flytetask", "flytelaunchplan"},
+		ID:                 "athena",
+		SupportedTaskTypes: []core.TaskType{"hive"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return NewPlugin(ctx, GetConfig(), aws.GetConfig(), iCtx.MetricsScope())
 		},
-		IsDefault:           false,
-		DefaultForTaskTypes: []core.TaskType{"flytetask", "flytelaunchplan"},
 	})
 }
