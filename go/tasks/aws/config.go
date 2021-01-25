@@ -20,12 +20,6 @@ var (
 	defaultConfig = &Config{
 		Region:  "us-east-1",
 		Retries: 3,
-		SdkConfig: aws.Config{
-			Region: "us-east-1",
-			Retryer: retry.NewStandard(func(options *retry.StandardOptions) {
-				options.MaxAttempts = 3
-			}),
-		},
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection(ConfigSectionKey, defaultConfig)
@@ -33,14 +27,10 @@ var (
 
 // Config section for AWS Package
 type Config struct {
-	SdkConfig aws.Config `json:",inline"`
-
-	// Deprecated, use SdkConfig instead
-	Region string `json:"region" pflag:",Deprecated: use SdkConfig instead. AWS Region to connect to."`
-	// Deprecated, use SdkConfig instead
-	AccountID string `json:"accountId" pflag:",Deprecated: use SdkConfig instead. AWS Account Identifier."`
-	// Deprecated, use SdkConfig instead
-	Retries int `json:"retries" pflag:",Deprecated: use SdkConfig instead. Number of retries."`
+	Region    string       `json:"region" pflag:",AWS Region to connect to."`
+	AccountID string       `json:"accountId" pflag:",AWS Account Identifier."`
+	Retries   int          `json:"retries" pflag:",Number of retries."`
+	LogLevel  aws.LogLevel `json:"logLevel" pflag:",Defines the Sdk Log Level."`
 }
 
 type RateLimiterConfig struct {
@@ -50,17 +40,17 @@ type RateLimiterConfig struct {
 
 // Gets loaded config for AWS
 func GetConfig() *Config {
-	cfg := configSection.GetConfig().(*Config)
+	return configSection.GetConfig().(*Config)
+}
 
-	// For backward compatibility
-	if len(cfg.SdkConfig.Region) == 0 {
-		cfg.SdkConfig.Region = cfg.Region
-		cfg.SdkConfig.Retryer = retry.NewStandard(func(options *retry.StandardOptions) {
+func (cfg Config) GetSdkConfig() aws.Config {
+	return aws.Config{
+		Region:   cfg.Region,
+		LogLevel: cfg.LogLevel,
+		Retryer: retry.NewStandard(func(options *retry.StandardOptions) {
 			options.MaxAttempts = cfg.Retries
-		})
+		}),
 	}
-
-	return cfg
 }
 
 func MustRegisterSubSection(key config.SectionKey, cfg config.Config) config.Section {

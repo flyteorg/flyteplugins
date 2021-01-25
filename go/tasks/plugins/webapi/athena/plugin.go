@@ -143,21 +143,21 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 	case athena.QueryExecutionStateQueued:
 		fallthrough
 	case athena.QueryExecutionStateRunning:
-		return core.PhaseInfoRunning(0, createTaskInfo(execID, p.awsConfig.SdkConfig)), nil
+		return core.PhaseInfoRunning(0, createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
 	case athena.QueryExecutionStateCancelled:
 		reason := "Remote execution was aborted."
 		if reasonPtr := exec.Status.StateChangeReason; reasonPtr != nil {
 			reason = *reasonPtr
 		}
 
-		return core.PhaseInfoRetryableFailure("ABORTED", reason, createTaskInfo(execID, p.awsConfig.SdkConfig)), nil
+		return core.PhaseInfoRetryableFailure("ABORTED", reason, createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
 	case athena.QueryExecutionStateFailed:
 		reason := "Remote execution failed"
 		if reasonPtr := exec.Status.StateChangeReason; reasonPtr != nil {
 			reason = *reasonPtr
 		}
 
-		return core.PhaseInfoRetryableFailure("FAILED", reason, createTaskInfo(execID, p.awsConfig.SdkConfig)), nil
+		return core.PhaseInfoRetryableFailure("FAILED", reason, createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
 	case athena.QueryExecutionStateSucceeded:
 		if outputLocation := exec.ResultsConfiguration.OutputLocation; outputLocation != nil {
 			// If WorkGroup settings overrode the client settings, the location submitted in the request might have been
@@ -178,7 +178,7 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 			}
 		}
 
-		return core.PhaseInfoSuccess(createTaskInfo(execID, p.awsConfig.SdkConfig)), nil
+		return core.PhaseInfoSuccess(createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
 	}
 
 	return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "Unknown execution phase [%v].", exec.Status.State)
@@ -201,7 +201,7 @@ func createTaskInfo(queryID string, cfg awsSdk.Config) *core.TaskInfo {
 func NewPlugin(_ context.Context, cfg *Config, awsConfig *aws.Config, metricScope promutils.Scope) (Plugin, error) {
 	return Plugin{
 		metricScope: metricScope,
-		client:      athena.New(awsConfig.SdkConfig),
+		client:      athena.New(awsConfig.GetSdkConfig()),
 		cfg:         cfg,
 		awsConfig:   awsConfig,
 	}, nil
