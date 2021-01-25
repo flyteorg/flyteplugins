@@ -33,7 +33,7 @@ const (
 
 type CorePlugin struct {
 	id      string
-	p       webapi.Plugin
+	p       webapi.AsyncPlugin
 	cache   cache.AutoRefresh
 	metrics Metrics
 }
@@ -52,7 +52,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	// We assume here that the first time this function is called, the custom state we get back is whatever we passed in,
 	// namely the zero-value of our struct.
 	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
-		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state when handling [%s]. Error: %v",
+		logger.Errorf(ctx, "AsyncPlugin %s failed to unmarshal custom state when handling [%s]. Error: %v",
 			c.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
 
 		return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err,
@@ -64,11 +64,15 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	var err error
 	switch incomingState.Phase {
 	case PhaseNotStarted:
-		nextState, phaseInfo, err = allocateToken(ctx, c.p, tCtx, &incomingState, c.metrics)
+		if len(c.p.GetConfig().ResourceQuotas) > 0 {
+			nextState, phaseInfo, err = allocateToken(ctx, c.p, tCtx, &incomingState, c.metrics)
+		} else {
+			nextState, phaseInfo, err = launch(ctx, c.p, tCtx, c.cache, &incomingState)
+		}
 	case PhaseAllocationTokenAcquired:
 		nextState, phaseInfo, err = launch(ctx, c.p, tCtx, c.cache, &incomingState)
 	case PhaseResourcesCreated:
-		nextState, phaseInfo, err = monitor(ctx, tCtx, c.cache, &incomingState)
+		nextState, phaseInfo, err = monitor(ctx, tCtx, c.p, c.cache, &incomingState)
 	}
 
 	if err != nil {
@@ -85,7 +89,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 func (c CorePlugin) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
 	incomingState := State{}
 	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
-		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state when handling [%s]. Error: %v",
+		logger.Errorf(ctx, "AsyncPlugin %s failed to unmarshal custom state when handling [%s]. Error: %v",
 			c.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
 
 		return errors.Wrapf(errors.CorruptedPluginState, err,
@@ -94,7 +98,7 @@ func (c CorePlugin) Abort(ctx context.Context, tCtx core.TaskExecutionContext) e
 
 	logger.Infof(ctx, "Attempting to abort resource [%v].", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID())
 
-	err := c.p.Delete(ctx, incomingState.ResourceMeta, "Aborted")
+	err := c.p.Delete(ctx, newPluginContext(nil, incomingState.ResourceMeta, "Aborted"))
 	if err != nil {
 		logger.Errorf(ctx, "Failed to abort some resources [%v]. Error: %v",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
@@ -105,9 +109,14 @@ func (c CorePlugin) Abort(ctx context.Context, tCtx core.TaskExecutionContext) e
 }
 
 func (c CorePlugin) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
+	if len(c.p.GetConfig().ResourceQuotas) == 0 {
+		// If there are no defined quotas, there is nothing to cleanup.
+		return nil
+	}
+
 	incomingState := State{}
 	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
-		logger.Errorf(ctx, "Plugin %s failed to unmarshal custom state when handling [%s]. Error: %v",
+		logger.Errorf(ctx, "AsyncPlugin %s failed to unmarshal custom state when handling [%s]. Error: %v",
 			c.GetID(), tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
 
 		return errors.Wrapf(errors.CorruptedPluginState, err,

@@ -28,11 +28,11 @@ const (
 type Client interface {
 	// Get multiple resources that match all the keys. If the plugin hits any failure, it should stop and return
 	// the failure. This batch will not be processed further.
-	Get(ctx context.Context, cached webapi.ResourceMeta) (latest webapi.ResourceMeta, err error)
+	Get(ctx context.Context, tCtx webapi.GetContext) (latest webapi.Resource, err error)
 
 	// Status checks the status of a given resource and translates it to a Flyte-understandable PhaseInfo. This API
 	// should avoid making any network calls and should run very efficiently.
-	Status(ctx context.Context, resource webapi.ResourceMeta) (phase core.PhaseInfo, err error)
+	Status(ctx context.Context, tCtx webapi.StatusContext) (phase core.PhaseInfo, err error)
 }
 
 // A generic AutoRefresh cache that uses a client to fetch items' status.
@@ -40,11 +40,14 @@ type ResourceCache struct {
 	// AutoRefresh
 	cache.AutoRefresh
 	client Client
+	cfg    webapi.CachingConfig
 }
 
 // A wrapper for each item in the cache.
 type CacheItem struct {
 	State
+
+	Resource webapi.Resource
 }
 
 // This basically grab an updated status from Client and store it in the cache
@@ -75,6 +78,12 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		logger.Debugf(ctx, "Sync loop - processing resource with cache key [%s]",
 			resource.GetID())
 
+		if cacheItem.SyncFailureCount >= q.cfg.MaxSystemFailures {
+			logger.Infof(ctx, "Sync loop - Item with key [%v] has failed to sync [%v] time(s). More than the allowed [%v] time(s). Marking as failure.",
+				cacheItem.SyncFailureCount, q.cfg.MaxSystemFailures)
+			cacheItem.State.Phase = PhaseSystemFailure
+		}
+
 		if cacheItem.State.Phase.IsTerminal() {
 			logger.Debugf(ctx, "Sync loop - resource cache key [%v] in terminal state [%s]",
 				resource.GetID())
@@ -89,12 +98,13 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		}
 
 		// Get an updated status
-		logger.Debugf(ctx, "Querying Plugin for %s - %s", resource.GetID(),
+		logger.Debugf(ctx, "Querying AsyncPlugin for %s - %s", resource.GetID(),
 			resource.GetID())
-		newResource, err := q.client.Get(ctx, cacheItem.ResourceMeta)
+		newResource, err := q.client.Get(ctx, newPluginContext(cacheItem.Resource, cacheItem.ResourceMeta, ""))
 		if err != nil {
 			logger.Errorf(ctx, "Error retrieving resource [%s]. Error: %v", resource.GetID(), err)
 			cacheItem.SyncFailureCount++
+
 			// Make sure we don't return nil for the first argument, because that deletes it from the cache.
 			resp = append(resp, cache.ItemSyncResponse{
 				ID:     resource.GetID(),
@@ -105,32 +115,13 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 			continue
 		}
 
-		newPhase, err := q.client.Status(ctx, newResource)
-		if err != nil {
-			return nil, err
-		}
+		cacheItem.Resource = newResource
 
-		if (cacheItem.LatestPhaseInfo == core.PhaseInfo{}) ||
-			newPhase.Phase() != cacheItem.LatestPhaseInfo.Phase() {
-
-			newPluginPhase, err := ToPluginPhase(newPhase.Phase())
-			if err != nil {
-				return nil, err
-			}
-
-			logger.Infof(ctx, "Moving Phase for %s %s from %s to %s", resource.GetID(),
-				resource.GetID(), cacheItem.Phase, newPluginPhase)
-
-			cacheItem.LatestPhaseInfo = newPhase
-			cacheItem.Phase = newPluginPhase
-			cacheItem.ResourceMeta = newResource
-
-			resp = append(resp, cache.ItemSyncResponse{
-				ID:     resource.GetID(),
-				Item:   cacheItem,
-				Action: cache.Update,
-			})
-		}
+		resp = append(resp, cache.ItemSyncResponse{
+			ID:     resource.GetID(),
+			Item:   cacheItem,
+			Action: cache.Update,
+		})
 	}
 
 	return resp, nil
@@ -171,6 +162,7 @@ func NewResourceCache(ctx context.Context, name string, client Client, cfg webap
 
 	q := ResourceCache{
 		client: client,
+		cfg:    cfg,
 	}
 
 	autoRefreshCache, err := cache.NewAutoRefreshCache(name, q.SyncResource,

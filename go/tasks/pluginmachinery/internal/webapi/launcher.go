@@ -11,9 +11,9 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
 
-func launch(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext, cache cache.AutoRefresh,
+func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionContext, cache cache.AutoRefresh,
 	state *State) (newState *State, phaseInfo core.PhaseInfo, err error) {
-	r, err := p.Create(ctx, tCtx)
+	rMeta, r, err := p.Create(ctx, tCtx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to create resource. Error: %v", err)
 		return nil, core.PhaseInfo{}, err
@@ -22,6 +22,18 @@ func launch(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext
 	// If we succeed, then store the created resource name, and update our state. Also, add to the
 	// AutoRefreshCache so we start getting updates.
 	logger.Infof(ctx, "Created Resource Name [%s]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+	phase, err := p.Status(ctx, newPluginContext(r, rMeta, ""))
+	if err != nil {
+		logger.Errorf(ctx, "Failed to check resource status. Error: %v", err)
+		return nil, core.PhaseInfo{}, err
+	}
+
+	if phase.Phase().IsTerminal() {
+		logger.Infof(ctx, "Resource has already terminated ID:[%s], Phase:[%s]",
+			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), phase.Phase())
+		return state, phase, nil
+	}
+
 	cacheItem := CacheItem{
 		State: *state,
 	}
@@ -33,7 +45,7 @@ func launch(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext
 		return nil, core.PhaseInfo{}, err
 	}
 
-	state.ResourceMeta = r
+	state.ResourceMeta = rMeta
 
 	return state, core.PhaseInfoQueued(time.Now(), 1, "launched"), nil
 }

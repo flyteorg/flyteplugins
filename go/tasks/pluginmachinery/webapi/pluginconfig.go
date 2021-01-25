@@ -46,6 +46,9 @@ type CachingConfig struct {
 	// Workers control how many parallel workers should start up to retrieve updates
 	// about resources.
 	Workers int `json:"workers" pflag:",Defines the number of workers to start up to process items."`
+
+	// MaxSystemFailures defines the number of failures to fetch a task before failing the task.
+	MaxSystemFailures int `json:"maxSystemFailures" pflag:",Defines the number of failures to fetch a task before failing the task."`
 }
 
 type ResourceQuotas map[core.ResourceNamespace]int

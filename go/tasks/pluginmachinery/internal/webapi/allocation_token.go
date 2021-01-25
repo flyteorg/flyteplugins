@@ -25,7 +25,7 @@ func init() {
 	clock = clock2.RealClock{}
 }
 
-func allocateToken(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
+func allocateToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
 	if len(p.GetConfig().ResourceQuotas) == 0 {
 		// No quota, return success
@@ -76,12 +76,7 @@ func allocateToken(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecution
 	return state, core.PhaseInfo{}, nil
 }
 
-func releaseToken(ctx context.Context, p webapi.Plugin, tCtx core.TaskExecutionContext, metrics Metrics) error {
-	if len(p.GetConfig().ResourceQuotas) == 0 {
-		// No quota, return success
-		return nil
-	}
-
+func releaseToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionContext, metrics Metrics) error {
 	ns, _, err := p.ResourceRequirements(ctx, tCtx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to calculate resource requirements for task. Error: %v", err)

@@ -3,8 +3,6 @@ package webapi
 import (
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
 
@@ -34,8 +32,8 @@ const (
 	PhaseSystemFailure
 )
 
-func (p Phase) IsTerminal() bool {
-	return p == PhaseSucceeded || p == PhaseUserFailure || p == PhaseSystemFailure
+func (i Phase) IsTerminal() bool {
+	return i == PhaseSucceeded || i == PhaseUserFailure || i == PhaseSystemFailure
 }
 
 // State is the persisted State of the resource.
@@ -52,10 +50,6 @@ type State struct {
 	// the sync function is entirely opaque. Note that this field is completely orthogonal to Flyte system/node/task
 	// level retries, just errors from hitting API, inside the sync loop
 	SyncFailureCount int `json:"syncFailureCount,omitempty"`
-
-	// The latest phase info constructed about this resource. This will be refreshed everytime a sync loop runs and
-	// fetches the resource.
-	LatestPhaseInfo core.PhaseInfo `json:"latestPhaseInfo,omitempty"`
 
 	// In creating the resource, this is the number of failures
 	CreationFailureCount int `json:"creationFailureCount,omitempty"`

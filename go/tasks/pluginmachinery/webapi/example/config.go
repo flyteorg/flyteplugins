@@ -46,8 +46,16 @@ var (
 	configSection = pluginsConfig.MustRegisterSubSection("admin", &defaultConfig)
 )
 
+// TODO: see if this can work with minimal changes
+/*
+plugins:
+  admin:
+    resourceQuotas: ...
+    adminUrlTemplate: ...
+*/
+
 type Config struct {
-	WebAPI               webapi.PluginConfig          `json:"webapi" pflag:",Defines config for the base WebAPI plugin."`
+	WebAPI               webapi.PluginConfig          `json:",inline" pflag:",Defines config for the base WebAPI plugin."`
 	ResourceConstraints  core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:",Defines resource constraints on how many executions to be created per project/overall at any given time."`
 	AdminProtocolAndHost string                       `json:"adminUrlTemplate" pflag:",Defines the user facing url for admin service (e.g. https://myadmin/)"`
 }

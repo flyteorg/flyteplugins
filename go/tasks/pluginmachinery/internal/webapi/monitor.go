@@ -10,18 +10,8 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-func monitor(ctx context.Context, tCtx core.TaskExecutionContext, cache cache.AutoRefresh, state *State) (
+func monitor(ctx context.Context, tCtx core.TaskExecutionContext, p Client, cache cache.AutoRefresh, state *State) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
-	incomingState := State{}
-	if _, err := tCtx.PluginStateReader().Get(&incomingState); err != nil {
-		logger.Errorf(ctx, "Failed to unmarshal custom state when handling [%s]. Error: %v",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
-
-		return nil, core.PhaseInfo{},
-			errors.Wrapf(errors.CorruptedPluginState, err,
-				"Failed to unmarshal custom state in Handle")
-	}
-
 	cacheItem := CacheItem{
 		State: *state,
 	}
@@ -39,6 +29,22 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, cache cache.Au
 			errors.CacheFailed, "Failed to cast [%v]", cacheItem)
 	}
 
+	newPhase, err := p.Status(ctx, newPluginContext(cacheItem.Resource, cacheItem.ResourceMeta, ""))
+	if err != nil {
+		return nil, core.PhaseInfoUndefined, err
+	}
+
+	newPluginPhase, err := ToPluginPhase(newPhase.Phase())
+	if err != nil {
+		return nil, core.PhaseInfoUndefined, err
+	}
+
+	if cacheItem.Phase != newPluginPhase {
+		logger.Infof(ctx, "Moving Phase for from %s to %s", cacheItem.Phase, newPluginPhase)
+	}
+
+	cacheItem.Phase = newPluginPhase
+
 	// If there were updates made to the state, we'll have picked them up automatically. Nothing more to do.
-	return &cacheItem.State, cacheItem.LatestPhaseInfo, nil
+	return &cacheItem.State, newPhase, nil
 }
