@@ -12,9 +12,10 @@ import (
 var (
 	DefaultPluginConfig = PluginConfig{
 		Caching: CachingConfig{
-			Size:           100000,
-			ResyncInterval: config.Duration{Duration: 30 * time.Second},
-			Workers:        10,
+			Size:              100000,
+			ResyncInterval:    config.Duration{Duration: 30 * time.Second},
+			Workers:           10,
+			MaxSystemFailures: 5,
 		},
 		ReadRateLimiter: RateLimiterConfig{
 			QPS:   30,

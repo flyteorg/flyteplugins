@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
 	mocks2 "github.com/lyft/flytestdlib/cache/mocks"
@@ -26,11 +28,34 @@ func Test_launch(t *testing.T) {
 		c.OnGetOrCreate("my-id", CacheItem{State: s}).Return(CacheItem{State: s}, nil)
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
-		plgn.OnCreate(ctx, tCtx).Return("abc", nil)
+		plgn.OnCreate(ctx, tCtx).Return("abc", nil, nil)
+		plgn.OnStatus(ctx, newPluginContext(nil, "abc", "")).Return(core.PhaseInfoSuccess(nil), nil)
 		newS, phaseInfo, err := launch(ctx, plgn, tCtx, c, &s)
 		assert.NoError(t, err)
 		assert.NotNil(t, newS)
 		assert.NotNil(t, phaseInfo)
+	})
+
+	t.Run("Already succeeded when launched", func(t *testing.T) {
+		ctx := context.Background()
+		tCtx := &mocks.TaskExecutionContext{}
+		meta := &mocks.TaskExecutionMetadata{}
+		taskID := &mocks.TaskExecutionID{}
+		taskID.OnGetGeneratedName().Return("my-id")
+		meta.OnGetTaskExecutionID().Return(taskID)
+		tCtx.OnTaskExecutionMetadata().Return(meta)
+
+		c := &mocks2.AutoRefresh{}
+		s := State{}
+
+		plgn := newPluginWithProperties(webapi.PluginConfig{})
+		plgn.OnCreate(ctx, tCtx).Return("abc", nil, nil)
+		plgn.OnStatus(ctx, newPluginContext(nil, "abc", "")).Return(core.PhaseInfoSuccess(nil), nil)
+		newS, phaseInfo, err := launch(ctx, plgn, tCtx, c, &s)
+		assert.NoError(t, err)
+		assert.NotNil(t, newS)
+		assert.NotNil(t, phaseInfo)
+		assert.Equal(t, core.PhaseSuccess, phaseInfo.Phase())
 	})
 
 	t.Run("Failed to create resource", func(t *testing.T) {
@@ -47,7 +72,7 @@ func Test_launch(t *testing.T) {
 		c.OnGetOrCreate("my-id", CacheItem{State: s}).Return(CacheItem{State: s}, nil)
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
-		plgn.OnCreate(ctx, tCtx).Return("", fmt.Errorf("error creating"))
+		plgn.OnCreate(ctx, tCtx).Return("", nil, fmt.Errorf("error creating"))
 		_, _, err := launch(ctx, plgn, tCtx, c, &s)
 		assert.Error(t, err)
 	})
@@ -66,7 +91,8 @@ func Test_launch(t *testing.T) {
 		c.OnGetOrCreate("my-id", CacheItem{State: s}).Return(CacheItem{State: s}, fmt.Errorf("failed to cache"))
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
-		plgn.OnCreate(ctx, tCtx).Return("my-id", nil)
+		plgn.OnCreate(ctx, tCtx).Return("my-id", nil, nil)
+		plgn.OnStatus(ctx, newPluginContext(nil, "my-id", "")).Return(core.PhaseInfoRunning(0, nil), nil)
 		_, _, err := launch(ctx, plgn, tCtx, c, &s)
 		assert.Error(t, err)
 	})

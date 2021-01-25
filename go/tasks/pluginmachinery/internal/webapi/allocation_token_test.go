@@ -28,8 +28,8 @@ func init() {
 	labeled.SetMetricKeys(contextutils.NamespaceKey)
 }
 
-func newPluginWithProperties(properties webapi.PluginConfig) *mocks.Plugin {
-	m := &mocks.Plugin{}
+func newPluginWithProperties(properties webapi.PluginConfig) *mocks.AsyncPlugin {
+	m := &mocks.AsyncPlugin{}
 	m.OnGetConfig().Return(properties)
 	return m
 }
