@@ -184,14 +184,14 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 	return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "Unknown execution phase [%v].", exec.Status.State)
 }
 
-func createTaskInfo(queryId string, cfg awsSdk.Config) *core.TaskInfo {
+func createTaskInfo(queryID string, cfg awsSdk.Config) *core.TaskInfo {
 	return &core.TaskInfo{
 		Logs: []*idlCore.TaskLog{
 			{
 				Uri: fmt.Sprintf("https://%v.console.aws.amazon.com/athena/home?force&region=%v#query/history/%v",
 					cfg.Region,
 					cfg.Region,
-					queryId),
+					queryID),
 				Name: "Athena Query History",
 			},
 		},
