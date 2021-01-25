@@ -7,8 +7,6 @@ import (
 
 	"github.com/lyft/flytestdlib/storage"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -220,8 +218,4 @@ func init() {
 		IsDefault:           false,
 		DefaultForTaskTypes: []core.TaskType{"flytetask", "flytelaunchplan"},
 	})
-}
-
-type remoteOutputPaths struct {
-	io.OutputFilePaths
 }
