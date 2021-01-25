@@ -48,11 +48,12 @@ type PluginEntry struct {
 type PluginSetupContext interface {
 	// a metrics scope to publish stats under
 	MetricsScope() promutils.Scope
-	// Returns a secret manager that can retrieve configured secrets for this plugin
-	SecretManager() pluginsCore.SecretManager
 }
 
 type TaskExecutionContextReader interface {
+	// Returns a secret manager that can retrieve configured secrets for this plugin
+	SecretManager() pluginsCore.SecretManager
+
 	// Returns a TaskReader, to retrieve the task details
 	TaskReader() pluginsCore.TaskReader
 
@@ -96,8 +97,6 @@ type StatusContext interface {
 type ResourceMeta = interface{}
 type Resource = interface{}
 
-// TODO: OUTPUTS OUTPUTS OUTPUTS
-
 // AsyncPlugin defines the interface for plugins that call Async Web APIs.
 type AsyncPlugin interface {
 	// GetConfig gets the loaded plugin config. This will be used to control the interactions with the remote service.
@@ -131,7 +130,6 @@ type AsyncPlugin interface {
 	// resource has already been deleted, the API should not fail.
 	Delete(ctx context.Context, tCtx DeleteContext) error
 
-	// TODO: Call Status() in the main Handle() stack
 	// Status checks the status of a given resource and translates it to a Flyte-understandable PhaseInfo. This API
 	// should avoid making any network calls and should run very efficiently.
 	Status(ctx context.Context, tCtx StatusContext) (phase pluginsCore.PhaseInfo, err error)

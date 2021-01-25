@@ -150,6 +150,40 @@ func (_m *TaskExecutionContext) OutputWriter() io.OutputWriter {
 	return r0
 }
 
+type TaskExecutionContext_SecretManager struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionContext_SecretManager) Return(_a0 core.SecretManager) *TaskExecutionContext_SecretManager {
+	return &TaskExecutionContext_SecretManager{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionContext) OnSecretManager() *TaskExecutionContext_SecretManager {
+	c := _m.On("SecretManager")
+	return &TaskExecutionContext_SecretManager{Call: c}
+}
+
+func (_m *TaskExecutionContext) OnSecretManagerMatch(matchers ...interface{}) *TaskExecutionContext_SecretManager {
+	c := _m.On("SecretManager", matchers...)
+	return &TaskExecutionContext_SecretManager{Call: c}
+}
+
+// SecretManager provides a mock function with given fields:
+func (_m *TaskExecutionContext) SecretManager() core.SecretManager {
+	ret := _m.Called()
+
+	var r0 core.SecretManager
+	if rf, ok := ret.Get(0).(func() core.SecretManager); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.SecretManager)
+		}
+	}
+
+	return r0
+}
+
 type TaskExecutionContext_TaskExecutionMetadata struct {
 	*mock.Call
 }

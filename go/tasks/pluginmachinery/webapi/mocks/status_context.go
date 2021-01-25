@@ -218,6 +218,40 @@ func (_m *StatusContext) ResourceMeta() interface{} {
 	return r0
 }
 
+type StatusContext_SecretManager struct {
+	*mock.Call
+}
+
+func (_m StatusContext_SecretManager) Return(_a0 core.SecretManager) *StatusContext_SecretManager {
+	return &StatusContext_SecretManager{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *StatusContext) OnSecretManager() *StatusContext_SecretManager {
+	c := _m.On("SecretManager")
+	return &StatusContext_SecretManager{Call: c}
+}
+
+func (_m *StatusContext) OnSecretManagerMatch(matchers ...interface{}) *StatusContext_SecretManager {
+	c := _m.On("SecretManager", matchers...)
+	return &StatusContext_SecretManager{Call: c}
+}
+
+// SecretManager provides a mock function with given fields:
+func (_m *StatusContext) SecretManager() core.SecretManager {
+	ret := _m.Called()
+
+	var r0 core.SecretManager
+	if rf, ok := ret.Get(0).(func() core.SecretManager); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.SecretManager)
+		}
+	}
+
+	return r0
+}
+
 type StatusContext_TaskExecutionMetadata struct {
 	*mock.Call
 }

@@ -48,6 +48,40 @@ func (_m *TaskExecutionContextReader) InputReader() io.InputReader {
 	return r0
 }
 
+type TaskExecutionContextReader_SecretManager struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionContextReader_SecretManager) Return(_a0 core.SecretManager) *TaskExecutionContextReader_SecretManager {
+	return &TaskExecutionContextReader_SecretManager{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionContextReader) OnSecretManager() *TaskExecutionContextReader_SecretManager {
+	c := _m.On("SecretManager")
+	return &TaskExecutionContextReader_SecretManager{Call: c}
+}
+
+func (_m *TaskExecutionContextReader) OnSecretManagerMatch(matchers ...interface{}) *TaskExecutionContextReader_SecretManager {
+	c := _m.On("SecretManager", matchers...)
+	return &TaskExecutionContextReader_SecretManager{Call: c}
+}
+
+// SecretManager provides a mock function with given fields:
+func (_m *TaskExecutionContextReader) SecretManager() core.SecretManager {
+	ret := _m.Called()
+
+	var r0 core.SecretManager
+	if rf, ok := ret.Get(0).(func() core.SecretManager); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.SecretManager)
+		}
+	}
+
+	return r0
+}
+
 type TaskExecutionContextReader_TaskExecutionMetadata struct {
 	*mock.Call
 }

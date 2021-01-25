@@ -5,8 +5,8 @@
 package aws
 
 import (
-	"time"
-
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/lyft/flytestdlib/config"
 
 	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/config"
@@ -18,10 +18,14 @@ const ConfigSectionKey = "aws"
 
 var (
 	defaultConfig = &Config{
-		Region:               "us-east-1",
-		MaxErrorStringLength: 150,
-		Retries:              3,
-		CatalogCacheTimeout:  config.Duration{Duration: time.Second * 5},
+		Region:  "us-east-1",
+		Retries: 3,
+		SdkConfig: aws.Config{
+			Region: "us-east-1",
+			Retryer: retry.NewStandard(func(options *retry.StandardOptions) {
+				options.MaxAttempts = 3
+			}),
+		},
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection(ConfigSectionKey, defaultConfig)
@@ -29,11 +33,14 @@ var (
 
 // Config section for AWS Package
 type Config struct {
-	Region               string          `json:"region" pflag:",AWS Region to connect to."`
-	AccountID            string          `json:"accountId" pflag:",AWS Account Identifier."`
-	Retries              int             `json:"retries" pflag:",Number of retries."`
-	MaxErrorStringLength int             `json:"maxErrorLength" pflag:",Maximum size of error messages."`
-	CatalogCacheTimeout  config.Duration `json:"catalog-timeout" pflag:"\"5s\",Timeout duration for checking catalog for all batch tasks"`
+	SdkConfig aws.Config `json:",inline"`
+
+	// Deprecated, use SdkConfig instead
+	Region string `json:"region" pflag:",Deprecated: use SdkConfig instead. AWS Region to connect to."`
+	// Deprecated, use SdkConfig instead
+	AccountID string `json:"accountId" pflag:",Deprecated: use SdkConfig instead. AWS Account Identifier."`
+	// Deprecated, use SdkConfig instead
+	Retries int `json:"retries" pflag:",Deprecated: use SdkConfig instead. Number of retries."`
 }
 
 type RateLimiterConfig struct {
@@ -43,7 +50,17 @@ type RateLimiterConfig struct {
 
 // Gets loaded config for AWS
 func GetConfig() *Config {
-	return configSection.GetConfig().(*Config)
+	cfg := configSection.GetConfig().(*Config)
+
+	// For backward compatibility
+	if len(cfg.SdkConfig.Region) == 0 {
+		cfg.SdkConfig.Region = cfg.Region
+		cfg.SdkConfig.Retryer = retry.NewStandard(func(options *retry.StandardOptions) {
+			options.MaxAttempts = cfg.Retries
+		})
+	}
+
+	return cfg
 }
 
 func MustRegisterSubSection(key config.SectionKey, cfg config.Config) config.Section {
