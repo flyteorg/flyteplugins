@@ -37,7 +37,9 @@ var (
 			ProjectScopeResourceConstraint: &core.ResourceConstraint{
 				Value: 100,
 			},
-			NamespaceScopeResourceConstraint: nil,
+			NamespaceScopeResourceConstraint: &core.ResourceConstraint{
+				Value: 50,
+			},
 		},
 	}
 
