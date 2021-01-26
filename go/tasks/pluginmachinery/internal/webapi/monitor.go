@@ -29,7 +29,12 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, p Client, cach
 			errors.CacheFailed, "Failed to cast [%v]", cacheItem)
 	}
 
-	newPhase, err := p.Status(ctx, newPluginContext(cacheItem.Resource, cacheItem.ResourceMeta, ""))
+	// If the cache has not syncd yet, just return
+	if cacheItem.Resource == nil {
+		return state, core.PhaseInfoRunning(0, nil), nil
+	}
+
+	newPhase, err := p.Status(ctx, newPluginContext(cacheItem.ResourceMeta, cacheItem.Resource, "", tCtx))
 	if err != nil {
 		return nil, core.PhaseInfoUndefined, err
 	}

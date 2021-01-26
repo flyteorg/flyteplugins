@@ -3,6 +3,7 @@ package webapi
 import (
 	"context"
 	"fmt"
+	"time"
 
 	clock2 "k8s.io/utils/clock"
 
@@ -32,7 +33,7 @@ func allocateToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExec
 		return &State{
 			AllocationTokenRequestStartTime: clock.Now(),
 			Phase:                           PhaseAllocationTokenAcquired,
-		}, core.PhaseInfo{}, nil
+		}, core.PhaseInfoQueued(time.Now(), 0, "No allocation token required"), nil
 	}
 
 	ns, constraints, err := p.ResourceRequirements(ctx, tCtx)
@@ -55,7 +56,7 @@ func allocateToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExec
 		return &State{
 			AllocationTokenRequestStartTime: clock.Now(),
 			Phase:                           PhaseAllocationTokenAcquired,
-		}, core.PhaseInfo{}, nil
+		}, core.PhaseInfoQueued(time.Now(), 0, "Allocation token required"), nil
 	case core.AllocationStatusNamespaceQuotaExceeded:
 	case core.AllocationStatusExhausted:
 		metrics.AllocationNotGranted.Inc(ctx)
@@ -68,12 +69,10 @@ func allocateToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExec
 		return &State{
 			AllocationTokenRequestStartTime: startTime,
 			Phase:                           PhaseNotStarted,
-		}, core.PhaseInfo{}, nil
-	default:
-		return nil, core.PhaseInfo{}, fmt.Errorf("allocation status undefined")
+		}, core.PhaseInfoQueued(time.Now(), 0, "Allocation tokens exhausted"), nil
 	}
 
-	return state, core.PhaseInfo{}, nil
+	return nil, core.PhaseInfo{}, fmt.Errorf("allocation status undefined [%v]", allocationStatus)
 }
 
 func releaseToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionContext, metrics Metrics) error {

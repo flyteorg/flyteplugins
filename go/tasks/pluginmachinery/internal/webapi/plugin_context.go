@@ -24,10 +24,11 @@ func (p pluginContext) ResourceMeta() webapi.ResourceMeta {
 	return p.resourceMeta
 }
 
-func newPluginContext(resource webapi.Resource, resourceMeta webapi.ResourceMeta, reason string) pluginContext {
+func newPluginContext(resourceMeta webapi.ResourceMeta, resource webapi.Resource, reason string, tCtx webapi.TaskExecutionContext) pluginContext {
 	return pluginContext{
-		resourceMeta: resourceMeta,
-		resource:     resource,
-		reason:       reason,
+		TaskExecutionContext: tCtx,
+		resourceMeta:         resourceMeta,
+		resource:             resource,
+		reason:               reason,
 	}
 }

@@ -29,7 +29,7 @@ func Test_launch(t *testing.T) {
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
 		plgn.OnCreate(ctx, tCtx).Return("abc", nil, nil)
-		plgn.OnStatus(ctx, newPluginContext(nil, "abc", "")).Return(core.PhaseInfoSuccess(nil), nil)
+		plgn.OnStatus(ctx, newPluginContext("abc", nil, "", tCtx)).Return(core.PhaseInfoSuccess(nil), nil)
 		newS, phaseInfo, err := launch(ctx, plgn, tCtx, c, &s)
 		assert.NoError(t, err)
 		assert.NotNil(t, newS)
@@ -50,7 +50,7 @@ func Test_launch(t *testing.T) {
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
 		plgn.OnCreate(ctx, tCtx).Return("abc", nil, nil)
-		plgn.OnStatus(ctx, newPluginContext(nil, "abc", "")).Return(core.PhaseInfoSuccess(nil), nil)
+		plgn.OnStatus(ctx, newPluginContext("abc", nil, "", tCtx)).Return(core.PhaseInfoSuccess(nil), nil)
 		newS, phaseInfo, err := launch(ctx, plgn, tCtx, c, &s)
 		assert.NoError(t, err)
 		assert.NotNil(t, newS)
@@ -92,7 +92,7 @@ func Test_launch(t *testing.T) {
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
 		plgn.OnCreate(ctx, tCtx).Return("my-id", nil, nil)
-		plgn.OnStatus(ctx, newPluginContext(nil, "my-id", "")).Return(core.PhaseInfoRunning(0, nil), nil)
+		plgn.OnStatus(ctx, newPluginContext("my-id", nil, "", tCtx)).Return(core.PhaseInfoRunning(0, nil), nil)
 		_, _, err := launch(ctx, plgn, tCtx, c, &s)
 		assert.Error(t, err)
 	})

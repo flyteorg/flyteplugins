@@ -21,22 +21,27 @@ func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionCo
 
 	// If we succeed, then store the created resource name, and update our state. Also, add to the
 	// AutoRefreshCache so we start getting updates.
-	logger.Infof(ctx, "Created Resource Name [%s]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
-	phase, err := p.Status(ctx, newPluginContext(r, rMeta, ""))
-	if err != nil {
-		logger.Errorf(ctx, "Failed to check resource status. Error: %v", err)
-		return nil, core.PhaseInfo{}, err
-	}
+	logger.Infof(ctx, "Created Resource Name [%s] and Meta [%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), rMeta)
+	if r != nil {
+		phase, err := p.Status(ctx, newPluginContext(rMeta, r, "", tCtx))
+		if err != nil {
+			logger.Errorf(ctx, "Failed to check resource status. Error: %v", err)
+			return nil, core.PhaseInfo{}, err
+		}
 
-	if phase.Phase().IsTerminal() {
-		logger.Infof(ctx, "Resource has already terminated ID:[%s], Phase:[%s]",
-			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), phase.Phase())
-		return state, phase, nil
+		if phase.Phase().IsTerminal() {
+			logger.Infof(ctx, "Resource has already terminated ID:[%s], Phase:[%s]",
+				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), phase.Phase())
+			return state, phase, nil
+		}
 	}
 
 	cacheItem := CacheItem{
 		State: *state,
 	}
+
+	state.ResourceMeta = rMeta
+	state.Phase = PhaseResourcesCreated
 
 	// The first time we put it in the cache, we know it won't have succeeded so we don't need to look at it
 	_, err = cache.GetOrCreate(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), cacheItem)
@@ -45,7 +50,5 @@ func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionCo
 		return nil, core.PhaseInfo{}, err
 	}
 
-	state.ResourceMeta = rMeta
-
-	return state, core.PhaseInfoQueued(time.Now(), 1, "launched"), nil
+	return state, core.PhaseInfoQueued(time.Now(), 2, "launched"), nil
 }

@@ -3,14 +3,14 @@ package athena
 import (
 	"context"
 	"fmt"
+	"time"
 
 	pluginsIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/athena"
+	athenaTypes "github.com/aws/aws-sdk-go-v2/service/athena/types"
 	"github.com/lyft/flyteplugins/go/tasks/aws"
-
-	"github.com/lyft/flytestdlib/storage"
 
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
@@ -23,6 +23,7 @@ import (
 
 	"github.com/lyft/flytestdlib/promutils"
 
+	pb "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
@@ -38,12 +39,12 @@ type Plugin struct {
 	metricScope promutils.Scope
 	client      *athena.Client
 	cfg         *Config
-	awsConfig   *aws.Config
+	awsConfig   awsSdk.Config
 }
 
 type ResourceWrapper struct {
-	Status               *athena.QueryExecutionStatus
-	ResultsConfiguration *athena.ResultConfiguration
+	Status               *athenaTypes.QueryExecutionStatus
+	ResultsConfiguration *athenaTypes.ResultConfiguration
 }
 
 func (p Plugin) GetConfig() webapi.PluginConfig {
@@ -79,33 +80,38 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextRead
 	}
 
 	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
-	request := p.client.CreateNamedQueryRequest(&athena.CreateNamedQueryInput{
-		ClientRequestToken: awsSdk.String(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
-		Database:           awsSdk.String(hiveQuery.ClusterLabel),
-		Description:        awsSdk.String(fmt.Sprintf("Launched query through Athena Plugin for execution [%v]", execID)),
-		Name:               awsSdk.String(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
-		QueryString:        awsSdk.String(hiveQuery.Query.Query),
+	resp, err := p.client.StartQueryExecution(ctx, &athena.StartQueryExecutionInput{
+		ClientRequestToken: awsSdk.String(fmt.Sprintf("%v-%v-%v", execID.Project, execID.Domain, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())),
+		QueryExecutionContext: &athenaTypes.QueryExecutionContext{
+			Database: awsSdk.String("vaccinations"),
+			Catalog:  awsSdk.String(p.cfg.DefaultCatalog),
+			//Description: awsSdk.String(fmt.Sprintf("Launched query through Athena Plugin for execution [%v]", execID)),
+			//Name:        awsSdk.String(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
+		},
+		ResultConfiguration: &athenaTypes.ResultConfiguration{
+			// Workgroup settings can override the output location setting.
+			OutputLocation: awsSdk.String(tCtx.OutputWriter().GetRawOutputPrefix().String()),
+		},
+		QueryString: awsSdk.String(hiveQuery.Query.Query),
+		WorkGroup:   awsSdk.String(p.cfg.DefaultWorkGroup),
 	})
 
-	resp, err := request.Send(ctx)
 	if err != nil {
 		return "", "", err
 	}
 
-	if resp.NamedQueryId == nil {
+	if resp.QueryExecutionId == nil {
 		return "", "", errors.Errorf(ErrRemoteSystem, "Service created an empty query id")
 	}
 
-	return *resp.NamedQueryId, nil, nil
+	return *resp.QueryExecutionId, nil, nil
 }
 
 func (p Plugin) Get(ctx context.Context, tCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	exec := tCtx.ResourceMeta().(string)
-	request := p.client.GetQueryExecutionRequest(&athena.GetQueryExecutionInput{
+	resp, err := p.client.GetQueryExecution(ctx, &athena.GetQueryExecutionInput{
 		QueryExecutionId: awsSdk.String(exec),
 	})
-
-	resp, err := request.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,18 +124,46 @@ func (p Plugin) Get(ctx context.Context, tCtx webapi.GetContext) (latest webapi.
 }
 
 func (p Plugin) Delete(ctx context.Context, tCtx webapi.DeleteContext) error {
-	request := p.client.DeleteNamedQueryRequest(&athena.DeleteNamedQueryInput{
-		NamedQueryId: awsSdk.String(tCtx.ResourceMeta().(string)),
+	resp, err := p.client.StopQueryExecution(ctx, &athena.StopQueryExecutionInput{
+		QueryExecutionId: awsSdk.String(tCtx.ResourceMeta().(string)),
 	})
-
-	resp, err := request.Send(ctx)
 	if err != nil {
 		return err
 	}
 
-	logger.Info(ctx, "Deleted named query [%v]", resp.String())
+	logger.Info(ctx, "Deleted query execution [%v]", resp)
 
 	return nil
+}
+
+func writeOutput(ctx context.Context, tCtx webapi.StatusContext, externalLocation string) error {
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return err
+	}
+
+	resultsSchema, exists := taskTemplate.Interface.Outputs.Variables["results"]
+	if !exists {
+		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
+		return nil
+	}
+
+	return tCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(
+		&pb.LiteralMap{
+			Literals: map[string]*pb.Literal{
+				"results": {
+					Value: &pb.Literal_Scalar{
+						Scalar: &pb.Scalar{Value: &pb.Scalar_Schema{
+							Schema: &pb.Schema{
+								Uri:  externalLocation,
+								Type: resultsSchema.GetType().GetSchema(),
+							},
+						},
+						},
+					},
+				},
+			},
+		}, nil))
 }
 
 func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
@@ -140,52 +174,45 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 	}
 
 	switch exec.Status.State {
-	case athena.QueryExecutionStateQueued:
+	case athenaTypes.QueryExecutionStateQueued:
 		fallthrough
-	case athena.QueryExecutionStateRunning:
-		return core.PhaseInfoRunning(0, createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
-	case athena.QueryExecutionStateCancelled:
+	case athenaTypes.QueryExecutionStateRunning:
+		return core.PhaseInfoRunning(0, createTaskInfo(execID, p.awsConfig)), nil
+	case athenaTypes.QueryExecutionStateCancelled:
 		reason := "Remote execution was aborted."
 		if reasonPtr := exec.Status.StateChangeReason; reasonPtr != nil {
 			reason = *reasonPtr
 		}
 
-		return core.PhaseInfoRetryableFailure("ABORTED", reason, createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
-	case athena.QueryExecutionStateFailed:
+		return core.PhaseInfoRetryableFailure("ABORTED", reason, createTaskInfo(execID, p.awsConfig)), nil
+	case athenaTypes.QueryExecutionStateFailed:
 		reason := "Remote execution failed"
 		if reasonPtr := exec.Status.StateChangeReason; reasonPtr != nil {
 			reason = *reasonPtr
 		}
 
-		return core.PhaseInfoRetryableFailure("FAILED", reason, createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
-	case athena.QueryExecutionStateSucceeded:
+		return core.PhaseInfoRetryableFailure("FAILED", reason, createTaskInfo(execID, p.awsConfig)), nil
+	case athenaTypes.QueryExecutionStateSucceeded:
 		if outputLocation := exec.ResultsConfiguration.OutputLocation; outputLocation != nil {
 			// If WorkGroup settings overrode the client settings, the location submitted in the request might have been
 			// ignored.
-			if *outputLocation != tCtx.OutputWriter().GetOutputPath().String() {
-				uri := *outputLocation
-				store := tCtx.DataStore()
-				err := store.CopyRaw(ctx, storage.DataReference(uri), tCtx.OutputWriter().GetOutputPath(), storage.Options{})
-				if err != nil {
-					logger.Warnf(ctx, "Failed to remote output for launchplan execution was not found, uri [%s], err %s", uri, err.Error())
-					return core.PhaseInfoUndefined, err
-				}
-
-				if err := tCtx.OutputWriter().Put(ctx, ioutils.NewRemoteFileOutputReader(ctx, tCtx.DataStore(),
-					tCtx.OutputWriter(), tCtx.MaxDatasetSizeBytes())); err != nil {
-					return core.PhaseInfoUndefined, err
-				}
+			err = writeOutput(ctx, tCtx, *outputLocation)
+			if err != nil {
+				logger.Warnf(ctx, "Failed to write output, uri [%s], err %s", *outputLocation, err.Error())
+				return core.PhaseInfoUndefined, err
 			}
 		}
 
-		return core.PhaseInfoSuccess(createTaskInfo(execID, p.awsConfig.GetSdkConfig())), nil
+		return core.PhaseInfoSuccess(createTaskInfo(execID, p.awsConfig)), nil
 	}
 
 	return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "Unknown execution phase [%v].", exec.Status.State)
 }
 
 func createTaskInfo(queryID string, cfg awsSdk.Config) *core.TaskInfo {
+	timeNow := time.Now()
 	return &core.TaskInfo{
+		OccurredAt: &timeNow,
 		Logs: []*idlCore.TaskLog{
 			{
 				Uri: fmt.Sprintf("https://%v.console.aws.amazon.com/athena/home?force&region=%v#query/history/%v",
@@ -199,11 +226,16 @@ func createTaskInfo(queryID string, cfg awsSdk.Config) *core.TaskInfo {
 }
 
 func NewPlugin(_ context.Context, cfg *Config, awsConfig *aws.Config, metricScope promutils.Scope) (Plugin, error) {
+	sdkCfg, err := awsConfig.GetSdkConfig()
+	if err != nil {
+		return Plugin{}, err
+	}
+
 	return Plugin{
 		metricScope: metricScope,
-		client:      athena.New(awsConfig.GetSdkConfig()),
+		client:      athena.NewFromConfig(sdkCfg),
 		cfg:         cfg,
-		awsConfig:   awsConfig,
+		awsConfig:   sdkCfg,
 	}, nil
 }
 

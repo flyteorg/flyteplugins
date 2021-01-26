@@ -78,7 +78,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		logger.Debugf(ctx, "Sync loop - processing resource with cache key [%s]",
 			resource.GetID())
 
-		if cacheItem.SyncFailureCount >= q.cfg.MaxSystemFailures {
+		if cacheItem.SyncFailureCount > q.cfg.MaxSystemFailures {
 			logger.Infof(ctx, "Sync loop - Item with key [%v] has failed to sync [%v] time(s). More than the allowed [%v] time(s). Marking as failure.",
 				cacheItem.SyncFailureCount, q.cfg.MaxSystemFailures)
 			cacheItem.State.Phase = PhaseSystemFailure
@@ -100,7 +100,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		// Get an updated status
 		logger.Debugf(ctx, "Querying AsyncPlugin for %s - %s", resource.GetID(),
 			resource.GetID())
-		newResource, err := q.client.Get(ctx, newPluginContext(cacheItem.Resource, cacheItem.ResourceMeta, ""))
+		newResource, err := q.client.Get(ctx, newPluginContext(cacheItem.ResourceMeta, cacheItem.Resource, "", nil))
 		if err != nil {
 			logger.Errorf(ctx, "Error retrieving resource [%s]. Error: %v", resource.GetID(), err)
 			cacheItem.SyncFailureCount++

@@ -87,7 +87,7 @@ func TestResourceCache_SyncResource(t *testing.T) {
 			State: state,
 		}
 
-		mockClient.OnGet(ctx, newPluginContext(nil, "123456", "")).Return("newID", nil)
+		mockClient.OnGet(ctx, newPluginContext("123456", nil, "", nil)).Return("newID", nil)
 		mockClient.OnStatusMatch(mock.Anything, "newID", mock.Anything).Return(core.PhaseInfoSuccess(nil), nil)
 
 		iw := &cacheMocks.ItemWrapper{}
@@ -122,7 +122,7 @@ func TestResourceCache_SyncResource(t *testing.T) {
 			State: state,
 		}
 
-		mockClient.OnGet(ctx, newPluginContext(nil, "123456", "")).Return("newID", fmt.Errorf("failed to retrieve resource"))
+		mockClient.OnGet(ctx, newPluginContext("123456", nil, "", nil)).Return("newID", fmt.Errorf("failed to retrieve resource"))
 
 		iw := &cacheMocks.ItemWrapper{}
 		iw.OnGetItem().Return(cacheItem)

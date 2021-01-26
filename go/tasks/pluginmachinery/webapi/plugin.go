@@ -62,13 +62,13 @@ type TaskExecutionContextReader interface {
 
 	// Returns a handle to the Task's execution metadata.
 	TaskExecutionMetadata() pluginsCore.TaskExecutionMetadata
+
+	// Provides an output sync of type io.OutputWriter
+	OutputWriter() io.OutputWriter
 }
 
 type TaskExecutionContext interface {
 	TaskExecutionContextReader
-
-	// Provides an output sync of type io.OutputWriter
-	OutputWriter() io.OutputWriter
 
 	// Provides the raw datastore to enable persisting outputs.
 	DataStore() *storage.DataStore

@@ -98,7 +98,7 @@ func (c CorePlugin) Abort(ctx context.Context, tCtx core.TaskExecutionContext) e
 
 	logger.Infof(ctx, "Attempting to abort resource [%v].", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID())
 
-	err := c.p.Delete(ctx, newPluginContext(nil, incomingState.ResourceMeta, "Aborted"))
+	err := c.p.Delete(ctx, newPluginContext(incomingState.ResourceMeta, nil, "Aborted", tCtx))
 	if err != nil {
 		logger.Errorf(ctx, "Failed to abort some resources [%v]. Error: %v",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
@@ -192,6 +192,11 @@ func CreateRemotePlugin(pluginEntry webapi.PluginEntry) core.PluginEntry {
 			resourceCache, err := NewResourceCache(ctx, pluginEntry.ID, p, p.GetConfig().Caching,
 				iCtx.MetricsScope().NewSubScope("cache"))
 
+			if err != nil {
+				return nil, err
+			}
+
+			err = resourceCache.Start(ctx)
 			if err != nil {
 				return nil, err
 			}
