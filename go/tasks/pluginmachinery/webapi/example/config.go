@@ -26,7 +26,7 @@ var (
 				QPS:   10,
 			},
 			Caching: webapi.CachingConfig{
-				Size:           1000000,
+				Size:           500000,
 				ResyncInterval: config.Duration{Duration: 30 * time.Second},
 				Workers:        10,
 			},
