@@ -253,4 +253,26 @@ func TestPluginConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_caching.maxSystemFailures", func(t *testing.T) {
+		t.Run("DefaultValue", func(t *testing.T) {
+			// Test that default value is set properly
+			if vInt, err := cmdFlags.GetInt("caching.maxSystemFailures"); err == nil {
+				assert.Equal(t, int(DefaultPluginConfig.Caching.MaxSystemFailures), vInt)
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("caching.maxSystemFailures", testValue)
+			if vInt, err := cmdFlags.GetInt("caching.maxSystemFailures"); err == nil {
+				testDecodeJson_PluginConfig(t, fmt.Sprintf("%v", vInt), &actual.Caching.MaxSystemFailures)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

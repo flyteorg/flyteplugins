@@ -48,5 +48,6 @@ func (cfg PluginConfig) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "caching.size"), DefaultPluginConfig.Caching.Size, "Defines the maximum number of items to cache.")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "caching.resyncInterval"), DefaultPluginConfig.Caching.ResyncInterval.String(), "Defines the sync interval.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "caching.workers"), DefaultPluginConfig.Caching.Workers, "Defines the number of workers to start up to process items.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "caching.maxSystemFailures"), DefaultPluginConfig.Caching.MaxSystemFailures, "Defines the number of failures to fetch a task before failing the task.")
 	return cmdFlags
 }

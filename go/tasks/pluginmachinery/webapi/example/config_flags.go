@@ -41,12 +41,16 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "webapi.readRateLimiter.qps"), defaultConfig.WebAPI.ReadRateLimiter.QPS, "Defines the max rate of calls per second.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "webapi.readRateLimiter.burst"), defaultConfig.WebAPI.ReadRateLimiter.Burst, "Defines the maximum burst size.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "webapi.writeRateLimiter.qps"), defaultConfig.WebAPI.WriteRateLimiter.QPS, "Defines the max rate of calls per second.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "webapi.writeRateLimiter.burst"), defaultConfig.WebAPI.WriteRateLimiter.Burst, "Defines the maximum burst size.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "webapi.caching.size"), defaultConfig.WebAPI.Caching.Size, "Defines the maximum number of items to cache.")
-	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "webapi.caching.resyncInterval"), defaultConfig.WebAPI.Caching.ResyncInterval.String(), "Defines the sync interval.")
-	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "webapi.caching.workers"), defaultConfig.WebAPI.Caching.Workers, "Defines the number of workers to start up to process items.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.readRateLimiter.qps"), defaultConfig.WebAPI.ReadRateLimiter.QPS, "Defines the max rate of calls per second.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.readRateLimiter.burst"), defaultConfig.WebAPI.ReadRateLimiter.Burst, "Defines the maximum burst size.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.writeRateLimiter.qps"), defaultConfig.WebAPI.WriteRateLimiter.QPS, "Defines the max rate of calls per second.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.writeRateLimiter.burst"), defaultConfig.WebAPI.WriteRateLimiter.Burst, "Defines the maximum burst size.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.caching.size"), defaultConfig.WebAPI.Caching.Size, "Defines the maximum number of items to cache.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "WebAPI.caching.resyncInterval"), defaultConfig.WebAPI.Caching.ResyncInterval.String(), "Defines the sync interval.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.caching.workers"), defaultConfig.WebAPI.Caching.Workers, "Defines the number of workers to start up to process items.")
+	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.caching.maxSystemFailures"), defaultConfig.WebAPI.Caching.MaxSystemFailures, "Defines the number of failures to fetch a task before failing the task.")
+	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "resourceConstraints.ProjectScopeResourceConstraint.Value"), defaultConfig.ResourceConstraints.ProjectScopeResourceConstraint.Value, "")
+	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "resourceConstraints.NamespaceScopeResourceConstraint.Value"), defaultConfig.ResourceConstraints.NamespaceScopeResourceConstraint.Value, "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "adminUrlTemplate"), defaultConfig.AdminProtocolAndHost, "Defines the user facing url for admin service (e.g. https://myadmin/)")
 	return cmdFlags
 }
