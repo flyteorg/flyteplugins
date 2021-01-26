@@ -177,7 +177,7 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 	case athenaTypes.QueryExecutionStateQueued:
 		fallthrough
 	case athenaTypes.QueryExecutionStateRunning:
-		return core.PhaseInfoRunning(0, createTaskInfo(execID, p.awsConfig)), nil
+		return core.PhaseInfoRunning(1, createTaskInfo(execID, p.awsConfig)), nil
 	case athenaTypes.QueryExecutionStateCancelled:
 		reason := "Remote execution was aborted."
 		if reasonPtr := exec.Status.StateChangeReason; reasonPtr != nil {
