@@ -98,8 +98,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		}
 
 		// Get an updated status
-		logger.Debugf(ctx, "Querying AsyncPlugin for %s - %s", resource.GetID(),
-			resource.GetID())
+		logger.Debugf(ctx, "Querying AsyncPlugin for %s", resource.GetID())
 		newResource, err := q.client.Get(ctx, newPluginContext(cacheItem.ResourceMeta, cacheItem.Resource, "", nil))
 		if err != nil {
 			logger.Errorf(ctx, "Error retrieving resource [%s]. Error: %v", resource.GetID(), err)

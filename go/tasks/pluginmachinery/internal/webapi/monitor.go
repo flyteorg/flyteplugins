@@ -12,12 +12,12 @@ import (
 
 func monitor(ctx context.Context, tCtx core.TaskExecutionContext, p Client, cache cache.AutoRefresh, state *State) (
 	newState *State, phaseInfo core.PhaseInfo, err error) {
-	cacheItem := CacheItem{
+	newCacheItem := CacheItem{
 		State: *state,
 	}
 
 	item, err := cache.GetOrCreate(
-		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), cacheItem)
+		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), newCacheItem)
 	if err != nil {
 		return nil, core.PhaseInfo{}, err
 	}

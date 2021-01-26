@@ -36,12 +36,11 @@ func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionCo
 		}
 	}
 
+	state.ResourceMeta = rMeta
+	state.Phase = PhaseResourcesCreated
 	cacheItem := CacheItem{
 		State: *state,
 	}
-
-	state.ResourceMeta = rMeta
-	state.Phase = PhaseResourcesCreated
 
 	// The first time we put it in the cache, we know it won't have succeeded so we don't need to look at it
 	_, err = cache.GetOrCreate(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), cacheItem)
