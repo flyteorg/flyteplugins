@@ -24,7 +24,10 @@ func Test_launch(t *testing.T) {
 		tCtx.OnTaskExecutionMetadata().Return(meta)
 
 		c := &mocks2.AutoRefresh{}
-		s := State{}
+		s := State{
+			ResourceMeta: "abc",
+			Phase:        PhaseResourcesCreated,
+		}
 		c.OnGetOrCreate("my-id", CacheItem{State: s}).Return(CacheItem{State: s}, nil)
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
@@ -46,11 +49,14 @@ func Test_launch(t *testing.T) {
 		tCtx.OnTaskExecutionMetadata().Return(meta)
 
 		c := &mocks2.AutoRefresh{}
-		s := State{}
+		s := State{
+			Phase:        PhaseResourcesCreated,
+			ResourceMeta: "abc",
+		}
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})
-		plgn.OnCreate(ctx, tCtx).Return("abc", nil, nil)
-		plgn.OnStatus(ctx, newPluginContext("abc", nil, "", tCtx)).Return(core.PhaseInfoSuccess(nil), nil)
+		plgn.OnCreate(ctx, tCtx).Return("abc", "abc-r", nil)
+		plgn.OnStatus(ctx, newPluginContext("abc", "abc-r", "", tCtx)).Return(core.PhaseInfoSuccess(nil), nil)
 		newS, phaseInfo, err := launch(ctx, plgn, tCtx, c, &s)
 		assert.NoError(t, err)
 		assert.NotNil(t, newS)
@@ -87,7 +93,10 @@ func Test_launch(t *testing.T) {
 		tCtx.OnTaskExecutionMetadata().Return(meta)
 
 		c := &mocks2.AutoRefresh{}
-		s := State{}
+		s := State{
+			Phase:        PhaseResourcesCreated,
+			ResourceMeta: "my-id",
+		}
 		c.OnGetOrCreate("my-id", CacheItem{State: s}).Return(CacheItem{State: s}, fmt.Errorf("failed to cache"))
 
 		plgn := newPluginWithProperties(webapi.PluginConfig{})

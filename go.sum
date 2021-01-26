@@ -68,6 +68,8 @@ github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf/go.mod h1:l
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
 github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a h1:zZJfJ2eCYJ4X4soWE+SPqxYdQU85wfcVNdcaCadOPfk=
 github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a/go.mod h1:kw+Gl0uvPAMADPoubX+kLx0P7e7zWOr6rc+R7D24pbc=
+github.com/aws/amazon-sagemaker-operator-for-k8s v1.1.0 h1:v2nPlBJUXcKu4mz91c8H/Fh/a4uQ/8ugvizMIHKDsRI=
+github.com/aws/amazon-sagemaker-operator-for-k8s v1.1.0/go.mod h1:kw+Gl0uvPAMADPoubX+kLx0P7e7zWOr6rc+R7D24pbc=
 github.com/aws/aws-sdk-go v1.23.4/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/aws/aws-sdk-go v1.28.9/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/aws/aws-sdk-go v1.29.23 h1:wtiGLOzxAP755OfuVTDIy/NbUIYEDxbIbBEDfNhUpeU=
