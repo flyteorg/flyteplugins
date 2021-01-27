@@ -49,7 +49,7 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "WebAPI.caching.resyncInterval"), defaultConfig.WebAPI.Caching.ResyncInterval.String(), "Defines the sync interval.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.caching.workers"), defaultConfig.WebAPI.Caching.Workers, "Defines the number of workers to start up to process items.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "WebAPI.caching.maxSystemFailures"), defaultConfig.WebAPI.Caching.MaxSystemFailures, "Defines the number of failures to fetch a task before failing the task.")
-	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "resourceConstraints.ProjectScopeResourceConstraint.Value"), defaultConfig.ResourceConstraints.ProjectScopeResourceConstraint.Value, "")
-	cmdFlags.Int64(fmt.Sprintf("%v%v", prefix, "resourceConstraints.NamespaceScopeResourceConstraint.Value"), defaultConfig.ResourceConstraints.NamespaceScopeResourceConstraint.Value, "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "defaultWorkGroup"), defaultConfig.DefaultWorkGroup, "Defines the default workgroup to use when running on Athena unless overwritten by the task.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "defaultCatalog"), defaultConfig.DefaultCatalog, "Defines the default catalog to use when running on Athena unless overwritten by the task.")
 	return cmdFlags
 }

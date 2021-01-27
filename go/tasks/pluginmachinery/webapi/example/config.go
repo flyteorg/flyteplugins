@@ -58,7 +58,7 @@ plugins:
 
 type Config struct {
 	WebAPI               webapi.PluginConfig          `json:",inline" pflag:",Defines config for the base WebAPI plugin."`
-	ResourceConstraints  core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:",Defines resource constraints on how many executions to be created per project/overall at any given time."`
+	ResourceConstraints  core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 	AdminProtocolAndHost string                       `json:"adminUrlTemplate" pflag:",Defines the user facing url for admin service (e.g. https://myadmin/)"`
 }
 

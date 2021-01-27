@@ -275,50 +275,6 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_resourceConstraints.ProjectScopeResourceConstraint.Value", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vInt64, err := cmdFlags.GetInt64("resourceConstraints.ProjectScopeResourceConstraint.Value"); err == nil {
-				assert.Equal(t, int64(defaultConfig.ResourceConstraints.ProjectScopeResourceConstraint.Value), vInt64)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("resourceConstraints.ProjectScopeResourceConstraint.Value", testValue)
-			if vInt64, err := cmdFlags.GetInt64("resourceConstraints.ProjectScopeResourceConstraint.Value"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt64), &actual.ResourceConstraints.ProjectScopeResourceConstraint.Value)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
-	t.Run("Test_resourceConstraints.NamespaceScopeResourceConstraint.Value", func(t *testing.T) {
-		t.Run("DefaultValue", func(t *testing.T) {
-			// Test that default value is set properly
-			if vInt64, err := cmdFlags.GetInt64("resourceConstraints.NamespaceScopeResourceConstraint.Value"); err == nil {
-				assert.Equal(t, int64(defaultConfig.ResourceConstraints.NamespaceScopeResourceConstraint.Value), vInt64)
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-
-		t.Run("Override", func(t *testing.T) {
-			testValue := "1"
-
-			cmdFlags.Set("resourceConstraints.NamespaceScopeResourceConstraint.Value", testValue)
-			if vInt64, err := cmdFlags.GetInt64("resourceConstraints.NamespaceScopeResourceConstraint.Value"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vInt64), &actual.ResourceConstraints.NamespaceScopeResourceConstraint.Value)
-
-			} else {
-				assert.FailNow(t, err.Error())
-			}
-		})
-	})
 	t.Run("Test_adminUrlTemplate", func(t *testing.T) {
 		t.Run("DefaultValue", func(t *testing.T) {
 			// Test that default value is set properly
