@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	errors2 "github.com/lyft/flyteplugins/go/tasks/errors"
+
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/athena"
 	athenaTypes "github.com/aws/aws-sdk-go-v2/service/athena/types"
@@ -72,6 +74,10 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextRead
 
 	if len(queryInfo.Catalog) == 0 {
 		queryInfo.Catalog = p.cfg.DefaultCatalog
+	}
+
+	if len(queryInfo.Database) == 0 {
+		return nil, nil, errors.Errorf(errors2.BadTaskSpecification, "Database must not be empty.")
 	}
 
 	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
