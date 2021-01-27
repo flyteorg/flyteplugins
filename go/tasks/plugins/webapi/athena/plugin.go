@@ -5,25 +5,18 @@ import (
 	"fmt"
 	"time"
 
-	pluginsIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/athena"
 	athenaTypes "github.com/aws/aws-sdk-go-v2/service/athena/types"
 	"github.com/lyft/flyteplugins/go/tasks/aws"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/lyft/flytestdlib/errors"
-	"github.com/lyft/flytestdlib/utils"
-
 	"github.com/lyft/flytestdlib/logger"
 
 	"github.com/lyft/flytestdlib/promutils"
 
-	pb "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
@@ -31,7 +24,7 @@ import (
 
 const (
 	ErrRemoteSystem errors.ErrorCode = "RemoteSystem"
-	ErrRemoteUser   errors.ErrorCode = "RemoteUser"
+	ErrUser         errors.ErrorCode = "User"
 	ErrSystem       errors.ErrorCode = "System"
 )
 
@@ -68,32 +61,32 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextRead
 		return nil, nil, err
 	}
 
-	custom := task.GetCustom()
-	hiveQuery := &pluginsIdl.QuboleHiveJob{}
-	err = utils.UnmarshalStructToPb(custom, hiveQuery)
+	queryInfo, err := extractQueryInfo(task)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if hiveQuery.Query == nil {
-		return "", "", nil
+	if len(queryInfo.Workgroup) == 0 {
+		queryInfo.Workgroup = p.cfg.DefaultWorkGroup
+	}
+
+	if len(queryInfo.Catalog) == 0 {
+		queryInfo.Catalog = p.cfg.DefaultCatalog
 	}
 
 	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
 	resp, err := p.client.StartQueryExecution(ctx, &athena.StartQueryExecutionInput{
 		ClientRequestToken: awsSdk.String(fmt.Sprintf("%v-%v-%v", execID.Project, execID.Domain, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())),
 		QueryExecutionContext: &athenaTypes.QueryExecutionContext{
-			Database: awsSdk.String("vaccinations"),
-			Catalog:  awsSdk.String(p.cfg.DefaultCatalog),
-			//Description: awsSdk.String(fmt.Sprintf("Launched query through Athena Plugin for execution [%v]", execID)),
-			//Name:        awsSdk.String(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
+			Database: awsSdk.String(queryInfo.Database),
+			Catalog:  awsSdk.String(queryInfo.Catalog),
 		},
 		ResultConfiguration: &athenaTypes.ResultConfiguration{
 			// Workgroup settings can override the output location setting.
 			OutputLocation: awsSdk.String(tCtx.OutputWriter().GetRawOutputPrefix().String()),
 		},
-		QueryString: awsSdk.String(hiveQuery.Query.Query),
-		WorkGroup:   awsSdk.String(p.cfg.DefaultWorkGroup),
+		QueryString: awsSdk.String(queryInfo.QueryString),
+		WorkGroup:   awsSdk.String(queryInfo.Workgroup),
 	})
 
 	if err != nil {
@@ -134,36 +127,6 @@ func (p Plugin) Delete(ctx context.Context, tCtx webapi.DeleteContext) error {
 	logger.Info(ctx, "Deleted query execution [%v]", resp)
 
 	return nil
-}
-
-func writeOutput(ctx context.Context, tCtx webapi.StatusContext, externalLocation string) error {
-	taskTemplate, err := tCtx.TaskReader().Read(ctx)
-	if err != nil {
-		return err
-	}
-
-	resultsSchema, exists := taskTemplate.Interface.Outputs.Variables["results"]
-	if !exists {
-		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
-		return nil
-	}
-
-	return tCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(
-		&pb.LiteralMap{
-			Literals: map[string]*pb.Literal{
-				"results": {
-					Value: &pb.Literal_Scalar{
-						Scalar: &pb.Scalar{Value: &pb.Scalar_Schema{
-							Schema: &pb.Schema{
-								Uri:  externalLocation,
-								Type: resultsSchema.GetType().GetSchema(),
-							},
-						},
-						},
-					},
-				},
-			},
-		}, nil))
 }
 
 func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
