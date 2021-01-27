@@ -61,7 +61,7 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextRead
 		return nil, nil, err
 	}
 
-	queryInfo, err := extractQueryInfo(task)
+	queryInfo, err := extractQueryInfo(ctx, tCtx, task)
 	if err != nil {
 		return nil, nil, err
 	}

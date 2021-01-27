@@ -3,6 +3,8 @@ package athena
 import (
 	"context"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
+
 	"github.com/lyft/flyteplugins/go/tasks/errors"
 
 	pluginsIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -51,34 +53,80 @@ type QueryInfo struct {
 	Database    string
 }
 
-func extractQueryInfo(task *pb.TaskTemplate) (QueryInfo, error) {
+func validateHiveQuery(hiveQuery pluginsIdl.QuboleHiveJob) error {
+	if hiveQuery.Query == nil {
+		return errors.Errorf(errors.BadTaskSpecification, "Query is a required field.")
+	}
+
+	if len(hiveQuery.Query.Query) == 0 {
+		return errors.Errorf(errors.BadTaskSpecification, "Query statement is a required field.")
+	}
+
+	return nil
+}
+
+func validatePrestoQuery(prestoQuery pluginsIdl.PrestoQuery) error {
+	if len(prestoQuery.Statement) == 0 {
+		return errors.Errorf(errors.BadTaskSpecification, "Statement is a required field.")
+	}
+
+	return nil
+}
+
+func extractQueryInfo(ctx context.Context, tCtx webapi.TaskExecutionContextReader, task *pb.TaskTemplate) (QueryInfo, error) {
 	switch task.Type {
 	case "hive":
 		custom := task.GetCustom()
 		hiveQuery := pluginsIdl.QuboleHiveJob{}
 		err := utils.UnmarshalStructToPb(custom, &hiveQuery)
-		if err == nil && hiveQuery.Query != nil && len(hiveQuery.Query.Query) > 0 {
-			return QueryInfo{
-				QueryString: hiveQuery.Query.Query,
-				Database:    hiveQuery.ClusterLabel,
-			}, nil
+		if err != nil {
+			return QueryInfo{}, errors.Wrapf(ErrUser, err, "Expects a valid QubleHiveJob proto in custom field.")
 		}
 
-		return QueryInfo{}, errors.Errorf(ErrUser, "Expects a valid QuboleHiveJob proto in custom field.")
+		if err = validateHiveQuery(hiveQuery); err != nil {
+			return QueryInfo{}, errors.Wrapf(ErrUser, err, "Expects a valid QubleHiveJob proto in custom field.")
+		}
+
+		outputs, err := template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{
+			hiveQuery.Query.Query,
+			hiveQuery.ClusterLabel,
+		}, tCtx.InputReader(), tCtx.OutputWriter())
+		if err != nil {
+			return QueryInfo{}, err
+		}
+
+		return QueryInfo{
+			QueryString: outputs[0],
+			Database:    outputs[1],
+		}, nil
 	case "presto":
 		custom := task.GetCustom()
 		prestoQuery := pluginsIdl.PrestoQuery{}
 		err := utils.UnmarshalStructToPb(custom, &prestoQuery)
-		if err == nil && len(prestoQuery.Statement) > 0 {
-			return QueryInfo{
-				QueryString: prestoQuery.Statement,
-				Database:    prestoQuery.Schema,
-				Catalog:     prestoQuery.Catalog,
-				Workgroup:   prestoQuery.RoutingGroup,
-			}, nil
+		if err != nil {
+			return QueryInfo{}, errors.Wrapf(ErrUser, err, "Expects a valid PrestoQuery proto in custom field.")
 		}
 
-		return QueryInfo{}, errors.Errorf(ErrUser, "Expects a valid PrestoQuery proto in custom field.")
+		if err = validatePrestoQuery(prestoQuery); err != nil {
+			return QueryInfo{}, errors.Wrapf(ErrUser, err, "Expects a valid PrestoQuery proto in custom field.")
+		}
+
+		outputs, err := template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{
+			prestoQuery.RoutingGroup,
+			prestoQuery.Catalog,
+			prestoQuery.Schema,
+			prestoQuery.Statement,
+		}, tCtx.InputReader(), tCtx.OutputWriter())
+		if err != nil {
+			return QueryInfo{}, err
+		}
+
+		return QueryInfo{
+			Workgroup:   outputs[0],
+			Catalog:     outputs[1],
+			Database:    outputs[2],
+			QueryString: outputs[3],
+		}, nil
 	}
 
 	return QueryInfo{}, errors.Errorf(ErrUser, "Unexpected task type [%v].", task.Type)
