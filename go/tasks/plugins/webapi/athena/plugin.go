@@ -242,7 +242,7 @@ func NewPlugin(_ context.Context, cfg *Config, awsConfig *aws.Config, metricScop
 func init() {
 	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
 		ID:                 "athena",
-		SupportedTaskTypes: []core.TaskType{"hive"},
+		SupportedTaskTypes: []core.TaskType{"hive", "presto"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return NewPlugin(ctx, GetConfig(), aws.GetConfig(), iCtx.MetricsScope())
 		},
