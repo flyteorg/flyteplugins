@@ -56,14 +56,7 @@ func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionCo
 func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextReader) (resourceMeta webapi.ResourceMeta,
 	resource webapi.Resource, err error) {
 
-	// TODO: explain what this block does... and why...
-	// TODO: open an issue to add ReadCustom()
-	task, err := tCtx.TaskReader().Read(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	queryInfo, err := extractQueryInfo(ctx, tCtx, task)
+	queryInfo, err := extractQueryInfo(ctx, tCtx)
 	if err != nil {
 		return nil, nil, err
 	}

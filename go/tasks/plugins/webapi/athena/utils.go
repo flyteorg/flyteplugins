@@ -22,6 +22,11 @@ func writeOutput(ctx context.Context, tCtx webapi.StatusContext, externalLocatio
 		return err
 	}
 
+	if taskTemplate.Interface == nil || taskTemplate.Interface.Outputs == nil || taskTemplate.Interface.Outputs.Variables == nil {
+		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
+		return nil
+	}
+
 	resultsSchema, exists := taskTemplate.Interface.Outputs.Variables["results"]
 	if !exists {
 		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
@@ -73,7 +78,12 @@ func validatePrestoQuery(prestoQuery pluginsIdl.PrestoQuery) error {
 	return nil
 }
 
-func extractQueryInfo(ctx context.Context, tCtx webapi.TaskExecutionContextReader, task *pb.TaskTemplate) (QueryInfo, error) {
+func extractQueryInfo(ctx context.Context, tCtx webapi.TaskExecutionContextReader) (QueryInfo, error) {
+	task, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return QueryInfo{}, err
+	}
+
 	switch task.Type {
 	case "hive":
 		custom := task.GetCustom()

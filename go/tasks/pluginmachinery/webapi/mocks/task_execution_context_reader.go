@@ -48,6 +48,40 @@ func (_m *TaskExecutionContextReader) InputReader() io.InputReader {
 	return r0
 }
 
+type TaskExecutionContextReader_OutputWriter struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionContextReader_OutputWriter) Return(_a0 io.OutputWriter) *TaskExecutionContextReader_OutputWriter {
+	return &TaskExecutionContextReader_OutputWriter{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionContextReader) OnOutputWriter() *TaskExecutionContextReader_OutputWriter {
+	c := _m.On("OutputWriter")
+	return &TaskExecutionContextReader_OutputWriter{Call: c}
+}
+
+func (_m *TaskExecutionContextReader) OnOutputWriterMatch(matchers ...interface{}) *TaskExecutionContextReader_OutputWriter {
+	c := _m.On("OutputWriter", matchers...)
+	return &TaskExecutionContextReader_OutputWriter{Call: c}
+}
+
+// OutputWriter provides a mock function with given fields:
+func (_m *TaskExecutionContextReader) OutputWriter() io.OutputWriter {
+	ret := _m.Called()
+
+	var r0 io.OutputWriter
+	if rf, ok := ret.Get(0).(func() io.OutputWriter); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.OutputWriter)
+		}
+	}
+
+	return r0
+}
+
 type TaskExecutionContextReader_SecretManager struct {
 	*mock.Call
 }

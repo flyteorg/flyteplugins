@@ -54,8 +54,8 @@ func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionCo
 func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextReader) (resourceMeta webapi.ResourceMeta,
 	resource webapi.Resource, err error) {
 
-	// TODO: explain what this block does... and why...
-	// TODO: open an issue to add ReadCustom()
+	// The sample plugin assumes the generated TaskTemplate has persisted the desired workflow id in the Custom field.
+	// This allows the system to be extensible
 	task, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, nil, err
