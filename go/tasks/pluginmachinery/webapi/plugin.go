@@ -135,7 +135,7 @@ type AsyncPlugin interface {
 	Status(ctx context.Context, tCtx StatusContext) (phase pluginsCore.PhaseInfo, err error)
 }
 
-// AsyncPlugin defines the interface for plugins that call Web APIs synchronously.
+// SyncPlugin defines the interface for plugins that call Web APIs synchronously.
 type SyncPlugin interface {
 	// GetConfig gets the loaded plugin config. This will be used to control the interactions with the remote service.
 	GetConfig() PluginConfig
