@@ -40,7 +40,6 @@ func Test_allocateToken(t *testing.T) {
 
 	tNow := time.Now()
 	clck := testing2.NewFakeClock(tNow)
-	SetClockForTest(clck)
 
 	tID := &mocks2.TaskExecutionID{}
 	tID.OnGetGeneratedName().Return("abc")
@@ -66,7 +65,8 @@ func Test_allocateToken(t *testing.T) {
 
 	t.Run("no quota", func(t *testing.T) {
 		p := newPluginWithProperties(webapi.PluginConfig{ResourceQuotas: nil})
-		gotNewState, _, err := allocateToken(ctx, p, nil, nil, metrics)
+		a := newTokenAllocator(clck)
+		gotNewState, _, err := a.allocateToken(ctx, p, nil, nil, metrics)
 		assert.NoError(t, err)
 		if diff := deep.Equal(gotNewState, &State{
 			AllocationTokenRequestStartTime: tNow,
@@ -78,7 +78,8 @@ func Test_allocateToken(t *testing.T) {
 
 	t.Run("Allocation Successful", func(t *testing.T) {
 		p.OnResourceRequirements(ctx, tCtx).Return("ns", core.ResourceConstraintsSpec{}, nil)
-		gotNewState, _, err := allocateToken(ctx, p, tCtx, state, metrics)
+		a := newTokenAllocator(clck)
+		gotNewState, _, err := a.allocateToken(ctx, p, tCtx, state, metrics)
 		assert.NoError(t, err)
 		if diff := deep.Equal(gotNewState, &State{
 			AllocationTokenRequestStartTime: tNow,
@@ -104,7 +105,8 @@ func Test_allocateToken(t *testing.T) {
 		tCtx.OnResourceManager().Return(rm)
 
 		p.OnResourceRequirements(ctx, tCtx).Return("ns", core.ResourceConstraintsSpec{}, nil)
-		gotNewState, _, err := allocateToken(ctx, p, tCtx, state, metrics)
+		a := newTokenAllocator(clck)
+		gotNewState, _, err := a.allocateToken(ctx, p, tCtx, state, metrics)
 		assert.NoError(t, err)
 		if diff := deep.Equal(gotNewState, &State{
 			AllocationTokenRequestStartTime: tNow,
@@ -121,7 +123,6 @@ func Test_releaseToken(t *testing.T) {
 
 	tNow := time.Now()
 	clck := testing2.NewFakeClock(tNow)
-	SetClockForTest(clck)
 
 	tID := &mocks2.TaskExecutionID{}
 	tID.OnGetGeneratedName().Return("abc")
@@ -145,5 +146,6 @@ func Test_releaseToken(t *testing.T) {
 	})
 	p.OnResourceRequirements(ctx, tCtx).Return("ns", core.ResourceConstraintsSpec{}, nil)
 
-	assert.NoError(t, releaseToken(ctx, p, tCtx, metrics))
+	a := newTokenAllocator(clck)
+	assert.NoError(t, a.releaseToken(ctx, p, tCtx, metrics))
 }

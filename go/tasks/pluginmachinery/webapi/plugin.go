@@ -3,6 +3,8 @@
 // etc.). By implementing either the AsyncPlugin or SyncPlugin interfaces, the users of the Flyte system can then
 // declare tasks of the handled task type in their workflows and the engine (Propeller) will route these tasks to your
 // plugin to interact with the remote system.
+//
+// A sample skeleton plugin is defined in the example directory.
 package webapi
 
 import (
@@ -124,6 +126,13 @@ type AsyncPlugin interface {
 	// Get the resource that matches the keys. If the plugin hits any failure, it should stop and return the failure.
 	// This API will be called asynchronously and periodically to update the set of tasks currently in progress. It's
 	// acceptable if this API is blocking since it'll be called from a background go-routine.
+	// Best practices:
+	//  1) Instead of returning the entire response object retrieved from the WebAPI, construct a smaller object that
+	//     has enough information to construct the status/phase, error and/or output.
+	//  2) This object will NOT be serialized/marshaled. It's, therefore, not a requirement to make it so.
+	//  3) There is already client-side throttling in place. If the WebAPI returns a throttling error, you should return
+	//     it as is so that the appropriate metrics are updated and the system administrator can update throttling
+	//     params accordingly.
 	Get(ctx context.Context, tCtx GetContext) (latest Resource, err error)
 
 	// Delete the object in the remote service using the resource key. Flyte will call this API at least once. If the

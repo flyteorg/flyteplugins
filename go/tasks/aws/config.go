@@ -30,12 +30,10 @@ var (
 
 // Config section for AWS Package
 type Config struct {
-	Region               string            `json:"region" pflag:",AWS Region to connect to."`
-	AccountID            string            `json:"accountId" pflag:",AWS Account Identifier."`
-	Retries              int               `json:"retries" pflag:",Number of retries."`
-	LogLevel             aws.ClientLogMode `json:"logLevel" pflag:"-,Defines the Sdk Log Level."`
-	MaxErrorStringLength int               `json:"maxErrorLength" pflag:",Maximum size of error messages."`
-	CatalogCacheTimeout  config.Duration   `json:"catalog-timeout" pflag:"\"5s\",Timeout duration for checking catalog for all batch tasks"`
+	Region    string            `json:"region" pflag:",AWS Region to connect to."`
+	AccountID string            `json:"accountId" pflag:",AWS Account Identifier."`
+	Retries   int               `json:"retries" pflag:",Number of retries."`
+	LogLevel  aws.ClientLogMode `json:"logLevel" pflag:"-,Defines the Sdk Log Level."`
 }
 
 type RateLimiterConfig struct {

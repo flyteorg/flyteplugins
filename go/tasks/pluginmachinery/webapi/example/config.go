@@ -38,8 +38,6 @@ var (
 				Value: 50,
 			},
 		},
-
-		AdminProtocolAndHost: "https://localhost:30084/console/",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("admin", &defaultConfig)
@@ -48,9 +46,8 @@ var (
 // The config object for this plugin.
 type Config struct {
 	// Contains the default configs needed for the webapi base implementation.
-	WebAPI               webapi.PluginConfig          `json:"webApi" pflag:",Defines config for the base WebAPI plugin."`
-	ResourceConstraints  core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
-	AdminProtocolAndHost string                       `json:"adminUrlTemplate" pflag:",Defines the user facing url for admin service (e.g. https://myadmin/)"`
+	WebAPI              webapi.PluginConfig          `json:"webApi" pflag:",Defines config for the base WebAPI plugin."`
+	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 }
 
 func GetConfig() *Config {

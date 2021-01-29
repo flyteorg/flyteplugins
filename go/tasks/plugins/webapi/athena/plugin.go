@@ -181,7 +181,7 @@ func createTaskInfo(queryID string, cfg awsSdk.Config) *core.TaskInfo {
 					cfg.Region,
 					cfg.Region,
 					queryID),
-				Name: "Athena Query History",
+				Name: "Athena Query Console",
 			},
 		},
 	}

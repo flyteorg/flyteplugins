@@ -19,8 +19,7 @@ func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionCo
 		return nil, core.PhaseInfo{}, err
 	}
 
-	// If we succeed, then store the created resource name, and update our state. Also, add to the
-	// AutoRefreshCache so we start getting updates.
+	// If the plugin also returned the created resource, check to see if it's already in a terminal state.
 	logger.Infof(ctx, "Created Resource Name [%s] and Meta [%v]", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), rMeta)
 	if r != nil {
 		phase, err := p.Status(ctx, newPluginContext(rMeta, r, "", tCtx))
@@ -36,13 +35,14 @@ func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionCo
 		}
 	}
 
+	// Store the created resource name, and update our state.
 	state.ResourceMeta = rMeta
 	state.Phase = PhaseResourcesCreated
 	cacheItem := CacheItem{
 		State: *state,
 	}
 
-	// The first time we put it in the cache, we know it won't have succeeded so we don't need to look at it
+	// Also, add to the AutoRefreshCache so we start getting updates through background refresh.
 	_, err = cache.GetOrCreate(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), cacheItem)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to add item to cache. Error: %v", err)

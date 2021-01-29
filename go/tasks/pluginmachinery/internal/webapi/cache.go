@@ -126,10 +126,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 	return resp, nil
 }
 
-// We need some way to translate results we get from Client, into a plugin phase
-// NB: This function should only return plugin phases that are greater than (">") phases that represent states before
-//     the query was kicked off. That is, it will never make sense to go back to PhaseNotStarted, after we've
-//     submitted the request through Client.
+// ToPluginPhase translates the more granular task phase into the webapi plugin phase.
 func ToPluginPhase(s core.Phase) (Phase, error) {
 	switch s {
 

@@ -1,18 +1,22 @@
 package webapi
 
 import (
+	"time"
+
 	"github.com/lyft/flytestdlib/promutils"
 	"github.com/lyft/flytestdlib/promutils/labeled"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Metrics struct {
-	Scope                 promutils.Scope
-	ResourceReleased      labeled.Counter
-	ResourceReleaseFailed labeled.Counter
-	AllocationGranted     labeled.Counter
-	AllocationNotGranted  labeled.Counter
-	ResourceWaitTime      prometheus.Summary
+	Scope                   promutils.Scope
+	ResourceReleased        labeled.Counter
+	ResourceReleaseFailed   labeled.Counter
+	AllocationGranted       labeled.Counter
+	AllocationNotGranted    labeled.Counter
+	ResourceWaitTime        prometheus.Summary
+	SucceededUnmarshalState labeled.StopWatch
+	FailedUnmarshalState    labeled.Counter
 }
 
 var (
@@ -32,5 +36,9 @@ func newMetrics(scope promutils.Scope) Metrics {
 			"Allocation request did not fail but not granted", scope, labeled.EmitUnlabeledMetric),
 		ResourceWaitTime: scope.MustNewSummaryWithOptions("resource_wait_time", "Duration the execution has been waiting for a resource allocation token",
 			promutils.SummaryOptions{Objectives: tokenAgeObjectives}),
+		SucceededUnmarshalState: labeled.NewStopWatch("unmarshal_state_success", "Successfully unmarshaled state",
+			time.Millisecond, scope),
+		FailedUnmarshalState: labeled.NewCounter("unmarshal_state_failed",
+			"Failed to unmarshal state", scope, labeled.EmitUnlabeledMetric),
 	}
 }
