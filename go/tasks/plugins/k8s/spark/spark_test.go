@@ -420,7 +420,6 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	assert.Equal(t, len(sparkApp.Spec.Driver.EnvVars["FLYTE_MAX_ATTEMPTS"]), 1)
 
-
 	// Case 2: Driver/Executor request cores set.
 	dummyConfWithRequest := make(map[string]string)
 
@@ -440,7 +439,6 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	assert.Equal(t, dummyConfWithRequest["spark.kubernetes.driver.request.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.driver.limit.cores"])
 	assert.Equal(t, dummyConfWithRequest["spark.kubernetes.executor.request.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.executor.limit.cores"])
-
 
 	// Case 3: Interruptible False
 	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
