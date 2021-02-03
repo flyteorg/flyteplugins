@@ -137,20 +137,20 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 
 	// Set pod limits.
-	if sparkConfig["spark.kubernetes.driver.limit.cores"] == "" {
+	if len(sparkConfig["spark.kubernetes.driver.limit.cores"]) == 0 {
 		// spark.kubernetes.driver.request.cores takes precedence over spark.driver.cores
-		if sparkConfig["spark.kubernetes.driver.request.cores"] != "" {
+		if len(sparkConfig["spark.kubernetes.driver.request.cores"]) != 0 {
 			sparkConfig["spark.kubernetes.driver.limit.cores"] = sparkConfig["spark.kubernetes.driver.request.cores"]
-		} else if sparkConfig["spark.driver.cores"] != "" {
+		} else if len(sparkConfig["spark.driver.cores"]) != 0 {
 			sparkConfig["spark.kubernetes.driver.limit.cores"] = sparkConfig["spark.driver.cores"]
 		}
 	}
 
-	if sparkConfig["spark.kubernetes.executor.limit.cores"] == "" {
+	if len(sparkConfig["spark.kubernetes.executor.limit.cores"]) == 0 {
 		// spark.kubernetes.executor.request.cores takes precedence over spark.executor.cores
-		if sparkConfig["spark.kubernetes.executor.request.cores"] != "" {
+		if len(sparkConfig["spark.kubernetes.executor.request.cores"]) != 0 {
 			sparkConfig["spark.kubernetes.executor.limit.cores"] = sparkConfig["spark.kubernetes.executor.request.cores"]
-		} else if sparkConfig["spark.executor.cores"] != "" {
+		} else if len(sparkConfig["spark.executor.cores"]) != 0 {
 			sparkConfig["spark.kubernetes.executor.limit.cores"] = sparkConfig["spark.executor.cores"]
 		}
 	}
