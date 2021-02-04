@@ -3,9 +3,10 @@ package tensorflow
 import (
 	"context"
 	"fmt"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 	"testing"
 	"time"
+
+	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	"github.com/lyft/flyteplugins/go/tasks/logs"

@@ -1,22 +1,23 @@
 package common
 
 import (
+	"testing"
+	"time"
+
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	"testing"
-	"time"
 )
 
 func TestExtractCurrentCondition(t *testing.T) {
 	jobCreated := commonOp.JobCondition{
-		Type:    commonOp.JobCreated,
-		Status:  corev1.ConditionTrue,
+		Type:   commonOp.JobCreated,
+		Status: corev1.ConditionTrue,
 	}
 	jobRunningActive := commonOp.JobCondition{
-		Type:    commonOp.JobRunning,
-		Status:  corev1.ConditionFalse,
+		Type:   commonOp.JobRunning,
+		Status: corev1.ConditionFalse,
 	}
 	jobConditions := []commonOp.JobCondition{
 		jobCreated,
@@ -29,7 +30,7 @@ func TestExtractCurrentCondition(t *testing.T) {
 
 func TestGetPhaseInfo(t *testing.T) {
 	jobCreated := commonOp.JobCondition{
-		Type:    commonOp.JobCreated,
+		Type: commonOp.JobCreated,
 	}
 	taskPhase, err := GetPhaseInfo(jobCreated, time.Now(), pluginsCore.TaskInfo{})
 	assert.NoError(t, err)
@@ -38,7 +39,7 @@ func TestGetPhaseInfo(t *testing.T) {
 	assert.Nil(t, err)
 
 	jobSucceeded := commonOp.JobCondition{
-		Type:    commonOp.JobSucceeded,
+		Type: commonOp.JobSucceeded,
 	}
 	taskPhase, err = GetPhaseInfo(jobSucceeded, time.Now(), pluginsCore.TaskInfo{})
 	assert.NoError(t, err)
@@ -47,7 +48,7 @@ func TestGetPhaseInfo(t *testing.T) {
 	assert.Nil(t, err)
 
 	jobFailed := commonOp.JobCondition{
-		Type:    commonOp.JobFailed,
+		Type: commonOp.JobFailed,
 	}
 	taskPhase, err = GetPhaseInfo(jobFailed, time.Now(), pluginsCore.TaskInfo{})
 	assert.NoError(t, err)
@@ -56,7 +57,7 @@ func TestGetPhaseInfo(t *testing.T) {
 	assert.Nil(t, err)
 
 	jobRestarting := commonOp.JobCondition{
-		Type:    commonOp.JobRestarting,
+		Type: commonOp.JobRestarting,
 	}
 	taskPhase, err = GetPhaseInfo(jobRestarting, time.Now(), pluginsCore.TaskInfo{})
 	assert.NoError(t, err)

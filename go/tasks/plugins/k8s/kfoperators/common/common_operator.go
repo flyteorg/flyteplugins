@@ -2,6 +2,9 @@ package common
 
 import (
 	"fmt"
+	"sort"
+	"time"
+
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	logUtils "github.com/lyft/flyteidl/clients/go/coreutils/logs"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -9,13 +12,11 @@ import (
 	"github.com/lyft/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
 	v1 "k8s.io/api/core/v1"
-	"sort"
-	"time"
 )
 
 const (
 	TensorflowTaskType = "tensorflow"
-	PytorchTaskType = "pytorch"
+	PytorchTaskType    = "pytorch"
 )
 
 func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
@@ -33,7 +34,7 @@ func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.Jo
 }
 
 func GetPhaseInfo(currentCondition commonOp.JobCondition, occurredAt time.Time,
-	taskPhaseInfo pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error){
+	taskPhaseInfo pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
 	switch currentCondition.Type {
 	case commonOp.JobCreated:
 		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
@@ -122,4 +123,3 @@ func OverrideDefaultContainerName(taskCtx pluginsCore.TaskExecutionContext, podS
 		}
 	}
 }
-
