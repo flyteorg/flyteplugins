@@ -20,7 +20,7 @@ const (
 )
 
 func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
-	sort.Slice(jobConditions[:], func(i, j int) bool {
+	sort.Slice(jobConditions, func(i, j int) bool {
 		return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
 	})
 
