@@ -2,7 +2,6 @@ package pytorch
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
@@ -122,22 +121,7 @@ func (pytorchOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginCont
 		CustomInfo: statusDetails,
 	}
 
-	switch currentCondition.Type {
-	case commonOp.JobCreated:
-		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
-	case commonOp.JobRunning:
-		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &taskPhaseInfo), nil
-	case commonOp.JobSucceeded:
-		return pluginsCore.PhaseInfoSuccess(&taskPhaseInfo), nil
-	case commonOp.JobFailed:
-		details := fmt.Sprintf("Job failed:\n\t%v - %v", currentCondition.Reason, currentCondition.Message)
-		return pluginsCore.PhaseInfoRetryableFailure(flyteerr.DownstreamSystemError, details, &taskPhaseInfo), nil
-	case commonOp.JobRestarting:
-		details := fmt.Sprintf("Job failed:\n\t%v - %v", currentCondition.Reason, currentCondition.Message)
-		return pluginsCore.PhaseInfoRetryableFailure(flyteerr.RuntimeFailure, details, &taskPhaseInfo), nil
-	}
-
-	return pluginsCore.PhaseInfoUndefined, nil
+	return common.GetPhaseInfo(currentCondition, occurredAt, taskPhaseInfo)
 }
 
 func init() {

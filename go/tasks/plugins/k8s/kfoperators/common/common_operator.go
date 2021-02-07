@@ -5,8 +5,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/tasklog"
+
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
-	logUtils "github.com/lyft/flyteidl/clients/go/coreutils/logs"
 	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
 	flyteerr "github.com/lyft/flyteplugins/go/tasks/errors"
 	"github.com/lyft/flyteplugins/go/tasks/logs"
@@ -20,13 +21,15 @@ const (
 )
 
 func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
-	sort.Slice(jobConditions, func(i, j int) bool {
-		return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
-	})
+	if jobConditions != nil {
+		sort.Slice(jobConditions, func(i, j int) bool {
+			return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
+		})
 
-	for _, jc := range jobConditions {
-		if jc.Status == v1.ConditionTrue {
-			return jc, nil
+		for _, jc := range jobConditions {
+			if jc.Status == v1.ConditionTrue {
+				return jc, nil
+			}
 		}
 	}
 
@@ -55,53 +58,67 @@ func GetPhaseInfo(currentCondition commonOp.JobCondition, occurredAt time.Time,
 
 func GetLogs(taskType string, name string, namespace string,
 	workersCount int32, psReplicasCount int32, chiefReplicasCount int32) ([]*core.TaskLog, error) {
-	// If kubeClient was available, it would be better to use
-	// https://github.com/lyft/flyteplugins/blob/209c52d002b4e6a39be5d175bc1046b7e631c153/go/tasks/logs/logging_utils.go#L12
-	makeTaskLog := func(appName, appNamespace, suffix, url string) (core.TaskLog, error) {
-		return logUtils.NewKubernetesLogPlugin(url).GetTaskLog(
-			appName+"-"+suffix,
-			appNamespace,
-			"",
-			"",
-			suffix+" logs (via Kubernetes)")
-	}
-
-	var taskLogs []*core.TaskLog
+	taskLogs := make([]*core.TaskLog, 0, 10)
 
 	logConfig := logs.GetLogConfig()
+	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
+
+	if err != nil {
+		return nil, err
+	}
+
+	if logPlugin == nil {
+		return nil, nil
+	}
+
 	if logConfig.IsKubernetesEnabled {
 
 		if taskType == PytorchTaskType {
-			masterTaskLog, masterErr := makeTaskLog(name, namespace, "master-0", logConfig.KubernetesURL)
+			masterTaskLog, masterErr := logPlugin.GetTaskLogs(
+				tasklog.Input{
+					PodName:   name + "-master-0",
+					Namespace: namespace,
+					LogName:   "master",
+				},
+			)
 			if masterErr != nil {
 				return nil, masterErr
 			}
-			taskLogs = append(taskLogs, &masterTaskLog)
+			taskLogs = append(taskLogs, masterTaskLog.TaskLogs...)
 		}
 
 		// get all workers log
 		for workerIndex := int32(0); workerIndex < workersCount; workerIndex++ {
-			workerLog, err := makeTaskLog(name, namespace, fmt.Sprintf("worker-%d", workerIndex), logConfig.KubernetesURL)
+			workerLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+				PodName:   name + fmt.Sprintf("-worker-%d", workerIndex),
+				Namespace: namespace,
+			})
 			if err != nil {
 				return nil, err
 			}
-			taskLogs = append(taskLogs, &workerLog)
+			taskLogs = append(taskLogs, workerLog.TaskLogs...)
 		}
 		// get all parameter servers logs
 		for psReplicaIndex := int32(0); psReplicaIndex < psReplicasCount; psReplicaIndex++ {
-			psReplicaLog, err := makeTaskLog(name, namespace, fmt.Sprintf("psReplica-%d", psReplicaIndex), logConfig.KubernetesURL)
+			psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+				PodName:   name + fmt.Sprintf("psReplica-%d", psReplicaIndex),
+				Namespace: namespace,
+			})
 			if err != nil {
 				return nil, err
 			}
-			taskLogs = append(taskLogs, &psReplicaLog)
+			taskLogs = append(taskLogs, psReplicaLog.TaskLogs...)
 		}
+		// get chief worker log, and the max number of chief worker is 1
 		if chiefReplicasCount != 0 {
-			// get chief worker log, and the max number of chief worker is 1
-			chiefReplicaLog, err := makeTaskLog(name, namespace, fmt.Sprintf("chiefReplica-%d", 0), logConfig.KubernetesURL)
+			chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+				PodName:   name + fmt.Sprintf("chiefReplica-%d", 0),
+				Namespace: namespace,
+			})
 			if err != nil {
 				return nil, err
 			}
-			taskLogs = append(taskLogs, &chiefReplicaLog)
+			taskLogs = append(taskLogs, chiefReplicaLog.TaskLogs...)
 		}
 	}
 	return taskLogs, nil
