@@ -101,7 +101,7 @@ func GetLogs(taskType string, name string, namespace string,
 		// get all parameter servers logs
 		for psReplicaIndex := int32(0); psReplicaIndex < psReplicasCount; psReplicaIndex++ {
 			psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-				PodName:   name + fmt.Sprintf("psReplica-%d", psReplicaIndex),
+				PodName:   name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
 				Namespace: namespace,
 			})
 			if err != nil {
@@ -112,7 +112,7 @@ func GetLogs(taskType string, name string, namespace string,
 		// get chief worker log, and the max number of chief worker is 1
 		if chiefReplicasCount != 0 {
 			chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-				PodName:   name + fmt.Sprintf("chiefReplica-%d", 0),
+				PodName:   name + fmt.Sprintf("-chiefReplica-%d", 0),
 				Namespace: namespace,
 			})
 			if err != nil {
