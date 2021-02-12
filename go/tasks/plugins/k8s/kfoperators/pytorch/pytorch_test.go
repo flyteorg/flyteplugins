@@ -333,7 +333,7 @@ func TestGetTaskPhase(t *testing.T) {
 
 	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobRestarting))
 	assert.NoError(t, err)
-	assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskPhase.Phase())
+	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 }
