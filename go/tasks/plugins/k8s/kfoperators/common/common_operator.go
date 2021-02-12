@@ -70,7 +70,6 @@ func GetLogs(taskType string, name string, namespace string,
 		return nil, nil
 	}
 
-
 	if taskType == PytorchTaskType {
 		masterTaskLog, masterErr := logPlugin.GetTaskLogs(
 			tasklog.Input{
