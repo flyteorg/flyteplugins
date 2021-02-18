@@ -154,13 +154,13 @@ func (*FakeKubeClient) Status() client.StatusWriter {
 
 // Patch patches the given obj in the Kubernetes cluster. obj must be a
 // struct pointer so that obj can be updated with the content returned by the Server.
-func (*FakeKubeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (*FakeKubeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	panic("implement me")
 
 }
 
 // DeleteAllOf deletes all objects of the given type matching the given options.
-func (*FakeKubeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+func (*FakeKubeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	panic("implement me")
 }
 

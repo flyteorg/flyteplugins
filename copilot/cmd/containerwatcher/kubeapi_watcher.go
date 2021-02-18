@@ -24,7 +24,7 @@ type kubeAPIWatcher struct {
 
 func (k kubeAPIWatcher) wait(ctx context.Context, info ContainerInformation, f func(ctx context.Context, pod *v13.Pod) (bool, error)) error {
 	s := fields.OneTermEqualSelector("metadata.name", info.PodName)
-	watcher, err := k.coreClient.Pods(info.Namespace).Watch(v12.ListOptions{
+	watcher, err := k.coreClient.Pods(info.Namespace).Watch(ctx, v12.ListOptions{
 		Watch:         true,
 		FieldSelector: s.String(),
 	})
