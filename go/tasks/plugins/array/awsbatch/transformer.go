@@ -71,8 +71,18 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 		return nil, err
 	}
 
+	var inputReader io.InputReader
+	if taskTemplate.GetTaskTypeVersion() == 0 {
+		// Prior to task type version == 1, dynamic type tasks (including array tasks) would write input files for each
+		// individual array task instance. In this case we use a modified input reader to only pass in the parent input
+		// directory.
+		inputReader = arrayJobInputReader{tCtx.InputReader()}
+	} else {
+		inputReader = tCtx.InputReader()
+	}
+
 	args, err := template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), taskTemplate.GetContainer().GetArgs(),
-		arrayJobInputReader{tCtx.InputReader()}, tCtx.OutputWriter())
+		inputReader, tCtx.OutputWriter())
 	taskTemplate.GetContainer().GetEnv()
 	if err != nil {
 		return nil, err
