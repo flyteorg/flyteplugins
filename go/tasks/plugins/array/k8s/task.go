@@ -89,6 +89,9 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	if taskTemplate.Version == 1 {
 		inputReader = tCtx.InputReader()
 	} else {
+		// Prior to task type version == 1, dynamic type tasks (including array tasks) would write input files for each
+		// individual array task instance. In this case we use a modified input reader to only pass in the parent input
+		// directory.
 		inputReader = arrayJobInputReader{tCtx.InputReader()}
 	}
 
