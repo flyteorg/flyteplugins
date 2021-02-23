@@ -86,13 +86,12 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 		return LaunchError, errors2.Wrapf(ErrGetTaskTypeVersion, err, "Missing task template")
 	}
 
-	switch taskTemplate.GetTaskTypeVersion() {
-	case 0:
+	if taskTemplate.GetTaskTypeVersion() == 0 {
 		// Prior to task type version == 1, dynamic type tasks (including array tasks) would write input files for each
 		// individual array task instance. In this case we use a modified input reader to only pass in the parent input
 		// directory.
 		inputReader = arrayJobInputReader{tCtx.InputReader()}
-	default:
+	} else {
 		inputReader = tCtx.InputReader()
 	}
 
