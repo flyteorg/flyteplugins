@@ -3,6 +3,7 @@ package array
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 
 	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
@@ -37,14 +38,39 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Extract the custom plugin pb
-	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom())
+	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
 	if err != nil {
 		return state, err
 	}
 
 	// Save this in the state
-	state = state.SetOriginalArraySize(arrayJob.Size)
-	state = state.SetOriginalMinSuccesses(arrayJob.MinSuccesses)
+	if taskTemplate.TaskTypeVersion == 0 {
+		state = state.SetOriginalArraySize(arrayJob.Size)
+		state = state.SetOriginalMinSuccesses(arrayJob.GetMinSuccesses())
+	} else {
+		inputs, err := tCtx.InputReader().Get(ctx)
+		if err != nil {
+			return state, errors.Errorf(errors.MetadataAccessFailed, "Could not read inputs and therefore failed to determine array job size")
+		}
+		size := 0
+		for _, literal := range inputs.Literals {
+			if literal.GetCollection() != nil {
+				size = len(literal.GetCollection().Literals)
+				break
+			}
+		}
+		if size == 0 {
+			// Something is wrong, we should have inferred the array size when it is not specified by the size of the
+			// input collection (for any input value). Non-collection type inputs are not currently supported for
+			// taskTypeVersion > 0.
+			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputs")
+		}
+		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccessRatio()) * float64(size))
+
+		state = state.SetOriginalArraySize(int64(size))
+		// We can cast the min successes because we already computed the ceiling value from the ratio
+		state = state.SetOriginalMinSuccesses(int64(minSuccesses))
+	}
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
 	if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
@@ -150,7 +176,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	// Extract the custom plugin pb
-	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom())
+	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
 	if err != nil {
 		return state, err
 	} else if arrayJob == nil {

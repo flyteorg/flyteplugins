@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
@@ -77,24 +75,13 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	})
 
 	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
-	var inputReader io.InputReader
-
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return LaunchError, errors2.Wrapf(ErrGetTaskTypeVersion, err, "Unable to read task template")
 	} else if taskTemplate == nil {
 		return LaunchError, errors2.Wrapf(ErrGetTaskTypeVersion, err, "Missing task template")
 	}
-
-	if taskTemplate.GetTaskTypeVersion() == 0 {
-		// Prior to task type version == 1, dynamic type tasks (including array tasks) would write input files for each
-		// individual array task instance. In this case we use a modified input reader to only pass in the parent input
-		// directory.
-		inputReader = arrayJobInputReader{tCtx.InputReader()}
-	} else {
-		inputReader = tCtx.InputReader()
-	}
-
+	inputReader := array.GetInputReader(tCtx, taskTemplate)
 	pod.Spec.Containers[0].Args, err = template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), args,
 		inputReader, tCtx.OutputWriter())
 	if err != nil {

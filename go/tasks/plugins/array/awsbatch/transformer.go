@@ -5,14 +5,13 @@ import (
 	"sort"
 	"time"
 
+	"github.com/lyft/flyteplugins/go/tasks/plugins/array"
+
 	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/golang/protobuf/ptypes/duration"
 
 	"k8s.io/apimachinery/pkg/api/resource"
-
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flytestdlib/storage"
 
 	config2 "github.com/lyft/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
@@ -30,16 +29,6 @@ const (
 	ArrayJobIndex       = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	arrayJobIDFormatter = "%v:%v"
 )
-
-// A proxy inputreader that overrides the inputpath to be the inputpathprefix for array jobs
-type arrayJobInputReader struct {
-	io.InputReader
-}
-
-// We override the inputpath to return the prefix path for array jobs
-func (i arrayJobInputReader) GetInputPath() storage.DataReference {
-	return i.GetInputPrefixPath()
-}
 
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
@@ -70,17 +59,7 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 	if err != nil {
 		return nil, err
 	}
-
-	var inputReader io.InputReader
-	if taskTemplate.GetTaskTypeVersion() == 0 {
-		// Prior to task type version == 1, dynamic type tasks (including array tasks) would write input files for each
-		// individual array task instance. In this case we use a modified input reader to only pass in the parent input
-		// directory.
-		inputReader = arrayJobInputReader{tCtx.InputReader()}
-	} else {
-		inputReader = tCtx.InputReader()
-	}
-
+	inputReader := array.GetInputReader(tCtx, taskTemplate)
 	args, err := template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), taskTemplate.GetContainer().GetArgs(),
 		inputReader, tCtx.OutputWriter())
 	taskTemplate.GetContainer().GetEnv()
