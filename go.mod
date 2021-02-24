@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
-	github.com/lyft/flyteidl v0.18.13
+	github.com/lyft/flyteidl v0.18.14-0.20210224014048-73cf22d60fd5
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
@@ -47,7 +47,6 @@ require (
 
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
-	github.com/lyft/flyteidl => /Users/katrina/go/src/github.com/flyteorg/flyteidl
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
