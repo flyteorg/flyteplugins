@@ -43,6 +43,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, err
 	}
 
+	var determinedSize int64
+
 	// Save this in the state
 	if taskTemplate.TaskTypeVersion == 0 {
 		state = state.SetOriginalArraySize(arrayJob.Size)
@@ -72,6 +74,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		state = state.SetOriginalArraySize(int64(size))
 		// We can cast the min successes because we already computed the ceiling value from the ratio
 		state = state.SetOriginalMinSuccesses(int64(minSuccesses))
+
+		determinedSize = int64(size)
 	}
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
@@ -79,8 +83,13 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		logger.Infof(ctx, "Task is not discoverable, moving to launch phase...")
 		// Set an all set indexes to cache. This task won't try to write to catalog anyway.
 		state = state.SetIndexesToCache(arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJob.Size)), uint(arrayJob.Size)))
-		state = state.SetExecutionArraySize(int(arrayJob.Size))
 		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion).SetReason("Task is not discoverable.")
+
+		if taskTemplate.TaskTypeVersion == 0 {
+			state = state.SetExecutionArraySize(int(arrayJob.Size))
+		} else {
+			state.SetExecutionArraySize(int(determinedSize))
+		}
 		return state, nil
 	}
 
@@ -116,7 +125,11 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			logger.Warnf(ctx, "Failing to lookup catalog. Will move on to launching the task. Error: %v", err)
 
 			state = state.SetIndexesToCache(arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJob.Size)), uint(arrayJob.Size)))
-			state = state.SetExecutionArraySize(int(arrayJob.Size))
+			if taskTemplate.TaskTypeVersion == 0 {
+				state = state.SetExecutionArraySize(int(arrayJob.Size))
+			} else {
+				state.SetExecutionArraySize(int(determinedSize))
+			}
 			state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion).SetReason(fmt.Sprintf("Skipping cache check due to err [%v]", err))
 			return state, nil
 		}
@@ -129,7 +142,13 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		cachedResults := resp.GetCachedResults()
 		state = state.SetIndexesToCache(arrayCore.InvertBitSet(cachedResults, uint(arrayJob.Size)))
-		state = state.SetExecutionArraySize(int(arrayJob.Size) - resp.GetCachedCount())
+		var arrayJobSize int64
+		if taskTemplate.TaskTypeVersion == 0 {
+			arrayJobSize = arrayJob.Size
+		} else {
+			arrayJobSize = determinedSize
+		}
+		state = state.SetExecutionArraySize(int(arrayJobSize) - resp.GetCachedCount())
 
 		// If all the sub-tasks are actually done, then we can just move on.
 		if resp.GetCachedCount() == int(arrayJob.Size) {
