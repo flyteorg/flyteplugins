@@ -75,6 +75,7 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 			}
 
 			if executionError == nil && output != nil {
+				logger.Infof(ctx, "[katrina remove] appending [%+v] to [%+v]", output, finalOutputs)
 				appendSubTaskOutput(finalOutputs, output, int64(i.finalPhases.ItemsCount))
 				continue
 			}
