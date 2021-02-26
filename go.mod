@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
-	github.com/lyft/flyteidl v0.18.14-0.20210224014048-73cf22d60fd5
+	github.com/lyft/flyteidl v0.18.14
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
