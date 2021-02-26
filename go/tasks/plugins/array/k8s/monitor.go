@@ -112,6 +112,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		var monitorResult MonitorResult
 		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
+		logger.Infof(ctx, "[remove katrina] After calling monitor, task log links are %+v", task.LogLinks)
+		logger.Infof(ctx, "[remove katrina] After calling monitor, log links are %+v", logLinks)
 
 		if monitorResult != MonitorSuccess {
 			if err != nil {
