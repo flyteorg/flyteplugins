@@ -106,8 +106,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		err = nil
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
+
 		nextState, logLinks, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), pluginState)
+
+		logger.Infof(ctx, "[remove katrina] In PhaseCheckingSubTaskExecutions, assigning logLinks [%+v]", logLinks)
 
 	case arrayCore.PhaseAssembleFinalOutput:
 		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, pluginState)
