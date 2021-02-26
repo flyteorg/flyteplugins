@@ -70,7 +70,6 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		}
 		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccessRatio()) * float64(size))
 
-
 		logger.Debugf(ctx, "Computed state: size [%d] and minSuccesses [%d]", int64(size), int64(minSuccesses))
 		state = state.SetOriginalArraySize(int64(size))
 		// We can cast the min successes because we already computed the ceiling value from the ratio
