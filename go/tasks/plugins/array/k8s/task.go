@@ -138,8 +138,6 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	if phaseInfo.Info() != nil {
 		t.LogLinks = append(t.LogLinks, phaseInfo.Info().Logs...)
 	}
-	logger.Infof(ctx, "[remove katrina] adding log links from phaseInfo [%+v] -> now [%+v]",
-		phaseInfo.Info(), t.LogLinks)
 
 	if phaseInfo.Err() != nil {
 		t.MessageCollector.Collect(t.ChildIdx, phaseInfo.Err().String())
