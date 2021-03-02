@@ -92,6 +92,15 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 	sparkEnvVars["FLYTE_MAX_ATTEMPTS"] = strconv.Itoa(int(taskCtx.TaskExecutionMetadata().GetMaxAttempts()))
 
+	serviceAccountName := flytek8s.GetServiceAccountNameFromSecurityContext(taskCtx.TaskExecutionMetadata().GetSecurityContext())
+
+	if len(serviceAccountName) == 0 {
+		serviceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
+	}
+
+	if len(serviceAccountName) == 0 {
+		serviceAccountName = sparkTaskType
+	}
 	driverSpec := sparkOp.DriverSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
 			Annotations: annotations,
@@ -99,7 +108,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			EnvVars:     sparkEnvVars,
 			Image:       &container.Image,
 		},
-		ServiceAccount: &sparkTaskType,
+		ServiceAccount: &serviceAccountName,
 	}
 
 	executorSpec := sparkOp.ExecutorSpec{
@@ -184,7 +193,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			APIVersion: sparkOp.SchemeGroupVersion.String(),
 		},
 		Spec: sparkOp.SparkApplicationSpec{
-			ServiceAccount: &sparkTaskType,
+			ServiceAccount: &serviceAccountName,
 			Type:           getApplicationType(sparkJob.GetApplicationType()),
 			Mode:           sparkOp.ClusterMode,
 			Image:          &container.Image,

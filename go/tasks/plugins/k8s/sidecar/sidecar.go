@@ -108,8 +108,15 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 	// CrashLoopBackoff after the initial job completion.
 	pod.Spec.RestartPolicy = k8sv1.RestartPolicyNever
 
-	// We want to Also update the serviceAccount to the serviceaccount of the workflow
-	pod.Spec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
+	serviceAccountName := flytek8s.GetServiceAccountNameFromSecurityContext(taskCtx.TaskExecutionMetadata().GetSecurityContext())
+
+	// TO BE DEPRECATED
+	if len(serviceAccountName) == 0 {
+		// We want to Also update the serviceAccount to the serviceaccount of the workflow
+		serviceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
+	}
+
+	pod.Spec.ServiceAccountName = serviceAccountName
 
 	pod, err = validateAndFinalizePod(ctx, taskCtx, sidecarJob.PrimaryContainerName, *pod)
 	if err != nil {

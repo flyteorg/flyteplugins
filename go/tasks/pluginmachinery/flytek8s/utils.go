@@ -12,3 +12,10 @@ func ToK8sEnvVar(env []*core.KeyValuePair) []v1.EnvVar {
 	}
 	return envVars
 }
+
+func GetServiceAccountNameFromSecurityContext(securityContext core.SecurityContext) string {
+	if securityContext.GetRunAs() != nil {
+		return securityContext.GetRunAs().GetK8SServiceAccount()
+	}
+	return ""
+}

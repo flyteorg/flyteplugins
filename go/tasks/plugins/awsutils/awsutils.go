@@ -1,10 +1,19 @@
 package awsutils
 
-import "context"
+import (
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+)
 
-func GetRole(_ context.Context, roleAnnotationKey string, annotations map[string]string) string {
-	if len(roleAnnotationKey) > 0 {
-		return annotations[roleAnnotationKey]
+func GetRoleFromSecurityContext(securityContext core.SecurityContext) string {
+	if securityContext.GetRunAs() != nil {
+		return securityContext.GetRunAs().GetIamRole()
+	}
+	return ""
+}
+
+func GetRole(roleKey string, keyValueMap map[string]string) string {
+	if len(roleKey) > 0 {
+		return keyValueMap[roleKey]
 	}
 
 	return ""
