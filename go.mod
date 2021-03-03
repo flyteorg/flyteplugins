@@ -4,7 +4,8 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.78.0 // indirect
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200210170106-c8ae9e352035
+	github.com/Azure/azure-sdk-for-go v39.0.0+incompatible // indirect
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
 	github.com/Masterminds/semver v1.5.0
 	github.com/adammck/venv v0.0.0-20200610172036-e77789703e7c // indirect
 	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a
@@ -13,9 +14,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
 	github.com/aws/aws-sdk-go-v2/service/athena v1.0.0
 	github.com/coocood/freecache v1.1.0
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-test/deep v1.0.5
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.4.3
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
@@ -24,7 +25,7 @@ require (
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
-	github.com/lyft/flyteidl v0.18.9
+	github.com/lyft/flyteidl v0.18.11
 	github.com/lyft/flytestdlib v0.3.9
 	github.com/magiconair/properties v1.8.1
 	github.com/mitchellh/mapstructure v1.1.2
@@ -68,4 +69,5 @@ replace (
 	k8s.io/api => github.com/lyft/api v0.0.0-20191031200350-b49a72c274e0
 	k8s.io/apimachinery => github.com/lyft/apimachinery v0.0.0-20191031200210-047e3ea32d7f
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.5.1
 )
