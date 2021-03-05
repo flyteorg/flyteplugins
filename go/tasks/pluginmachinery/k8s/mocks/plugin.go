@@ -5,8 +5,8 @@ package mocks
 import (
 	context "context"
 
-	core "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	k8s "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	core "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	k8s "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 
 	mock "github.com/stretchr/testify/mock"
 )

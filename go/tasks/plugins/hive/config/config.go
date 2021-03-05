@@ -6,10 +6,10 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/lyft/flytestdlib/config"
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/logger"
 
-	pluginsConfig "github.com/lyft/flyteplugins/go/tasks/config"
+	pluginsConfig "github.com/flyteorg/flyteplugins/go/tasks/config"
 )
 
 const quboleConfigSectionKey = "qubole"

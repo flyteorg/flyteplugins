@@ -6,26 +6,26 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/lyft/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/storage"
 
-	"github.com/lyft/flyteplugins/go/tasks/logs"
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 
-	pluginIOMocks "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	sj "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
 	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,8 +44,8 @@ var (
 		"spark.executor.instances":     "3",
 		"spark.executor.memory":        "500M",
 		"spark.flyte.feature1.enabled": "true",
-		"spark.lyft.feature2.enabled":  "true",
-		"spark.lyft.feature3.enabled":  "true",
+		"spark.flyteorg.feature2.enabled":  "true",
+		"spark.flyteorg.feature3.enabled":  "true",
 	}
 
 	dummyEnvVars = []*core.KeyValuePair{
@@ -392,7 +392,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	for confKey, confVal := range dummySparkConf {
 		exists := false
 
-		if featureRegex.MatchString(confKey) && confKey != "spark.lyft.feature3.enabled" {
+		if featureRegex.MatchString(confKey) && confKey != "spark.flyteorg.feature3.enabled" {
 			match := featureRegex.FindAllStringSubmatch(confKey, -1)
 			feature := match[0][len(match[0])-1]
 			assert.True(t, feature == "feature1" || feature == "feature2")
@@ -418,7 +418,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummySparkConf["spark.driver.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.driver.limit.cores"])
 	assert.Equal(t, dummySparkConf["spark.executor.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.executor.limit.cores"])
 	assert.Greater(t, len(sparkApp.Spec.SparkConf["spark.kubernetes.driverEnv.FLYTE_START_TIME"]), 1)
-	assert.Equal(t, dummySparkConf["spark.lyft.feature3.enabled"], sparkApp.Spec.SparkConf["spark.lyft.feature3.enabled"])
+	assert.Equal(t, dummySparkConf["spark.flyteorg.feature3.enabled"], sparkApp.Spec.SparkConf["spark.flyteorg.feature3.enabled"])
 
 	assert.Equal(t, len(sparkApp.Spec.Driver.EnvVars["FLYTE_MAX_ATTEMPTS"]), 1)
 

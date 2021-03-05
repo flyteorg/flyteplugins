@@ -5,7 +5,7 @@ import (
 	"time"
 
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )

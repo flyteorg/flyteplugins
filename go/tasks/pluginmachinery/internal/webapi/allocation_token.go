@@ -6,11 +6,11 @@ import (
 
 	"k8s.io/utils/clock"
 
-	"github.com/lyft/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/webapi"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
 type tokenAllocator struct {

@@ -3,16 +3,16 @@ package k8s
 import (
 	"context"
 
-	"github.com/lyft/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/storage"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
 //go:generate mockery -all -case=underscore

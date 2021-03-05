@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	stdConfig "github.com/lyft/flytestdlib/config"
-	"github.com/lyft/flytestdlib/config/viper"
+	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	stdConfig "github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/config/viper"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 
 	hpojobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/hyperparametertuningjob"
-	sagemakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+	sagemakerIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/stretchr/testify/assert"
 )
 

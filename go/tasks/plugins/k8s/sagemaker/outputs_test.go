@@ -5,7 +5,7 @@ import (
 
 	hpojobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/hyperparametertuningjob"
 	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 )
 
 func Test_createModelOutputPath(t *testing.T) {

@@ -8,27 +8,27 @@ import (
 
 	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
 
-	awsUtils "github.com/lyft/flyteplugins/go/tasks/plugins/awsutils"
+	awsUtils "github.com/flyteorg/flyteplugins/go/tasks/plugins/awsutils"
 
-	pluginErrors "github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flytestdlib/logger"
+	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
-	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
 	"github.com/aws/aws-sdk-go/service/sagemaker"
 
-	taskError "github.com/lyft/flyteplugins/go/tasks/errors"
+	taskError "github.com/flyteorg/flyteplugins/go/tasks/errors"
 
-	flyteSageMakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+	flyteSageMakerIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 )
 
 const ReconcilingTrainingJobStatus = "ReconcilingTrainingJob"

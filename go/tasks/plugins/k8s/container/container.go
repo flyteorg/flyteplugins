@@ -3,14 +3,14 @@ package container
 import (
 	"context"
 
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/lyft/flyteplugins/go/tasks/logs"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 )
 
 const (

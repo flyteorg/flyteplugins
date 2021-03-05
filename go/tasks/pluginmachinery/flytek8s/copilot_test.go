@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	config2 "github.com/lyft/flytestdlib/config"
-	"github.com/lyft/flytestdlib/storage"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	config2 "github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	pluginsCoreMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core/mocks"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	pluginsIOMock "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 )
 
 var resourceRequirements = &v1.ResourceRequirements{

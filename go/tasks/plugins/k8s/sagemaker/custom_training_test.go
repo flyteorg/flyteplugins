@@ -6,20 +6,20 @@ import (
 	"strconv"
 	"testing"
 
-	flyteIdlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
-	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/sagemaker/config"
 
-	sagemakerIdl "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
+	sagemakerIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/stretchr/testify/assert"
 
 	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
 	"github.com/aws/aws-sdk-go/service/sagemaker"
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	stdConfig "github.com/lyft/flytestdlib/config"
-	"github.com/lyft/flytestdlib/config/viper"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	stdConfig "github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/config/viper"
 )
 
 func Test_awsSagemakerPlugin_BuildResourceForCustomTrainingJob(t *testing.T) {

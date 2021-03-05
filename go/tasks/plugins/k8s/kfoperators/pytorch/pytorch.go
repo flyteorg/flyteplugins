@@ -4,18 +4,18 @@ import (
 	"context"
 	"time"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 
-	"github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	flyteerr "github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	pluginsCore "github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	//commonOp "github.com/kubeflow/common/pkg/apis/common/v1" // switch to real 'common' once https://github.com/kubeflow/pytorch-operator/issues/263 resolved
 	ptOp "github.com/kubeflow/pytorch-operator/pkg/apis/pytorch/v1"
