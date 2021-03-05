@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-test/deep"
+
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	taskError "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -265,6 +267,8 @@ func Test_awsSagemakerPlugin_getEventInfoForTrainingJob(t *testing.T) {
 				}
 				return ret
 			}(taskInfo.Logs))
-		assert.Equal(t, *expectedCustomInfo, *taskInfo.CustomInfo)
+		if diff := deep.Equal(expectedCustomInfo, taskInfo.CustomInfo); diff != nil {
+			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
+		}
 	})
 }

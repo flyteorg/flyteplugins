@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/go-test/deep"
+
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	commonv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/common"
@@ -289,6 +291,8 @@ func Test_awsSagemakerPlugin_getEventInfoForCustomTrainingJob(t *testing.T) {
 				}
 				return ret
 			}(taskInfo.Logs))
-		assert.Equal(t, *expectedCustomInfo, *taskInfo.CustomInfo)
+		if diff := deep.Equal(expectedCustomInfo, taskInfo.CustomInfo); diff != nil {
+			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
+		}
 	})
 }

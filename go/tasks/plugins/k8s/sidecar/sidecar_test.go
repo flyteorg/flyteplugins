@@ -11,13 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/golang/protobuf/jsonpb"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
@@ -31,7 +26,9 @@ var resourceRequirements = &v1.ResourceRequirements{
 	},
 }
 
+/*
 func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemplate {
+	println(fmt.Sprintf("%+v", sideCarJob))
 	sidecarJSON, err := utils.MarshalToString(&sideCarJob)
 	if err != nil {
 		panic(err)
@@ -45,6 +42,7 @@ func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemp
 		Custom: &structObj,
 	}
 }
+*/
 
 func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
 	taskMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
@@ -207,7 +205,6 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 	_, err := handler.BuildResource(context.TODO(), taskCtx)
 	assert.True(t, errors.Is(err, errors2.Errorf("BadTaskSpecification", "")))
 }
-*/
 
 func TestGetTaskSidecarStatus(t *testing.T) {
 	sideCarJob := plugins.SidecarJob{
@@ -247,6 +244,8 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 			"Expected [%v] got [%v] instead, for podPhase [%v]", expectedTaskPhase, phaseInfo.Phase(), podPhase)
 	}
 }
+
+*/
 
 func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 	res := &v1.Pod{

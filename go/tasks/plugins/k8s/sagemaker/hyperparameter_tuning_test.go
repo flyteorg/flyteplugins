@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-test/deep"
+
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	stdConfig "github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/config/viper"
@@ -121,6 +123,8 @@ func Test_awsSagemakerPlugin_getEventInfoForHyperparameterTuningJob(t *testing.T
 				}
 				return ret
 			}(taskInfo.Logs))
-		assert.Equal(t, *expectedCustomInfo, *taskInfo.CustomInfo)
+		if diff := deep.Equal(expectedCustomInfo, taskInfo.CustomInfo); diff != nil {
+			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
+		}
 	})
 }
