@@ -21,7 +21,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
-	github.com/googleapis/gnostic v0.5.4 // indirect
+	github.com/googleapis/gnostic v0.5.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/kubeflow/pytorch-operator v0.6.0
@@ -42,7 +42,6 @@ require (
 	golang.org/x/sys v0.0.0-20210303074136-134d130e1a04 // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
-
 	google.golang.org/grpc v1.35.0
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools v2.2.0+incompatible
@@ -56,11 +55,9 @@ require (
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
 	github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-
-github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
+
+	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67
 	google.golang.org/grpc => google.golang.org/grpc v1.28.0
-	k8s.io/client-go => k8s.io/client-go v0.20.2
-
 )
