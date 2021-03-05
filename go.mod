@@ -3,31 +3,49 @@ module github.com/flyteorg/flyteplugins
 go 1.13
 
 require (
-	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200210170106-c8ae9e352035
+	cloud.google.com/go v0.78.0 // indirect
+	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
 	github.com/Masterminds/semver v1.5.0
-	github.com/aws/amazon-sagemaker-operator-for-k8s v1.1.0
+	github.com/adammck/venv v0.0.0-20200610172036-e77789703e7c // indirect
+	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a
 	github.com/aws/aws-sdk-go v1.37.3
 	github.com/aws/aws-sdk-go-v2 v1.2.0
-	github.com/aws/aws-sdk-go-v2/config v1.1.1
-	github.com/aws/aws-sdk-go-v2/service/athena v1.1.1
+	github.com/aws/aws-sdk-go-v2/config v1.0.0
+	github.com/aws/aws-sdk-go-v2/service/athena v1.0.0
 	github.com/coocood/freecache v1.1.1
 	github.com/flyteorg/flyteidl v0.18.15
 	github.com/flyteorg/flytestdlib v0.3.13
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-test/deep v1.0.7
 	github.com/golang/protobuf v1.4.3
+	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/uuid v1.2.0 // indirect
+	github.com/googleapis/gnostic v0.5.4 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
+	github.com/lyft/flyteidl v0.18.11 // indirect
+	github.com/lyft/flytestdlib v0.3.9 // indirect
 	github.com/magiconair/properties v1.8.4
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
+	github.com/prometheus/common v0.18.0 // indirect
+	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/zap v1.16.0 // indirect
+	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+	golang.org/x/oauth2 v0.0.0-20210220000619-9bb904979d93 // indirect
+	golang.org/x/sys v0.0.0-20210303074136-134d130e1a04 // indirect
+	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
+	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	google.golang.org/grpc v1.35.0
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.20.4
@@ -42,6 +60,9 @@ replace (
 
 	github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v0.18.15
 	github.com/flyteorg/flytestdlib => github.com/flyteorg/flytestdlib v0.3.13
+
+	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
+	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67
 	google.golang.org/grpc => google.golang.org/grpc v1.28.0
 	k8s.io/client-go => k8s.io/client-go v0.20.2

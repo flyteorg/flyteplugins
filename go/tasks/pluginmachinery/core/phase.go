@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 )
 
 const DefaultPhaseVersion = uint32(0)

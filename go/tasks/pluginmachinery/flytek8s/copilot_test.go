@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	config2 "github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/storage"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

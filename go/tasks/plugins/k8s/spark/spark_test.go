@@ -22,10 +22,10 @@ import (
 	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	sj "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
-	"github.com/golang/protobuf/jsonpb"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/golang/protobuf/jsonpb"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,14 +38,14 @@ const sparkUIAddress = "spark-ui.flyte"
 
 var (
 	dummySparkConf = map[string]string{
-		"spark.driver.memory":          "200M",
-		"spark.driver.cores":           "1",
-		"spark.executor.cores":         "2",
-		"spark.executor.instances":     "3",
-		"spark.executor.memory":        "500M",
-		"spark.flyte.feature1.enabled": "true",
-		"spark.flyteorg.feature2.enabled":  "true",
-		"spark.flyteorg.feature3.enabled":  "true",
+		"spark.driver.memory":             "200M",
+		"spark.driver.cores":              "1",
+		"spark.executor.cores":            "2",
+		"spark.executor.instances":        "3",
+		"spark.executor.memory":           "500M",
+		"spark.flyte.feature1.enabled":    "true",
+		"spark.flyteorg.feature2.enabled": "true",
+		"spark.flyteorg.feature3.enabled": "true",
 	}
 
 	dummyEnvVars = []*core.KeyValuePair{

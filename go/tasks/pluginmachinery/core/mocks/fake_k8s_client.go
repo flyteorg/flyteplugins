@@ -168,7 +168,7 @@ func (*FakeKubeClient) Scheme() *runtime.Scheme {
 	panic("implement me")
 }
 
-func (*FakeKubeClient) RESTMapper() meta.RESTMapper{
+func (*FakeKubeClient) RESTMapper() meta.RESTMapper {
 	panic("implement me")
 }
 

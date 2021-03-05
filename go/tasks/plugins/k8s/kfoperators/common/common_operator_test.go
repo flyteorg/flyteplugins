@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )

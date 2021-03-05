@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 

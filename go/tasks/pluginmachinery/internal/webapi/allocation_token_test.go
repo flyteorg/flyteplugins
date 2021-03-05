@@ -17,8 +17,8 @@ import (
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
 
-	"github.com/go-test/deep"
 	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/go-test/deep"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"

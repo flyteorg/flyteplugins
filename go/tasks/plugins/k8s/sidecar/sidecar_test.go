@@ -24,8 +24,6 @@ import (
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 )
 
-const ResourceNvidiaGPU = "nvidia.com/gpu"
-
 var resourceRequirements = &v1.ResourceRequirements{
 	Limits: v1.ResourceList{
 		v1.ResourceCPU:     resource.MustParse("1024m"),
@@ -249,7 +247,6 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 			"Expected [%v] got [%v] instead, for podPhase [%v]", expectedTaskPhase, phaseInfo.Phase(), podPhase)
 	}
 }
-
 
 func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 	res := &v1.Pod{

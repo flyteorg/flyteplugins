@@ -50,8 +50,8 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 
 		var err error
 		template.Custom, err = utils.MarshalPbToStruct(&plugins.ArrayJob{
-			Parallelism:  10,
-			Size:         1,
+			Parallelism: 10,
+			Size:        1,
 			SuccessCriteria: &plugins.ArrayJob_MinSuccesses{
 				MinSuccesses: 1,
 			},
@@ -85,8 +85,8 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 
 		var err error
 		template.Custom, err = utils.MarshalPbToStruct(&plugins.ArrayJob{
-			Parallelism:  10,
-			Size:         2,
+			Parallelism: 10,
+			Size:        2,
 			SuccessCriteria: &plugins.ArrayJob_MinSuccesses{
 				MinSuccesses: 1,
 			},

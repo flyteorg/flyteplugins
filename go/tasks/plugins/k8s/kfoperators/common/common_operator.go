@@ -7,11 +7,11 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
-	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	v1 "k8s.io/api/core/v1"
 )
 

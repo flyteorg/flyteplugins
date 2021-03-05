@@ -10,10 +10,10 @@ import (
 
 	"reflect"
 
-	"github.com/golang/protobuf/ptypes"
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 )
 

@@ -10,12 +10,12 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
 	"github.com/flyteorg/flytestdlib/bitarray"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flytestdlib/logger"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 )
 
 //go:generate mockery -all -case=underscore
@@ -134,8 +134,8 @@ const (
 func ToArrayJob(structObj *structpb.Struct) (*idlPlugins.ArrayJob, error) {
 	if structObj == nil {
 		return &idlPlugins.ArrayJob{
-			Parallelism:  1,
-			Size:         1,
+			Parallelism: 1,
+			Size:        1,
 			SuccessCriteria: &idlPlugins.ArrayJob_MinSuccesses{
 				MinSuccesses: 1,
 			},
