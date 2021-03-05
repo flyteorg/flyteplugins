@@ -27,8 +27,8 @@ require (
 	github.com/influxdata/influxdb v1.7.9 // indirect
 	github.com/kubeflow/pytorch-operator v0.6.0
 	github.com/kubeflow/tf-operator v0.5.3
-	github.com/lyft/flyteidl v0.18.12
-	github.com/lyft/flytestdlib v0.3.9
+	github.com/lyft/flyteidl v0.18.14
+	github.com/lyft/flytestdlib v0.3.12
 	github.com/magiconair/properties v1.8.4
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -50,7 +50,7 @@ require (
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
-	k8s.io/client-go v11.0.1-0.20190918222721-c0e3722d5cf0+incompatible
+	k8s.io/client-go v0.20.4
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 	sigs.k8s.io/controller-runtime v0.8.2
 	sigs.k8s.io/structured-merge-diff v0.0.0-20190302045857-e85c7b244fd2 // indirect
@@ -58,7 +58,6 @@ require (
 
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
-	github.com/lyft/flyteidl => ../flyteidl
-	github.com/lyft/flytestdlib => ../flytestdlib
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20210217172142-7279fc64d847
+	github.com/lyft/flytestdlib => github.com/flyteorg/flytestdlib v0.3.13
+	github.com/lyft/flyteidl => github.com/flyteorg/flyteidl v0.18.15
 )
