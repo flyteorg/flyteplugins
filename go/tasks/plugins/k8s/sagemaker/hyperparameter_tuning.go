@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
 
@@ -33,7 +34,7 @@ import (
 const ReconcilingTuningJobStatus = "ReconcilingTuningJob"
 
 func (m awsSagemakerPlugin) buildResourceForHyperparameterTuningJob(
-	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 
 	logger.Infof(ctx, "Building a hyperparameter tuning job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 

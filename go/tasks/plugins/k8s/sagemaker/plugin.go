@@ -2,6 +2,7 @@ package sagemaker
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 
@@ -23,7 +24,7 @@ type awsSagemakerPlugin struct {
 	TaskType pluginsCore.TaskType
 }
 
-func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
+func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (client.Object, error) {
 	if m.TaskType == trainingJobTaskType || m.TaskType == customTrainingJobTaskType {
 		return &trainingjobv1.TrainingJob{}, nil
 	}
@@ -33,7 +34,7 @@ func (m awsSagemakerPlugin) BuildIdentityResource(_ context.Context, _ pluginsCo
 	return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The sagemaker plugin is unable to build identity resource for an unknown task type [%v]", m.TaskType)
 }
 
-func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 
 	// Unmarshal the custom field of the task template back into the HyperparameterTuningJob struct generated in flyteidl
 	if m.TaskType == trainingJobTaskType {
@@ -48,7 +49,7 @@ func (m awsSagemakerPlugin) BuildResource(ctx context.Context, taskCtx pluginsCo
 	return nil, pluginErrors.Errorf(pluginErrors.BadTaskSpecification, "The SageMaker plugin is unable to build resource for unknown task type [%s]", m.TaskType)
 }
 
-func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
+func (m awsSagemakerPlugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 	if m.TaskType == trainingJobTaskType {
 		job := resource.(*trainingjobv1.TrainingJob)
 		return m.getTaskPhaseForTrainingJob(ctx, pluginContext, job)

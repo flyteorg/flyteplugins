@@ -2,15 +2,11 @@ package k8s
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 )
@@ -25,7 +21,7 @@ type PluginEntry struct {
 	// A list of all the task types for which this plugin is applicable.
 	RegisteredTaskTypes []pluginsCore.TaskType
 	// An instance of the kubernetes resource this plugin is responsible for, for example v1.Pod{}
-	ResourceToWatch runtime.Object
+	ResourceToWatch client.Object
 	// An instance of the plugin
 	Plugin Plugin
 	// Boolean that indicates if this plugin can be used as the default for unknown task types. There can only be
@@ -35,13 +31,6 @@ type PluginEntry struct {
 	// support the same task type. This must be a subset of RegisteredTaskTypes and at most one default per task type
 	// is supported.
 	DefaultForTaskTypes []pluginsCore.TaskType
-}
-
-// A proxy object for k8s resource
-type Resource interface {
-	runtime.Object
-	metav1.Object
-	schema.ObjectKind
 }
 
 // Special context passed in to plugins when checking task phase
@@ -66,13 +55,13 @@ type PluginContext interface {
 type Plugin interface {
 	// Defines a func to create a query object (typically just object and type meta portions) that's used to query k8s
 	// resources.
-	BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (Resource, error)
+	BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error)
 
 	// Defines a func to create the full resource object that will be posted to k8s.
-	BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (Resource, error)
+	BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error)
 
 	// Analyses the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
 	// any operations that might take a long time (limits are configured system-wide) should be offloaded to the
 	// background.
-	GetTaskPhase(ctx context.Context, pluginContext PluginContext, resource Resource) (pluginsCore.PhaseInfo, error)
+	GetTaskPhase(ctx context.Context, pluginContext PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error)
 }

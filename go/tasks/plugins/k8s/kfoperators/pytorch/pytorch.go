@@ -2,6 +2,7 @@ package pytorch
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
@@ -31,7 +32,7 @@ var _ k8s.Plugin = pytorchOperatorResourceHandler{}
 
 // Defines a func to create a query object (typically just object and type meta portions) that's used to query k8s
 // resources.
-func (pytorchOperatorResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
+func (pytorchOperatorResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error) {
 	return &ptOp.PyTorchJob{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       ptOp.Kind,
@@ -41,7 +42,7 @@ func (pytorchOperatorResourceHandler) BuildIdentityResource(ctx context.Context,
 }
 
 // Defines a func to create the full resource object that will be posted to k8s.
-func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 
 	if err != nil {
@@ -98,7 +99,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 // Analyses the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
 // any operations that might take a long time (limits are configured system-wide) should be offloaded to the
 // background.
-func (pytorchOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
+func (pytorchOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 	app := resource.(*ptOp.PyTorchJob)
 
 	workersCount := app.Spec.PyTorchReplicaSpecs[ptOp.PyTorchReplicaTypeWorker].Replicas

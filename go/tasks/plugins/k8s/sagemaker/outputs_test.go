@@ -1,16 +1,16 @@
 package sagemaker
 
 import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
 	hpojobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/hyperparametertuningjob"
 	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 )
 
 func Test_createModelOutputPath(t *testing.T) {
 	type args struct {
-		job            k8s.Resource
+		job            client.Object
 		prefix         string
 		bestExperiment string
 	}

@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
 
@@ -34,7 +35,7 @@ import (
 const ReconcilingTrainingJobStatus = "ReconcilingTrainingJob"
 
 func (m awsSagemakerPlugin) buildResourceForTrainingJob(
-	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 
 	logger.Infof(ctx, "Building a training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 	taskTemplate, err := getTaskTemplate(ctx, taskCtx)

@@ -3,6 +3,7 @@ package spark
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"strconv"
 
@@ -60,7 +61,7 @@ func validateSparkJob(sparkJob *plugins.SparkJob) error {
 }
 
 // Creates a new Job that will execute the main container as well as any generated types the result from the execution.
-func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "unable to fetch task specification [%v]", err.Error())
@@ -255,7 +256,7 @@ func getApplicationType(applicationType plugins.SparkApplication_Type) sparkOp.S
 	return sparkOp.PythonApplicationType
 }
 
-func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (k8s.Resource, error) {
+func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error) {
 	return &sparkOp.SparkApplication{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       KindSparkApplication,
@@ -388,7 +389,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 	}, nil
 }
 
-func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource k8s.Resource) (pluginsCore.PhaseInfo, error) {
+func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 
 	app := resource.(*sparkOp.SparkApplication)
 	info, err := getEventInfoForSpark(app)

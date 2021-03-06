@@ -3,12 +3,11 @@ package sagemaker
 import (
 	"context"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 
 	hpojobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/hyperparametertuningjob"
 	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
@@ -28,7 +27,7 @@ func Test_awsSagemakerPlugin_BuildIdentityResource(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    k8s.Resource
+		want    client.Object
 		wantErr bool
 	}{
 		{name: "Training Job Identity Resource", fields: fields{TaskType: trainingJobTaskType},

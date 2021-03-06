@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
@@ -65,7 +66,7 @@ func validateAndFinalizePod(
 	return &pod, nil
 }
 
-func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	sidecarJob := plugins.SidecarJob{}
 	task, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -101,7 +102,7 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 }
 
 func (sidecarResourceHandler) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (
-	k8s.Resource, error) {
+	client.Object, error) {
 	return flytek8s.BuildIdentityPod(), nil
 }
 
@@ -127,7 +128,7 @@ func determinePrimaryContainerPhase(primaryContainerName string, statuses []k8sv
 		fmt.Sprintf("Primary container [%s] not found in pod's container statuses", primaryContainerName), info)
 }
 
-func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r k8s.Resource) (pluginsCore.PhaseInfo, error) {
+func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
 	pod := r.(*k8sv1.Pod)
 
 	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
