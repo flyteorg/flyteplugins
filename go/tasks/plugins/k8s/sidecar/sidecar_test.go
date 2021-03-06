@@ -2,6 +2,11 @@ package sidecar
 
 import (
 	"context"
+	"fmt"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/golang/protobuf/jsonpb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"testing"
 
 	"github.com/flyteorg/flytestdlib/storage"
@@ -26,7 +31,7 @@ var resourceRequirements = &v1.ResourceRequirements{
 	},
 }
 
-/*
+
 func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemplate {
 	println(fmt.Sprintf("%+v", sideCarJob))
 	sidecarJSON, err := utils.MarshalToString(&sideCarJob)
@@ -42,7 +47,6 @@ func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemp
 		Custom: &structObj,
 	}
 }
-*/
 
 func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
 	taskMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
@@ -206,6 +210,8 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 	assert.True(t, errors.Is(err, errors2.Errorf("BadTaskSpecification", "")))
 }
 
+*/
+
 func TestGetTaskSidecarStatus(t *testing.T) {
 	sideCarJob := plugins.SidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
@@ -245,7 +251,6 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 	}
 }
 
-*/
 
 func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 	res := &v1.Pod{
