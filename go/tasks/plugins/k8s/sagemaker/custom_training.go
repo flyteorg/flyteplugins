@@ -3,10 +3,11 @@ package sagemaker
 import (
 	"context"
 	"fmt"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"strings"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aws/aws-sdk-go/service/sagemaker"
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -185,8 +186,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForCustomTrainingJob(
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
 	case sagemaker.TrainingJobStatusStopped:
-		reason := fmt.Sprintf("Training Job Stopped")
-		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
+		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, "Training Job Stopped", info), nil
 	case sagemaker.TrainingJobStatusCompleted:
 		// Now that it is a success we will set the outputs as expected by the task
 

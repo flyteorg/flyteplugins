@@ -2,10 +2,10 @@ package sagemaker
 
 import (
 	"context"
-	"fmt"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	awsUtils "github.com/flyteorg/flyteplugins/go/tasks/plugins/awsutils"
 
@@ -242,8 +242,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForHyperparameterTuningJob(
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
 	case sagemaker.HyperParameterTuningJobStatusStopped:
-		reason := fmt.Sprintf("Hyperparameter tuning job stopped")
-		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
+		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, "Hyperparameter tuning job stopped", info), nil
 	case sagemaker.HyperParameterTuningJobStatusCompleted:
 		// Now that it is a success we will set the outputs as expected by the task
 

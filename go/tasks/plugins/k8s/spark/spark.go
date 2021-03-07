@@ -3,6 +3,7 @@ package spark
 import (
 	"context"
 	"fmt"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"strconv"
@@ -160,18 +161,18 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	sparkConfig["spark.kubernetes.driverEnv.FLYTE_START_TIME"] = strconv.FormatInt(time.Now().UnixNano()/1000000, 10)
 
 	// Add driver/executor defaults to CRD Driver/Executor Spec as well.
-	cores, err := strconv.Atoi(sparkConfig["spark.driver.cores"])
+	cores, err := strconv.ParseInt(sparkConfig["spark.driver.cores"], 10, 32)
 	if err == nil {
 		driverSpec.Cores = intPtr(int32(cores))
 	}
 	driverSpec.Memory = strPtr(sparkConfig["spark.driver.memory"])
 
-	execCores, err := strconv.Atoi(sparkConfig["spark.executor.cores"])
+	execCores, err := strconv.ParseInt(sparkConfig["spark.executor.cores"], 10, 32)
 	if err == nil {
 		executorSpec.Cores = intPtr(int32(execCores))
 	}
 
-	execCount, err := strconv.Atoi(sparkConfig["spark.executor.instances"])
+	execCount, err := strconv.ParseInt(sparkConfig["spark.executor.instances"], 10, 32)
 	if err == nil {
 		executorSpec.Instances = intPtr(int32(execCount))
 	}

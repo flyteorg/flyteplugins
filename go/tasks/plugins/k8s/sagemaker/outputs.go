@@ -3,6 +3,7 @@ package sagemaker
 import (
 	"context"
 	"fmt"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -66,6 +67,6 @@ func createModelOutputPath(job client.Object, prefix, jobName string) string {
 	case *hpojobv1.HyperparameterTuningJob:
 		return fmt.Sprintf("%s/%s/output/model.tar.gz", createOutputPath(prefix, HyperparameterOutputPathSubDir), jobName)
 	default:
-		return fmt.Sprintf("")
+		return ""
 	}
 }

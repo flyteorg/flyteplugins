@@ -66,8 +66,8 @@ func (a tokenAllocator) allocateToken(ctx context.Context, p webapi.AsyncPlugin,
 		return &State{
 				AllocationTokenRequestStartTime: startTime,
 				Phase:                           PhaseNotStarted,
-			}, core.PhaseInfoQueued(a.clock.Now(), 0,
-				fmt.Sprintf("Quota for task has exceeded. The request is enqueued.")), nil
+			}, core.PhaseInfoQueued(
+				a.clock.Now(), 0, "Quota for task has exceeded. The request is enqueued."), nil
 	}
 
 	return nil, core.PhaseInfo{}, fmt.Errorf("allocation status undefined [%v]", allocationStatus)
