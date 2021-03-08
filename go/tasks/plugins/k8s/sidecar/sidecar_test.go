@@ -2,13 +2,12 @@ package sidecar
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
 
@@ -19,8 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -40,13 +37,13 @@ var resourceRequirements = &v1.ResourceRequirements{
 	},
 }
 
-func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemplate {
-	sidecarJSON, err := utils.MarshalToString(&sideCarJob)
+func getSidecarTaskTemplateForTest(sideCarJob sidecarJob) *core.TaskTemplate {
+	sidecarJSON, err := json.Marshal(&sideCarJob)
 	if err != nil {
 		panic(err)
 	}
 	structObj := structpb.Struct{}
-	err = jsonpb.UnmarshalString(sidecarJSON, &structObj)
+	err = json.Unmarshal(sidecarJSON, &structObj)
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +122,7 @@ func TestBuildSidecarResource(t *testing.T) {
 		t.Fatal(sidecarCustomJSON)
 	}
 	sidecarCustom := structpb.Struct{}
-	if err := jsonpb.UnmarshalString(string(sidecarCustomJSON), &sidecarCustom); err != nil {
+	if err := json.Unmarshal(sidecarCustomJSON, &sidecarCustom); err != nil {
 		t.Fatal(err)
 	}
 	task := core.TaskTemplate{
@@ -184,7 +181,7 @@ func TestBuildSidecarResource(t *testing.T) {
 }
 
 func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
-	sideCarJob := plugins.SidecarJob{
+	sideCarJob := sidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{
@@ -204,7 +201,7 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 }
 
 func TestGetTaskSidecarStatus(t *testing.T) {
-	sideCarJob := plugins.SidecarJob{
+	sideCarJob := sidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{

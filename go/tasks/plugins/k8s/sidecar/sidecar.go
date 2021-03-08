@@ -2,14 +2,13 @@ package sidecar
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -58,7 +57,7 @@ func validateAndFinalizePod(
 	}
 	if !hasPrimaryContainer {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
-			"invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
+			"invalid Sidecar task, primary container [%sidecarJob] not defined", primaryContainerName)
 
 	}
 	pod.Spec.Containers = finalizedContainers
@@ -66,14 +65,39 @@ func validateAndFinalizePod(
 	return &pod, nil
 }
 
+// Why, you might wonder do we recreate the generated go struct generated from the plugins.SidecarJob proto? Because
+// although we unmarshal the task custom json, the PodSpec itself is not generated from a  proto definition,
+// but a proper go struct defined in k8s libraries. Therefore we only unmarshal the sidecar as a json, rather than jsonpb.
+type sidecarJob struct {
+	PodSpec              *k8sv1.PodSpec
+	PrimaryContainerName string
+}
+
+func unmarshalSidecarCustom(structObj *structpb.Struct, sidecarJob *sidecarJob) error {
+	if structObj == nil {
+		return fmt.Errorf("nil Struct Object passed")
+	}
+
+	jsonObj, err := json.Marshal(structObj)
+	if err != nil {
+		return err
+	}
+
+	if err = json.Unmarshal(jsonObj, sidecarJob); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
-	sidecarJob := plugins.SidecarJob{}
+	sidecarJob := sidecarJob{}
 	task, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
 			"TaskSpecification cannot be read, Err: [%v]", err.Error())
 	}
-	err = utils.UnmarshalStruct(task.GetCustom(), &sidecarJob)
+	err = unmarshalSidecarCustom(task.GetCustom(), &sidecarJob)
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
 			"invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
@@ -125,7 +149,7 @@ func determinePrimaryContainerPhase(primaryContainerName string, statuses []k8sv
 
 	// If for some reason we can't find the primary container, always just return a permanent failure
 	return pluginsCore.PhaseInfoFailure("PrimaryContainerMissing",
-		fmt.Sprintf("Primary container [%s] not found in pod's container statuses", primaryContainerName), info)
+		fmt.Sprintf("Primary container [%sidecarJob] not found in pod'sidecarJob container statuses", primaryContainerName), info)
 }
 
 func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {

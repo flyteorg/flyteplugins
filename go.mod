@@ -1,13 +1,13 @@
 module github.com/flyteorg/flyteplugins
 
-go 1.13
+go 1.16
 
 require (
 	cloud.google.com/go v0.78.0 // indirect
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.1.3
 	github.com/Masterminds/semver v1.5.0
 	github.com/adammck/venv v0.0.0-20200610172036-e77789703e7c // indirect
-	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20200410212604-780c48ecb21a
+	github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
 	github.com/aws/aws-sdk-go v1.37.3
 	github.com/aws/aws-sdk-go-v2 v1.2.0
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
@@ -20,6 +20,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
+	github.com/googleapis/gnostic v0.5.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/kubeflow/pytorch-operator v0.6.0
@@ -52,10 +53,4 @@ require (
 replace (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator => github.com/lyft/spark-on-k8s-operator v0.1.4-0.20201027003055-c76b67e3b6d0
 	github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
-    	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
-    	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67
-    	google.golang.org/grpc => google.golang.org/grpc v1.28.0
-
-
 )
