@@ -20,10 +20,11 @@ func URLMustParse(s string) config.URL {
 	if err != nil {
 		logger.Panicf(context.TODO(), "Bad Presto URL Specified as default, error: %s", err)
 	}
-	if r == nil {
-		logger.Panicf(context.TODO(), "Nil Presto URL specified.", err)
+	if r != nil {
+		return config.URL{URL: *r}
 	}
-	return config.URL{URL: *r}
+	logger.Panicf(context.TODO(), "Nil Presto URL specified.", err)
+	return config.URL{}
 }
 
 type RoutingGroupConfig struct {

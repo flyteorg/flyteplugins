@@ -212,7 +212,8 @@ func assertPodHasSNPS(t *testing.T, pod *v1.PodSpec) {
 	for _, c := range pod.Containers {
 		if c.Name == "test" {
 			found = true
-			assertContainerHasPTrace(t, &c)
+			cntr := c
+			assertContainerHasPTrace(t, &cntr)
 		}
 	}
 	assert.False(t, found, "user container absent?")
@@ -221,7 +222,8 @@ func assertPodHasSNPS(t *testing.T, pod *v1.PodSpec) {
 func assertPodHasCoPilot(t *testing.T, cfg config.FlyteCoPilotConfig, pilot *core.DataLoadingConfig, iFace *core.TypedInterface, pod *v1.PodSpec) {
 	for _, c := range pod.Containers {
 		if c.Name == "test" {
-			assertContainerHasVolumeMounts(t, cfg, pilot, iFace, &c)
+			cntr := c
+			assertContainerHasVolumeMounts(t, cfg, pilot, iFace, &cntr)
 		} else {
 			if c.Name == cfg.NamePrefix+flyteInitContainerName || c.Name == cfg.NamePrefix+flyteSidecarContainerName {
 				if iFace != nil {

@@ -31,7 +31,7 @@ func GetJobURI(jobSize int, accountID, region, queue, jobID string) string {
 
 func GetJobTaskLog(jobSize int, accountID, region, queue, jobID string) *idlCore.TaskLog {
 	return &idlCore.TaskLog{
-		Name: fmt.Sprintf("AWS Batch Job"),
+		Name: "AWS Batch Job",
 		Uri:  GetJobURI(jobSize, accountID, region, queue, jobID),
 	}
 }

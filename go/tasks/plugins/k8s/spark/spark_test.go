@@ -365,9 +365,9 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, testImage, *sparkApp.Spec.Image)
 
 	//Validate Driver/Executor Spec.
-	driverCores, _ := strconv.Atoi(dummySparkConf["spark.driver.cores"])
-	execCores, _ := strconv.Atoi(dummySparkConf["spark.executor.cores"])
-	execInstances, _ := strconv.Atoi(dummySparkConf["spark.executor.instances"])
+	driverCores, _ := strconv.ParseInt(dummySparkConf["spark.driver.cores"], 10, 32)
+	execCores, _ := strconv.ParseInt(dummySparkConf["spark.executor.cores"], 10, 32)
+	execInstances, _ := strconv.ParseInt(dummySparkConf["spark.executor.instances"], 10, 32)
 
 	assert.Equal(t, int32(driverCores), *sparkApp.Spec.Driver.Cores)
 	assert.Equal(t, int32(execCores), *sparkApp.Spec.Executor.Cores)

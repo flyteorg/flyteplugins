@@ -64,36 +64,44 @@ func getTrainingJobImage(ctx context.Context, _ pluginsCore.TaskExecutionContext
 	return image, nil
 }
 
+// Finds the algorithm configuration for the given name
+func findAlgorithmConfig(cfg *config.Config, name string) (config.PrebuiltAlgorithmConfig, error) {
+	for _, algorithmCfg := range cfg.PrebuiltAlgorithms {
+		if strings.EqualFold(name, algorithmCfg.Name) {
+			return algorithmCfg, nil
+		}
+	}
+	return config.PrebuiltAlgorithmConfig{}, errors.Errorf(ErrSagemaker, "Failed to find an image for algorithm [%v]", name)
+}
+
+// Find RegionConfig for the algorithm name and region
+func findRegionConfig(algoConfig config.PrebuiltAlgorithmConfig, name string) (config.RegionalConfig, error) {
+	for _, regionalCfg := range algoConfig.RegionalConfig {
+		if strings.EqualFold(name, regionalCfg.Region) {
+			return regionalCfg, nil
+		}
+	}
+	return config.RegionalConfig{},
+		errors.Errorf(ErrSagemaker, "Failed to find an image for algorithm [%v] region [%v]", algoConfig.Name, name)
+}
+
 func getPrebuiltTrainingImage(ctx context.Context, job *flyteSagemakerIdl.TrainingJob) (string, error) {
 	// This function determines which image URI to put into the CRD of the training job and the hyperparameter tuning job
 
 	cfg := config.GetSagemakerConfig()
-	var foundAlgorithmCfg *config.PrebuiltAlgorithmConfig
-	var foundRegionalCfg *config.RegionalConfig
 
 	if specifiedAlg := job.GetAlgorithmSpecification().GetAlgorithmName(); specifiedAlg != flyteSagemakerIdl.AlgorithmName_CUSTOM {
 		// Built-in algorithm mode
 		apiAlgorithmName := specifiedAlg.String()
 
-		for _, algorithmCfg := range cfg.PrebuiltAlgorithms {
-			if strings.EqualFold(apiAlgorithmName, algorithmCfg.Name) {
-				foundAlgorithmCfg = &algorithmCfg
-				break
-			}
-		}
-		if foundAlgorithmCfg == nil {
-			return "", errors.Errorf(ErrSagemaker, "Failed to find an image for algorithm [%v]", apiAlgorithmName)
+		foundAlgorithmCfg, err := findAlgorithmConfig(cfg, apiAlgorithmName)
+		if err != nil {
+			return "", err
 		}
 
-		for _, regionalCfg := range foundAlgorithmCfg.RegionalConfig {
-			if strings.EqualFold(cfg.Region, regionalCfg.Region) {
-				foundRegionalCfg = &regionalCfg
-				break
-			}
-		}
-		if foundRegionalCfg == nil {
-			return "", errors.Errorf(ErrSagemaker, "Failed to find an image for algorithm [%v] region [%v]",
-				job.GetAlgorithmSpecification().GetAlgorithmName(), cfg.Region)
+		foundRegionalCfg, err := findRegionConfig(foundAlgorithmCfg, cfg.Region)
+		if err != nil {
+			return "", err
 		}
 
 		userSpecifiedVer := job.GetAlgorithmSpecification().GetAlgorithmVersion()

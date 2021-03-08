@@ -2,9 +2,10 @@ package sagemaker
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	trainingjobv1 "github.com/aws/amazon-sagemaker-operator-for-k8s/api/v1/trainingjob"
 
@@ -34,7 +35,7 @@ import (
 const ReconcilingTrainingJobStatus = "ReconcilingTrainingJob"
 
 func (m awsSagemakerPlugin) buildResourceForTrainingJob(
-	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (k8s.Resource, error) {
+	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 
 	logger.Infof(ctx, "Building a training job resource for task [%v]", taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 	taskTemplate, err := getTaskTemplate(ctx, taskCtx)
@@ -212,8 +213,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForTrainingJob(
 		}
 		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, execError, info), nil
 	case sagemaker.TrainingJobStatusStopped:
-		reason := fmt.Sprintf("Training Job Stopped")
-		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, reason, info), nil
+		return pluginsCore.PhaseInfoRetryableFailure(taskError.DownstreamSystemError, "Training Job Stopped", info), nil
 	case sagemaker.TrainingJobStatusCompleted:
 		// Now that it is a success we will set the outputs as expected by the task
 
