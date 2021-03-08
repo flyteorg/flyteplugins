@@ -2,12 +2,13 @@ package sidecar
 
 import (
 	"context"
-	"fmt"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/golang/protobuf/jsonpb"
-	"google.golang.org/protobuf/types/known/structpb"
+	"errors"
+	"io/ioutil"
+	"os"
+	"path"
 	"testing"
+
+	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
 
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
@@ -16,13 +17,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/golang/protobuf/jsonpb"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 )
+
+const ResourceNvidiaGPU = "nvidia.com/gpu"
 
 var resourceRequirements = &v1.ResourceRequirements{
 	Limits: v1.ResourceList{
@@ -31,9 +40,7 @@ var resourceRequirements = &v1.ResourceRequirements{
 	},
 }
 
-
 func getSidecarTaskTemplateForTest(sideCarJob plugins.SidecarJob) *core.TaskTemplate {
-	println(fmt.Sprintf("%+v", sideCarJob))
 	sidecarJSON, err := utils.MarshalToString(&sideCarJob)
 	if err != nil {
 		panic(err)
@@ -104,12 +111,10 @@ func getDummySidecarTaskContext(taskTemplate *core.TaskTemplate, resources *v1.R
 	taskCtx.On("TaskReader").Return(taskReader)
 
 	taskCtx.On("TaskExecutionMetadata").Return(dummyTaskMetadata)
+
 	return taskCtx
 }
 
-// TODO(katrogan): re-enable this test.
-
-/*
 func TestBuildSidecarResource(t *testing.T) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -210,8 +215,6 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 	assert.True(t, errors.Is(err, errors2.Errorf("BadTaskSpecification", "")))
 }
 
-*/
-
 func TestGetTaskSidecarStatus(t *testing.T) {
 	sideCarJob := plugins.SidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
@@ -250,7 +253,6 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 			"Expected [%v] got [%v] instead, for podPhase [%v]", expectedTaskPhase, phaseInfo.Phase(), podPhase)
 	}
 }
-
 
 func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 	res := &v1.Pod{
