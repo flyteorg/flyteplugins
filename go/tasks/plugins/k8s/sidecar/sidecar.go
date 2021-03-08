@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
@@ -17,8 +18,6 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-
 	k8sv1 "k8s.io/api/core/v1"
 )
 

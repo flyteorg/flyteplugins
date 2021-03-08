@@ -8,6 +8,8 @@ import (
 	"path"
 	"testing"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
 
 	"github.com/flyteorg/flytestdlib/storage"
@@ -23,11 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 )
 
@@ -160,18 +160,6 @@ func TestBuildSidecarResource(t *testing.T) {
 	assert.EqualValues(t, map[string]string{
 		primaryContainerKey: "a container",
 	}, res.GetAnnotations())
-	assert.Contains(t, res.(*v1.Pod).Spec.Tolerations, tolGPU)
-
-	// Test GPU overrides
-	expectedGpuRequest := resource.NewQuantity(2, resource.DecimalSI)
-	actualGpuRequest, ok := res.(*v1.Pod).Spec.Containers[0].Resources.Requests[ResourceNvidiaGPU]
-	assert.True(t, ok)
-	assert.True(t, expectedGpuRequest.Equal(actualGpuRequest))
-
-	expectedGpuLimit := resource.NewQuantity(3, resource.DecimalSI)
-	actualGpuLimit, ok := res.(*v1.Pod).Spec.Containers[0].Resources.Limits[ResourceNvidiaGPU]
-	assert.True(t, ok)
-	assert.True(t, expectedGpuLimit.Equal(actualGpuLimit))
 
 	// Assert volumes & volume mounts are preserved
 	assert.Len(t, res.(*v1.Pod).Spec.Volumes, 1)
@@ -181,7 +169,7 @@ func TestBuildSidecarResource(t *testing.T) {
 	assert.Equal(t, "volume mount", res.(*v1.Pod).Spec.Containers[0].VolumeMounts[0].Name)
 
 	// Assert user-specified tolerations don't get overridden
-	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 2)
+	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 1)
 	for _, tol := range res.(*v1.Pod).Spec.Tolerations {
 		if tol.Key == "flyte/gpu" {
 			assert.Equal(t, tol.Value, "dedicated")
