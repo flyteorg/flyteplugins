@@ -57,7 +57,7 @@ func validateAndFinalizePod(
 	}
 	if !hasPrimaryContainer {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
-			"invalid Sidecar task, primary container [%sidecarJob] not defined", primaryContainerName)
+			"invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
 
 	}
 	pod.Spec.Containers = finalizedContainers
@@ -149,7 +149,7 @@ func determinePrimaryContainerPhase(primaryContainerName string, statuses []k8sv
 
 	// If for some reason we can't find the primary container, always just return a permanent failure
 	return pluginsCore.PhaseInfoFailure("PrimaryContainerMissing",
-		fmt.Sprintf("Primary container [%sidecarJob] not found in pod'sidecarJob container statuses", primaryContainerName), info)
+		fmt.Sprintf("Primary container [%s] not found in pod's container statuses", primaryContainerName), info)
 }
 
 func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
