@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lyft/flytestdlib/errors"
+	"github.com/flyteorg/flytestdlib/errors"
 
-	"github.com/lyft/flyteplugins/go/tasks/plugins/array/arraystatus"
-	"github.com/lyft/flytestdlib/bitarray"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
+	"github.com/flyteorg/flytestdlib/bitarray"
 
+	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flytestdlib/logger"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	idlPlugins "github.com/lyft/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/lyft/flytestdlib/logger"
 )
 
 //go:generate mockery -all -case=underscore

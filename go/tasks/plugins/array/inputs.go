@@ -1,10 +1,10 @@
 package array
 
 import (
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flytestdlib/storage"
+	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flytestdlib/storage"
 )
 
 // A proxy inputreader that overrides the inputpath to be the inputpathprefix for array jobs

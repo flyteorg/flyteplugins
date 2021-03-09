@@ -6,19 +6,19 @@ import (
 	"math"
 	"strconv"
 
-	arrayCore "github.com/lyft/flyteplugins/go/tasks/plugins/array/core"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 
-	"github.com/lyft/flytestdlib/bitarray"
-	"github.com/lyft/flytestdlib/logger"
-	"github.com/lyft/flytestdlib/storage"
+	"github.com/flyteorg/flytestdlib/bitarray"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/storage"
 
-	"github.com/lyft/flyteplugins/go/tasks/errors"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/catalog"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/lyft/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
-	idlCore "github.com/lyft/flyteidl/gen/pb-go/flyteidl/core"
+	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 // Check if there are any previously cached tasks. If there are we will only submit an ArrayJob for the
