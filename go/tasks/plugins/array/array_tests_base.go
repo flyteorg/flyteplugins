@@ -88,7 +88,7 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 			Parallelism: 10,
 			Size:        2,
 			SuccessCriteria: &plugins.ArrayJob_MinSuccesses{
-				MinSuccesses: 2,
+				MinSuccesses: 1,
 			},
 		})
 
