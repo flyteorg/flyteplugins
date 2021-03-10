@@ -186,7 +186,6 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		Spec: sparkOp.SparkApplicationSpec{
 			ServiceAccount: &sparkTaskType,
 			Type:           getApplicationType(sparkJob.GetApplicationType()),
-			Mode:           sparkOp.ClusterMode,
 			Image:          &container.Image,
 			Arguments:      modifiedArgs,
 			Driver:         driverSpec,
