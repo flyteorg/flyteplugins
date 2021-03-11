@@ -63,9 +63,8 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 		Name: "blah",
 	})
 	taskMetadata.On("IsInterruptible").Return(true)
-	taskMetadata.On("GetSecurityContext").Return(core.SecurityContext{
-		RunAs: &core.Identity{K8SServiceAccount: "service-account"},
-	})
+	taskMetadata.On("GetSecurityContext").Return(core.SecurityContext{})
+	taskMetadata.On("GetK8sServiceAccount").Return("service-account")
 	taskMetadata.On("GetOwnerID").Return(types.NamespacedName{
 		Namespace: "test-namespace",
 		Name:      "test-owner-name",
