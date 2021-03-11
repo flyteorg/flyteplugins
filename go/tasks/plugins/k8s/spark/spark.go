@@ -92,11 +92,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 	sparkEnvVars["FLYTE_MAX_ATTEMPTS"] = strconv.Itoa(int(taskCtx.TaskExecutionMetadata().GetMaxAttempts()))
 
-	serviceAccountName := flytek8s.GetServiceAccountNameFromSecurityContext(taskCtx.TaskExecutionMetadata().GetSecurityContext())
-
-	if len(serviceAccountName) == 0 {
-		serviceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
-	}
+	serviceAccountName := flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	if len(serviceAccountName) == 0 {
 		serviceAccountName = sparkTaskType

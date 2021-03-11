@@ -64,15 +64,7 @@ func (Plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecuti
 
 	pod := flytek8s.BuildPodWithSpec(podSpec)
 
-	serviceAccountName := flytek8s.GetServiceAccountNameFromSecurityContext(taskCtx.TaskExecutionMetadata().GetSecurityContext())
-
-	// TO BE DEPRECATED
-	if len(serviceAccountName) == 0 {
-		// We want to Also update the serviceAccount to the serviceaccount of the workflow
-		serviceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
-	}
-
-	pod.Spec.ServiceAccountName = serviceAccountName
+	pod.Spec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	return pod, nil
 }

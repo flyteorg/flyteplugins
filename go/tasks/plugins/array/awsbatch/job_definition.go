@@ -50,12 +50,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 		return nil, errors.Errorf(pluginErrors.BadTaskSpecification, "Tasktemplate does not contain a container image.")
 	}
 
-	role := awsUtils.GetRoleFromSecurityContext(tCtx.TaskExecutionMetadata().GetSecurityContext())
-
-	// Continue this for backward compatibility
-	if len(role) == 0 {
-		role = awsUtils.GetRole(cfg.RoleAnnotationKey, tCtx.TaskExecutionMetadata().GetAnnotations())
-	}
+	role := awsUtils.GetRoleFromSecurityContext(cfg.RoleAnnotationKey, tCtx.TaskExecutionMetadata())
 
 	cacheKey := definition.NewCacheKey(role, containerImage)
 	if existingArn, found := definitionCache.Get(cacheKey); found {

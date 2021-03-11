@@ -116,12 +116,7 @@ func (m awsSagemakerPlugin) buildResourceForTrainingJob(
 
 	inputModeString := strings.Title(strings.ToLower(sagemakerTrainingJob.GetAlgorithmSpecification().GetInputMode().String()))
 
-	role := awsUtils.GetRoleFromSecurityContext(taskCtx.TaskExecutionMetadata().GetSecurityContext())
-
-	// Continue this for backward compatibility
-	if len(role) == 0 {
-		role = awsUtils.GetRole(cfg.RoleAnnotationKey, taskCtx.TaskExecutionMetadata().GetAnnotations())
-	}
+	role := awsUtils.GetRoleFromSecurityContext(cfg.RoleAnnotationKey, taskCtx.TaskExecutionMetadata())
 
 	if len(role) == 0 {
 		role = cfg.RoleArn

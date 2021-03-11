@@ -1,17 +1,24 @@
 package awsutils
 
 import (
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	core2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-func GetRoleFromSecurityContext(securityContext core.SecurityContext) string {
+func GetRoleFromSecurityContext(roleKey string, taskExecutionMetadata core2.TaskExecutionMetadata) string {
+	var role string
+	securityContext := taskExecutionMetadata.GetSecurityContext()
 	if securityContext.GetRunAs() != nil {
-		return securityContext.GetRunAs().GetIamRole()
+		role = securityContext.GetRunAs().GetIamRole()
 	}
-	return ""
+
+	// Continue this for backward compatibility
+	if len(role) == 0 {
+		role = getRole(roleKey, taskExecutionMetadata.GetAnnotations())
+	}
+	return role
 }
 
-func GetRole(roleKey string, keyValueMap map[string]string) string {
+func getRole(roleKey string, keyValueMap map[string]string) string {
 	if len(roleKey) > 0 {
 		return keyValueMap[roleKey]
 	}
