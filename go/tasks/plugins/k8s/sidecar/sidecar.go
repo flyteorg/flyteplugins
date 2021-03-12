@@ -105,7 +105,7 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 	// CrashLoopBackoff after the initial job completion.
 	pod.Spec.RestartPolicy = k8sv1.RestartPolicyNever
 
-	// We want to a	lso update the serviceAccount to the serviceaccount of the workflow
+	// We want to also update the serviceAccount to the serviceaccount of the workflow
 	pod.Spec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
 
 	pod, err = validateAndFinalizePod(ctx, taskCtx, primaryContainerName, *pod)
