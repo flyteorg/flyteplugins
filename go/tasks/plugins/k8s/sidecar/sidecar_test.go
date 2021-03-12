@@ -217,6 +217,55 @@ func TestBuildSidecarResource_TaskType1(t *testing.T) {
 
 }
 
+func TestBuildSideResource_TaskType1_InvalidSpec(t *testing.T) {
+	podSpec := v1.PodSpec{
+		Containers: []v1.Container{
+			{
+				Name: "primary container",
+			},
+			{
+				Name: "secondary container",
+			},
+		},
+	}
+
+	b, err := json.Marshal(podSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	structObj := &structpb.Struct{}
+	if err := json.Unmarshal(b, structObj); err != nil {
+		t.Fatal(err)
+	}
+
+	task := core.TaskTemplate{
+		Custom:          structObj,
+		TaskTypeVersion: 1,
+	}
+
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		ResourceTolerations: map[v1.ResourceName][]v1.Toleration{
+			v1.ResourceStorage: {},
+			ResourceNvidiaGPU:  {},
+		},
+		DefaultCPURequest:    "1024m",
+		DefaultMemoryRequest: "1024Mi",
+	}))
+	handler := &sidecarResourceHandler{}
+	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
+	_, err = handler.BuildResource(context.TODO(), taskCtx)
+	assert.EqualError(t, err, "[BadTaskSpecification] invalid TaskSpecification, config needs to be non-empty and include missing [primary_container_name] key")
+
+	task.Config = map[string]string{
+		"foo": "bar",
+	}
+	taskCtx = getDummySidecarTaskContext(&task, resourceRequirements)
+	_, err = handler.BuildResource(context.TODO(), taskCtx)
+	assert.EqualError(t, err, "[BadTaskSpecification] invalid TaskSpecification, config missing [primary_container_name] key in [map[foo:bar]]")
+
+}
+
 func TestBuildSidecarResource(t *testing.T) {
 	dir, err := os.Getwd()
 	if err != nil {

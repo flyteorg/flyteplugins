@@ -89,6 +89,10 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
 		}
+		if sidecarJob.PodSpec == nil {
+			return nil, errors.Errorf(errors.BadTaskSpecification,
+				"invalid TaskSpecification, nil PodSpec [%v], Err: [%v]", task.GetCustom(), err.Error())
+		}
 		podSpec = *sidecarJob.PodSpec
 		primaryContainerName = sidecarJob.PrimaryContainerName
 	} else {
@@ -96,6 +100,14 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 		if err != nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
+		}
+		if len(task.GetConfig()) == 0 {
+			return nil, errors.Errorf(errors.BadTaskSpecification,
+				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
+		}
+		if _, ok := task.GetConfig()[primaryContainerKey]; !ok {
+			return nil, errors.Errorf(errors.BadTaskSpecification,
+				"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
 		}
 		primaryContainerName = task.GetConfig()[primaryContainerKey]
 	}
