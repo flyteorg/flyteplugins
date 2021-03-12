@@ -91,7 +91,7 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 		}
 		if sidecarJob.PodSpec == nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"invalid TaskSpecification, nil PodSpec [%v], Err: [%v]", task.GetCustom(), err.Error())
+				"invalid TaskSpecification, nil PodSpec [%v]", task.GetCustom())
 		}
 		podSpec = *sidecarJob.PodSpec
 		primaryContainerName = sidecarJob.PrimaryContainerName
