@@ -105,11 +105,11 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
 		}
-		if _, ok := task.GetConfig()[primaryContainerKey]; !ok {
+		primaryContainerName, ok := task.GetConfig()[primaryContainerKey]
+		if !ok {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
 		}
-		primaryContainerName = task.GetConfig()[primaryContainerKey]
 	}
 
 	pod := flytek8s.BuildPodWithSpec(&podSpec)
