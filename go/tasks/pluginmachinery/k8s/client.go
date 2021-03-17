@@ -1,3 +1,5 @@
+// Simple implementation of a KubeClient that caches reads and falls back
+// to make direct API calls on failure. Write calls are not cached.
 package k8s
 
 import (
