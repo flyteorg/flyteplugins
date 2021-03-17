@@ -33,7 +33,7 @@ type PluginEntry struct {
 	// is supported.
 	DefaultForTaskTypes []pluginsCore.TaskType
 	// Returns a new KubeClient to be used instead of the internal controller-runtime client.
-	NewKubeClient func(ctx context.Context) (pluginsCore.KubeClient, error)
+	CustomKubeClient func(ctx context.Context) (pluginsCore.KubeClient, error)
 	// Boolean that indicates if kubernetes resources that this plugin is responsible for should include OwnerReferences.
 	// Ingoring is only useful if resources will be created in a remote cluster.
 	OverrideInjectOwnerReferences *bool
