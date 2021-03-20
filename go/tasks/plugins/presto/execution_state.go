@@ -3,6 +3,8 @@ package presto
 import (
 	"context"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -462,7 +464,7 @@ func writeOutput(ctx context.Context, tCtx core.TaskExecutionContext, externalLo
 
 // The 'PhaseInfoRunning' occurs 15 times (3 for each of the 5 Presto queries that get run for every Presto task) which
 // are differentiated by the version (1-15)
-func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
+func MapExecutionStateToPhaseInfo(tCtx core.TaskExecutionContext, state ExecutionState) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 
@@ -474,24 +476,24 @@ func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 		if state.CreationFailureCount > 5 {
 			phaseInfo = core.PhaseInfoRetryableFailure("PrestoFailure", "Too many creation attempts", nil)
 		} else {
-			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+1), ConstructTaskInfo(state))
+			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+1), ConstructTaskInfo(tCtx, state))
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+2), ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+2), ConstructTaskInfo(tCtx, state))
 	case PhaseQuerySucceeded:
 		if state.QueryCount < 5 {
-			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+3), ConstructTaskInfo(state))
+			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+3), ConstructTaskInfo(tCtx, state))
 		} else {
-			phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
+			phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(tCtx, state))
 		}
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(tCtx, state))
 	}
 
 	return phaseInfo
 }
 
-func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
+func ConstructTaskInfo(tCtx core.TaskExecutionContext, e ExecutionState) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
 	if e.CommandID != "" {
@@ -499,6 +501,15 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 		return &core.TaskInfo{
 			Logs:       logs,
 			OccurredAt: &t,
+			Metadata: &event.TaskExecutionMetadata{
+				GeneratedName:    tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+				PluginIdentifier: prestoPluginID,
+				ExternalResources: []*event.ExternalResourceInfo{
+					{
+						ExternalId: e.CommandID,
+					},
+				},
+			},
 		}
 	}
 

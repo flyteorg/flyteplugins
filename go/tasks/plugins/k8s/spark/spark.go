@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"strconv"
@@ -270,7 +273,7 @@ func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx p
 	}, nil
 }
 
-func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
+func getEventInfoForSpark(pluginContext k8s.PluginContext, sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
 	state := sj.Status.AppState.State
 	isQueued := state == sparkOp.NewState ||
 		state == sparkOp.PendingSubmissionState ||
@@ -391,13 +394,17 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 	return &pluginsCore.TaskInfo{
 		Logs:       taskLogs,
 		CustomInfo: customInfo,
+		Metadata: &event.TaskExecutionMetadata{
+			GeneratedName:    pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+			PluginIdentifier: common.TensorflowTaskType,
+		},
 	}, nil
 }
 
 func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 
 	app := resource.(*sparkOp.SparkApplication)
-	info, err := getEventInfoForSpark(app)
+	info, err := getEventInfoForSpark(pluginContext, app)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}

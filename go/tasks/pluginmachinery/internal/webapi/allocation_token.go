@@ -23,27 +23,37 @@ func newTokenAllocator(c clock.Clock) tokenAllocator {
 	}
 }
 
+type TokenDetails struct {
+	Token     string
+	Namespace string
+}
+
 func (a tokenAllocator) allocateToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionContext, state *State, metrics Metrics) (
-	newState *State, phaseInfo core.PhaseInfo, err error) {
+	newState *State, phaseInfo core.PhaseInfo, details TokenDetails, err error) {
 	if len(p.GetConfig().ResourceQuotas) == 0 {
 		// No quota, return success
 		return &State{
 			AllocationTokenRequestStartTime: a.clock.Now(),
 			Phase:                           PhaseAllocationTokenAcquired,
-		}, core.PhaseInfoQueued(a.clock.Now(), 0, "No allocation token required"), nil
+		}, core.PhaseInfoQueued(a.clock.Now(), 0, "No allocation token required"), TokenDetails{}, nil
 	}
 
 	ns, constraints, err := p.ResourceRequirements(ctx, tCtx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to calculate resource requirements for task. Error: %v", err)
-		return nil, core.PhaseInfo{}, err
+		return nil, core.PhaseInfo{}, TokenDetails{}, err
 	}
 
 	token := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, ns, token, constraints)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to allocate resources for task. Error: %v", err)
-		return nil, core.PhaseInfo{}, err
+		return nil, core.PhaseInfo{}, TokenDetails{}, err
+	}
+
+	tokenDetails := TokenDetails{
+		Token:     token,
+		Namespace: string(ns),
 	}
 
 	switch allocationStatus {
@@ -53,7 +63,7 @@ func (a tokenAllocator) allocateToken(ctx context.Context, p webapi.AsyncPlugin,
 		return &State{
 			AllocationTokenRequestStartTime: a.clock.Now(),
 			Phase:                           PhaseAllocationTokenAcquired,
-		}, core.PhaseInfoQueued(a.clock.Now(), 0, "Allocation token required"), nil
+		}, core.PhaseInfoQueued(a.clock.Now(), 0, "Allocation token required"), tokenDetails, nil
 	case core.AllocationStatusNamespaceQuotaExceeded:
 	case core.AllocationStatusExhausted:
 		metrics.AllocationNotGranted.Inc(ctx)
@@ -67,10 +77,10 @@ func (a tokenAllocator) allocateToken(ctx context.Context, p webapi.AsyncPlugin,
 				AllocationTokenRequestStartTime: startTime,
 				Phase:                           PhaseNotStarted,
 			}, core.PhaseInfoQueued(
-				a.clock.Now(), 0, "Quota for task has exceeded. The request is enqueued."), nil
+				a.clock.Now(), 0, "Quota for task has exceeded. The request is enqueued."), tokenDetails, nil
 	}
 
-	return nil, core.PhaseInfo{}, fmt.Errorf("allocation status undefined [%v]", allocationStatus)
+	return nil, core.PhaseInfo{}, tokenDetails, fmt.Errorf("allocation status undefined [%v]", allocationStatus)
 }
 
 func (a tokenAllocator) releaseToken(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionContext, metrics Metrics) error {

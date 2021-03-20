@@ -104,7 +104,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 	t.Run("Happy case", func(t *testing.T) {
 		config := Config{MaxArrayJobSize: 100}
-		newState, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
@@ -116,6 +116,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 0)
+		assert.EqualValues(t, []string{"notfound-0", "notfound-1", "notfound-2", "notfound-3", "notfound-4"}, subTaskIDs)
 	})
 
 	t.Run("Resource exhausted", func(t *testing.T) {
@@ -127,7 +128,7 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 		}
 
-		newState, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
@@ -161,7 +162,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			},
 		}
 
-		newState, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
@@ -191,7 +192,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			arrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseSuccess))
 
 		}
-		newState, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,

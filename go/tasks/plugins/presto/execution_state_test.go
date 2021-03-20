@@ -89,8 +89,19 @@ func TestConstructTaskLog(t *testing.T) {
 	assert.Equal(t, expected, taskLog.Uri)
 }
 
+func getMockTaskExecutionContext() *mocks.TaskExecutionContext {
+	tID := &mocks.TaskExecutionID{}
+	tID.OnGetGeneratedName().Return("mock_generated_name")
+	tMeta := &mocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+
+	tCtx := &mocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	return tCtx
+}
+
 func TestConstructTaskInfo(t *testing.T) {
-	empty := ConstructTaskInfo(ExecutionState{})
+	empty := ConstructTaskInfo(getMockTaskExecutionContext(), ExecutionState{})
 	assert.Nil(t, empty)
 
 	expected := "https://prestoproxy-internal.flyteorg.net:443"
@@ -104,8 +115,12 @@ func TestConstructTaskInfo(t *testing.T) {
 		URI:              u.String(),
 	}
 
-	taskInfo := ConstructTaskInfo(e)
+	taskInfo := ConstructTaskInfo(getMockTaskExecutionContext(), e)
 	assert.Equal(t, "https://prestoproxy-internal.flyteorg.net:443", taskInfo.Logs[0].Uri)
+	assert.Equal(t, taskInfo.Metadata.PluginIdentifier, prestoPluginID)
+	assert.Equal(t, taskInfo.Metadata.GeneratedName, "mock_generated_name")
+	assert.Len(t, taskInfo.Metadata.ExternalResources, 1)
+	assert.Equal(t, taskInfo.Metadata.ExternalResources[0].ExternalId, "123")
 }
 
 func TestMapExecutionStateToPhaseInfo(t *testing.T) {
@@ -113,7 +128,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			CurrentPhase: PhaseNotStarted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e)
+		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
 		assert.Equal(t, core.PhaseNotReady, phaseInfo.Phase())
 	})
 
@@ -122,14 +137,14 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 			CurrentPhase:         PhaseQueued,
 			CreationFailureCount: 0,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e)
+		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 
 		e = ExecutionState{
 			CurrentPhase:         PhaseQueued,
 			CreationFailureCount: 100,
 		}
-		phaseInfo = MapExecutionStateToPhaseInfo(e)
+		phaseInfo = MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 
 	})
@@ -138,7 +153,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			CurrentPhase: PhaseSubmitted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e)
+		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
 }

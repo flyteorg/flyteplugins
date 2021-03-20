@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -167,6 +169,10 @@ func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8
 	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
 	info := pluginsCore.TaskInfo{
 		OccurredAt: &transitionOccurredAt,
+		Metadata: &event.TaskExecutionMetadata{
+			GeneratedName:    pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+			PluginIdentifier: sidecarTaskType,
+		},
 	}
 	if pod.Status.Phase != k8sv1.PodPending && pod.Status.Phase != k8sv1.PodUnknown {
 		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")

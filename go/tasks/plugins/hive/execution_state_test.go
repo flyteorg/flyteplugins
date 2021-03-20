@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/golang/protobuf/proto"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	ioMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
@@ -108,8 +111,19 @@ func TestConstructTaskLog(t *testing.T) {
 	assert.Equal(t, expected, taskLog.Uri)
 }
 
+func getMockTaskExecutionContext() *mocks.TaskExecutionContext {
+	tID := &mocks.TaskExecutionID{}
+	tID.OnGetGeneratedName().Return("mock_generated_name")
+	tMeta := &mocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+
+	tCtx := &mocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	return tCtx
+}
+
 func TestConstructTaskInfo(t *testing.T) {
-	empty := ConstructTaskInfo(ExecutionState{})
+	empty := ConstructTaskInfo(getMockTaskExecutionContext(), ExecutionState{})
 	assert.Nil(t, empty)
 
 	expected := "https://wellness.qubole.com/v2/analyze?command_id=123"
@@ -117,14 +131,30 @@ func TestConstructTaskInfo(t *testing.T) {
 	assert.NoError(t, err)
 
 	e := ExecutionState{
-		Phase:            PhaseQuerySucceeded,
-		CommandID:        "123",
-		SyncFailureCount: 0,
-		URI:              u.String(),
+		Phase:               PhaseQuerySucceeded,
+		CommandID:           "123",
+		SyncFailureCount:    0,
+		URI:                 u.String(),
+		AllocationNamespace: "allocation_namespace",
 	}
 
-	taskInfo := ConstructTaskInfo(e)
+	taskInfo := ConstructTaskInfo(getMockTaskExecutionContext(), e)
 	assert.Equal(t, "https://wellness.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
+	assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
+		PluginIdentifier: quboleHiveExecutorID,
+		GeneratedName:    "mock_generated_name",
+		ExternalResources: []*event.ExternalResourceInfo{
+			{
+				ExternalId: "123",
+			},
+		},
+		ResourcePoolInfo: []*event.ResourcePoolInfo{
+			{
+				AllocationToken: "mock_generated_name",
+				Namespace:       "allocation_namespace",
+			},
+		},
+	}))
 }
 
 func TestMapExecutionStateToPhaseInfo(t *testing.T) {
@@ -133,7 +163,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseNotStarted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
+		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
 		assert.Equal(t, core.PhaseNotReady, phaseInfo.Phase())
 	})
 
@@ -142,14 +172,14 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 			Phase:                PhaseQueued,
 			CreationFailureCount: 0,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
+		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
 		assert.Equal(t, core.PhaseQueued, phaseInfo.Phase())
 
 		e = ExecutionState{
 			Phase:                PhaseQueued,
 			CreationFailureCount: 100,
 		}
-		phaseInfo = MapExecutionStateToPhaseInfo(e, c)
+		phaseInfo = MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 
 	})
@@ -158,7 +188,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseSubmitted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
+		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
 
@@ -166,7 +196,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseWriteOutputFile,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
+		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 		assert.Equal(t, uint32(1), phaseInfo.Version())
 	})

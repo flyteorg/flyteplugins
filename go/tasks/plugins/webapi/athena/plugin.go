@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
 
 	awsSdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -23,6 +25,8 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
+
+const athenaPluginName = "athena"
 
 const (
 	ErrRemoteSystem errors.ErrorCode = "RemoteSystem"
@@ -184,6 +188,14 @@ func createTaskInfo(queryID string, cfg awsSdk.Config) *core.TaskInfo {
 				Name: "Athena Query Console",
 			},
 		},
+		Metadata: &event.TaskExecutionMetadata{
+			PluginIdentifier: athenaPluginName,
+			ExternalResources: []*event.ExternalResourceInfo{
+				{
+					ExternalId: queryID,
+				},
+			},
+		},
 	}
 }
 
@@ -203,7 +215,7 @@ func NewPlugin(_ context.Context, cfg *Config, awsConfig *aws.Config, metricScop
 
 func init() {
 	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
-		ID:                 "athena",
+		ID:                 athenaPluginName,
 		SupportedTaskTypes: []core.TaskType{"hive", "presto"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return NewPlugin(ctx, GetConfig(), aws.GetConfig(), iCtx.MetricsScope())

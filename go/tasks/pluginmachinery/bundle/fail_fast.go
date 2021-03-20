@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 
 	pluginMachinery "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -35,6 +37,10 @@ func (h failFastHandler) Handle(ctx context.Context, tCtx core.TaskExecutionCont
 		fmt.Sprintf("Task [%s] type [%+v] not supported by platform for this project/domain/workflow",
 			taskTemplate.Type, tCtx.TaskExecutionMetadata().GetTaskExecutionID()), &core.TaskInfo{
 			OccurredAt: &occuredAt,
+			Metadata: &event.TaskExecutionMetadata{
+				PluginIdentifier: h.GetID(),
+				GeneratedName:    tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+			},
 		})), nil
 }
 

@@ -66,7 +66,7 @@ func Test_allocateToken(t *testing.T) {
 	t.Run("no quota", func(t *testing.T) {
 		p := newPluginWithProperties(webapi.PluginConfig{ResourceQuotas: nil})
 		a := newTokenAllocator(clck)
-		gotNewState, _, err := a.allocateToken(ctx, p, nil, nil, metrics)
+		gotNewState, _, _, err := a.allocateToken(ctx, p, nil, nil, metrics)
 		assert.NoError(t, err)
 		if diff := deep.Equal(gotNewState, &State{
 			AllocationTokenRequestStartTime: tNow,
@@ -79,7 +79,7 @@ func Test_allocateToken(t *testing.T) {
 	t.Run("Allocation Successful", func(t *testing.T) {
 		p.OnResourceRequirements(ctx, tCtx).Return("ns", core.ResourceConstraintsSpec{}, nil)
 		a := newTokenAllocator(clck)
-		gotNewState, _, err := a.allocateToken(ctx, p, tCtx, state, metrics)
+		gotNewState, _, details, err := a.allocateToken(ctx, p, tCtx, state, metrics)
 		assert.NoError(t, err)
 		if diff := deep.Equal(gotNewState, &State{
 			AllocationTokenRequestStartTime: tNow,
@@ -87,6 +87,10 @@ func Test_allocateToken(t *testing.T) {
 		}); len(diff) > 0 {
 			t.Errorf("allocateToken() gotNewState = %v, Diff: %v", gotNewState, diff)
 		}
+		assert.EqualValues(t, details, TokenDetails{
+			Token:     "abc",
+			Namespace: "ns",
+		})
 	})
 
 	t.Run("Allocation Failed", func(t *testing.T) {
@@ -106,7 +110,7 @@ func Test_allocateToken(t *testing.T) {
 
 		p.OnResourceRequirements(ctx, tCtx).Return("ns", core.ResourceConstraintsSpec{}, nil)
 		a := newTokenAllocator(clck)
-		gotNewState, _, err := a.allocateToken(ctx, p, tCtx, state, metrics)
+		gotNewState, _, _, err := a.allocateToken(ctx, p, tCtx, state, metrics)
 		assert.NoError(t, err)
 		if diff := deep.Equal(gotNewState, &State{
 			AllocationTokenRequestStartTime: tNow,

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	"github.com/golang/protobuf/proto"
+
 	"github.com/go-test/deep"
 
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -231,7 +234,7 @@ func Test_awsSagemakerPlugin_getEventInfoForTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 
-		taskInfo, err := awsSageMakerTrainingJobHandler.getEventInfoForTrainingJob(ctx, trainingJob)
+		taskInfo, err := awsSageMakerTrainingJobHandler.getEventInfoForTrainingJob(ctx, dummyPluginContext(), trainingJob)
 		if err != nil {
 			panic(err)
 		}
@@ -270,5 +273,14 @@ func Test_awsSagemakerPlugin_getEventInfoForTrainingJob(t *testing.T) {
 		if diff := deep.Equal(expectedCustomInfo, taskInfo.CustomInfo); diff != nil {
 			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
 		}
+		assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
+			GeneratedName:    "mock_generated_name",
+			PluginIdentifier: trainingJobTaskPluginID,
+			ExternalResources: []*event.ExternalResourceInfo{
+				{
+					ExternalId: "some-acceptable-name",
+				},
+			},
+		}))
 	})
 }

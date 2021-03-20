@@ -2,7 +2,10 @@ package container
 
 import (
 	"context"
+
 	"testing"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 
 	"github.com/stretchr/testify/mock"
 
@@ -100,6 +103,17 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, command []str
 	return taskCtx
 }
 
+func dummyPluginContext() *mocks.TaskExecutionContext {
+	tID := &mocks.TaskExecutionID{}
+	tID.OnGetGeneratedName().Return("mock_generated_name")
+	tMeta := &mocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+
+	tCtx := &mocks.TaskExecutionContext{}
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	return tCtx
+}
+
 func TestContainerTaskExecutor_BuildIdentityResource(t *testing.T) {
 	c := Plugin{}
 	taskMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
@@ -145,21 +159,21 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 	ctx := context.TODO()
 	t.Run("running", func(t *testing.T) {
 		j.Status.Phase = v1.PodRunning
-		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, dummyPluginContext(), j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseRunning, phaseInfo.Phase())
 	})
 
 	t.Run("queued", func(t *testing.T) {
 		j.Status.Phase = v1.PodPending
-		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, dummyPluginContext(), j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseQueued, phaseInfo.Phase())
 	})
 
 	t.Run("failNoCondition", func(t *testing.T) {
 		j.Status.Phase = v1.PodFailed
-		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, dummyPluginContext(), j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
 		ec := phaseInfo.Err().GetCode()
@@ -175,7 +189,7 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 				Type: v1.PodReasonUnschedulable,
 			},
 		}
-		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, dummyPluginContext(), j)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
 		ec := phaseInfo.Err().GetCode()
@@ -184,7 +198,7 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		j.Status.Phase = v1.PodSucceeded
-		phaseInfo, err := c.GetTaskPhase(ctx, nil, j)
+		phaseInfo, err := c.GetTaskPhase(ctx, dummyPluginContext(), j)
 		assert.NoError(t, err)
 		assert.NotNil(t, phaseInfo)
 		assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())

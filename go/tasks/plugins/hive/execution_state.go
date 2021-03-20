@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -71,6 +73,9 @@ type ExecutionState struct {
 
 	// The time the execution first requests for an allocation token
 	AllocationTokenRequestStartTime time.Time `json:"allocation_token_request_start_time,omitempty"`
+
+	// Stores the namespace under which the resource manager allocation token was computed.
+	AllocationNamespace string
 }
 
 // This is the main state iteration
@@ -105,7 +110,7 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 	return newState, transformError
 }
 
-func MapExecutionStateToPhaseInfo(state ExecutionState, _ client.QuboleClient) core.PhaseInfo {
+func MapExecutionStateToPhaseInfo(tCtx core.TaskExecutionContext, _ client.QuboleClient, state ExecutionState) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 
@@ -120,16 +125,16 @@ func MapExecutionStateToPhaseInfo(state ExecutionState, _ client.QuboleClient) c
 			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Qubole launch")
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(tCtx, state))
 
 	case PhaseWriteOutputFile:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion+1, ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion+1, ConstructTaskInfo(tCtx, state))
 
 	case PhaseQuerySucceeded:
-		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(tCtx, state))
 
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
+		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(tCtx, state))
 	}
 
 	return phaseInfo
@@ -143,14 +148,32 @@ func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	}
 }
 
-func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
+func ConstructTaskInfo(tCtx core.TaskExecutionContext, e ExecutionState) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
+
+	metadata := &event.TaskExecutionMetadata{
+		GeneratedName: tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+		ExternalResources: []*event.ExternalResourceInfo{
+			{
+				ExternalId: e.CommandID,
+			},
+		},
+		ResourcePoolInfo: []*event.ResourcePoolInfo{
+			{
+				AllocationToken: tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+				Namespace:       e.AllocationNamespace,
+			},
+		},
+		PluginIdentifier: quboleHiveExecutorID,
+	}
+
 	if e.CommandID != "" {
 		logs = append(logs, ConstructTaskLog(e))
 		return &core.TaskInfo{
 			Logs:       logs,
 			OccurredAt: &t,
+			Metadata:   metadata,
 		}
 	}
 
@@ -209,8 +232,10 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext, cur
 	// Emitting the duration this execution has been waiting for a token allocation
 	if currentState.AllocationTokenRequestStartTime.IsZero() {
 		newState.AllocationTokenRequestStartTime = time.Now()
+		newState.AllocationNamespace = string(clusterPrimaryLabel)
 	} else {
 		newState.AllocationTokenRequestStartTime = currentState.AllocationTokenRequestStartTime
+		newState.AllocationNamespace = currentState.AllocationNamespace
 	}
 	waitTime := time.Since(newState.AllocationTokenRequestStartTime)
 	metric.ResourceWaitTime.Observe(waitTime.Seconds())

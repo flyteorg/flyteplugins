@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"k8s.io/utils/clock"
 
 	stdErrs "github.com/flyteorg/flytestdlib/errors"
@@ -76,10 +78,11 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 
 	var nextState *State
 	var phaseInfo core.PhaseInfo
+	var tokenDetails TokenDetails
 	switch incomingState.Phase {
 	case PhaseNotStarted:
 		if len(c.p.GetConfig().ResourceQuotas) > 0 {
-			nextState, phaseInfo, err = c.tokenAllocator.allocateToken(ctx, c.p, tCtx, &incomingState, c.metrics)
+			nextState, phaseInfo, tokenDetails, err = c.tokenAllocator.allocateToken(ctx, c.p, tCtx, &incomingState, c.metrics)
 		} else {
 			nextState, phaseInfo, err = launch(ctx, c.p, tCtx, c.cache, &incomingState)
 		}
@@ -95,6 +98,19 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 
 	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, nextState); err != nil {
 		return core.UnknownTransition, err
+	}
+
+	if phaseInfo.Info() != nil {
+		if phaseInfo.Info().Metadata == nil {
+			phaseInfo.Info().Metadata = &event.TaskExecutionMetadata{}
+		}
+		phaseInfo.Info().Metadata.GeneratedName = tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+		phaseInfo.Info().Metadata.ResourcePoolInfo = []*event.ResourcePoolInfo{
+			{
+				AllocationToken: tokenDetails.Token,
+				Namespace:       tokenDetails.Namespace,
+			},
+		}
 	}
 
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil

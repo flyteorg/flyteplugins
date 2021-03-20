@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flytestdlib/errors"
@@ -13,6 +15,8 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
+
+const examplePluginName = "service-a"
 
 const (
 	ErrRemoteSystem errors.ErrorCode = "RemoteSystem"
@@ -94,6 +98,14 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 			},
 		},
 		OccurredAt: &tNow,
+		Metadata: &event.TaskExecutionMetadata{
+			PluginIdentifier: examplePluginName,
+			ExternalResources: []*event.ExternalResourceInfo{
+				{
+					ExternalId: "abc",
+				},
+			},
+		},
 	}), nil
 }
 
@@ -106,7 +118,7 @@ func NewPlugin(ctx context.Context, cfg *Config, metricScope promutils.Scope) (P
 
 func init() {
 	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
-		ID:                 "service-a",
+		ID:                 examplePluginName,
 		SupportedTaskTypes: []core.TaskType{"my-task"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return NewPlugin(ctx, GetConfig(), iCtx.MetricsScope())

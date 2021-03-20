@@ -50,12 +50,13 @@ func assertBitSetsEqual(t testing.TB, b1, b2 *bitarray.BitSet, len int) {
 
 func TestMapArrayStateToPluginPhase(t *testing.T) {
 	ctx := context.Background()
+	const pluginExecutorName = "executor"
 
 	t.Run("start", func(t *testing.T) {
 		s := State{
 			CurrentPhase: PhaseStart,
 		}
-		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseInitializing, phaseInfo.Phase())
 	})
@@ -66,7 +67,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			PhaseVersion: 0,
 		}
 
-		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
@@ -79,10 +80,11 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ExecutionArraySize: 5,
 		}
 
-		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 		assert.Equal(t, uint32(368), phaseInfo.Version())
+		assert.Equal(t, phaseInfo.Info().Metadata.PluginIdentifier, pluginExecutorName)
 	})
 
 	t.Run("write to discovery", func(t *testing.T) {
@@ -93,7 +95,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ExecutionArraySize: 5,
 		}
 
-		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 		assert.Equal(t, uint32(548), phaseInfo.Version())
@@ -105,7 +107,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			PhaseVersion: 0,
 		}
 
-		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseSuccess, phaseInfo.Phase())
 	})
@@ -116,7 +118,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			PhaseVersion: 0,
 		}
 
-		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 	})
@@ -127,7 +129,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			PhaseVersion: 0,
 		}
 
-		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, core.PhasePermanentFailure, phaseInfo.Phase())
 	})
@@ -138,7 +140,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 				CurrentPhase: p,
 			}
 
-			phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil)
+			phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, pluginExecutorName, nil)
 			assert.NoError(t, err)
 			assert.NotEqual(t, core.PhaseUndefined, phaseInfo.Phase())
 		}
