@@ -38,14 +38,14 @@ func GetJobTaskLog(jobSize int, accountID, region, queue, jobID string) *idlCore
 
 type SubTaskDetails struct {
 	LogLinks   []*idlCore.TaskLog
-	SubTaskIDs []string
+	SubTaskIDs []*string
 }
 
 func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata, jobStore *JobStore, state *State) (
 	SubTaskDetails, error) {
 
 	logLinks := make([]*idlCore.TaskLog, 0, 4)
-	subTaskIDs := make([]string, 0)
+	subTaskIDs := make([]*string, 0)
 
 	if state.GetExternalJobID() == nil {
 		return SubTaskDetails{
@@ -98,7 +98,7 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 				})
 			}
 		}
-		subTaskIDs = append(subTaskIDs, subJob.ID)
+		subTaskIDs = append(subTaskIDs, &subJob.ID)
 	}
 
 	return SubTaskDetails{

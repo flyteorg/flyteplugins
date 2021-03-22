@@ -86,7 +86,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var nextState *arrayCore.State
 	var err error
 	var logLinks []*idlCore.TaskLog
-	var subTaskIDs []string
+	var subTaskIDs []*string
 
 	switch p, _ := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
@@ -136,7 +136,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks, executorName, subTaskIDs)
+	generatedName := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, executorName, generatedName, logLinks, subTaskIDs)
 	if err != nil {
 		return core.UnknownTransition, err
 	}

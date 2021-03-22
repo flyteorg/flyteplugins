@@ -36,7 +36,7 @@ const (
 
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference, currentState *arrayCore.State) (
-	newState *arrayCore.State, logLinks []*idlCore.TaskLog, subTaskIDs []string, err error) {
+	newState *arrayCore.State, logLinks []*idlCore.TaskLog, subTaskIDs []*string, err error) {
 	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
 		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
 		logger.Info(ctx, ee)
@@ -51,7 +51,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
-	subTaskIDs = make([]string, 0, len(currentState.GetArrayStatus().Detailed.GetItems()))
+	subTaskIDs = make([]*string, 0, len(currentState.GetArrayStatus().Detailed.GetItems()))
 
 	// If we have arrived at this state for the first time then currentState has not been
 	// initialized with number of sub tasks.

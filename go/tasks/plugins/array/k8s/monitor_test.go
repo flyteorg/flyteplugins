@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"testing"
 
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -92,6 +93,15 @@ func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContex
 	return tCtx
 }
 
+func testSubTaskIDs(t *testing.T, actual []*string) {
+	var expected = make([]*string, 5)
+	for i := 0; i < len(expected); i++ {
+		subTaskID := fmt.Sprintf("notfound-%d", i)
+		expected[i] = &subTaskID
+	}
+	assert.EqualValues(t, expected, actual)
+}
+
 func TestCheckSubTasksState(t *testing.T) {
 	ctx := context.Background()
 
@@ -116,7 +126,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 0)
-		assert.EqualValues(t, []string{"notfound-0", "notfound-1", "notfound-2", "notfound-3", "notfound-4"}, subTaskIDs)
+		testSubTaskIDs(t, subTaskIDs)
 	})
 
 	t.Run("Resource exhausted", func(t *testing.T) {
@@ -128,17 +138,21 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 		}
 
-		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
 			OriginalMinSuccesses: 5,
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
+			},
 		})
 
 		assert.Nil(t, err)
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseWaitingForResources.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 5)
+		assert.Empty(t, subTaskIDs, "subtask ids are only populated when monitor is called for a successfully launched task")
 	})
 }
 
@@ -162,17 +176,21 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			},
 		}
 
-		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
 			OriginalMinSuccesses: 5,
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
+			},
 		})
 
 		assert.Nil(t, err)
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 5)
+		testSubTaskIDs(t, subTaskIDs)
 	})
 
 	t.Run("All tasks success", func(t *testing.T) {
@@ -192,7 +210,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			arrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseSuccess))
 
 		}
-		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
@@ -204,5 +222,6 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseWriteToDiscovery.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "ReleaseResource", 5)
+		assert.Empty(t, subTaskIDs, "terminal phases don't need to collect subtask IDs")
 	})
 }
