@@ -274,8 +274,7 @@ func Test_awsSagemakerPlugin_getEventInfoForTrainingJob(t *testing.T) {
 			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
 		}
 		assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
-			GeneratedName:    "mock_generated_name",
-			PluginIdentifier: trainingJobTaskPluginID,
+			GeneratedName: "mock_generated_name",
 			ExternalResources: []*event.ExternalResourceInfo{
 				{
 					ExternalId: "some-acceptable-name",

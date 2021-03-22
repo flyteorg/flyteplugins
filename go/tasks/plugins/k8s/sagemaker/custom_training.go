@@ -217,5 +217,5 @@ func (m awsSagemakerPlugin) getEventInfoForCustomTrainingJob(ctx context.Context
 	logger.Infof(ctx, "Getting event information for SageMaker CustomTrainingJob task, job region: [%v], job name: [%v], "+
 		"job type in url: [%v], sagemaker link name: [%v]", jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 
-	return createTaskInfo(ctx, pluginContext, jobRegion, jobName, jobTypeInURL, sagemakerLinkName, customTrainingJobTaskPluginID)
+	return createTaskInfo(ctx, pluginContext, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 }

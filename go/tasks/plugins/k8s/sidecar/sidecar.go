@@ -170,8 +170,7 @@ func (sidecarResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8
 	info := pluginsCore.TaskInfo{
 		OccurredAt: &transitionOccurredAt,
 		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName:    pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-			PluginIdentifier: sidecarTaskType,
+			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 		},
 	}
 	if pod.Status.Phase != k8sv1.PodPending && pod.Status.Phase != k8sv1.PodUnknown {

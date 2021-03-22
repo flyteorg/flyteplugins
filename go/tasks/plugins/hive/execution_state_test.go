@@ -141,8 +141,7 @@ func TestConstructTaskInfo(t *testing.T) {
 	taskInfo := ConstructTaskInfo(getMockTaskExecutionContext(), e)
 	assert.Equal(t, "https://wellness.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
 	assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
-		PluginIdentifier: quboleHiveExecutorID,
-		GeneratedName:    "mock_generated_name",
+		GeneratedName: "mock_generated_name",
 		ExternalResources: []*event.ExternalResourceInfo{
 			{
 				ExternalId: "123",

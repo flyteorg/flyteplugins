@@ -31,8 +31,7 @@ func (Plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext,
 	info := pluginsCore.TaskInfo{
 		OccurredAt: &t,
 		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName:    pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-			PluginIdentifier: containerTaskType,
+			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 		},
 	}
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {

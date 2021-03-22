@@ -137,8 +137,7 @@ func (tensorflowOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginC
 		OccurredAt: &occurredAt,
 		CustomInfo: statusDetails,
 		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName:    pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-			PluginIdentifier: common.TensorflowTaskType,
+			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 		},
 	}
 

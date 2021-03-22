@@ -189,7 +189,6 @@ func createTaskInfo(queryID string, cfg awsSdk.Config) *core.TaskInfo {
 			},
 		},
 		Metadata: &event.TaskExecutionMetadata{
-			PluginIdentifier: athenaPluginName,
 			ExternalResources: []*event.ExternalResourceInfo{
 				{
 					ExternalId: queryID,

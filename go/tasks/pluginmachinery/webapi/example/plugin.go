@@ -99,7 +99,6 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 		},
 		OccurredAt: &tNow,
 		Metadata: &event.TaskExecutionMetadata{
-			PluginIdentifier: examplePluginName,
 			ExternalResources: []*event.ExternalResourceInfo{
 				{
 					ExternalId: "abc",

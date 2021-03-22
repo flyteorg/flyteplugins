@@ -38,8 +38,7 @@ func (h failFastHandler) Handle(ctx context.Context, tCtx core.TaskExecutionCont
 			taskTemplate.Type, tCtx.TaskExecutionMetadata().GetTaskExecutionID()), &core.TaskInfo{
 			OccurredAt: &occuredAt,
 			Metadata: &event.TaskExecutionMetadata{
-				PluginIdentifier: h.GetID(),
-				GeneratedName:    tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
+				GeneratedName: tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 			},
 		})), nil
 }

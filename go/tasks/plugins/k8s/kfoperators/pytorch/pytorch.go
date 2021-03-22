@@ -124,8 +124,7 @@ func (pytorchOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginCont
 		OccurredAt: &occurredAt,
 		CustomInfo: statusDetails,
 		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName:    pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-			PluginIdentifier: common.PytorchTaskType,
+			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 		},
 	}
 

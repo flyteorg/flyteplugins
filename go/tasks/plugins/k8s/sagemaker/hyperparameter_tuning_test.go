@@ -142,8 +142,7 @@ func Test_awsSagemakerPlugin_getEventInfoForHyperparameterTuningJob(t *testing.T
 			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
 		}
 		assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
-			GeneratedName:    "mock_generated_name",
-			PluginIdentifier: hyperparameterTuningJobTaskPluginID,
+			GeneratedName: "mock_generated_name",
 			ExternalResources: []*event.ExternalResourceInfo{
 				{
 					ExternalId: "some-acceptable-name",

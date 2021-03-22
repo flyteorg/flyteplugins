@@ -338,8 +338,7 @@ func TestGetTaskPhase(t *testing.T) {
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(taskPhase.Info().Metadata, &event.TaskExecutionMetadata{
-		PluginIdentifier: common.TensorflowTaskType,
-		GeneratedName:    "mock_generated_name",
+		GeneratedName: "mock_generated_name",
 	}))
 
 	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyTensorFlowJobResourceCreator(commonOp.JobSucceeded))

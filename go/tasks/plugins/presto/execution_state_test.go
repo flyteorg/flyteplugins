@@ -117,7 +117,6 @@ func TestConstructTaskInfo(t *testing.T) {
 
 	taskInfo := ConstructTaskInfo(getMockTaskExecutionContext(), e)
 	assert.Equal(t, "https://prestoproxy-internal.flyteorg.net:443", taskInfo.Logs[0].Uri)
-	assert.Equal(t, taskInfo.Metadata.PluginIdentifier, prestoPluginID)
 	assert.Equal(t, taskInfo.Metadata.GeneratedName, "mock_generated_name")
 	assert.Len(t, taskInfo.Metadata.ExternalResources, 1)
 	assert.Equal(t, taskInfo.Metadata.ExternalResources[0].ExternalId, "123")

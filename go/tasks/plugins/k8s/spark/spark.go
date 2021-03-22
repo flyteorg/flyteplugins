@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"strconv"
@@ -395,8 +393,7 @@ func getEventInfoForSpark(pluginContext k8s.PluginContext, sj *sparkOp.SparkAppl
 		Logs:       taskLogs,
 		CustomInfo: customInfo,
 		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName:    pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-			PluginIdentifier: common.TensorflowTaskType,
+			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 		},
 	}, nil
 }

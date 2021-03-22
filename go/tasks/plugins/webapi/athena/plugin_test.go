@@ -21,7 +21,6 @@ func TestCreateTaskInfo(t *testing.T) {
 		},
 	}, taskInfo.Logs)
 	assert.True(t, proto.Equal(&event.TaskExecutionMetadata{
-		PluginIdentifier: athenaPluginName,
 		ExternalResources: []*event.ExternalResourceInfo{
 			{
 				ExternalId: "query_id",

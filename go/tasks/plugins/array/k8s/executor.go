@@ -137,7 +137,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	// Determine transition information from the state
 	generatedName := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, executorName, generatedName, logLinks, subTaskIDs)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, generatedName, logLinks, subTaskIDs)
 	if err != nil {
 		return core.UnknownTransition, err
 	}

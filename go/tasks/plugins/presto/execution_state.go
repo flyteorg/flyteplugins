@@ -502,8 +502,7 @@ func ConstructTaskInfo(tCtx core.TaskExecutionContext, e ExecutionState) *core.T
 			Logs:       logs,
 			OccurredAt: &t,
 			Metadata: &event.TaskExecutionMetadata{
-				GeneratedName:    tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-				PluginIdentifier: prestoPluginID,
+				GeneratedName: tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 				ExternalResources: []*event.ExternalResourceInfo{
 					{
 						ExternalId: e.CommandID,

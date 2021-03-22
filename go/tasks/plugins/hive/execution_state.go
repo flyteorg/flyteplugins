@@ -165,7 +165,6 @@ func ConstructTaskInfo(tCtx core.TaskExecutionContext, e ExecutionState) *core.T
 				Namespace:       e.AllocationNamespace,
 			},
 		},
-		PluginIdentifier: quboleHiveExecutorID,
 	}
 
 	if e.CommandID != "" {

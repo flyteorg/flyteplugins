@@ -333,8 +333,7 @@ func TestGetTaskPhase(t *testing.T) {
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 	assert.True(t, proto.Equal(taskPhase.Info().Metadata, &event.TaskExecutionMetadata{
-		PluginIdentifier: common.PytorchTaskType,
-		GeneratedName:    "mock_generated_name",
+		GeneratedName: "mock_generated_name",
 	}))
 
 	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyPytorchJobResourceCreator(commonOp.JobSucceeded))

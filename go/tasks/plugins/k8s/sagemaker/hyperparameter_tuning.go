@@ -280,5 +280,5 @@ func (m awsSagemakerPlugin) getEventInfoForHyperparameterTuningJob(ctx context.C
 	logger.Infof(ctx, "Getting event information for SageMaker HyperparameterTuningJob task, job region: [%v], job name: [%v], "+
 		"job type in url: [%v], sagemaker link name: [%v]", jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 
-	return createTaskInfo(ctx, pluginContext, jobRegion, jobName, jobTypeInURL, sagemakerLinkName, hyperparameterTuningJobTaskPluginID)
+	return createTaskInfo(ctx, pluginContext, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 }
