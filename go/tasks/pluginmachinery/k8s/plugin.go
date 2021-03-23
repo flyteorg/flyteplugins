@@ -40,6 +40,8 @@ type PluginEntry struct {
 	// Boolean that indicates if finalizer injection should be disabled for resources that this plugin is
 	// responsible for.
 	DisableInjectFinalizer bool
+	// Specifies the length of TaskExecutionID generated name. default: 50
+	GeneratedNameMaxLength *int
 }
 
 // Special context passed in to plugins when checking task phase

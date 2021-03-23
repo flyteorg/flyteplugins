@@ -34,6 +34,8 @@ type PluginEntry struct {
 type PluginProperties struct {
 	// Instructs the execution engine to not attempt to cache lookup or write for the node.
 	DisableNodeLevelCaching bool
+	// Specifies the length of TaskExecutionID generated name. default: 50
+	GeneratedNameMaxLength *int
 }
 
 // Interface for the core Flyte plugin
