@@ -6,6 +6,8 @@ import (
 	catalog "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 	core "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
+	event "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	io "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	mock "github.com/stretchr/testify/mock"
@@ -114,6 +116,40 @@ func (_m *TaskExecutionContext) EventsRecorder() core.EventsRecorder {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(core.EventsRecorder)
+		}
+	}
+
+	return r0
+}
+
+type TaskExecutionContext_GetResourcePoolInfo struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionContext_GetResourcePoolInfo) Return(_a0 []*event.ResourcePoolInfo) *TaskExecutionContext_GetResourcePoolInfo {
+	return &TaskExecutionContext_GetResourcePoolInfo{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionContext) OnGetResourcePoolInfo() *TaskExecutionContext_GetResourcePoolInfo {
+	c := _m.On("GetResourcePoolInfo")
+	return &TaskExecutionContext_GetResourcePoolInfo{Call: c}
+}
+
+func (_m *TaskExecutionContext) OnGetResourcePoolInfoMatch(matchers ...interface{}) *TaskExecutionContext_GetResourcePoolInfo {
+	c := _m.On("GetResourcePoolInfo", matchers...)
+	return &TaskExecutionContext_GetResourcePoolInfo{Call: c}
+}
+
+// GetResourcePoolInfo provides a mock function with given fields:
+func (_m *TaskExecutionContext) GetResourcePoolInfo() []*event.ResourcePoolInfo {
+	ret := _m.Called()
+
+	var r0 []*event.ResourcePoolInfo
+	if rf, ok := ret.Get(0).(func() []*event.ResourcePoolInfo); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*event.ResourcePoolInfo)
 		}
 	}
 

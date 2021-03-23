@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,6 +35,4 @@ type TaskExecutionMetadata interface {
 	GetK8sServiceAccount() string
 	GetSecurityContext() core.SecurityContext
 	IsInterruptible() bool
-	// Returns details about any resources allocated during the execution of this task.
-	GetResourcePoolInfo() []*event.ResourcePoolInfo
 }

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
@@ -57,6 +58,9 @@ type TaskExecutionContext interface {
 
 	// Returns a handle to the Task events recorder, which get stored in the Admin.
 	EventsRecorder() EventsRecorder
+
+	// Returns details about any resources allocated during the execution of this task.
+	GetResourcePoolInfo() []*event.ResourcePoolInfo
 }
 
 // A simple fire-and-forget func
