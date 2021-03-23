@@ -213,7 +213,7 @@ func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, confi
 		NamespaceScopeResourceConstraint: nil,
 	}
 
-	allocationStatus, err := tCtx.AllocateResource(ctx, resourceNamespace, podName, resourceConstraintSpec)
+	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, resourceNamespace, podName, resourceConstraintSpec)
 	if err != nil {
 		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
@@ -232,7 +232,7 @@ func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, con
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	resourceNamespace := core.ResourceNamespace(config.ResourceConfig.PrimaryLabel)
 
-	err := tCtx.ReleaseResource(ctx, resourceNamespace, podName)
+	err := tCtx.ResourceManager().ReleaseResource(ctx, resourceNamespace, podName)
 	if err != nil {
 		logger.Errorf(ctx, "Error releasing token [%s]. error %s", podName, err)
 		return err

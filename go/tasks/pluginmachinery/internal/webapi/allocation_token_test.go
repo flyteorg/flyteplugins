@@ -47,10 +47,13 @@ func Test_allocateToken(t *testing.T) {
 	tMeta := &mocks2.TaskExecutionMetadata{}
 	tMeta.OnGetTaskExecutionID().Return(tID)
 
+	rm := &mocks2.ResourceManager{}
+	rm.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc", mock.Anything).Return(core.AllocationStatusGranted, nil)
+	rm.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc2", mock.Anything).Return(core.AllocationStatusExhausted, nil)
+
 	tCtx := &mocks2.TaskExecutionContext{}
-	tCtx.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc", mock.Anything).Return(core.AllocationStatusGranted, nil)
-	tCtx.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc2", mock.Anything).Return(core.AllocationStatusExhausted, nil)
 	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	tCtx.OnResourceManager().Return(rm)
 
 	state := &State{}
 
@@ -93,11 +96,13 @@ func Test_allocateToken(t *testing.T) {
 		tMeta := &mocks2.TaskExecutionMetadata{}
 		tMeta.OnGetTaskExecutionID().Return(tID)
 
-		tCtx := &mocks2.TaskExecutionContext{}
-		tCtx.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc", mock.Anything).Return(core.AllocationStatusGranted, nil)
-		tCtx.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc2", mock.Anything).Return(core.AllocationStatusExhausted, nil)
+		rm := &mocks2.ResourceManager{}
+		rm.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc", mock.Anything).Return(core.AllocationStatusGranted, nil)
+		rm.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc2", mock.Anything).Return(core.AllocationStatusExhausted, nil)
 
+		tCtx := &mocks2.TaskExecutionContext{}
 		tCtx.OnTaskExecutionMetadata().Return(tMeta)
+		tCtx.OnResourceManager().Return(rm)
 
 		p.OnResourceRequirements(ctx, tCtx).Return("ns", core.ResourceConstraintsSpec{}, nil)
 		a := newTokenAllocator(clck)
@@ -125,12 +130,14 @@ func Test_releaseToken(t *testing.T) {
 	tMeta := &mocks2.TaskExecutionMetadata{}
 	tMeta.OnGetTaskExecutionID().Return(tID)
 
-	tCtx := &mocks2.TaskExecutionContext{}
-	tCtx.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc", mock.Anything).Return(core.AllocationStatusGranted, nil)
-	tCtx.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc2", mock.Anything).Return(core.AllocationStatusExhausted, nil)
-	tCtx.OnReleaseResource(ctx, core.ResourceNamespace("ns"), "abc").Return(nil)
+	rm := &mocks2.ResourceManager{}
+	rm.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc", mock.Anything).Return(core.AllocationStatusGranted, nil)
+	rm.OnAllocateResourceMatch(ctx, core.ResourceNamespace("ns"), "abc2", mock.Anything).Return(core.AllocationStatusExhausted, nil)
+	rm.OnReleaseResource(ctx, core.ResourceNamespace("ns"), "abc").Return(nil)
 
+	tCtx := &mocks2.TaskExecutionContext{}
 	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	tCtx.OnResourceManager().Return(rm)
 
 	p := newPluginWithProperties(webapi.PluginConfig{
 		ResourceQuotas: map[core.ResourceNamespace]int{

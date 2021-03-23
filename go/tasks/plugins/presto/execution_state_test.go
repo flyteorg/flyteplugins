@@ -150,7 +150,9 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("allocation granted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockResourceManager := tCtx.ResourceManager()
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusGranted, nil)
 
 		mockCurrentState := ExecutionState{AllocationTokenRequestStartTime: time.Now()}
@@ -162,7 +164,9 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("exhausted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockResourceManager := tCtx.ResourceManager()
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusExhausted, nil)
 
 		mockCurrentState := ExecutionState{AllocationTokenRequestStartTime: time.Now()}
@@ -174,7 +178,9 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("namespace exhausted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockResourceManager := tCtx.ResourceManager()
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusNamespaceQuotaExceeded, nil)
 
 		mockCurrentState := ExecutionState{AllocationTokenRequestStartTime: time.Now()}
@@ -186,7 +192,9 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("Request start time, if empty in current state, should be set", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockResourceManager := tCtx.ResourceManager()
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusNamespaceQuotaExceeded, nil)
 
 		mockCurrentState := ExecutionState{}
@@ -198,7 +206,9 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("Request start time, if already set in current state, should be maintained", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		mockResourceManager := tCtx.ResourceManager()
+		x := mockResourceManager.(*mocks.ResourceManager)
+		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusGranted, nil)
 
 		startTime := time.Now()
@@ -249,7 +259,9 @@ func TestFinalize(t *testing.T) {
 	tCtx := GetMockTaskExecutionContext()
 	state := ExecutionState{}
 	var called = false
-	tCtx.(*mocks.TaskExecutionContext).On("ReleaseResource", mock.Anything, mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
+	mockResourceManager := tCtx.ResourceManager()
+	x := mockResourceManager.(*mocks.ResourceManager)
+	x.On("ReleaseResource", mock.Anything, mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		called = true
 	}).Return(nil)
 

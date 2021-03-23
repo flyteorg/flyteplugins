@@ -40,7 +40,7 @@ func (a tokenAllocator) allocateToken(ctx context.Context, p webapi.AsyncPlugin,
 	}
 
 	token := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	allocationStatus, err := tCtx.AllocateResource(ctx, ns, token, constraints)
+	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, ns, token, constraints)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to allocate resources for task. Error: %v", err)
 		return nil, core.PhaseInfo{}, err
@@ -81,7 +81,7 @@ func (a tokenAllocator) releaseToken(ctx context.Context, p webapi.AsyncPlugin, 
 	}
 
 	token := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	err = tCtx.ReleaseResource(ctx, ns, token)
+	err = tCtx.ResourceManager().ReleaseResource(ctx, ns, token)
 	if err != nil {
 		metrics.ResourceReleaseFailed.Inc(ctx)
 		logger.Errorf(ctx, "Failed to release resources for task. Error: %v", err)

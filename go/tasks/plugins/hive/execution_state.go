@@ -210,7 +210,7 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext, cur
 
 	resourceConstraintsSpec := createResourceConstraintsSpec(ctx, tCtx, clusterPrimaryLabel)
 
-	allocationStatus, err := tCtx.AllocateResource(ctx, clusterPrimaryLabel, uniqueID, resourceConstraintsSpec)
+	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, clusterPrimaryLabel, uniqueID, resourceConstraintsSpec)
 	if err != nil {
 		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID, err)
@@ -471,7 +471,7 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionSt
 		return errors.Wrapf(errors.ResourceManagerFailure, err, "Error getting query info when releasing allocation token %s", uniqueID)
 	}
 
-	err = tCtx.ReleaseResource(ctx, clusterPrimaryLabel, uniqueID)
+	err = tCtx.ResourceManager().ReleaseResource(ctx, clusterPrimaryLabel, uniqueID)
 
 	if err != nil {
 		metrics.ResourceReleaseFailed.Inc(ctx)
