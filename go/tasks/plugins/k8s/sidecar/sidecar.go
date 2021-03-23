@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
@@ -111,6 +112,7 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
 		}
+		logger.Warnf(ctx, "Unmarshalled [%+v] into podSpec [%+v]", task.GetCustom(), podSpec)
 	}
 
 	pod := flytek8s.BuildPodWithSpec(&podSpec)

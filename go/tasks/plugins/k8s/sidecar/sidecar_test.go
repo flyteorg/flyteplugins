@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"os"
 	"path"
@@ -266,6 +268,58 @@ func TestBuildSideResource_TaskType1_InvalidSpec(t *testing.T) {
 	_, err = handler.BuildResource(context.TODO(), taskCtx)
 	assert.EqualError(t, err, "[BadTaskSpecification] invalid TaskSpecification, config missing [primary_container_name] key in [map[foo:bar]]")
 
+}
+
+func TestBuildSideResource_TaskType1_WithProto(t *testing.T) {
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sidecarSerialized, err := ioutil.ReadFile(path.Join(dir, "testdata", "pod_taks.pb"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var taskSpec admin.TaskSpec
+	err = proto.Unmarshal(sidecarSerialized, &taskSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskCtx := &pluginsCoreMock.TaskExecutionContext{}
+
+	taskReader := &pluginsCoreMock.TaskReader{}
+	taskReader.On("Read", mock.Anything).Return(taskSpec.Template, nil)
+	taskCtx.On("TaskReader").Return(taskReader)
+
+	dummyTaskMetadata := dummyContainerTaskMetadata(resourceRequirements)
+	inputReader := &pluginsIOMock.InputReader{}
+	inputReader.On("GetInputPrefixPath").Return(storage.DataReference("test-data-prefix"))
+	inputReader.On("GetInputPath").Return(storage.DataReference("test-data-reference"))
+	inputReader.On("Get", mock.Anything).Return(&core.LiteralMap{}, nil)
+	taskCtx.On("InputReader").Return(inputReader)
+
+	outputReader := &pluginsIOMock.OutputWriter{}
+	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
+	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
+	outputReader.On("GetRawOutputPrefix").Return(storage.DataReference(""))
+	taskCtx.On("OutputWriter").Return(outputReader)
+	taskCtx.OnTaskExecutionMetadata().Return(dummyTaskMetadata)
+
+	handler := &sidecarResourceHandler{}
+	res, err := handler.BuildResource(context.TODO(), taskCtx)
+	assert.Nil(t, err)
+	assert.EqualValues(t, map[string]string{
+		primaryContainerKey: "primary",
+	}, res.GetAnnotations())
+
+	/*
+	var podSpec k8sv1.PodSpec
+	err = utils.UnmarshalStructToObj(taskSpec.Template.GetCustom(), &podSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotEmpty(t, podSpec) */
 }
 
 func TestBuildSidecarResource(t *testing.T) {
