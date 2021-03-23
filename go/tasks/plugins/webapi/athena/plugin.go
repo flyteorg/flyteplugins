@@ -26,8 +26,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
 
-const athenaPluginName = "athena"
-
 const (
 	ErrRemoteSystem errors.ErrorCode = "RemoteSystem"
 	ErrUser         errors.ErrorCode = "User"
@@ -214,7 +212,7 @@ func NewPlugin(_ context.Context, cfg *Config, awsConfig *aws.Config, metricScop
 
 func init() {
 	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
-		ID:                 athenaPluginName,
+		ID:                 "athena",
 		SupportedTaskTypes: []core.TaskType{"hive", "presto"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return NewPlugin(ctx, GetConfig(), aws.GetConfig(), iCtx.MetricsScope())
