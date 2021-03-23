@@ -125,16 +125,16 @@ func MapExecutionStateToPhaseInfo(tCtx core.TaskExecutionContext, _ client.Qubol
 			phaseInfo = core.PhaseInfoQueued(t, uint32(state.CreationFailureCount), "Waiting for Qubole launch")
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(tCtx, state))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, ConstructTaskInfo(state))
 
 	case PhaseWriteOutputFile:
-		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion+1, ConstructTaskInfo(tCtx, state))
+		phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion+1, ConstructTaskInfo(state))
 
 	case PhaseQuerySucceeded:
-		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(tCtx, state))
+		phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
 
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(tCtx, state))
+		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
 	}
 
 	return phaseInfo
@@ -148,7 +148,7 @@ func ConstructTaskLog(e ExecutionState) *idlCore.TaskLog {
 	}
 }
 
-func ConstructTaskInfo(tCtx core.TaskExecutionContext, e ExecutionState) *core.TaskInfo {
+func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
 

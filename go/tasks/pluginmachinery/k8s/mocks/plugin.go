@@ -9,8 +9,6 @@ import (
 
 	core "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
-	k8s "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -109,8 +107,8 @@ func (_m Plugin_GetTaskPhase) Return(_a0 core.PhaseInfo, _a1 error) *Plugin_GetT
 	return &Plugin_GetTaskPhase{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *Plugin) OnGetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) *Plugin_GetTaskPhase {
-	c := _m.On("GetTaskPhase", ctx, pluginContext, resource)
+func (_m *Plugin) OnGetTaskPhase(ctx context.Context, resource client.Object) *Plugin_GetTaskPhase {
+	c := _m.On("GetTaskPhase", ctx, resource)
 	return &Plugin_GetTaskPhase{Call: c}
 }
 
@@ -119,20 +117,20 @@ func (_m *Plugin) OnGetTaskPhaseMatch(matchers ...interface{}) *Plugin_GetTaskPh
 	return &Plugin_GetTaskPhase{Call: c}
 }
 
-// GetTaskPhase provides a mock function with given fields: ctx, pluginContext, resource
-func (_m *Plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (core.PhaseInfo, error) {
-	ret := _m.Called(ctx, pluginContext, resource)
+// GetTaskPhase provides a mock function with given fields: ctx, resource
+func (_m *Plugin) GetTaskPhase(ctx context.Context, resource client.Object) (core.PhaseInfo, error) {
+	ret := _m.Called(ctx, resource)
 
 	var r0 core.PhaseInfo
-	if rf, ok := ret.Get(0).(func(context.Context, k8s.PluginContext, client.Object) core.PhaseInfo); ok {
-		r0 = rf(ctx, pluginContext, resource)
+	if rf, ok := ret.Get(0).(func(context.Context, client.Object) core.PhaseInfo); ok {
+		r0 = rf(ctx, resource)
 	} else {
 		r0 = ret.Get(0).(core.PhaseInfo)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, k8s.PluginContext, client.Object) error); ok {
-		r1 = rf(ctx, pluginContext, resource)
+	if rf, ok := ret.Get(1).(func(context.Context, client.Object) error); ok {
+		r1 = rf(ctx, resource)
 	} else {
 		r1 = ret.Error(1)
 	}

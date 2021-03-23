@@ -112,8 +112,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	logger.Infof(ctx, "Exiting handle with phase [%v]", pluginState.State.CurrentPhase)
 
 	// Determine transition information from the state
-	generatedName := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, generatedName, subTaskDetails.LogLinks, subTaskDetails.SubTaskIDs)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, subTaskDetails.LogLinks, subTaskDetails.SubTaskIDs)
 	if err != nil {
 		return core.UnknownTransition, err
 	}

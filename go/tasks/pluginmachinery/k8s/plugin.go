@@ -75,5 +75,6 @@ type Plugin interface {
 	// Analyses the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
 	// any operations that might take a long time (limits are configured system-wide) should be offloaded to the
 	// background.
+
 	GetTaskPhase(ctx context.Context, pluginContext PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error)
 }

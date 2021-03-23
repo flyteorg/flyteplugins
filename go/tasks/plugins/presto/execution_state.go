@@ -464,7 +464,7 @@ func writeOutput(ctx context.Context, tCtx core.TaskExecutionContext, externalLo
 
 // The 'PhaseInfoRunning' occurs 15 times (3 for each of the 5 Presto queries that get run for every Presto task) which
 // are differentiated by the version (1-15)
-func MapExecutionStateToPhaseInfo(tCtx core.TaskExecutionContext, state ExecutionState) core.PhaseInfo {
+func MapExecutionStateToPhaseInfo(state ExecutionState) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 

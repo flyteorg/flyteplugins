@@ -89,17 +89,6 @@ func TestConstructTaskLog(t *testing.T) {
 	assert.Equal(t, expected, taskLog.Uri)
 }
 
-func getMockTaskExecutionContext() *mocks.TaskExecutionContext {
-	tID := &mocks.TaskExecutionID{}
-	tID.OnGetGeneratedName().Return("mock_generated_name")
-	tMeta := &mocks.TaskExecutionMetadata{}
-	tMeta.OnGetTaskExecutionID().Return(tID)
-
-	tCtx := &mocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
-	return tCtx
-}
-
 func TestConstructTaskInfo(t *testing.T) {
 	empty := ConstructTaskInfo(ExecutionState{})
 	assert.Nil(t, empty)
@@ -126,7 +115,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			CurrentPhase: PhaseNotStarted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseNotReady, phaseInfo.Phase())
 	})
 
@@ -135,14 +124,14 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 			CurrentPhase:         PhaseQueued,
 			CreationFailureCount: 0,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 
 		e = ExecutionState{
 			CurrentPhase:         PhaseQueued,
 			CreationFailureCount: 100,
 		}
-		phaseInfo = MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
+		phaseInfo = MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 
 	})
@@ -151,7 +140,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			CurrentPhase: PhaseSubmitted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
 }
