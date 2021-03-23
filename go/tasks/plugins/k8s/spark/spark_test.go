@@ -57,17 +57,6 @@ var (
 	}
 )
 
-func dummyPluginContext() *mocks.TaskExecutionContext {
-	tID := &mocks.TaskExecutionID{}
-	tID.OnGetGeneratedName().Return("mock_generated_name")
-	tMeta := &mocks.TaskExecutionMetadata{}
-	tMeta.OnGetTaskExecutionID().Return(tID)
-
-	tCtx := &mocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
-	return tCtx
-}
-
 func TestGetApplicationType(t *testing.T) {
 	assert.Equal(t, getApplicationType(plugins.SparkApplication_PYTHON), sj.PythonApplicationType)
 	assert.Equal(t, getApplicationType(plugins.SparkApplication_R), sj.RApplicationType)
@@ -167,61 +156,61 @@ func TestGetTaskPhase(t *testing.T) {
 	sparkResourceHandler := sparkResourceHandler{}
 
 	ctx := context.TODO()
-	taskPhase, err := sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.NewState))
+	taskPhase, err := sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.NewState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseQueued)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.SubmittedState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.SubmittedState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseInitializing)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.RunningState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.RunningState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.CompletedState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.CompletedState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseSuccess)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.InvalidatingState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.InvalidatingState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.FailingState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailingState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.PendingRerunState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.PendingRerunState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.SucceedingState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.SucceedingState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.FailedSubmissionState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailedSubmissionState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRetryableFailure)
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummySparkApplication(sj.FailedState))
+	taskPhase, err = sparkResourceHandler.GetTaskPhase(ctx, nil, dummySparkApplication(sj.FailedState))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRetryableFailure)
 	assert.NotNil(t, taskPhase.Info())

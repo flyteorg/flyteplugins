@@ -111,17 +111,6 @@ func TestConstructTaskLog(t *testing.T) {
 	assert.Equal(t, expected, taskLog.Uri)
 }
 
-func getMockTaskExecutionContext() *mocks.TaskExecutionContext {
-	tID := &mocks.TaskExecutionID{}
-	tID.OnGetGeneratedName().Return("mock_generated_name")
-	tMeta := &mocks.TaskExecutionMetadata{}
-	tMeta.OnGetTaskExecutionID().Return(tID)
-
-	tCtx := &mocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
-	return tCtx
-}
-
 func TestConstructTaskInfo(t *testing.T) {
 	empty := ConstructTaskInfo(ExecutionState{})
 	assert.Nil(t, empty)
@@ -155,7 +144,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseNotStarted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
 		assert.Equal(t, core.PhaseNotReady, phaseInfo.Phase())
 	})
 
@@ -164,14 +153,14 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 			Phase:                PhaseQueued,
 			CreationFailureCount: 0,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
 		assert.Equal(t, core.PhaseQueued, phaseInfo.Phase())
 
 		e = ExecutionState{
 			Phase:                PhaseQueued,
 			CreationFailureCount: 100,
 		}
-		phaseInfo = MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
+		phaseInfo = MapExecutionStateToPhaseInfo(c, e)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 
 	})
@@ -180,7 +169,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseSubmitted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
 
@@ -188,7 +177,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseWriteOutputFile,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(getMockTaskExecutionContext(), c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 		assert.Equal(t, uint32(1), phaseInfo.Version())
 	})

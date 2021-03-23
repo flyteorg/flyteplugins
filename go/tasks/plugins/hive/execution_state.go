@@ -110,7 +110,7 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 	return newState, transformError
 }
 
-func MapExecutionStateToPhaseInfo(tCtx core.TaskExecutionContext, _ client.QuboleClient, state ExecutionState) core.PhaseInfo {
+func MapExecutionStateToPhaseInfo(_ client.QuboleClient, state ExecutionState) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 

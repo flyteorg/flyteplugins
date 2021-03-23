@@ -272,17 +272,6 @@ func dummyTensorFlowJobResource(tensorflowResourceHandler tensorflowOperatorReso
 	}
 }
 
-func dummyPluginContext() *mocks.TaskExecutionContext {
-	tID := &mocks.TaskExecutionID{}
-	tID.OnGetGeneratedName().Return("mock_generated_name")
-	tMeta := &mocks.TaskExecutionMetadata{}
-	tMeta.OnGetTaskExecutionID().Return(tID)
-
-	tCtx := &mocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
-	return tCtx
-}
-
 func TestBuildResourceTensorFlow(t *testing.T) {
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
@@ -323,31 +312,31 @@ func TestGetTaskPhase(t *testing.T) {
 		return dummyTensorFlowJobResource(tensorflowResourceHandler, 2, 1, 1, conditionType)
 	}
 
-	taskPhase, err := tensorflowResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyTensorFlowJobResourceCreator(commonOp.JobCreated))
+	taskPhase, err := tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobCreated))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyTensorFlowJobResourceCreator(commonOp.JobRunning))
+	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobRunning))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyTensorFlowJobResourceCreator(commonOp.JobSucceeded))
+	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobSucceeded))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseSuccess, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyTensorFlowJobResourceCreator(commonOp.JobFailed))
+	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobFailed))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyTensorFlowJobResourceCreator(commonOp.JobRestarting))
+	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobRestarting))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())

@@ -269,17 +269,6 @@ func dummyPytorchJobResource(pytorchResourceHandler pytorchOperatorResourceHandl
 	}
 }
 
-func dummyPluginContext() *mocks.TaskExecutionContext {
-	tID := &mocks.TaskExecutionID{}
-	tID.OnGetGeneratedName().Return("mock_generated_name")
-	tMeta := &mocks.TaskExecutionMetadata{}
-	tMeta.OnGetTaskExecutionID().Return(tID)
-
-	tCtx := &mocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
-	return tCtx
-}
-
 func TestBuildResourcePytorch(t *testing.T) {
 	pytorchResourceHandler := pytorchOperatorResourceHandler{}
 
@@ -318,31 +307,31 @@ func TestGetTaskPhase(t *testing.T) {
 		return dummyPytorchJobResource(pytorchResourceHandler, 2, conditionType)
 	}
 
-	taskPhase, err := pytorchResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyPytorchJobResourceCreator(commonOp.JobCreated))
+	taskPhase, err := pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobCreated))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyPytorchJobResourceCreator(commonOp.JobRunning))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobRunning))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyPytorchJobResourceCreator(commonOp.JobSucceeded))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobSucceeded))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseSuccess, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyPytorchJobResourceCreator(commonOp.JobFailed))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobFailed))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyPytorchJobResourceCreator(commonOp.JobRestarting))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobRestarting))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
