@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/go-test/deep"
@@ -22,17 +21,6 @@ import (
 	sagemakerIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins/sagemaker"
 	"github.com/stretchr/testify/assert"
 )
-
-func dummyPluginContext() *mocks.TaskExecutionContext {
-	tID := &mocks.TaskExecutionID{}
-	tID.OnGetGeneratedName().Return("mock_generated_name")
-	tMeta := &mocks.TaskExecutionMetadata{}
-	tMeta.OnGetTaskExecutionID().Return(tID)
-
-	tCtx := &mocks.TaskExecutionContext{}
-	tCtx.OnTaskExecutionMetadata().Return(tMeta)
-	return tCtx
-}
 
 func Test_awsSagemakerPlugin_BuildResourceForHyperparameterTuningJob(t *testing.T) {
 	// Default config does not contain a roleAnnotationKey -> expecting to get the role from default config
@@ -102,7 +90,7 @@ func Test_awsSagemakerPlugin_getEventInfoForHyperparameterTuningJob(t *testing.T
 		hpoJob, ok := hpoJobResource.(*hpojobv1.HyperparameterTuningJob)
 		assert.True(t, ok)
 
-		taskInfo, err := awsSageMakerHPOJobHandler.getEventInfoForHyperparameterTuningJob(ctx, dummyPluginContext(), hpoJob)
+		taskInfo, err := awsSageMakerHPOJobHandler.getEventInfoForHyperparameterTuningJob(ctx, hpoJob)
 		if err != nil {
 			panic(err)
 		}
@@ -142,7 +130,6 @@ func Test_awsSagemakerPlugin_getEventInfoForHyperparameterTuningJob(t *testing.T
 			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
 		}
 		assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
-			GeneratedName: "mock_generated_name",
 			ExternalResources: []*event.ExternalResourceInfo{
 				{
 					ExternalId: "some-acceptable-name",

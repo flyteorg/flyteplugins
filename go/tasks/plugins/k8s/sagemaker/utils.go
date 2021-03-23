@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
@@ -368,7 +366,7 @@ func getTaskTemplate(ctx context.Context, taskCtx pluginsCore.TaskExecutionConte
 	return taskTemplate, nil
 }
 
-func createTaskInfo(_ context.Context, pluginContext k8s.PluginContext, jobRegion string, jobName string, jobTypeInURL string, sagemakerLinkName string) (*pluginsCore.TaskInfo, error) {
+func createTaskInfo(_ context.Context, jobRegion string, jobName string, jobTypeInURL string, sagemakerLinkName string) (*pluginsCore.TaskInfo, error) {
 	cwLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=/aws/sagemaker/TrainingJobs;prefix=%s;streamFilter=typeLogStreamPrefix",
 		jobRegion, jobRegion, jobName)
 	smLogURL := fmt.Sprintf("https://%s.console.aws.amazon.com/sagemaker/home?region=%s#/%s/%s",
@@ -398,7 +396,6 @@ func createTaskInfo(_ context.Context, pluginContext k8s.PluginContext, jobRegio
 		Logs:       taskLogs,
 		CustomInfo: customInfo,
 		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 			ExternalResources: []*event.ExternalResourceInfo{
 				{
 					ExternalId: jobName,

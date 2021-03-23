@@ -165,7 +165,7 @@ func GetAllocationToken(
 
 	resourceConstraintsSpec := createResourceConstraintsSpec(ctx, tCtx, routingGroup)
 
-	allocationStatus, err := tCtx.ResourceManager().AllocateResource(ctx, routingGroup, uniqueID, resourceConstraintsSpec)
+	allocationStatus, err := tCtx.AllocateResource(ctx, routingGroup, uniqueID, resourceConstraintsSpec)
 	if err != nil {
 		logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 			tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), uniqueID, err)
@@ -476,24 +476,24 @@ func MapExecutionStateToPhaseInfo(tCtx core.TaskExecutionContext, state Executio
 		if state.CreationFailureCount > 5 {
 			phaseInfo = core.PhaseInfoRetryableFailure("PrestoFailure", "Too many creation attempts", nil)
 		} else {
-			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+1), ConstructTaskInfo(tCtx, state))
+			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+1), ConstructTaskInfo(state))
 		}
 	case PhaseSubmitted:
-		phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+2), ConstructTaskInfo(tCtx, state))
+		phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+2), ConstructTaskInfo(state))
 	case PhaseQuerySucceeded:
 		if state.QueryCount < 5 {
-			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+3), ConstructTaskInfo(tCtx, state))
+			phaseInfo = core.PhaseInfoRunning(uint32(3*state.QueryCount+3), ConstructTaskInfo(state))
 		} else {
-			phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(tCtx, state))
+			phaseInfo = core.PhaseInfoSuccess(ConstructTaskInfo(state))
 		}
 	case PhaseQueryFailed:
-		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(tCtx, state))
+		phaseInfo = core.PhaseInfoRetryableFailure(errors.DownstreamSystemError, "Query failed", ConstructTaskInfo(state))
 	}
 
 	return phaseInfo
 }
 
-func ConstructTaskInfo(tCtx core.TaskExecutionContext, e ExecutionState) *core.TaskInfo {
+func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 	logs := make([]*idlCore.TaskLog, 0, 1)
 	t := time.Now()
 	if e.CommandID != "" {
@@ -502,7 +502,6 @@ func ConstructTaskInfo(tCtx core.TaskExecutionContext, e ExecutionState) *core.T
 			Logs:       logs,
 			OccurredAt: &t,
 			Metadata: &event.TaskExecutionMetadata{
-				GeneratedName: tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
 				ExternalResources: []*event.ExternalResourceInfo{
 					{
 						ExternalId: e.CommandID,
@@ -543,7 +542,7 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionSt
 		return errors.Wrapf(errors.ResourceManagerFailure, err, "Error getting query info when releasing allocation token %s", uniqueID)
 	}
 
-	err = tCtx.ResourceManager().ReleaseResource(ctx, routingGroup, uniqueID)
+	err = tCtx.ReleaseResource(ctx, routingGroup, uniqueID)
 
 	if err != nil {
 		metrics.ResourceReleaseFailed.Inc(ctx)

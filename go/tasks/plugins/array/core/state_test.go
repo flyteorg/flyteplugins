@@ -60,7 +60,6 @@ func assertTaskExecutionMetadata(t *testing.T, subTaskIDs []*string, metadata *e
 		}
 	}
 	assert.True(t, proto.Equal(&event.TaskExecutionMetadata{
-		GeneratedName:     "task_generated_name",
 		ExternalResources: externalResources,
 	}, metadata))
 }

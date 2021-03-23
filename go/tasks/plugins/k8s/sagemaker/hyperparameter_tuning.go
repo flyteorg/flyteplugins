@@ -218,7 +218,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForHyperparameterTuningJob(
 	ctx context.Context, pluginContext k8s.PluginContext, hpoJob *hpojobv1.HyperparameterTuningJob) (pluginsCore.PhaseInfo, error) {
 
 	logger.Infof(ctx, "Getting task phase for hyperparameter tuning job [%v]", hpoJob.Status.SageMakerHyperParameterTuningJobName)
-	info, err := m.getEventInfoForHyperparameterTuningJob(ctx, pluginContext, hpoJob)
+	info, err := m.getEventInfoForHyperparameterTuningJob(ctx, hpoJob)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "Failed to get event info for the job")
 	}
@@ -269,7 +269,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForHyperparameterTuningJob(
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
 
-func (m awsSagemakerPlugin) getEventInfoForHyperparameterTuningJob(ctx context.Context, pluginContext k8s.PluginContext, hpoJob *hpojobv1.HyperparameterTuningJob) (*pluginsCore.TaskInfo, error) {
+func (m awsSagemakerPlugin) getEventInfoForHyperparameterTuningJob(ctx context.Context, hpoJob *hpojobv1.HyperparameterTuningJob) (*pluginsCore.TaskInfo, error) {
 
 	var jobRegion, jobName, jobTypeInURL, sagemakerLinkName string
 	jobRegion = *hpoJob.Spec.Region
@@ -280,5 +280,5 @@ func (m awsSagemakerPlugin) getEventInfoForHyperparameterTuningJob(ctx context.C
 	logger.Infof(ctx, "Getting event information for SageMaker HyperparameterTuningJob task, job region: [%v], job name: [%v], "+
 		"job type in url: [%v], sagemaker link name: [%v]", jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 
-	return createTaskInfo(ctx, pluginContext, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
+	return createTaskInfo(ctx, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 }

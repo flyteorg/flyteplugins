@@ -189,7 +189,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForTrainingJob(
 	ctx context.Context, pluginContext k8s.PluginContext, trainingJob *trainingjobv1.TrainingJob) (pluginsCore.PhaseInfo, error) {
 
 	logger.Infof(ctx, "Getting task phase for sagemaker training job [%v]", trainingJob.Status.SageMakerTrainingJobName)
-	info, err := m.getEventInfoForTrainingJob(ctx, pluginContext, trainingJob)
+	info, err := m.getEventInfoForTrainingJob(ctx, trainingJob)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "Failed to get event info for the job")
 	}
@@ -242,7 +242,7 @@ func (m awsSagemakerPlugin) getTaskPhaseForTrainingJob(
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
 
-func (m awsSagemakerPlugin) getEventInfoForTrainingJob(ctx context.Context, pluginContext k8s.PluginContext, trainingJob *trainingjobv1.TrainingJob) (*pluginsCore.TaskInfo, error) {
+func (m awsSagemakerPlugin) getEventInfoForTrainingJob(ctx context.Context, trainingJob *trainingjobv1.TrainingJob) (*pluginsCore.TaskInfo, error) {
 
 	var jobRegion, jobName, jobTypeInURL, sagemakerLinkName string
 	jobRegion = *trainingJob.Spec.Region
@@ -253,5 +253,5 @@ func (m awsSagemakerPlugin) getEventInfoForTrainingJob(ctx context.Context, plug
 	logger.Infof(ctx, "Getting event information for SageMaker BuiltinAlgorithmTrainingJob task, job region: [%v], job name: [%v], "+
 		"job type in url: [%v], sagemaker link name: [%v]", jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 
-	return createTaskInfo(ctx, pluginContext, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
+	return createTaskInfo(ctx, jobRegion, jobName, jobTypeInURL, sagemakerLinkName)
 }

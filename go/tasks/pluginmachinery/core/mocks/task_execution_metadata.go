@@ -3,8 +3,10 @@
 package mocks
 
 import (
-	flyteidlcore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	event "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	core "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+
+	flyteidlcore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -275,6 +277,40 @@ func (_m *TaskExecutionMetadata) GetOwnerReference() v1.OwnerReference {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(v1.OwnerReference)
+	}
+
+	return r0
+}
+
+type TaskExecutionMetadata_GetResourcePoolInfo struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionMetadata_GetResourcePoolInfo) Return(_a0 []*event.ResourcePoolInfo) *TaskExecutionMetadata_GetResourcePoolInfo {
+	return &TaskExecutionMetadata_GetResourcePoolInfo{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionMetadata) OnGetResourcePoolInfo() *TaskExecutionMetadata_GetResourcePoolInfo {
+	c := _m.On("GetResourcePoolInfo")
+	return &TaskExecutionMetadata_GetResourcePoolInfo{Call: c}
+}
+
+func (_m *TaskExecutionMetadata) OnGetResourcePoolInfoMatch(matchers ...interface{}) *TaskExecutionMetadata_GetResourcePoolInfo {
+	c := _m.On("GetResourcePoolInfo", matchers...)
+	return &TaskExecutionMetadata_GetResourcePoolInfo{Call: c}
+}
+
+// GetResourcePoolInfo provides a mock function with given fields:
+func (_m *TaskExecutionMetadata) GetResourcePoolInfo() []*event.ResourcePoolInfo {
+	ret := _m.Called()
+
+	var r0 []*event.ResourcePoolInfo
+	if rf, ok := ret.Get(0).(func() []*event.ResourcePoolInfo); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*event.ResourcePoolInfo)
+		}
 	}
 
 	return r0

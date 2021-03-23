@@ -3,7 +3,6 @@ package container
 import (
 	"context"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -30,9 +29,6 @@ func (Plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext,
 	t := flytek8s.GetLastTransitionOccurredAt(pod).Time
 	info := pluginsCore.TaskInfo{
 		OccurredAt: &t,
-		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-		},
 	}
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
 		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")

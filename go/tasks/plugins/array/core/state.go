@@ -177,9 +177,9 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, generatedName s
 	nowTaskInfo := &core.TaskInfo{
 		OccurredAt: &t,
 		Logs:       logLinks,
-		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName: generatedName,
-		},
+	}
+	if nowTaskInfo.Metadata == nil {
+		nowTaskInfo.Metadata = &event.TaskExecutionMetadata{}
 	}
 	for _, subTaskID := range subTaskIDs {
 		nowTaskInfo.Metadata.ExternalResources = append(nowTaskInfo.Metadata.ExternalResources, &event.ExternalResourceInfo{

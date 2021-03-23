@@ -98,7 +98,7 @@ func TestGetEventInfo(t *testing.T) {
 			},
 		},
 	}))
-	info, err := getEventInfoForSpark(dummyPluginContext(), dummySparkApplication(sj.RunningState))
+	info, err := getEventInfoForSpark(dummySparkApplication(sj.RunningState))
 	assert.NoError(t, err)
 	assert.Len(t, info.Logs, 6)
 	assert.Equal(t, fmt.Sprintf("https://%s", sparkUIAddress), info.CustomInfo.Fields[sparkDriverUI].GetStringValue())
@@ -118,7 +118,7 @@ func TestGetEventInfo(t *testing.T) {
 
 	assert.Equal(t, expectedLinks, generatedLinks)
 
-	info, err = getEventInfoForSpark(dummyPluginContext(), dummySparkApplication(sj.SubmittedState))
+	info, err = getEventInfoForSpark(dummySparkApplication(sj.SubmittedState))
 	assert.NoError(t, err)
 	assert.Len(t, info.Logs, 1)
 	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.spark-app-name;streamFilter=typeLogStreamPrefix", info.Logs[0].Uri)
@@ -143,7 +143,7 @@ func TestGetEventInfo(t *testing.T) {
 		},
 	}))
 
-	info, err = getEventInfoForSpark(dummyPluginContext(), dummySparkApplication(sj.FailedState))
+	info, err = getEventInfoForSpark(dummySparkApplication(sj.FailedState))
 	assert.NoError(t, err)
 	assert.Len(t, info.Logs, 5)
 	assert.Equal(t, "spark-history.flyte/history/app-id", info.CustomInfo.Fields[sparkHistoryUI].GetStringValue())

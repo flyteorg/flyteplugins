@@ -219,10 +219,6 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 	eRecorder := &coreMocks.EventsRecorder{}
 	eRecorder.OnRecordRawMatch(mock.Anything, mock.Anything).Return(nil)
 
-	resourceManager := &coreMocks.ResourceManager{}
-	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pluginCore.AllocationStatusGranted, nil)
-	resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
 	tCtx := &coreMocks.TaskExecutionContext{}
 	tCtx.OnInputReader().Return(inputReader)
 	tCtx.OnTaskRefreshIndicator().Return(func(ctx context.Context) {})
@@ -234,7 +230,8 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 	tCtx.OnTaskExecutionMetadata().Return(tMeta)
 	tCtx.OnCatalog().Return(cat)
 	tCtx.OnEventsRecorder().Return(eRecorder)
-	tCtx.OnResourceManager().Return(resourceManager)
+	tCtx.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pluginCore.AllocationStatusGranted, nil)
+	tCtx.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	tCtx.OnMaxDatasetSizeBytes().Return(1000000)
 	// TODO: return that
 	tCtx.OnSecretManager()

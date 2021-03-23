@@ -258,7 +258,7 @@ func Test_awsSagemakerPlugin_getEventInfoForCustomTrainingJob(t *testing.T) {
 		trainingJob, ok := trainingJobResource.(*trainingjobv1.TrainingJob)
 		assert.True(t, ok)
 
-		taskInfo, err := awsSageMakerTrainingJobHandler.getEventInfoForCustomTrainingJob(ctx, dummyPluginContext(), trainingJob)
+		taskInfo, err := awsSageMakerTrainingJobHandler.getEventInfoForCustomTrainingJob(ctx, trainingJob)
 		if err != nil {
 			panic(err)
 		}
@@ -298,7 +298,6 @@ func Test_awsSagemakerPlugin_getEventInfoForCustomTrainingJob(t *testing.T) {
 			assert.FailNow(t, "Should be equal.", "Diff: %v", diff)
 		}
 		assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
-			GeneratedName: "mock_generated_name",
 			ExternalResources: []*event.ExternalResourceInfo{
 				{
 					ExternalId: "some-acceptable-name",

@@ -6,9 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-	"github.com/golang/protobuf/proto"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
@@ -332,9 +329,6 @@ func TestGetTaskPhase(t *testing.T) {
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
-	assert.True(t, proto.Equal(taskPhase.Info().Metadata, &event.TaskExecutionMetadata{
-		GeneratedName: "mock_generated_name",
-	}))
 
 	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, dummyPluginContext(), dummyPytorchJobResourceCreator(commonOp.JobSucceeded))
 	assert.NoError(t, err)

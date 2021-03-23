@@ -108,9 +108,7 @@ func TestCheckSubTasksState(t *testing.T) {
 	tCtx := getMockTaskExecutionContext(ctx)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
-	resourceManager := mocks.ResourceManager{}
-	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusExhausted, nil)
-	tCtx.OnResourceManager().Return(&resourceManager)
+	tCtx.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusExhausted, nil)
 
 	t.Run("Happy case", func(t *testing.T) {
 		config := Config{MaxArrayJobSize: 100}
@@ -125,7 +123,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		//assert.NotEmpty(t, logLinks)
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 0)
+		tCtx.AssertNumberOfCalls(t, "AllocateResource", 0)
 		testSubTaskIDs(t, subTaskIDs)
 	})
 
@@ -151,7 +149,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.Nil(t, err)
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseWaitingForResources.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 5)
+		tCtx.AssertNumberOfCalls(t, "AllocateResource", 5)
 		assert.Empty(t, subTaskIDs, "subtask ids are only populated when monitor is called for a successfully launched task")
 	})
 }
@@ -162,10 +160,8 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 	tCtx := getMockTaskExecutionContext(ctx)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
-	resourceManager := mocks.ResourceManager{}
-	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)
-	resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	tCtx.OnResourceManager().Return(&resourceManager)
+	tCtx.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)
+	tCtx.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	t.Run("Resource granted", func(t *testing.T) {
 		config := Config{
@@ -189,7 +185,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 		assert.Nil(t, err)
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 5)
+		tCtx.AssertNumberOfCalls(t, "AllocateResource", 5)
 		testSubTaskIDs(t, subTaskIDs)
 	})
 
@@ -221,7 +217,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 		assert.Nil(t, err)
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseWriteToDiscovery.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "ReleaseResource", 5)
+		tCtx.AssertNumberOfCalls(t, "ReleaseResource", 5)
 		assert.Empty(t, subTaskIDs, "terminal phases don't need to collect subtask IDs")
 	})
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
@@ -136,9 +134,6 @@ func (tensorflowOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginC
 		Logs:       taskLogs,
 		OccurredAt: &occurredAt,
 		CustomInfo: statusDetails,
-		Metadata: &event.TaskExecutionMetadata{
-			GeneratedName: pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(),
-		},
 	}
 
 	return common.GetPhaseInfo(currentCondition, occurredAt, taskPhaseInfo)

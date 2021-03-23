@@ -141,16 +141,9 @@ func TestConstructTaskInfo(t *testing.T) {
 	taskInfo := ConstructTaskInfo(getMockTaskExecutionContext(), e)
 	assert.Equal(t, "https://wellness.qubole.com/v2/analyze?command_id=123", taskInfo.Logs[0].Uri)
 	assert.True(t, proto.Equal(taskInfo.Metadata, &event.TaskExecutionMetadata{
-		GeneratedName: "mock_generated_name",
 		ExternalResources: []*event.ExternalResourceInfo{
 			{
 				ExternalId: "123",
-			},
-		},
-		ResourcePoolInfo: []*event.ResourcePoolInfo{
-			{
-				AllocationToken: "mock_generated_name",
-				Namespace:       "allocation_namespace",
 			},
 		},
 	}))
@@ -206,9 +199,7 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("allocation granted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		mockResourceManager := tCtx.ResourceManager()
-		x := mockResourceManager.(*mocks.ResourceManager)
-		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusGranted, nil)
 
 		mockCurrentState := ExecutionState{AllocationTokenRequestStartTime: time.Now()}
@@ -220,9 +211,7 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("exhausted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		mockResourceManager := tCtx.ResourceManager()
-		x := mockResourceManager.(*mocks.ResourceManager)
-		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusExhausted, nil)
 
 		mockCurrentState := ExecutionState{AllocationTokenRequestStartTime: time.Now()}
@@ -234,9 +223,7 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("namespace exhausted", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		mockResourceManager := tCtx.ResourceManager()
-		x := mockResourceManager.(*mocks.ResourceManager)
-		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusNamespaceQuotaExceeded, nil)
 
 		mockCurrentState := ExecutionState{AllocationTokenRequestStartTime: time.Now()}
@@ -248,9 +235,7 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("Request start time, if empty in current state, should be set", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		mockResourceManager := tCtx.ResourceManager()
-		x := mockResourceManager.(*mocks.ResourceManager)
-		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusNamespaceQuotaExceeded, nil)
 
 		mockCurrentState := ExecutionState{}
@@ -262,9 +247,7 @@ func TestGetAllocationToken(t *testing.T) {
 
 	t.Run("Request start time, if already set in current state, should be maintained", func(t *testing.T) {
 		tCtx := GetMockTaskExecutionContext()
-		mockResourceManager := tCtx.ResourceManager()
-		x := mockResourceManager.(*mocks.ResourceManager)
-		x.On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		tCtx.(*mocks.TaskExecutionContext).On("AllocateResource", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(core.AllocationStatusGranted, nil)
 
 		startTime := time.Now()
@@ -316,9 +299,7 @@ func TestFinalize(t *testing.T) {
 	tCtx := GetMockTaskExecutionContext()
 	state := ExecutionState{}
 	var called = false
-	mockResourceManager := tCtx.ResourceManager()
-	x := mockResourceManager.(*mocks.ResourceManager)
-	x.On("ReleaseResource", mock.Anything, mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
+	tCtx.(*mocks.TaskExecutionContext).On("ReleaseResource", mock.Anything, mock.Anything, mock.Anything).Run(func(_ mock.Arguments) {
 		called = true
 	}).Return(nil)
 
