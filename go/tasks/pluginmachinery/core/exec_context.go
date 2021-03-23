@@ -18,6 +18,7 @@ type TaskReader interface {
 // An interface that is passed to every plugin invocation. It carries all meta and contextual information for the current
 // task execution
 type TaskExecutionContext interface {
+	// During execution time, plugins can call AllocateResource() to register a token to the token pool associated with a resource with the resource manager.
 	AllocateResource(ctx context.Context, namespace ResourceNamespace, allocationToken string, constraintsSpec ResourceConstraintsSpec) (AllocationStatus, error)
 	// During execution time, after an outstanding request is completed, the plugin need to use ReleaseResource() to release the allocation of the corresponding token
 	// from the token pool in order to gain back the quota taken by the token

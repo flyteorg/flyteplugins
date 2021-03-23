@@ -34,7 +34,6 @@ func TestHandleAlwaysFails(t *testing.T) {
 			},
 		},
 	})
-	tID.OnGetGeneratedName().Return("mock_generated_name")
 
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.On("GetTaskExecutionID").Return(tID)

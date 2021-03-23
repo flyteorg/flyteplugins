@@ -120,11 +120,10 @@ func TestConstructTaskInfo(t *testing.T) {
 	assert.NoError(t, err)
 
 	e := ExecutionState{
-		Phase:               PhaseQuerySucceeded,
-		CommandID:           "123",
-		SyncFailureCount:    0,
-		URI:                 u.String(),
-		AllocationNamespace: "allocation_namespace",
+		Phase:            PhaseQuerySucceeded,
+		CommandID:        "123",
+		SyncFailureCount: 0,
+		URI:              u.String(),
 	}
 
 	taskInfo := ConstructTaskInfo(e)
@@ -144,7 +143,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseNotStarted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseNotReady, phaseInfo.Phase())
 	})
 
@@ -153,14 +152,14 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 			Phase:                PhaseQueued,
 			CreationFailureCount: 0,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseQueued, phaseInfo.Phase())
 
 		e = ExecutionState{
 			Phase:                PhaseQueued,
 			CreationFailureCount: 100,
 		}
-		phaseInfo = MapExecutionStateToPhaseInfo(c, e)
+		phaseInfo = MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseRetryableFailure, phaseInfo.Phase())
 
 	})
@@ -169,7 +168,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseSubmitted,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 	})
 
@@ -177,7 +176,7 @@ func TestMapExecutionStateToPhaseInfo(t *testing.T) {
 		e := ExecutionState{
 			Phase: PhaseWriteOutputFile,
 		}
-		phaseInfo := MapExecutionStateToPhaseInfo(c, e)
+		phaseInfo := MapExecutionStateToPhaseInfo(e, c)
 		assert.Equal(t, core.PhaseRunning, phaseInfo.Phase())
 		assert.Equal(t, uint32(1), phaseInfo.Version())
 	})

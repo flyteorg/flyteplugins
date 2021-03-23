@@ -16,8 +16,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 )
 
-const examplePluginName = "service-a"
-
 const (
 	ErrRemoteSystem errors.ErrorCode = "RemoteSystem"
 	ErrRemoteUser   errors.ErrorCode = "RemoteUser"
@@ -117,7 +115,7 @@ func NewPlugin(ctx context.Context, cfg *Config, metricScope promutils.Scope) (P
 
 func init() {
 	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
-		ID:                 examplePluginName,
+		ID:                 "service-a",
 		SupportedTaskTypes: []core.TaskType{"my-task"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return NewPlugin(ctx, GetConfig(), iCtx.MetricsScope())

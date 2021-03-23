@@ -73,9 +73,6 @@ type ExecutionState struct {
 
 	// The time the execution first requests for an allocation token
 	AllocationTokenRequestStartTime time.Time `json:"allocation_token_request_start_time,omitempty"`
-
-	// Stores the namespace under which the resource manager allocation token was computed.
-	AllocationNamespace string
 }
 
 // This is the main state iteration
@@ -110,7 +107,7 @@ func HandleExecutionState(ctx context.Context, tCtx core.TaskExecutionContext, c
 	return newState, transformError
 }
 
-func MapExecutionStateToPhaseInfo(_ client.QuboleClient, state ExecutionState) core.PhaseInfo {
+func MapExecutionStateToPhaseInfo(state ExecutionState, _ client.QuboleClient) core.PhaseInfo {
 	var phaseInfo core.PhaseInfo
 	t := time.Now()
 
@@ -224,10 +221,8 @@ func GetAllocationToken(ctx context.Context, tCtx core.TaskExecutionContext, cur
 	// Emitting the duration this execution has been waiting for a token allocation
 	if currentState.AllocationTokenRequestStartTime.IsZero() {
 		newState.AllocationTokenRequestStartTime = time.Now()
-		newState.AllocationNamespace = string(clusterPrimaryLabel)
 	} else {
 		newState.AllocationTokenRequestStartTime = currentState.AllocationTokenRequestStartTime
-		newState.AllocationNamespace = currentState.AllocationNamespace
 	}
 	waitTime := time.Since(newState.AllocationTokenRequestStartTime)
 	metric.ResourceWaitTime.Observe(waitTime.Seconds())
