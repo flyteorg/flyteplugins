@@ -7,6 +7,9 @@ import (
 
 //go:generate mockery -all -case=underscore
 
+// https://github.com/flyteorg/flytepropeller/blob/979fabe1d1b22b01645259a03b8096f227681d08/pkg/utils/encoder.go#L25-L26
+const minGeneratedNameLength = 8
+
 type TaskType = string
 
 // A Lazy loading function, that will load the plugin. Plugins should be initialized in this method. It is guaranteed
@@ -64,8 +67,8 @@ func LoadPlugin(ctx context.Context, iCtx SetupContext, entry PluginEntry) (Plug
 	}
 
 	length := plugin.GetProperties().GeneratedNameMaxLength
-	if length != nil && *length < 8 {
-		return nil, fmt.Errorf("GeneratedNameMaxLength needs to be greater then 8")
+	if length != nil && *length < minGeneratedNameLength {
+		return nil, fmt.Errorf("GeneratedNameMaxLength needs to be greater then %d", minGeneratedNameLength)
 	}
 
 	return plugin, err
