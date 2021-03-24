@@ -3,9 +3,10 @@ package flytek8s
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"strings"
 	"time"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
@@ -56,9 +57,9 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 		return nil, fmt.Errorf("container not specified in task template")
 	}
 	c, err := ToK8sContainer(ctx, task.GetContainer(), task.Interface, template.Parameters{
-		Task: tCtx.TaskReader(),
-		Inputs: tCtx.InputReader(),
-		OutputPath: tCtx.OutputWriter(),
+		Task:             tCtx.TaskReader(),
+		Inputs:           tCtx.InputReader(),
+		OutputPath:       tCtx.OutputWriter(),
 		TaskExecMetadata: tCtx.TaskExecutionMetadata(),
 	})
 	if err != nil {

@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
@@ -24,7 +25,7 @@ type arrayTaskContext struct {
 }
 
 // Overrides the TaskExecutionContext from base and returns a specialized context for Array
-func (a *arrayTaskContext) 	InputReader() io.InputReader {
+func (a *arrayTaskContext) InputReader() io.InputReader {
 	return a.arrayInputReader
 }
 
@@ -48,7 +49,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 
 	arrTCtx := &arrayTaskContext{
 		TaskExecutionContext: tCtx,
-		arrayInputReader: array.GetInputReader(tCtx, taskTemplate),
+		arrayInputReader:     array.GetInputReader(tCtx, taskTemplate),
 	}
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {

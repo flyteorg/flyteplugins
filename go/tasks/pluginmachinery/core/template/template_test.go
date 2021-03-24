@@ -79,9 +79,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 
 	params := Parameters{
 		TaskExecMetadata: taskMetadata,
-		Inputs: in,
-		OutputPath: out,
-		Task: nil,
+		Inputs:           in,
+		OutputPath:       out,
+		Task:             nil,
 	}
 	t.Run("nothing to substitute", func(t *testing.T) {
 		actual, err := Render(context.TODO(), []string{
@@ -115,9 +115,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		in := dummyInputReader{inputPath: "input/prefix"}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 		actual, err := Render(context.TODO(), []string{
 			"hello",
@@ -148,7 +148,7 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 	})
 
 	t.Run("Sub Input Output prefix", func(t *testing.T) {
-		actual, err := Render(context.TODO(),[]string{
+		actual, err := Render(context.TODO(), []string{
 			"hello",
 			"world",
 			"{{ .Input }}",
@@ -195,9 +195,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		}}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 		actual, err := Render(context.TODO(), []string{
 			"hello",
@@ -224,9 +224,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		}}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 		actual, err := Render(context.TODO(), []string{
 			"hello",
@@ -253,9 +253,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		}}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 		actual, err := Render(context.TODO(), []string{
 			"hello",
@@ -278,9 +278,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		in := dummyInputReader{inputs: &core.LiteralMap{}}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 
 		actual, err := Render(context.TODO(), []string{
@@ -311,9 +311,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		}}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 		actual, err := Render(context.TODO(), []string{
 			`SELECT
@@ -342,9 +342,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		}}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 		_, err := Render(context.TODO(), []string{
 			"hello",
@@ -363,9 +363,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		}}
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: nil,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             nil,
 		}
 		actual, err := Render(context.TODO(), []string{
 			"hello",
@@ -404,9 +404,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		tMock.OnPath(ctx).Return("s3://task-path", nil)
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: tMock,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             tMock,
 		}
 
 		actual, err := Render(ctx, []string{
@@ -430,9 +430,9 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		tMock.OnPath(ctx).Return("", fmt.Errorf("error"))
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
-			Inputs: in,
-			OutputPath: out,
-			Task: tMock,
+			Inputs:           in,
+			OutputPath:       out,
+			Task:             tMock,
 		}
 
 		_, err := Render(ctx, []string{
