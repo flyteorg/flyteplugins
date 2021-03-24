@@ -40,6 +40,10 @@ type PluginEntry struct {
 	// Boolean that indicates if finalizer injection should be disabled for resources that this plugin is
 	// responsible for.
 	DisableInjectFinalizer bool
+}
+
+// System level properties that this Plugin supports
+type PluginProperties struct {
 	// Specifies the length of TaskExecutionID generated name. default: 50
 	GeneratedNameMaxLength *int
 }
@@ -75,4 +79,7 @@ type Plugin interface {
 	// any operations that might take a long time (limits are configured system-wide) should be offloaded to the
 	// background.
 	GetTaskPhase(ctx context.Context, pluginContext PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error)
+
+	// Properties desired by the plugin
+	GetProperties() PluginProperties
 }

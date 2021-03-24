@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 )
 
 //go:generate mockery -all -case=underscore
@@ -53,4 +54,19 @@ type Plugin interface {
 	Abort(ctx context.Context, tCtx TaskExecutionContext) error
 	// Finalize is always called, after Handle or Abort. Finalize should be an idempotent operation
 	Finalize(ctx context.Context, tCtx TaskExecutionContext) error
+}
+
+// Loads and validates a plugin.
+func LoadPlugin(ctx context.Context, iCtx SetupContext, entry PluginEntry) (Plugin, error) {
+	plugin, err := entry.LoadPlugin(ctx, iCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	length := plugin.GetProperties().GeneratedNameMaxLength
+	if length != nil && *length < 8 {
+		return nil, fmt.Errorf("GeneratedNameMaxLength needs to be greater then 8")
+	}
+
+	return plugin, err
 }
