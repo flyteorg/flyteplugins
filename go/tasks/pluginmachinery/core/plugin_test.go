@@ -71,7 +71,7 @@ func TestLoadPlugin(t *testing.T) {
 		assert.NilError(t, err)
 	})
 
-	t.Run("invlid GeneratedNameMaxLength", func(t *testing.T) {
+	t.Run("invalid GeneratedNameMaxLength", func(t *testing.T) {
 		corePlugin := &mocks.Plugin{}
 		corePlugin.On("GetID").Return(corePluginType)
 		length := 5
