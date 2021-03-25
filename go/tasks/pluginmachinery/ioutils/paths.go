@@ -26,7 +26,7 @@ func constructPath(store storage.ReferenceConstructor, base storage.DataReferenc
 	return res
 }
 
-// GetTaskTemplatePath returns a protobuf file path where TaskTemplate is stored	
+// GetTaskTemplatePath returns a protobuf file path where TaskTemplate is stored
 func GetTaskTemplatePath(ctx context.Context, store storage.ReferenceConstructor, base storage.DataReference) (storage.DataReference, error) {
 	return store.ConstructReference(ctx, base, TaskTemplateSuffix)
 }
