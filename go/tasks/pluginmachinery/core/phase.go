@@ -131,6 +131,9 @@ var PhaseInfoUndefined = PhaseInfo{phase: PhaseUndefined}
 
 func phaseInfo(p Phase, v uint32, err *core.ExecutionError, info *TaskInfo) PhaseInfo {
 	if info == nil {
+		info = &TaskInfo{}
+	}
+	if info.OccurredAt == nil {
 		t := time.Now()
 		info = &TaskInfo{
 			OccurredAt: &t,
