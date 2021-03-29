@@ -135,9 +135,7 @@ func phaseInfo(p Phase, v uint32, err *core.ExecutionError, info *TaskInfo) Phas
 	}
 	if info.OccurredAt == nil {
 		t := time.Now()
-		info = &TaskInfo{
-			OccurredAt: &t,
-		}
+		info.OccurredAt = &t
 	}
 	return PhaseInfo{
 		phase:   p,
