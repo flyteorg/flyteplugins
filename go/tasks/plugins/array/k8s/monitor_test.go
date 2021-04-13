@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"testing"
 
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -30,6 +31,20 @@ func createSampleContainerTask() *core2.Container {
 }
 
 func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContext {
+	setConfig(&Config{
+		MaxErrorStringLength: 200,
+		Namespace: "a-{{.namespace}}-b",
+		OutputAssembler: workqueue.Config{
+			Workers:            2,
+			MaxRetries:         0,
+			IndexCacheMaxItems: 100,
+		},
+		ErrorAssembler: workqueue.Config{
+			Workers:            2,
+			MaxRetries:         0,
+			IndexCacheMaxItems: 100,
+		},
+	})
 	tr := &mocks.TaskReader{}
 	tr.OnRead(ctx).Return(&core2.TaskTemplate{
 		Target: &core2.TaskTemplate_Container{

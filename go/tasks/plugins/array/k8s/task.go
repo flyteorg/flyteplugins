@@ -133,10 +133,11 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	t.SubTaskIDs = append(t.SubTaskIDs, &podName)
+
 	phaseInfo, err := CheckPodStatus(ctx, kubeClient,
 		k8sTypes.NamespacedName{
 			Name:      podName,
-			Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
+			Namespace: GetNamespaceForExecution(tCtx),
 		})
 	if err != nil {
 		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")

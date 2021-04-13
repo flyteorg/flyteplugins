@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
@@ -18,6 +19,7 @@ import (
 )
 
 const PodKind = "pod"
+var namespaceRegex = regexp.MustCompile("(?i){{.namespace}}(?i)")
 
 type arrayTaskContext struct {
 	core.TaskExecutionContext
@@ -27,6 +29,22 @@ type arrayTaskContext struct {
 // Overrides the TaskExecutionContext from base and returns a specialized context for Array
 func (a *arrayTaskContext) InputReader() io.InputReader {
 	return a.arrayInputReader
+}
+
+func GetNamespaceForExecution(tCtx core.TaskExecutionContext) string {
+
+	// Default to parent namespace
+	namespace := tCtx.TaskExecutionMetadata().GetNamespace()
+
+	namespacePattern := GetConfig().Namespace
+	if namespacePattern != "" {
+		if  namespaceRegex.MatchString(namespacePattern) {
+			namespace = namespaceRegex.ReplaceAllString(namespacePattern, namespace)
+		} else {
+			namespace = namespacePattern
+		}
+	}
+	return  namespace
 }
 
 // Note that Name is not set on the result object.
@@ -71,7 +89,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			// Note that name is missing here
-			Namespace:       tCtx.TaskExecutionMetadata().GetNamespace(),
+			Namespace:       GetNamespaceForExecution(tCtx),
 			Labels:          tCtx.TaskExecutionMetadata().GetLabels(),
 			Annotations:     tCtx.TaskExecutionMetadata().GetAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{tCtx.TaskExecutionMetadata().GetOwnerReference()},

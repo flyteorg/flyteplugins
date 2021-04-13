@@ -113,6 +113,7 @@ type Config struct {
 	RemoteClusterConfig  ClusterConfig     `json:"remoteClusterConfig" pflag:"-,Configuration of remote K8s cluster for array jobs"`
 	NodeSelector         map[string]string `json:"node-selector" pflag:"-,Defines a set of node selector labels to add to the pod."`
 	Tolerations          []v1.Toleration   `json:"tolerations"  pflag:"-,Tolerations to be applied for k8s-array pods"`
+	Namespace			 string			   `json:"namespace"  pflag:"-,Namespace pattern to spawn array-jobs in. Defaults to parent namespace if not set"`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
 }
@@ -124,4 +125,9 @@ func GetConfig() *Config {
 func IsResourceConfigSet(resourceConfig ResourceConfig) bool {
 	emptyResouceConfig := ResourceConfig{}
 	return resourceConfig != emptyResouceConfig
+}
+
+// This method should be used for unit testing only
+func setConfig(cfg *Config) error {
+	return configSection.SetConfig(cfg)
 }
