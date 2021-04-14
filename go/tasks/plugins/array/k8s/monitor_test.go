@@ -2,8 +2,9 @@ package k8s
 
 import (
 	"fmt"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"testing"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
 
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -30,10 +31,10 @@ func createSampleContainerTask() *core2.Container {
 	}
 }
 
-func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContext {
-	setConfig(&Config{
+func getMockTaskExecutionContext(ctx context.Context, t *testing.T) *mocks.TaskExecutionContext {
+	assert.NoError(t, setConfig(&Config{
 		MaxErrorStringLength: 200,
-		Namespace: "a-{{.namespace}}-b",
+		Namespace:            "a-{{.namespace}}-b",
 		OutputAssembler: workqueue.Config{
 			Workers:            2,
 			MaxRetries:         0,
@@ -44,7 +45,7 @@ func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContex
 			MaxRetries:         0,
 			IndexCacheMaxItems: 100,
 		},
-	})
+	}))
 	tr := &mocks.TaskReader{}
 	tr.OnRead(ctx).Return(&core2.TaskTemplate{
 		Target: &core2.TaskTemplate_Container{
@@ -120,7 +121,7 @@ func testSubTaskIDs(t *testing.T, actual []*string) {
 func TestCheckSubTasksState(t *testing.T) {
 	ctx := context.Background()
 
-	tCtx := getMockTaskExecutionContext(ctx)
+	tCtx := getMockTaskExecutionContext(ctx, t)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
 	resourceManager := mocks.ResourceManager{}
@@ -174,7 +175,7 @@ func TestCheckSubTasksState(t *testing.T) {
 func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 	ctx := context.Background()
 
-	tCtx := getMockTaskExecutionContext(ctx)
+	tCtx := getMockTaskExecutionContext(ctx, t)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
 	resourceManager := mocks.ResourceManager{}

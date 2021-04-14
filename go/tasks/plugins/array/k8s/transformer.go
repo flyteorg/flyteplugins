@@ -19,6 +19,7 @@ import (
 )
 
 const PodKind = "pod"
+
 var namespaceRegex = regexp.MustCompile("(?i){{.namespace}}(?i)")
 
 type arrayTaskContext struct {
@@ -38,13 +39,13 @@ func GetNamespaceForExecution(tCtx core.TaskExecutionContext) string {
 
 	namespacePattern := GetConfig().Namespace
 	if namespacePattern != "" {
-		if  namespaceRegex.MatchString(namespacePattern) {
+		if namespaceRegex.MatchString(namespacePattern) {
 			namespace = namespaceRegex.ReplaceAllString(namespacePattern, namespace)
 		} else {
 			namespace = namespacePattern
 		}
 	}
-	return  namespace
+	return namespace
 }
 
 // Note that Name is not set on the result object.
