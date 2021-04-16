@@ -134,7 +134,7 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	t.SubTaskIDs = append(t.SubTaskIDs, &podName)
 
-	phaseInfo, err := CheckPodStatus(ctx, kubeClient,
+	phaseInfo, err := FetchPodStatus(ctx, kubeClient,
 		k8sTypes.NamespacedName{
 			Name:      podName,
 			Namespace: GetNamespaceForExecution(tCtx),

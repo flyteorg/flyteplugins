@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
+
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	restclient "k8s.io/client-go/rest"
@@ -116,6 +118,11 @@ type Config struct {
 	Namespace            string            `json:"namespace"  pflag:"-,Namespace pattern to spawn array-jobs in. Defaults to parent namespace if not set"`
 	OutputAssembler      workqueue.Config
 	ErrorAssembler       workqueue.Config
+	LogConfig            LogConfig `json:"logs" pflag:",Config for log links for spark applications."`
+}
+
+type LogConfig struct {
+	Logs logs.LogConfig `json:"logs" pflag:",Defines the log config for k8s logs."`
 }
 
 func GetConfig() *Config {

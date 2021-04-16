@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
+
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -157,7 +159,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	return newState, logLinks, subTaskIDs, nil
 }
 
-func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName) (
+func FetchPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName) (
 	info core.PhaseInfo, err error) {
 
 	pod := &v1.Pod{
@@ -192,11 +194,23 @@ func CheckPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 	}
 
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")
+		p, err := logs.InitializeLogPlugins(&GetConfig().LogConfig.Logs)
+
 		if err != nil {
 			return core.PhaseInfoUndefined, err
 		}
-		taskInfo.Logs = taskLogs
+
+		if p != nil {
+			o, err := p.GetTaskLogs(tasklog.Input{
+				PodName:   pod.Name,
+				Namespace: pod.Namespace,
+			})
+
+			if err != nil {
+				return core.PhaseInfoUndefined, err
+			}
+			taskInfo.Logs = o.TaskLogs
+		}
 	}
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:

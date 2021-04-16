@@ -50,5 +50,16 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.workers"), defaultConfig.ErrorAssembler.Workers, "Number of concurrent workers to start processing the queue.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxRetries"), defaultConfig.ErrorAssembler.MaxRetries, "Maximum number of retries per item.")
 	cmdFlags.Int(fmt.Sprintf("%v%v", prefix, "ErrorAssembler.maxItems"), defaultConfig.ErrorAssembler.IndexCacheMaxItems, "Maximum number of entries to keep in the index.")
+	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "logs.logs.cloudwatch-enabled"), defaultConfig.LogConfig.Logs.IsCloudwatchEnabled, "Enable Cloudwatch Logging")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.cloudwatch-region"), defaultConfig.LogConfig.Logs.CloudwatchRegion, "AWS region in which Cloudwatch logs are stored.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.cloudwatch-log-group"), defaultConfig.LogConfig.Logs.CloudwatchLogGroup, "Log group to which streams are associated.")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.cloudwatch-template-uri"), defaultConfig.LogConfig.Logs.CloudwatchTemplateURI, "Template Uri to use when building cloudwatch log links")
+	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "logs.logs.kubernetes-enabled"), defaultConfig.LogConfig.Logs.IsKubernetesEnabled, "Enable Kubernetes Logging")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.kubernetes-url"), defaultConfig.LogConfig.Logs.KubernetesURL, "Console URL for Kubernetes logs")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.kubernetes-template-uri"), defaultConfig.LogConfig.Logs.KubernetesTemplateURI, "Template Uri to use when building kubernetes log links")
+	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "logs.logs.stackdriver-enabled"), defaultConfig.LogConfig.Logs.IsStackDriverEnabled, "Enable Log-links to stackdriver")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.gcp-project"), defaultConfig.LogConfig.Logs.GCPProjectName, "Name of the project in GCP")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.stackdriver-logresourcename"), defaultConfig.LogConfig.Logs.StackdriverLogResourceName, "Name of the logresource in stackdriver")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "logs.logs.stackdriver-template-uri"), defaultConfig.LogConfig.Logs.StackDriverTemplateURI, "Template Uri to use when building stackdriver log links")
 	return cmdFlags
 }
