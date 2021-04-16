@@ -122,7 +122,7 @@ type Config struct {
 }
 
 type LogConfig struct {
-	Logs logs.LogConfig `json:"logs" pflag:",Defines the log config for k8s logs."`
+	Config logs.LogConfig `json:"config" pflag:",Defines the log config for k8s logs."`
 }
 
 func GetConfig() *Config {

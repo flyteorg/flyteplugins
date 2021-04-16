@@ -194,7 +194,7 @@ func FetchPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 	}
 
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		p, err := logs.InitializeLogPlugins(&GetConfig().LogConfig.Logs)
+		p, err := logs.InitializeLogPlugins(&GetConfig().LogConfig.Config)
 
 		if err != nil {
 			return core.PhaseInfoUndefined, err
