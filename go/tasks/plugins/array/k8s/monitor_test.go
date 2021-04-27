@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
 
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -45,6 +47,13 @@ func getMockTaskExecutionContext(ctx context.Context, t *testing.T) *mocks.TaskE
 			MaxRetries:         0,
 			IndexCacheMaxItems: 100,
 		},
+		LogConfig: LogConfig{
+			Config: logs.LogConfig{
+				IsCloudwatchEnabled:   true,
+				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+				IsKubernetesEnabled:   true,
+				KubernetesTemplateURI: "k8s/log/{{.namespace}}/{{.podName}}/pod?namespace={{.namespace}}",
+			}},
 	}))
 	tr := &mocks.TaskReader{}
 	tr.OnRead(ctx).Return(&core2.TaskTemplate{
@@ -130,7 +139,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 	t.Run("Happy case", func(t *testing.T) {
 		config := Config{MaxArrayJobSize: 100}
-		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		newState, logLinks, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
@@ -138,7 +147,13 @@ func TestCheckSubTasksState(t *testing.T) {
 		})
 
 		assert.Nil(t, err)
-		//assert.NotEmpty(t, logLinks)
+		assert.NotEmpty(t, logLinks)
+		assert.Equal(t, 10, len(logLinks))
+		for i := 0; i < 10; i = i + 2 {
+			assert.Equal(t, fmt.Sprintf("k8s/log/a-n-b/notfound-%d/pod?namespace=a-n-b", i/2), logLinks[i].Uri)
+			assert.Equal(t, fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.notfound-%d;streamFilter=typeLogStreamPrefix", i/2), logLinks[i+1].Uri)
+		}
+
 		p, _ := newState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 0)
