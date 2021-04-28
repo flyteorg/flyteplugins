@@ -37,7 +37,7 @@ func GetNamespaceForExecution(tCtx core.TaskExecutionContext) string {
 	// Default to parent namespace
 	namespace := tCtx.TaskExecutionMetadata().GetNamespace()
 
-	namespacePattern := GetConfig().Namespace
+	namespacePattern := GetConfig().NamespaceTemplate
 	if namespacePattern != "" {
 		if namespaceRegex.MatchString(namespacePattern) {
 			namespace = namespaceRegex.ReplaceAllString(namespacePattern, namespace)

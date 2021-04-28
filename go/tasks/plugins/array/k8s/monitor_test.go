@@ -36,7 +36,7 @@ func createSampleContainerTask() *core2.Container {
 func getMockTaskExecutionContext(ctx context.Context, t *testing.T) *mocks.TaskExecutionContext {
 	assert.NoError(t, setConfig(&Config{
 		MaxErrorStringLength: 200,
-		Namespace:            "a-{{.namespace}}-b",
+		NamespaceTemplate:    "a-{{.namespace}}-b",
 		OutputAssembler: workqueue.Config{
 			Workers:            2,
 			MaxRetries:         0,
@@ -150,7 +150,10 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.NotEmpty(t, logLinks)
 		assert.Equal(t, 10, len(logLinks))
 		for i := 0; i < 10; i = i + 2 {
+			assert.Equal(t, fmt.Sprintf("Kubernetes Logs #%d (PhaseRunning)", i/2), logLinks[i].Name)
 			assert.Equal(t, fmt.Sprintf("k8s/log/a-n-b/notfound-%d/pod?namespace=a-n-b", i/2), logLinks[i].Uri)
+
+			assert.Equal(t, fmt.Sprintf("Cloudwatch Logs #%d (PhaseRunning)", i/2), logLinks[i+1].Name)
 			assert.Equal(t, fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.notfound-%d;streamFilter=typeLogStreamPrefix", i/2), logLinks[i+1].Uri)
 		}
 

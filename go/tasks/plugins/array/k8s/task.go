@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -138,12 +139,17 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		k8sTypes.NamespacedName{
 			Name:      podName,
 			Namespace: GetNamespaceForExecution(tCtx),
-		})
+		},
+		indexStr)
 	if err != nil {
 		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
 	}
 
 	if phaseInfo.Info() != nil {
+		// Append sub-job status in Log Name for viz.
+		for _, log := range phaseInfo.Info().Logs {
+			log.Name += fmt.Sprintf(" (%s)", phaseInfo.Phase().String())
+		}
 		t.LogLinks = append(t.LogLinks, phaseInfo.Info().Logs...)
 	}
 
