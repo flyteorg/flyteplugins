@@ -135,12 +135,15 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	t.SubTaskIDs = append(t.SubTaskIDs, &podName)
 
+	// Use original-index for log-name/links
+	originalIdx := arrayCore.CalculateOriginalIndex(t.ChildIdx, t.State.GetIndexesToCache())
+	fmt.Printf("id-%d", originalIdx)
 	phaseInfo, err := FetchPodStatus(ctx, kubeClient,
 		k8sTypes.NamespacedName{
 			Name:      podName,
 			Namespace: GetNamespaceForExecution(tCtx),
 		},
-		t.ChildIdx,
+		originalIdx,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
 	if err != nil {
 		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
@@ -160,7 +163,6 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 
 	actualPhase := phaseInfo.Phase()
 	if phaseInfo.Phase().IsSuccess() {
-		originalIdx := arrayCore.CalculateOriginalIndex(t.ChildIdx, t.State.GetIndexesToCache())
 		actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputDataSandbox, t.ChildIdx, originalIdx)
 		if err != nil {
 			return MonitorError, err

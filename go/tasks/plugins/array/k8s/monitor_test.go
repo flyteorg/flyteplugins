@@ -139,11 +139,19 @@ func TestCheckSubTasksState(t *testing.T) {
 
 	t.Run("Happy case", func(t *testing.T) {
 		config := Config{MaxArrayJobSize: 100}
+		cacheIndexes := bitarray.NewBitSet(5)
+		cacheIndexes.Set(0)
+		cacheIndexes.Set(1)
+		cacheIndexes.Set(2)
+		cacheIndexes.Set(3)
+		cacheIndexes.Set(4)
+
 		newState, logLinks, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
 			OriginalMinSuccesses: 5,
+			IndexesToCache:       cacheIndexes,
 		})
 
 		assert.Nil(t, err)
@@ -211,11 +219,13 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			},
 		}
 
+		cacheIndexes := bitarray.NewBitSet(5)
 		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
 			OriginalArraySize:    10,
 			OriginalMinSuccesses: 5,
+			IndexesToCache:       cacheIndexes,
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
 			},
