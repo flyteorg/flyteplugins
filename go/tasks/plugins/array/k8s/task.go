@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -130,21 +132,22 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	return LaunchSuccess, nil
 }
 
-func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference) (MonitorResult, error) {
+func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference,
+	logPlugin tasklog.Plugin) (MonitorResult, error) {
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 	t.SubTaskIDs = append(t.SubTaskIDs, &podName)
 
 	// Use original-index for log-name/links
 	originalIdx := arrayCore.CalculateOriginalIndex(t.ChildIdx, t.State.GetIndexesToCache())
-	fmt.Printf("id-%d", originalIdx)
-	phaseInfo, err := FetchPodStatus(ctx, kubeClient,
+	phaseInfo, err := FetchPodStatusAndLogs(ctx, kubeClient,
 		k8sTypes.NamespacedName{
 			Name:      podName,
 			Namespace: GetNamespaceForExecution(tCtx),
 		},
 		originalIdx,
-		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
+		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt,
+		logPlugin)
 	if err != nil {
 		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
 	}

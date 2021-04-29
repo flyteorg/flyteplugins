@@ -61,6 +61,12 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		currentState.ArrayStatus = *newArrayStatus
 	}
 
+	logPlugin, err := logs.InitializeLogPlugins(&GetConfig().LogConfig.Config)
+	if err != nil {
+		logger.Errorf(ctx, "Error initializing LogPlugins: [%s]", err)
+		return currentState, logLinks, subTaskIDs, err
+	}
+
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
 		indexStr := strconv.Itoa(childIdx)
@@ -115,7 +121,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		var monitorResult MonitorResult
-		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox)
+		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox, logPlugin)
 		logLinks = task.LogLinks
 		subTaskIDs = task.SubTaskIDs
 
@@ -159,7 +165,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	return newState, logLinks, subTaskIDs, nil
 }
 
-func FetchPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName, index int, retryAttempt uint32) (
+func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName, index int, retryAttempt uint32, logPlugin tasklog.Plugin) (
 	info core.PhaseInfo, err error) {
 
 	pod := &v1.Pod{
@@ -194,14 +200,9 @@ func FetchPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 	}
 
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		p, err := logs.InitializeLogPlugins(&GetConfig().LogConfig.Config)
 
-		if err != nil {
-			return core.PhaseInfoUndefined, err
-		}
-
-		if p != nil {
-			o, err := p.GetTaskLogs(tasklog.Input{
+		if logPlugin != nil {
+			o, err := logPlugin.GetTaskLogs(tasklog.Input{
 				PodName:   pod.Name,
 				Namespace: pod.Namespace,
 				LogName:   fmt.Sprintf(" #%d-%d", index, retryAttempt),
