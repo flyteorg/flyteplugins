@@ -140,7 +140,8 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 			Name:      podName,
 			Namespace: GetNamespaceForExecution(tCtx),
 		},
-		indexStr)
+		t.ChildIdx,
+		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
 	if err != nil {
 		return MonitorError, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
 	}
@@ -182,7 +183,7 @@ func (t Task) Abort(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
-			Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
+			Namespace: GetNamespaceForExecution(tCtx),
 		},
 	}
 

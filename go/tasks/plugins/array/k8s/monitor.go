@@ -159,7 +159,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	return newState, logLinks, subTaskIDs, nil
 }
 
-func FetchPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName, index string) (
+func FetchPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName, index int, retryAttempt uint32) (
 	info core.PhaseInfo, err error) {
 
 	pod := &v1.Pod{
@@ -204,7 +204,7 @@ func FetchPodStatus(ctx context.Context, client core.KubeClient, name k8sTypes.N
 			o, err := p.GetTaskLogs(tasklog.Input{
 				PodName:   pod.Name,
 				Namespace: pod.Namespace,
-				LogName:   fmt.Sprintf(" #%s", index),
+				LogName:   fmt.Sprintf(" #%d-%d", index, retryAttempt),
 			})
 
 			if err != nil {
