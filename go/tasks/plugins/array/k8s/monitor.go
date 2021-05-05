@@ -61,7 +61,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		currentState.ArrayStatus = *newArrayStatus
 	}
 
-	logPlugin, err := logs.InitializeLogPlugins(&GetConfig().LogConfig.Config)
+	logPlugin, err := logs.InitializeLogPlugins(&config.LogConfig.Config)
 	if err != nil {
 		logger.Errorf(ctx, "Error initializing LogPlugins: [%s]", err)
 		return currentState, logLinks, subTaskIDs, err

@@ -133,8 +133,3 @@ func IsResourceConfigSet(resourceConfig ResourceConfig) bool {
 	emptyResouceConfig := ResourceConfig{}
 	return resourceConfig != emptyResouceConfig
 }
-
-// This method should be used for unit testing only
-func setConfig(cfg *Config) error {
-	return configSection.SetConfig(cfg)
-}

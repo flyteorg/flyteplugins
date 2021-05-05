@@ -52,7 +52,7 @@ const (
 )
 
 func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (LaunchResult, error) {
-	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx)
+	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx, t.Config.NamespaceTemplate)
 	if err != nil {
 		return LaunchError, errors2.Wrapf(ErrBuildPodTemplate, err, "Failed to convert task template to a pod template for a task")
 	}
@@ -143,7 +143,7 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	phaseInfo, err := FetchPodStatusAndLogs(ctx, kubeClient,
 		k8sTypes.NamespacedName{
 			Name:      podName,
-			Namespace: GetNamespaceForExecution(tCtx),
+			Namespace: GetNamespaceForExecution(tCtx, t.Config.NamespaceTemplate),
 		},
 		originalIdx,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt,
@@ -188,7 +188,7 @@ func (t Task) Abort(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
-			Namespace: GetNamespaceForExecution(tCtx),
+			Namespace: GetNamespaceForExecution(tCtx, t.Config.NamespaceTemplate),
 		},
 	}
 

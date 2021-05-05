@@ -33,28 +33,7 @@ func createSampleContainerTask() *core2.Container {
 	}
 }
 
-func getMockTaskExecutionContext(ctx context.Context, t *testing.T) *mocks.TaskExecutionContext {
-	assert.NoError(t, setConfig(&Config{
-		MaxErrorStringLength: 200,
-		NamespaceTemplate:    "a-{{.namespace}}-b",
-		OutputAssembler: workqueue.Config{
-			Workers:            2,
-			MaxRetries:         0,
-			IndexCacheMaxItems: 100,
-		},
-		ErrorAssembler: workqueue.Config{
-			Workers:            2,
-			MaxRetries:         0,
-			IndexCacheMaxItems: 100,
-		},
-		LogConfig: LogConfig{
-			Config: logs.LogConfig{
-				IsCloudwatchEnabled:   true,
-				CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
-				IsKubernetesEnabled:   true,
-				KubernetesTemplateURI: "k8s/log/{{.namespace}}/{{.podName}}/pod?namespace={{.namespace}}",
-			}},
-	}))
+func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContext {
 	tr := &mocks.TaskReader{}
 	tr.OnRead(ctx).Return(&core2.TaskTemplate{
 		Target: &core2.TaskTemplate_Container{
@@ -118,6 +97,15 @@ func getMockTaskExecutionContext(ctx context.Context, t *testing.T) *mocks.TaskE
 	return tCtx
 }
 
+func TestGetNamespaceForExecution(t *testing.T) {
+	ctx := context.Background()
+	tCtx := getMockTaskExecutionContext(ctx)
+
+	assert.Equal(t, GetNamespaceForExecution(tCtx, ""), tCtx.TaskExecutionMetadata().GetNamespace())
+	assert.Equal(t, GetNamespaceForExecution(tCtx, "abcd"), "abcd")
+	assert.Equal(t, GetNamespaceForExecution(tCtx, "a-{{.namespace}}-b"), fmt.Sprintf("a-%s-b", tCtx.TaskExecutionMetadata().GetNamespace()))
+}
+
 func testSubTaskIDs(t *testing.T, actual []*string) {
 	var expected = make([]*string, 5)
 	for i := 0; i < len(expected); i++ {
@@ -130,7 +118,7 @@ func testSubTaskIDs(t *testing.T, actual []*string) {
 func TestCheckSubTasksState(t *testing.T) {
 	ctx := context.Background()
 
-	tCtx := getMockTaskExecutionContext(ctx, t)
+	tCtx := getMockTaskExecutionContext(ctx)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
 	resourceManager := mocks.ResourceManager{}
@@ -138,7 +126,28 @@ func TestCheckSubTasksState(t *testing.T) {
 	tCtx.OnResourceManager().Return(&resourceManager)
 
 	t.Run("Happy case", func(t *testing.T) {
-		config := Config{MaxArrayJobSize: 100}
+		config := Config{
+			MaxArrayJobSize:      100,
+			MaxErrorStringLength: 200,
+			NamespaceTemplate:    "a-{{.namespace}}-b",
+			OutputAssembler: workqueue.Config{
+				Workers:            2,
+				MaxRetries:         0,
+				IndexCacheMaxItems: 100,
+			},
+			ErrorAssembler: workqueue.Config{
+				Workers:            2,
+				MaxRetries:         0,
+				IndexCacheMaxItems: 100,
+			},
+			LogConfig: LogConfig{
+				Config: logs.LogConfig{
+					IsCloudwatchEnabled:   true,
+					CloudwatchTemplateURI: "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.{{ .podName }};streamFilter=typeLogStreamPrefix",
+					IsKubernetesEnabled:   true,
+					KubernetesTemplateURI: "k8s/log/{{.namespace}}/{{.podName}}/pod?namespace={{.namespace}}",
+				}},
+		}
 		cacheIndexes := bitarray.NewBitSet(5)
 		cacheIndexes.Set(0)
 		cacheIndexes.Set(1)
@@ -201,7 +210,7 @@ func TestCheckSubTasksState(t *testing.T) {
 func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 	ctx := context.Background()
 
-	tCtx := getMockTaskExecutionContext(ctx, t)
+	tCtx := getMockTaskExecutionContext(ctx)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
 	resourceManager := mocks.ResourceManager{}
