@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -142,9 +141,6 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 		// Another error returned.
 		logger.Error(ctx, err)
 		return LaunchError, errors2.Wrapf(ErrSubmitJob, err, "Failed to submit job.")
-	} else {
-		// Pod already exists. Can safely skip creation.
-		logger.Debugf(ctx, "Pod %s Already Exists in %s. Skipping creation", pod.GetName(), pod.GetNamespace())
 	}
 
 	return LaunchSuccess, nil
@@ -172,10 +168,6 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	}
 
 	if phaseInfo.Info() != nil {
-		// Append sub-job status in Log Name for viz.
-		for _, log := range phaseInfo.Info().Logs {
-			log.Name += fmt.Sprintf(" (%s)", phaseInfo.Phase().String())
-		}
 		loglinks = phaseInfo.Info().Logs
 	}
 

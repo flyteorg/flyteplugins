@@ -100,10 +100,6 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			}
 
 			if phaseInfo.Info() != nil {
-				// Append sub-job status in Log Name for viz.
-				for _, log := range phaseInfo.Info().Logs {
-					log.Name += fmt.Sprintf(" (%s)", phaseInfo.Phase().String())
-				}
 				logLinks = append(logLinks, phaseInfo.Info().Logs...)
 			}
 
@@ -237,20 +233,35 @@ func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8s
 			taskInfo.Logs = o.TaskLogs
 		}
 	}
+
+	var phaseInfo core.PhaseInfo
+	var err2 error
+
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
-		return flytek8s.DemystifySuccess(pod.Status, taskInfo)
+		phaseInfo, err2 = flytek8s.DemystifySuccess(pod.Status, taskInfo)
 	case v1.PodFailed:
 		code, message := flytek8s.ConvertPodFailureToError(pod.Status)
-		return core.PhaseInfoRetryableFailure(code, message, &taskInfo), nil
+		phaseInfo = core.PhaseInfoRetryableFailure(code, message, &taskInfo)
 	case v1.PodPending:
-		return flytek8s.DemystifyPending(pod.Status)
+		phaseInfo, err2 = flytek8s.DemystifyPending(pod.Status)
 	case v1.PodUnknown:
-		return core.PhaseInfoUndefined, nil
+		phaseInfo = core.PhaseInfoUndefined
+	default:
+		if len(taskInfo.Logs) > 0 {
+			phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion+1, &taskInfo)
+		} else {
+			phaseInfo = core.PhaseInfoRunning(core.DefaultPhaseVersion, &taskInfo)
+		}
 	}
-	if len(taskInfo.Logs) > 0 {
-		return core.PhaseInfoRunning(core.DefaultPhaseVersion+1, &taskInfo), nil
+
+	if err2 == nil && phaseInfo.Info() != nil {
+		// Append sub-job status in Log Name for viz.
+		for _, log := range phaseInfo.Info().Logs {
+			log.Name += fmt.Sprintf(" (%s)", phaseInfo.Phase().String())
+		}
 	}
-	return core.PhaseInfoRunning(core.DefaultPhaseVersion, &taskInfo), nil
+
+	return phaseInfo, err2
 
 }
