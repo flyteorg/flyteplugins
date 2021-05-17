@@ -71,6 +71,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		existingPhase := core.Phases[existingPhaseIdx]
 		indexStr := strconv.Itoa(childIdx)
 		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
+
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
@@ -83,13 +84,33 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			}
 			newArrayStatus.Summary.Inc(existingPhase)
 			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
+			originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
 
-			// TODO: collect log links before doing this
+			phaseInfo, err := FetchPodStatusAndLogs(ctx, kubeClient,
+				k8sTypes.NamespacedName{
+					Name:      podName,
+					Namespace: GetNamespaceForExecution(tCtx, config.NamespaceTemplate),
+				},
+				originalIdx,
+				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt,
+				logPlugin)
+
+			if err != nil {
+				return currentState, logLinks, subTaskIDs, err
+			}
+
+			if phaseInfo.Info() != nil {
+				// Append sub-job status in Log Name for viz.
+				for _, log := range phaseInfo.Info().Logs {
+					log.Name += fmt.Sprintf(" (%s)", phaseInfo.Phase().String())
+				}
+				logLinks = append(logLinks, phaseInfo.Info().Logs...)
+			}
+
 			continue
 		}
 
 		task := &Task{
-			LogLinks:         logLinks,
 			State:            newState,
 			NewArrayStatus:   newArrayStatus,
 			Config:           config,
@@ -97,7 +118,6 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			MessageCollector: &msg,
 			SubTaskIDs:       subTaskIDs,
 		}
-
 		// The first time we enter this state we will launch every subtask. On subsequent rounds, the pod
 		// has already been created so we return a Success value and continue with the Monitor step.
 		var launchResult LaunchResult
@@ -121,8 +141,11 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		var monitorResult MonitorResult
-		monitorResult, err = task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox, logPlugin)
-		logLinks = task.LogLinks
+		monitorResult, taskLogs, err := task.Monitor(ctx, tCtx, kubeClient, dataStore, outputPrefix, baseOutputDataSandbox, logPlugin)
+
+		if len(taskLogs) > 0 {
+			logLinks = append(logLinks, taskLogs...)
+		}
 		subTaskIDs = task.SubTaskIDs
 
 		if monitorResult != MonitorSuccess {

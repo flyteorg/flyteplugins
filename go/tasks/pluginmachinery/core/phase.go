@@ -159,6 +159,12 @@ func PhaseInfoWaitingForResources(t time.Time, version uint32, reason string) Ph
 	return pi
 }
 
+func PhaseInfoWaitingForResourcesInfo(t time.Time, version uint32, reason string, info *TaskInfo) PhaseInfo {
+	pi := phaseInfo(PhaseWaitingForResources, version, nil, info)
+	pi.reason = reason
+	return pi
+}
+
 func PhaseInfoQueued(t time.Time, version uint32, reason string) PhaseInfo {
 	pi := phaseInfo(PhaseQueued, version, nil, &TaskInfo{OccurredAt: &t})
 	pi.reason = reason
