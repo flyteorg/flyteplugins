@@ -121,6 +121,8 @@ func TestCheckSubTasksState(t *testing.T) {
 	tCtx := getMockTaskExecutionContext(ctx)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
+	kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
+
 	resourceManager := mocks.ResourceManager{}
 	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusExhausted, nil)
 	tCtx.OnResourceManager().Return(&resourceManager)
@@ -213,6 +215,8 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 	tCtx := getMockTaskExecutionContext(ctx)
 	kubeClient := mocks.KubeClient{}
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
+	kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
+
 	resourceManager := mocks.ResourceManager{}
 
 	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)

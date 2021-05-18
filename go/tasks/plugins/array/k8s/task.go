@@ -113,7 +113,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 
 	// Check for existing pods to prevent unnecessary Resource-Quota usage: https://github.com/kubernetes/kubernetes/issues/76787
 	existingPod := &corev1.Pod{}
-	err = kubeClient.GetClient().Get(context.Background(), client.ObjectKey{
+	err = kubeClient.GetCache().Get(context.Background(), client.ObjectKey{
 		Namespace: pod.GetNamespace(),
 		Name:      pod.GetName(),
 	}, existingPod)
