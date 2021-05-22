@@ -310,7 +310,12 @@ func TestBuildSidecarResource(t *testing.T) {
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{
 		primaryContainerKey: "a container",
+		"a1": "a1",
 	}, res.GetAnnotations())
+
+	assert.EqualValues(t, map[string]string{
+		"b1": "b1",
+	}, res.GetLabels())
 
 	// Assert volumes & volume mounts are preserved
 	assert.Len(t, res.(*v1.Pod).Spec.Volumes, 1)

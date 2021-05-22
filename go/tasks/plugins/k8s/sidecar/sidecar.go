@@ -3,7 +3,6 @@ package sidecar
 import (
 	"context"
 	"fmt"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -71,11 +70,15 @@ func validateAndFinalizePod(
 type sidecarJob struct {
 	PodSpec              *k8sv1.PodSpec
 	PrimaryContainerName string
+	Annotations          map[string]string
+	Labels               map[string]string
 }
 
 func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	var podSpec k8sv1.PodSpec
 	var primaryContainerName string
+	var annotations map[string]string
+	var labels map[string]string
 
 	task, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -95,6 +98,8 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 		}
 		podSpec = *sidecarJob.PodSpec
 		primaryContainerName = sidecarJob.PrimaryContainerName
+		annotations = sidecarJob.Annotations
+		labels = sidecarJob.Labels
 	} else {
 		err := utils.UnmarshalStructToObj(task.GetCustom(), &podSpec)
 		if err != nil {
@@ -111,6 +116,8 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
 		}
+		annotations = make(map[string]string)
+		labels = make(map[string]string)
 	}
 
 	pod := flytek8s.BuildPodWithSpec(&podSpec)
@@ -126,12 +133,9 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 		return nil, err
 	}
 
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string, 1)
-	}
-
+	pod.Annotations = annotations
 	pod.Annotations[primaryContainerKey] = primaryContainerName
-
+	pod.Labels = labels
 	return pod, nil
 }
 
