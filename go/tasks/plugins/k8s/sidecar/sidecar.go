@@ -99,7 +99,14 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 		podSpec = *sidecarJob.PodSpec
 		primaryContainerName = sidecarJob.PrimaryContainerName
 		annotations = sidecarJob.Annotations
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+
 		labels = sidecarJob.Labels
+		if labels == nil {
+			labels = make(map[string]string)
+		}
 	} else {
 		err := utils.UnmarshalStructToObj(task.GetCustom(), &podSpec)
 		if err != nil {
