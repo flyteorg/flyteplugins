@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 
 	"github.com/stretchr/testify/mock"
 
@@ -317,6 +318,9 @@ func dummySparkTaskContext(taskTemplate *core.TaskTemplate, interruptible bool) 
 		Kind: "node",
 		Name: "blah",
 	})
+	taskExecutionMetadata.On("GetSecurityContext").Return(core.SecurityContext{
+		RunAs: &core.Identity{K8SServiceAccount: "new-val"},
+	})
 	taskExecutionMetadata.On("IsInterruptible").Return(interruptible)
 	taskExecutionMetadata.On("GetMaxAttempts").Return(uint32(1))
 	taskCtx.On("TaskExecutionMetadata").Return(taskExecutionMetadata)
@@ -374,6 +378,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	execCores, _ := strconv.ParseInt(dummySparkConf["spark.executor.cores"], 10, 32)
 	execInstances, _ := strconv.ParseInt(dummySparkConf["spark.executor.instances"], 10, 32)
 
+	assert.Equal(t, "new-val", *sparkApp.Spec.ServiceAccount)
 	assert.Equal(t, int32(driverCores), *sparkApp.Spec.Driver.Cores)
 	assert.Equal(t, int32(execCores), *sparkApp.Spec.Executor.Cores)
 	assert.Equal(t, int32(execInstances), *sparkApp.Spec.Executor.Instances)
@@ -465,4 +470,10 @@ func TestBuildResourceSpark(t *testing.T) {
 	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
 	assert.NotNil(t, err)
 	assert.Nil(t, resource)
+}
+
+func TestGetPropertiesSpark(t *testing.T) {
+	sparkResourceHandler := sparkResourceHandler{}
+	expected := k8s.PluginProperties{}
+	assert.Equal(t, expected, sparkResourceHandler.GetProperties())
 }

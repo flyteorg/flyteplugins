@@ -31,6 +31,10 @@ type pytorchOperatorResourceHandler struct {
 // Sanity test that the plugin implements method of k8s.Plugin
 var _ k8s.Plugin = pytorchOperatorResourceHandler{}
 
+func (pytorchOperatorResourceHandler) GetProperties() k8s.PluginProperties {
+	return k8s.PluginProperties{}
+}
+
 // Defines a func to create a query object (typically just object and type meta portions) that's used to query k8s
 // resources.
 func (pytorchOperatorResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error) {
@@ -58,7 +62,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 	}
 
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx.TaskExecutionMetadata(), taskCtx.TaskReader(), taskCtx.InputReader(), taskCtx.OutputWriter())
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}

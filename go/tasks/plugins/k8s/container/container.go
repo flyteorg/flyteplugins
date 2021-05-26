@@ -22,6 +22,10 @@ const (
 type Plugin struct {
 }
 
+func (Plugin) GetProperties() k8s.PluginProperties {
+	return k8s.PluginProperties{}
+}
+
 func (Plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
 
 	pod := r.(*v1.Pod)
@@ -57,15 +61,14 @@ func (Plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext,
 // Creates a new Pod that will Exit on completion. The pods have no retries by design
 func (Plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx.TaskExecutionMetadata(), taskCtx.TaskReader(), taskCtx.InputReader(), taskCtx.OutputWriter())
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, err
 	}
 
 	pod := flytek8s.BuildPodWithSpec(podSpec)
 
-	// We want to Also update the serviceAccount to the serviceaccount of the workflow
-	pod.Spec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
+	pod.Spec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	return pod, nil
 }

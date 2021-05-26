@@ -20,6 +20,7 @@ import (
 	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 )
 
 var resourceRequirements = &v1.ResourceRequirements{
@@ -39,6 +40,9 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 		Name: "blah",
 	})
 	taskMetadata.On("GetK8sServiceAccount").Return("service-account")
+	taskMetadata.On("GetSecurityContext").Return(core.SecurityContext{
+		RunAs: &core.Identity{K8SServiceAccount: "service-account"},
+	})
 	taskMetadata.On("GetOwnerID").Return(types.NamespacedName{
 		Namespace: "test-namespace",
 		Name:      "test-owner-name",
@@ -186,4 +190,10 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 		assert.NotNil(t, phaseInfo)
 		assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
 	})
+}
+
+func TestContainerTaskExecutor_GetProperties(t *testing.T) {
+	plugin := Plugin{}
+	expected := k8s.PluginProperties{}
+	assert.Equal(t, expected, plugin.GetProperties())
 }

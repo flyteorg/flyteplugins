@@ -2,6 +2,9 @@ package k8s
 
 import (
 	"context"
+	"regexp"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 
@@ -17,9 +20,35 @@ import (
 
 const PodKind = "pod"
 
+var namespaceRegex = regexp.MustCompile("(?i){{.namespace}}(?i)")
+
+type arrayTaskContext struct {
+	core.TaskExecutionContext
+	arrayInputReader io.InputReader
+}
+
+// Overrides the TaskExecutionContext from base and returns a specialized context for Array
+func (a *arrayTaskContext) InputReader() io.InputReader {
+	return a.arrayInputReader
+}
+
+func GetNamespaceForExecution(tCtx core.TaskExecutionContext, namespaceTemplate string) string {
+
+	// Default to parent namespace
+	namespace := tCtx.TaskExecutionMetadata().GetNamespace()
+	if namespaceTemplate != "" {
+		if namespaceRegex.MatchString(namespaceTemplate) {
+			namespace = namespaceRegex.ReplaceAllString(namespaceTemplate, namespace)
+		} else {
+			namespace = namespaceTemplate
+		}
+	}
+	return namespace
+}
+
 // Note that Name is not set on the result object.
 // It's up to the caller to set the Name before creating the object in K8s.
-func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionContext) (
+func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionContext, namespaceTemplate string) (
 	podTemplate v1.Pod, job *idlPlugins.ArrayJob, err error) {
 
 	// Check that the taskTemplate is valid
@@ -35,7 +64,10 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 			"Required value not set, taskTemplate Container")
 	}
 
-	inputReader := array.GetInputReader(tCtx, taskTemplate)
+	arrTCtx := &arrayTaskContext{
+		TaskExecutionContext: tCtx,
+		arrayInputReader:     array.GetInputReader(tCtx, taskTemplate),
+	}
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.GetCustom() != nil {
 		arrayJob, err = core2.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
@@ -44,8 +76,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		}
 	}
 
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, tCtx.TaskExecutionMetadata(), tCtx.TaskReader(), inputReader,
-		tCtx.OutputWriter())
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, arrTCtx)
 	if err != nil {
 		return v1.Pod{}, nil, err
 	}
@@ -57,7 +88,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			// Note that name is missing here
-			Namespace:       tCtx.TaskExecutionMetadata().GetNamespace(),
+			Namespace:       GetNamespaceForExecution(tCtx, namespaceTemplate),
 			Labels:          tCtx.TaskExecutionMetadata().GetLabels(),
 			Annotations:     tCtx.TaskExecutionMetadata().GetAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{tCtx.TaskExecutionMetadata().GetOwnerReference()},

@@ -45,10 +45,6 @@ var sparkTaskType = "spark"
 type sparkResourceHandler struct {
 }
 
-func (sparkResourceHandler) GetProperties() pluginsCore.PluginProperties {
-	return pluginsCore.PluginProperties{}
-}
-
 func validateSparkJob(sparkJob *plugins.SparkJob) error {
 	if sparkJob == nil {
 		return fmt.Errorf("empty sparkJob")
@@ -59,6 +55,10 @@ func validateSparkJob(sparkJob *plugins.SparkJob) error {
 	}
 
 	return nil
+}
+
+func (sparkResourceHandler) GetProperties() k8s.PluginProperties {
+	return k8s.PluginProperties{}
 }
 
 // Creates a new Job that will execute the main container as well as any generated types the result from the execution.
@@ -92,6 +92,11 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 	sparkEnvVars["FLYTE_MAX_ATTEMPTS"] = strconv.Itoa(int(taskCtx.TaskExecutionMetadata().GetMaxAttempts()))
 
+	serviceAccountName := flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
+
+	if len(serviceAccountName) == 0 {
+		serviceAccountName = sparkTaskType
+	}
 	driverSpec := sparkOp.DriverSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
 			Annotations: annotations,
@@ -99,7 +104,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			EnvVars:     sparkEnvVars,
 			Image:       &container.Image,
 		},
-		ServiceAccount: &sparkTaskType,
+		ServiceAccount: &serviceAccountName,
 	}
 
 	executorSpec := sparkOp.ExecutorSpec{
@@ -111,7 +116,12 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		},
 	}
 
-	modifiedArgs, err := template.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.GetArgs(), taskCtx.InputReader(), taskCtx.OutputWriter())
+	modifiedArgs, err := template.Render(ctx, container.GetArgs(), template.Parameters{
+		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+		Inputs:           taskCtx.InputReader(),
+		OutputPath:       taskCtx.OutputWriter(),
+		Task:             taskCtx.TaskReader(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +194,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			APIVersion: sparkOp.SchemeGroupVersion.String(),
 		},
 		Spec: sparkOp.SparkApplicationSpec{
-			ServiceAccount: &sparkTaskType,
+			ServiceAccount: &serviceAccountName,
 			Type:           getApplicationType(sparkJob.GetApplicationType()),
 			Image:          &container.Image,
 			Arguments:      modifiedArgs,

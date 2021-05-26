@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 )
@@ -72,6 +74,8 @@ type TaskInfo struct {
 	OccurredAt *time.Time
 	// Custom Event information that the plugin would like to expose to the front-end
 	CustomInfo *structpb.Struct
+	// Metadata around how a task was executed
+	Metadata *event.TaskExecutionMetadata
 }
 
 func (t *TaskInfo) String() string {
@@ -127,10 +131,11 @@ var PhaseInfoUndefined = PhaseInfo{phase: PhaseUndefined}
 
 func phaseInfo(p Phase, v uint32, err *core.ExecutionError, info *TaskInfo) PhaseInfo {
 	if info == nil {
+		info = &TaskInfo{}
+	}
+	if info.OccurredAt == nil {
 		t := time.Now()
-		info = &TaskInfo{
-			OccurredAt: &t,
-		}
+		info.OccurredAt = &t
 	}
 	return PhaseInfo{
 		phase:   p,
@@ -147,9 +152,16 @@ func PhaseInfoNotReady(t time.Time, version uint32, reason string) PhaseInfo {
 	return pi
 }
 
-// Return in the case the plugin is not ready to start
+// Deprecated: Please use PhaseInfoWaitingForResourcesInfo instead
 func PhaseInfoWaitingForResources(t time.Time, version uint32, reason string) PhaseInfo {
 	pi := phaseInfo(PhaseWaitingForResources, version, nil, &TaskInfo{OccurredAt: &t})
+	pi.reason = reason
+	return pi
+}
+
+// Return in the case the plugin is not ready to start
+func PhaseInfoWaitingForResourcesInfo(t time.Time, version uint32, reason string, info *TaskInfo) PhaseInfo {
+	pi := phaseInfo(PhaseWaitingForResources, version, nil, info)
 	pi.reason = reason
 	return pi
 }

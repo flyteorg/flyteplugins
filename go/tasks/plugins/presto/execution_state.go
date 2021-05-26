@@ -3,6 +3,8 @@ package presto
 import (
 	"context"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -221,12 +223,17 @@ func GetQueryInfo(ctx context.Context, tCtx core.TaskExecutionContext) (string, 
 		return "", "", "", "", err
 	}
 
-	outputs, err := template.ReplaceTemplateCommandArgs(ctx, tCtx.TaskExecutionMetadata(), []string{
+	outputs, err := template.Render(ctx, []string{
 		prestoQuery.RoutingGroup,
 		prestoQuery.Catalog,
 		prestoQuery.Schema,
 		prestoQuery.Statement,
-	}, tCtx.InputReader(), tCtx.OutputWriter())
+	}, template.Parameters{
+		TaskExecMetadata: tCtx.TaskExecutionMetadata(),
+		Inputs:           tCtx.InputReader(),
+		OutputPath:       tCtx.OutputWriter(),
+		Task:             tCtx.TaskReader(),
+	})
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -499,6 +506,13 @@ func ConstructTaskInfo(e ExecutionState) *core.TaskInfo {
 		return &core.TaskInfo{
 			Logs:       logs,
 			OccurredAt: &t,
+			Metadata: &event.TaskExecutionMetadata{
+				ExternalResources: []*event.ExternalResourceInfo{
+					{
+						ExternalId: e.CommandID,
+					},
+				},
+			},
 		}
 	}
 

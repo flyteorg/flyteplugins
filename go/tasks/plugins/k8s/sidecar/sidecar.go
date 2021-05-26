@@ -39,13 +39,23 @@ func validateAndFinalizePod(
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 		}
-		modifiedCommand, err := template.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.Command, taskCtx.InputReader(), taskCtx.OutputWriter())
+		modifiedCommand, err := template.Render(ctx, container.Command, template.Parameters{
+			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+			Inputs:           taskCtx.InputReader(),
+			OutputPath:       taskCtx.OutputWriter(),
+			Task:             taskCtx.TaskReader(),
+		})
 		if err != nil {
 			return nil, err
 		}
 		container.Command = modifiedCommand
 
-		modifiedArgs, err := template.ReplaceTemplateCommandArgs(ctx, taskCtx.TaskExecutionMetadata(), container.Args, taskCtx.InputReader(), taskCtx.OutputWriter())
+		modifiedArgs, err := template.Render(ctx, container.Args, template.Parameters{
+			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+			Inputs:           taskCtx.InputReader(),
+			OutputPath:       taskCtx.OutputWriter(),
+			Task:             taskCtx.TaskReader(),
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -73,6 +83,10 @@ type sidecarJob struct {
 	PrimaryContainerName string
 	Annotations          map[string]string
 	Labels               map[string]string
+}
+
+func (sidecarResourceHandler) GetProperties() k8s.PluginProperties {
+	return k8s.PluginProperties{}
 }
 
 func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
@@ -133,8 +147,7 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 	// CrashLoopBackoff after the initial job completion.
 	pod.Spec.RestartPolicy = k8sv1.RestartPolicyNever
 
-	// We want to also update the serviceAccount to the serviceaccount of the workflow
-	pod.Spec.ServiceAccountName = taskCtx.TaskExecutionMetadata().GetK8sServiceAccount()
+	pod.Spec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	pod, err = validateAndFinalizePod(ctx, taskCtx, primaryContainerName, *pod)
 	if err != nil {

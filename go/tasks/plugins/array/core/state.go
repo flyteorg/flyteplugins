@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+
 	"github.com/flyteorg/flytestdlib/errors"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
@@ -168,13 +170,21 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog) (core.PhaseInfo, error) {
+func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskIDs []*string) (core.PhaseInfo, error) {
 
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
 	nowTaskInfo := &core.TaskInfo{
 		OccurredAt: &t,
 		Logs:       logLinks,
+	}
+	if nowTaskInfo.Metadata == nil {
+		nowTaskInfo.Metadata = &event.TaskExecutionMetadata{}
+	}
+	for _, subTaskID := range subTaskIDs {
+		nowTaskInfo.Metadata.ExternalResources = append(nowTaskInfo.Metadata.ExternalResources, &event.ExternalResourceInfo{
+			ExternalId: *subTaskID,
+		})
 	}
 
 	switch p, version := state.GetPhase(); p {
@@ -190,7 +200,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseWaitingForResources:
-		phaseInfo = core.PhaseInfoWaitingForResources(t, version, state.GetReason())
+		phaseInfo = core.PhaseInfoWaitingForResourcesInfo(t, version, state.GetReason(), nowTaskInfo)
 
 	case PhaseCheckingSubTaskExecutions:
 		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
