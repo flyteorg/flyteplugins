@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -89,11 +91,24 @@ func (sidecarResourceHandler) GetProperties() k8s.PluginProperties {
 	return k8s.PluginProperties{}
 }
 
+func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) {
+	if len(task.GetConfig()) == 0 {
+		return "", errors.Errorf(errors.BadTaskSpecification,
+			"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
+	}
+	primaryContainerName, ok := task.GetConfig()[primaryContainerKey]
+	if !ok {
+		return "", errors.Errorf(errors.BadTaskSpecification,
+			"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
+	}
+	return primaryContainerName, nil
+}
+
 func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	var podSpec k8sv1.PodSpec
 	var primaryContainerName string
-	var annotations map[string]string
-	var labels map[string]string
+	var annotations = make(map[string]string)
+	var labels = make(map[string]string)
 
 	task, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -113,33 +128,45 @@ func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx plugins
 		}
 		podSpec = *sidecarJob.PodSpec
 		primaryContainerName = sidecarJob.PrimaryContainerName
-		annotations = sidecarJob.Annotations
-		if annotations == nil {
-			annotations = make(map[string]string)
+		if sidecarJob.Annotations != nil {
+			annotations = sidecarJob.Annotations
 		}
 
-		labels = sidecarJob.Labels
-		if labels == nil {
-			labels = make(map[string]string)
+		if sidecarJob.Labels != nil {
+			labels = sidecarJob.Labels
 		}
-	} else {
+	} else if task.TaskTypeVersion == 1 {
 		err := utils.UnmarshalStructToObj(task.GetCustom(), &podSpec)
 		if err != nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
 		}
-		if len(task.GetConfig()) == 0 {
-			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
+		primaryContainerName, err = getPrimaryContainerNameFromConfig(task)
+		if err != nil {
+			return nil, err
 		}
-		var ok bool
-		primaryContainerName, ok = task.GetConfig()[primaryContainerKey]
-		if !ok {
+	} else {
+		if task.GetK8SPod() == nil || task.GetK8SPod().PodSpec == nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
+				"Pod tasks with task type version > 1 should specify their target as a K8sPod with a defined pod spec")
 		}
-		annotations = make(map[string]string)
-		labels = make(map[string]string)
+		err := utils.UnmarshalStructToObj(task.GetK8SPod().PodSpec, &podSpec)
+		if err != nil {
+			return nil, errors.Errorf(errors.BadTaskSpecification,
+				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
+		}
+		primaryContainerName, err = getPrimaryContainerNameFromConfig(task)
+		if err != nil {
+			return nil, err
+		}
+		if task.GetK8SPod().Metadata != nil {
+			if task.GetK8SPod().Metadata.Annotations != nil {
+				annotations = task.GetK8SPod().Metadata.Annotations
+			}
+			if task.GetK8SPod().Metadata.Labels != nil {
+				labels = task.GetK8SPod().Metadata.Labels
+			}
+		}
 	}
 
 	pod := flytek8s.BuildPodWithSpec(&podSpec)
