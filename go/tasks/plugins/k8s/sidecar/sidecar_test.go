@@ -245,6 +245,32 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 
 }
 
+func TestBuildSidecarResource_TaskType2_Invalid_Spec(t *testing.T) {
+	task := core.TaskTemplate{
+		TaskTypeVersion: 2,
+		Config: map[string]string{
+			primaryContainerKey: "primary container",
+		},
+		Target: &core.TaskTemplate_K8SPod{
+			K8SPod: &core.K8SPod{
+				Metadata: &core.K8SObjectMetadata{
+					Labels: map[string]string{
+						"label": "foo",
+					},
+					Annotations: map[string]string{
+						"anno": "bar",
+					},
+				},
+			},
+		},
+	}
+
+	handler := &sidecarResourceHandler{}
+	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
+	_, err := handler.BuildResource(context.TODO(), taskCtx)
+	assert.EqualError(t, err, "[BadTaskSpecification] Pod tasks with task type version > 1 should specify their target as a K8sPod with a defined pod spec")
+}
+
 func TestBuildSidecarResource_TaskType1(t *testing.T) {
 	podSpec := getPodSpec()
 
