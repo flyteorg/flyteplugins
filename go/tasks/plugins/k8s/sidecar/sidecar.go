@@ -104,86 +104,128 @@ func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) 
 	return primaryContainerName, nil
 }
 
-func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
-	var podSpec k8sv1.PodSpec
-	var primaryContainerName string
-	var annotations = make(map[string]string)
-	var labels = make(map[string]string)
+type podSpecResource struct {
+	podSpec              k8sv1.PodSpec
+	primaryContainerName string
+	annotations          map[string]string
+	labels               map[string]string
+}
 
+func newPodSpecResource() podSpecResource {
+	return podSpecResource{
+		annotations: make(map[string]string),
+		labels:      make(map[string]string),
+	}
+}
+
+// Handles pod tasks when they are defined as Sidecar tasks and marshal the podspec using k8s proto.
+func buildResourceV0(task *core.TaskTemplate) (podSpecResource, error) {
+	res := newPodSpecResource()
+	sidecarJob := sidecarJob{}
+	err := utils.UnmarshalStructToObj(task.GetCustom(), &sidecarJob)
+	if err != nil {
+		return podSpecResource{}, errors.Errorf(errors.BadTaskSpecification,
+			"invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
+	}
+	if sidecarJob.PodSpec == nil {
+		return podSpecResource{}, errors.Errorf(errors.BadTaskSpecification,
+			"invalid TaskSpecification, nil PodSpec [%v]", task.GetCustom())
+	}
+	res.podSpec = *sidecarJob.PodSpec
+	res.primaryContainerName = sidecarJob.PrimaryContainerName
+	if sidecarJob.Annotations != nil {
+		res.annotations = sidecarJob.Annotations
+	}
+
+	if sidecarJob.Labels != nil {
+		res.labels = sidecarJob.Labels
+	}
+
+	return res, nil
+}
+
+// Handles pod tasks that marshal the pod spec to the task custom.
+func buildResourceV1(task *core.TaskTemplate) (podSpecResource, error) {
+	res := newPodSpecResource()
+	err := utils.UnmarshalStructToObj(task.GetCustom(), &res.podSpec)
+	if err != nil {
+		return podSpecResource{}, errors.Errorf(errors.BadTaskSpecification,
+			"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
+	}
+	res.primaryContainerName, err = getPrimaryContainerNameFromConfig(task)
+	if err != nil {
+		return podSpecResource{}, err
+	}
+	return res, nil
+}
+
+// Handles pod tasks that marshal the pod spec to the k8s_pod task target.
+func buildResourceV2(task *core.TaskTemplate) (podSpecResource, error) {
+	res := newPodSpecResource()
+	if task.GetK8SPod() == nil || task.GetK8SPod().PodSpec == nil {
+		return podSpecResource{}, errors.Errorf(errors.BadTaskSpecification,
+			"Pod tasks with task type version > 1 should specify their target as a K8sPod with a defined pod spec")
+	}
+	err := utils.UnmarshalStructToObj(task.GetK8SPod().PodSpec, &res.podSpec)
+	if err != nil {
+		return podSpecResource{}, errors.Errorf(errors.BadTaskSpecification,
+			"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
+	}
+	res.primaryContainerName, err = getPrimaryContainerNameFromConfig(task)
+	if err != nil {
+		return podSpecResource{}, err
+	}
+	if task.GetK8SPod().Metadata != nil {
+		if task.GetK8SPod().Metadata.Annotations != nil {
+			res.annotations = task.GetK8SPod().Metadata.Annotations
+		}
+		if task.GetK8SPod().Metadata.Labels != nil {
+			res.labels = task.GetK8SPod().Metadata.Labels
+		}
+	}
+	return res, nil
+}
+
+func (sidecarResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	task, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
 			"TaskSpecification cannot be read, Err: [%v]", err.Error())
 	}
-	if task.TaskTypeVersion == 0 {
-		sidecarJob := sidecarJob{}
-		err := utils.UnmarshalStructToObj(task.GetCustom(), &sidecarJob)
-		if err != nil {
-			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
-		}
-		if sidecarJob.PodSpec == nil {
-			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"invalid TaskSpecification, nil PodSpec [%v]", task.GetCustom())
-		}
-		podSpec = *sidecarJob.PodSpec
-		primaryContainerName = sidecarJob.PrimaryContainerName
-		if sidecarJob.Annotations != nil {
-			annotations = sidecarJob.Annotations
-		}
-
-		if sidecarJob.Labels != nil {
-			labels = sidecarJob.Labels
-		}
-	} else if task.TaskTypeVersion == 1 {
-		err := utils.UnmarshalStructToObj(task.GetCustom(), &podSpec)
-		if err != nil {
-			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
-		}
-		primaryContainerName, err = getPrimaryContainerNameFromConfig(task)
+	var podSpecResource podSpecResource
+	switch task.TaskTypeVersion {
+	case 0:
+		podSpecResource, err = buildResourceV0(task)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		if task.GetK8SPod() == nil || task.GetK8SPod().PodSpec == nil {
-			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"Pod tasks with task type version > 1 should specify their target as a K8sPod with a defined pod spec")
-		}
-		err := utils.UnmarshalStructToObj(task.GetK8SPod().PodSpec, &podSpec)
-		if err != nil {
-			return nil, errors.Errorf(errors.BadTaskSpecification,
-				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
-		}
-		primaryContainerName, err = getPrimaryContainerNameFromConfig(task)
+	case 1:
+		podSpecResource, err = buildResourceV1(task)
 		if err != nil {
 			return nil, err
 		}
-		if task.GetK8SPod().Metadata != nil {
-			if task.GetK8SPod().Metadata.Annotations != nil {
-				annotations = task.GetK8SPod().Metadata.Annotations
-			}
-			if task.GetK8SPod().Metadata.Labels != nil {
-				labels = task.GetK8SPod().Metadata.Labels
-			}
+	default:
+		podSpecResource, err = buildResourceV2(task)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	pod := flytek8s.BuildPodWithSpec(&podSpec)
+	pod := flytek8s.BuildPodWithSpec(&podSpecResource.podSpec)
 	// Set the restart policy to *not* inherit from the default so that a completed pod doesn't get caught in a
 	// CrashLoopBackoff after the initial job completion.
 	pod.Spec.RestartPolicy = k8sv1.RestartPolicyNever
 
 	pod.Spec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
-	pod, err = validateAndFinalizePod(ctx, taskCtx, primaryContainerName, *pod)
+	pod, err = validateAndFinalizePod(ctx, taskCtx, podSpecResource.primaryContainerName, *pod)
 	if err != nil {
 		return nil, err
 	}
 
-	pod.Annotations = annotations
-	pod.Annotations[primaryContainerKey] = primaryContainerName
-	pod.Labels = labels
+	pod.Annotations = podSpecResource.annotations
+	pod.Annotations[primaryContainerKey] = podSpecResource.primaryContainerName
+	pod.Labels = podSpecResource.labels
 	return pod, nil
 }
 
