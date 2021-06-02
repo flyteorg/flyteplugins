@@ -2,9 +2,10 @@ package k8s
 
 import (
 	"context"
+	"regexp"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-	"regexp"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
