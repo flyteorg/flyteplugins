@@ -50,11 +50,19 @@ var (
 	configSection = pluginsConfig.MustRegisterSubSection("bigquery", &defaultConfig)
 )
 
+// Config is config for 'bigquery' plugin
 type Config struct {
-	WebAPI              webapi.PluginConfig             `json:"webApi" pflag:",Defines config for the base WebAPI plugin."`
-	ResourceConstraints core.ResourceConstraintsSpec    `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
-	GoogleTokenSource   google.TokenSourceFactoryConfig `json:"googleTokenSource" pflag:",Defines Google token source"`
-	bigQueryEndpoint    string                          // only for testing
+	// WebAPI defines config for the base WebAPI plugin
+	WebAPI webapi.PluginConfig `json:"webApi" pflag:",Defines config for the base WebAPI plugin."`
+
+	// ResourceConstraints defines resource constraints on how many executions to be created per project/overall at any given time
+	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
+
+	// GoogleTokenSource configures token source for BigQuery client
+	GoogleTokenSource google.TokenSourceFactoryConfig `json:"googleTokenSource" pflag:",Defines Google token source"`
+
+	// bigQueryEndpoint overrides BigQuery client endpoint, only for testing
+	bigQueryEndpoint string
 }
 
 func GetConfig() *Config {

@@ -307,17 +307,8 @@ func handleCreateError(createError *googleapi.Error, taskInfo *core.TaskInfo) co
 }
 
 func handleErrorResult(reason string, message string, taskInfo *core.TaskInfo) core.PhaseInfo {
-	userExecutionError := &flyteIdlCore.ExecutionError{
-		Message: message,
-		Kind:    flyteIdlCore.ExecutionError_USER,
-		Code:    reason,
-	}
-
-	systemExecutionError := &flyteIdlCore.ExecutionError{
-		Message: message,
-		Kind:    flyteIdlCore.ExecutionError_SYSTEM,
-		Code:    reason,
-	}
+	phaseCode := reason
+	phaseReason := message
 
 	// see https://cloud.google.com/bigquery/docs/error-messages
 
@@ -336,94 +327,94 @@ func handleErrorResult(reason string, message string, taskInfo *core.TaskInfo) c
 	// This error returns when you try to access a resource such as a dataset, table, view, or job that you
 	// don't have access to. This error also returns when you try to modify a read-only object.
 	case "accessDenied":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when there is a temporary server failure such as a network connection problem or
 	// a server overload.
 	case "backendError":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, systemExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoSystemRetryableFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when billing isn't enabled for the project.
 	case "billingNotEnabled":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when BigQuery has temporarily denylisted the operation you attempted to perform,
 	// usually to prevent a service outage. This error rarely occurs.
 	case "blocked":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when trying to create a job, dataset, or table that already exists. The error also
 	// returns when a job's writeDisposition property is set to WRITE_EMPTY and the destination table accessed
 	// by the job already exists.
 	case "duplicate":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when an internal error occurs within BigQuery.
 	case "internalError":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, systemExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoSystemRetryableFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when there is any kind of invalid input other than an invalid query, such as missing
 	// required fields or an invalid table schema. Invalid queries return an invalidQuery error instead.
 	case "invalid":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when you attempt to run an invalid query.
 	case "invalidQuery":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when you attempt to schedule a query with invalid user credentials.
 	case "invalidUser":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, systemExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoSystemRetryableFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when you refer to a resource (a dataset, a table, or a job) that doesn't exist.
 	// This can also occur when using snapshot decorators to refer to deleted tables that have recently been
 	// streamed to.
 	case "notFound":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This job error returns when you try to access a feature that isn't implemented.
 	case "notImplemented":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when your project exceeds a BigQuery quota, a custom quota, or when you haven't set up
 	// billing and you have exceeded the free tier for queries.
 	case "quotaExceeded":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoRetryableFailure(phaseCode, phaseReason, taskInfo)
 
 	case "rateLimitExceeded":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoRetryableFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when you try to delete a dataset that contains tables or when you try to delete a job
 	// that is currently running.
 	case "resourceInUse":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, systemExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoSystemRetryableFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when your query uses too many resources.
 	case "resourcesExceeded":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This error returns when your query's results are larger than the maximum response size. Some queries execute
 	// in multiple stages, and this error returns when any stage returns a response size that is too large, even if
 	// the final result is smaller than the maximum. This error commonly returns when queries use an ORDER BY
 	// clause.
 	case "responseTooLarge":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// This status code returns when a job is canceled.
 	case "stopped":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	// Certain BigQuery tables are backed by data managed by other Google product teams. This error indicates that
 	// one of these tables is unavailable.
 	case "tableUnavailable":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhaseRetryableFailure, systemExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoSystemRetryableFailure(phaseCode, phaseReason, taskInfo)
 
 	// The job timed out.
 	case "timeout":
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, userExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoFailure(phaseCode, phaseReason, taskInfo)
 
 	default:
-		return pluginsCore.PhaseInfoFailed(pluginsCore.PhasePermanentFailure, systemExecutionError, taskInfo)
+		return pluginsCore.PhaseInfoSystemFailure(phaseCode, phaseReason, taskInfo)
 	}
 }
 
