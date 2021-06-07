@@ -24,3 +24,30 @@ func TestCopyMap(t *testing.T) {
 	}
 	assert.Equal(t, m, CopyMap(m))
 }
+
+func TestMergeMaps(t *testing.T) {
+	a := map[string]string{
+		"1": "foo",
+		"2": "bar",
+	}
+	b := map[string]string{
+		"2": "baz",
+		"3": "beef",
+	}
+	t.Run("empty base", func(t *testing.T) {
+		merge := MergeMaps(nil, a)
+		assert.EqualValues(t, merge, a)
+	})
+	t.Run("empty patch", func(t *testing.T) {
+		merge := MergeMaps(a, nil)
+		assert.EqualValues(t, merge, a)
+	})
+	t.Run("merge", func(t *testing.T) {
+		merge := MergeMaps(a, b)
+		assert.EqualValues(t, merge, map[string]string{
+			"1": "foo",
+			"2": "baz",
+			"3": "beef",
+		})
+	})
+}

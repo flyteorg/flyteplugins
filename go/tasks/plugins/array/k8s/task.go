@@ -22,6 +22,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
@@ -51,6 +52,26 @@ const (
 	MonitorError
 )
 
+func getTaskContainerIndex(pod *v1.Pod) (int, error) {
+	primaryContainerName, ok := pod.Annotations[primaryContainerKey]
+	// For tasks with a Container target, we only ever build one container as part of the pod
+	if !ok {
+		if len(pod.Spec.Containers) == 1 {
+			return 0, nil
+		}
+		// For tasks with a K8sPod task target, they may produce multiple containers but at least one must be the designated primary.
+		return -1, errors2.Errorf(ErrBuildPodTemplate, "Expected a specified primary container key when building an array job with a K8sPod spec target")
+
+	}
+
+	for idx, container := range pod.Spec.Containers {
+		if container.Name == primaryContainerName {
+			return idx, nil
+		}
+	}
+	return -1, errors2.Errorf(ErrBuildPodTemplate, "Couldn't find any container matching the primary container key when building an array job with a K8sPod spec target")
+}
+
 func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) (LaunchResult, error) {
 	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx, t.Config.NamespaceTemplate)
 	if err != nil {
@@ -60,25 +81,28 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	if t.Config.RemoteClusterConfig.Enabled {
 		podTemplate.OwnerReferences = nil
 	}
-	var args []string
-	if len(podTemplate.Spec.Containers) > 0 {
-		args = append(podTemplate.Spec.Containers[0].Command, podTemplate.Spec.Containers[0].Args...)
-		podTemplate.Spec.Containers[0].Command = []string{}
-	} else {
+	if len(podTemplate.Spec.Containers) == 0 {
 		return LaunchError, errors2.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
 	}
+	containerIndex, err := getTaskContainerIndex(&podTemplate)
+	if err != nil {
+		return LaunchError, err
+	}
+
+	args := append(podTemplate.Spec.Containers[containerIndex].Command, podTemplate.Spec.Containers[containerIndex].Args...)
+	podTemplate.Spec.Containers[containerIndex].Command = []string{}
 
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 
 	pod := podTemplate.DeepCopy()
 	pod.Name = podName
-	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
 		Name:  FlyteK8sArrayIndexVarName,
 		Value: indexStr,
 	})
 
-	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, arrayJobEnvVars...)
+	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, arrayJobEnvVars...)
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return LaunchError, errors2.Wrapf(ErrGetTaskTypeVersion, err, "Unable to read task template")
@@ -86,7 +110,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 		return LaunchError, errors2.Wrapf(ErrGetTaskTypeVersion, err, "Missing task template")
 	}
 	inputReader := array.GetInputReader(tCtx, taskTemplate)
-	pod.Spec.Containers[0].Args, err = template.Render(ctx, args,
+	pod.Spec.Containers[containerIndex].Args, err = template.Render(ctx, args,
 		template.Parameters{
 			TaskExecMetadata: tCtx.TaskExecutionMetadata(),
 			Inputs:           inputReader,
