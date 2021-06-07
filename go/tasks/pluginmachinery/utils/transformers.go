@@ -11,23 +11,6 @@ func CopyMap(o map[string]string) (r map[string]string) {
 	return
 }
 
-func MergeMaps(base, patch map[string]string) (merged map[string]string) {
-	if len(base) == 0 {
-		return patch
-	}
-	if len(patch) == 0 {
-		return base
-	}
-	merged = make(map[string]string)
-	for k, v := range base {
-		merged[k] = v
-	}
-	for k, v := range patch {
-		merged[k] = v
-	}
-	return merged
-}
-
 func Contains(s []string, e string) bool {
 	if s == nil {
 		return false

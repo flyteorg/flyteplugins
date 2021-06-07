@@ -130,6 +130,7 @@ func TestFlyteArrayJobToK8sPodTemplate(t *testing.T) {
 			"tCtx":                   "anno",
 			"anno":                   "bar",
 			"primary_container_name": "primary container",
+			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 		},
 		OwnerReferences: []metav1.OwnerReference{
 			{},
