@@ -237,7 +237,7 @@ func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8s
 	var phaseInfo core.PhaseInfo
 	var err2 error
 
-	logger.Infof(ctx, "++determining pod phase... [%+v]", pod.Status.Phase)
+	logger.Infof(ctx, "++determining pod phase... [%+v] (%+v)", pod.Status.Phase, pod)
 
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
