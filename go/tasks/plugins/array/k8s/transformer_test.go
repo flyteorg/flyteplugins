@@ -35,7 +35,7 @@ var arrayJob = idlPlugins.ArrayJob{
 	Size: 100,
 }
 
-func getK8sPodTask(t *testing.T) *core.TaskTemplate {
+func getK8sPodTask(t *testing.T, annotations map[string]string) *core.TaskTemplate {
 	marshalledPodspec, err := json.Marshal(podSpec)
 	if err != nil {
 		t.Fatal(err)
@@ -63,9 +63,7 @@ func getK8sPodTask(t *testing.T) *core.TaskTemplate {
 					Labels: map[string]string{
 						"label": "foo",
 					},
-					Annotations: map[string]string{
-						"anno": "bar",
-					},
+					Annotations: annotations,
 				},
 			},
 		},
@@ -77,7 +75,9 @@ func TestBuildPodMapTask(t *testing.T) {
 	tMeta := &mocks.TaskExecutionMetadata{}
 	tMeta.OnGetSecurityContext().Return(core.SecurityContext{})
 	tMeta.OnGetK8sServiceAccount().Return("sa")
-	pod, err := buildPodMapTask(getK8sPodTask(t), tMeta)
+	pod, err := buildPodMapTask(getK8sPodTask(t, map[string]string{
+		"anno": "bar",
+	}), tMeta)
 	assert.NoError(t, err)
 	var expected = podSpec.DeepCopy()
 	expected.RestartPolicy = v1.RestartPolicyNever
@@ -91,10 +91,56 @@ func TestBuildPodMapTask(t *testing.T) {
 	}, pod.Annotations)
 }
 
+func TestBuildPodMapTask_Errors(t *testing.T) {
+	t.Run("invalid task template", func(t *testing.T) {
+		_, err := buildPodMapTask(&core.TaskTemplate{}, nil)
+		assert.EqualError(t, err, "[BadTaskSpecification] Missing pod spec for task")
+	})
+	b, err := json.Marshal(podSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	structObj := &structpb.Struct{}
+	if err := json.Unmarshal(b, structObj); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("missing primary container annotation", func(t *testing.T) {
+		_, err = buildPodMapTask(&core.TaskTemplate{
+			Target: &core.TaskTemplate_K8SPod{
+				K8SPod: &core.K8SPod{
+					PodSpec: structObj,
+				},
+			},
+		}, nil)
+		assert.EqualError(t, err, "[BadTaskSpecification] invalid TaskSpecification, config missing [primary_container_name] key in [map[]]")
+	})
+}
+
+func TestBuildPodMapTask_AddAnnotations(t *testing.T) {
+	tMeta := &mocks.TaskExecutionMetadata{}
+	tMeta.OnGetSecurityContext().Return(core.SecurityContext{})
+	tMeta.OnGetK8sServiceAccount().Return("sa")
+	podTask := getK8sPodTask(t, nil)
+	pod, err := buildPodMapTask(podTask, tMeta)
+	assert.NoError(t, err)
+	var expected = podSpec.DeepCopy()
+	expected.RestartPolicy = v1.RestartPolicyNever
+	assert.EqualValues(t, *expected, pod.Spec)
+	assert.EqualValues(t, map[string]string{
+		"label": "foo",
+	}, pod.Labels)
+	assert.EqualValues(t, map[string]string{
+		"primary_container_name": "primary container",
+	}, pod.Annotations)
+}
+
 func TestFlyteArrayJobToK8sPodTemplate(t *testing.T) {
 	ctx := context.TODO()
 	tr := &mocks.TaskReader{}
-	tr.OnRead(ctx).Return(getK8sPodTask(t), nil)
+	tr.OnRead(ctx).Return(getK8sPodTask(t, map[string]string{
+		"anno": "bar",
+	}), nil)
 
 	ir := &mocks2.InputReader{}
 	ir.OnGetInputPrefixPath().Return("/prefix/")

@@ -55,8 +55,7 @@ func GetNamespaceForExecution(tCtx core.TaskExecutionContext, namespaceTemplate 
 // and move it to the node level.  See https://github.com/flyteorg/flyte/issues/1051
 func buildPodMapTask(task *idlCore.TaskTemplate, metadata core.TaskExecutionMetadata) (v1.Pod, error) {
 	if task.GetK8SPod() == nil || task.GetK8SPod().PodSpec == nil {
-		return v1.Pod{}, errors.Errorf(errors.BadTaskSpecification,
-			"Pod tasks with task type version > 1 should specify their target as a K8sPod with a defined pod spec")
+		return v1.Pod{}, errors.Errorf(errors.BadTaskSpecification, "Missing pod spec for task")
 	}
 	var podSpec = &v1.PodSpec{}
 	err := utils.UnmarshalStructToObj(task.GetK8SPod().PodSpec, &podSpec)
@@ -68,9 +67,6 @@ func buildPodMapTask(task *idlCore.TaskTemplate, metadata core.TaskExecutionMeta
 	if !ok {
 		return v1.Pod{}, errors.Errorf(errors.BadTaskSpecification,
 			"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
-	}
-	if err != nil {
-		return v1.Pod{}, err
 	}
 
 	var pod = v1.Pod{
