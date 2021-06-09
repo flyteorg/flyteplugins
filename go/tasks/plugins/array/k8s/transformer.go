@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"github.com/flyteorg/flytestdlib/logger"
 	"regexp"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
@@ -143,7 +142,6 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 			OwnerReferences: []metav1.OwnerReference{tCtx.TaskExecutionMetadata().GetOwnerReference()},
 		},
 	}
-	logger.Infof(ctx, "++transforming flyte job to k8s spec")
 	if taskTemplate.GetContainer() != nil {
 		podSpec, err := flytek8s.ToK8sPodSpec(ctx, arrTCtx)
 		if err != nil {
@@ -151,12 +149,10 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		}
 		pod.Spec = *podSpec
 	} else if taskTemplate.GetK8SPod() != nil {
-		logger.Infof(ctx, "++Building k8s pod")
 		k8sPod, err := buildPodMapTask(taskTemplate, tCtx.TaskExecutionMetadata())
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}
-		logger.Infof(ctx, "++k8s pod: [%+v]", k8sPod)
 		pod.Labels = utils.UnionMaps(pod.Labels, k8sPod.Labels)
 		pod.Annotations = utils.UnionMaps(pod.Annotations, k8sPod.Annotations)
 		pod.Spec = k8sPod.Spec

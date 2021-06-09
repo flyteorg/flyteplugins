@@ -237,8 +237,6 @@ func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8s
 	var phaseInfo core.PhaseInfo
 	var err2 error
 
-	logger.Infof(ctx, "++determining pod phase... [%+v] (%+v)", pod.Status.Phase, pod)
-
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
 		phaseInfo, err2 = flytek8s.DemystifySuccess(pod.Status, taskInfo)
@@ -247,17 +245,13 @@ func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8s
 		phaseInfo = core.PhaseInfoRetryableFailure(code, message, &taskInfo)
 	case v1.PodPending:
 		phaseInfo, err2 = flytek8s.DemystifyPending(pod.Status)
-		logger.Infof(ctx, "++demystified pending from [%+v] with [%+v]", pod.Status, phaseInfo)
 	case v1.PodUnknown:
 		phaseInfo = core.PhaseInfoUndefined
 	default:
-		logger.Infof(ctx, "++default case")
 		primaryContainerName, ok := pod.GetAnnotations()[primaryContainerKey]
 		if ok {
-			logger.Infof(ctx, "++ determining phase for k8s pod")
 			// Special handling for determining the phase of an array job for a Pod task.
 			phaseInfo = flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &taskInfo)
-			logger.Infof(ctx, "++phase for k8s pod [%+v]", phaseInfo)
 			if phaseInfo.Phase() == core.PhaseRunning && len(taskInfo.Logs) > 0 {
 				return core.PhaseInfoRunning(core.DefaultPhaseVersion+1, phaseInfo.Info()), nil
 			}
