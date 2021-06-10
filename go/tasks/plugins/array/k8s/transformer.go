@@ -4,6 +4,8 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
@@ -152,6 +154,23 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		pod.Labels = utils.UnionMaps(pod.Labels, k8sPod.Labels)
 		pod.Annotations = utils.UnionMaps(pod.Annotations, k8sPod.Annotations)
 		pod.Spec = k8sPod.Spec
+
+		// Here we templatize the k8sPod primary container args. The call to ToK8sPodSpec for the task container target
+		// case already handles this but we must explicitly do so for K8sPod task targets.
+		containerIndex, err := getTaskContainerIndex(&pod)
+		if err != nil {
+			return v1.Pod{}, nil, err
+		}
+		pod.Spec.Containers[containerIndex].Args, err = template.Render(ctx, pod.Spec.Containers[containerIndex].Args,
+			template.Parameters{
+				TaskExecMetadata: tCtx.TaskExecutionMetadata(),
+				Inputs:           arrTCtx.arrayInputReader,
+				OutputPath:       tCtx.OutputWriter(),
+				Task:             tCtx.TaskReader(),
+			})
+		if err != nil {
+			return v1.Pod{}, nil, err
+		}
 	}
 
 	return pod, arrayJob, nil

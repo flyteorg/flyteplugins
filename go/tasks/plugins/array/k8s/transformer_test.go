@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/flyteorg/flytestdlib/storage"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
@@ -159,10 +161,16 @@ func TestFlyteArrayJobToK8sPodTemplate(t *testing.T) {
 	tMeta.OnGetSecurityContext().Return(core.SecurityContext{})
 	tMeta.OnGetK8sServiceAccount().Return("sa")
 
+	outputReader := &mocks2.OutputWriter{}
+	outputReader.On("GetOutputPath").Return(storage.DataReference("/data/outputs.pb"))
+	outputReader.On("GetOutputPrefixPath").Return(storage.DataReference("/data/"))
+	outputReader.On("GetRawOutputPrefix").Return(storage.DataReference(""))
+
 	tCtx := &mocks.TaskExecutionContext{}
 	tCtx.OnTaskReader().Return(tr)
 	tCtx.OnInputReader().Return(ir)
 	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	tCtx.OnOutputWriter().Return(outputReader)
 
 	pod, job, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx, "")
 	assert.NoError(t, err)
