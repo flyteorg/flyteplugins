@@ -97,7 +97,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 
 	pod := podTemplate.DeepCopy()
 	pod.Name = podName
-	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, corev1.EnvVar{
 		Name:  FlyteK8sArrayIndexVarName,
 		Value: indexStr,
 	})
