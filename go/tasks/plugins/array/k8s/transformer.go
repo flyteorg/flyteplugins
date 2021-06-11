@@ -54,7 +54,7 @@ func GetNamespaceForExecution(tCtx core.TaskExecutionContext, namespaceTemplate 
 
 // Initializes a pod from an array job task template with a K8sPod set as the task target.
 // TODO: This should be removed by end of 2021 (it duplicates the pod plugin logic) once we improve array job handling
-// and move it to the node level.  See https://github.com/flyteorg/flyte/issues/1051
+// and move it to the node level.  See https://github.com/flyteorg/flyte/issues/1131
 func buildPodMapTask(task *idlCore.TaskTemplate, metadata core.TaskExecutionMetadata) (v1.Pod, error) {
 	if task.GetK8SPod() == nil || task.GetK8SPod().PodSpec == nil {
 		return v1.Pod{}, errors.Errorf(errors.BadTaskSpecification, "Missing pod spec for task")
