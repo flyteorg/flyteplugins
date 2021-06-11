@@ -10,8 +10,6 @@ import (
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
@@ -89,9 +87,6 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 		return LaunchError, err
 	}
 
-	args := append(podTemplate.Spec.Containers[containerIndex].Command, podTemplate.Spec.Containers[containerIndex].Args...)
-	podTemplate.Spec.Containers[containerIndex].Command = []string{}
-
 	indexStr := strconv.Itoa(t.ChildIdx)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 
@@ -109,18 +104,6 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	} else if taskTemplate == nil {
 		return LaunchError, errors2.Wrapf(ErrGetTaskTypeVersion, err, "Missing task template")
 	}
-	inputReader := array.GetInputReader(tCtx, taskTemplate)
-	pod.Spec.Containers[containerIndex].Args, err = template.Render(ctx, args,
-		template.Parameters{
-			TaskExecMetadata: tCtx.TaskExecutionMetadata(),
-			Inputs:           inputReader,
-			OutputPath:       tCtx.OutputWriter(),
-			Task:             tCtx.TaskReader(),
-		})
-	if err != nil {
-		return LaunchError, errors2.Wrapf(ErrReplaceCmdTemplate, err, "Failed to replace cmd args")
-	}
-
 	pod = ApplyPodPolicies(ctx, t.Config, pod)
 	pod = applyNodeSelectorLabels(ctx, t.Config, pod)
 	pod = applyPodTolerations(ctx, t.Config, pod)

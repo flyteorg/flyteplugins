@@ -171,6 +171,16 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}
+		pod.Spec.Containers[containerIndex].Command, err = template.Render(ctx, pod.Spec.Containers[containerIndex].Command,
+			template.Parameters{
+				TaskExecMetadata: tCtx.TaskExecutionMetadata(),
+				Inputs:           arrTCtx.arrayInputReader,
+				OutputPath:       tCtx.OutputWriter(),
+				Task:             tCtx.TaskReader(),
+			})
+		if err != nil {
+			return v1.Pod{}, nil, err
+		}
 	}
 
 	return pod, arrayJob, nil
