@@ -17,7 +17,10 @@ func TestTemplateLog(t *testing.T) {
 		"flyteexamples-production",
 		"spark-kubernetes-driver",
 		"cri-o://abc",
-		"main_logs")
+		"main_logs",
+		1426349294,
+		1623782877,
+		)
 	assert.NoError(t, err)
 	assert.Equal(t, tl.GetName(), "main_logs")
 	assert.Equal(t, tl.GetMessageFormat(), core.TaskLog_JSON)
