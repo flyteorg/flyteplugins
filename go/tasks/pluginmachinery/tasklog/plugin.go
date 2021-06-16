@@ -11,8 +11,8 @@ type Input struct {
 	ContainerName      string `json:"containerName"`
 	ContainerID        string `json:"containerId"`
 	LogName            string `json:"logName"`
-	PodUnixStartTime   int    `json:"podUnixStartTime"`
-	PodUnixTimeoutTime int    `json:"podUnixTimeoutTime"`
+	PodUnixStartTime   int64  `json:"podUnixStartTime"`
+	PodUnixTimeoutTime int64  `json:"podUnixTimeoutTime"`
 }
 
 // Output contains all task logs a plugin generates for a given Input.

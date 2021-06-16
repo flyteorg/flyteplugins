@@ -225,6 +225,7 @@ func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8s
 				PodName:   pod.Name,
 				Namespace: pod.Namespace,
 				LogName:   fmt.Sprintf(" #%d-%d", index, retryAttempt),
+				PodUnixStartTime: pod.CreationTimestamp.Unix(),
 			})
 
 			if err != nil {

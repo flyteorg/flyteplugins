@@ -45,8 +45,8 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 		containerName      string
 		containerID        string
 		logName            string
-		podUnixStartTime   int
-		podUnixTimeoutTime int
+		podUnixStartTime   int64
+		podUnixTimeoutTime int64
 	}
 	tests := []struct {
 		name    string

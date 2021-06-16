@@ -16,6 +16,8 @@ import (
 // {{ .containerId }}: The container id docker/crio generated at run time,
 // {{ .logName }}: A deployment specific name where to expect the logs to be.
 // {{ .hostname }}: The hostname where the pod is running and where logs reside.
+// {{ .podUnixStartTime }}: The hostname where the pod is running and where logs reside.
+// {{ .podUnixTimeoutTime }}: The hostname where the pod is running and where logs reside.
 type TemplateLogPlugin struct {
 	templateUris  []string
 	messageFormat core.TaskLog_MessageFormat
@@ -64,7 +66,7 @@ func replaceAll(template string, values []regexValPair) string {
 	return template
 }
 
-func (s TemplateLogPlugin) GetTaskLog(podName, namespace, containerName, containerID, logName string, podUnixStartTime, podUnixTimeoutTime int) (core.TaskLog, error) {
+func (s TemplateLogPlugin) GetTaskLog(podName, namespace, containerName, containerID, logName string, podUnixStartTime, podUnixTimeoutTime int64) (core.TaskLog, error) {
 	o, err := s.GetTaskLogs(Input{
 		LogName:            logName,
 		Namespace:          namespace,
@@ -123,11 +125,11 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 					},
 					{
 						regex: regexes.PodUnixStartTime,
-						val:   strconv.Itoa(input.PodUnixStartTime),
+						val:   strconv.FormatInt(input.PodUnixStartTime, 10),
 					},
 					{
 						regex: regexes.PodUnixTimeoutTime,
-						val:   strconv.Itoa(input.PodUnixTimeoutTime),
+						val:   strconv.FormatInt(input.PodUnixTimeoutTime, 10),
 					},
 				},
 			),
