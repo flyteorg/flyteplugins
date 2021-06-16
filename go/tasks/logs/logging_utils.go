@@ -50,7 +50,6 @@ func GetLogsForContainerInPod(ctx context.Context, pod *v1.Pod, index uint32, na
 			ContainerID:      pod.Status.ContainerStatuses[index].ContainerID,
 			LogName:          nameSuffix,
 			PodUnixStartTime: pod.CreationTimestamp.Unix(),
-			Pod
 		},
 	)
 
