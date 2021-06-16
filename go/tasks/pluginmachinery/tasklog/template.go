@@ -16,8 +16,8 @@ import (
 // {{ .containerId }}: The container id docker/crio generated at run time,
 // {{ .logName }}: A deployment specific name where to expect the logs to be.
 // {{ .hostname }}: The hostname where the pod is running and where logs reside.
-// {{ .podUnixStartTime }}: The hostname where the pod is running and where logs reside.
-// {{ .podUnixFinishTime }}: The hostname where the pod is running and where logs reside.
+// {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
+// {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
 type TemplateLogPlugin struct {
 	templateUris  []string
 	messageFormat core.TaskLog_MessageFormat
