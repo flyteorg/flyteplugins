@@ -66,12 +66,12 @@ func replaceAll(template string, values []regexValPair) string {
 
 func (s TemplateLogPlugin) GetTaskLog(podName, namespace, containerName, containerID, logName string, podUnixStartTime, podUnixTimeoutTime int) (core.TaskLog, error) {
 	o, err := s.GetTaskLogs(Input{
-		LogName:       logName,
-		Namespace:     namespace,
-		PodName:       podName,
-		ContainerName: containerName,
-		ContainerID:   containerID,
-		PodUnixStartTime: podUnixStartTime,
+		LogName:            logName,
+		Namespace:          namespace,
+		PodName:            podName,
+		ContainerName:      containerName,
+		ContainerID:        containerID,
+		PodUnixStartTime:   podUnixStartTime,
 		PodUnixTimeoutTime: podUnixTimeoutTime,
 	})
 
