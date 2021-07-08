@@ -22,10 +22,10 @@ func TestFinalize(t *testing.T) {
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
 
 	resourceManager := mocks.ResourceManager{}
-	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx, "")
+	podTemplate, _, _ := FlyteArrayJobToK8sPodTemplate(ctx, tCtx, "")
 	pod := addPodFinalizer(&podTemplate)
 	pod.Name = formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "1")
-	kubeClient.GetClient().Create(ctx, pod)
+	assert.NoError(t, kubeClient.GetClient().Create(ctx, pod))
 
 	resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	tCtx.OnResourceManager().Return(&resourceManager)
@@ -43,7 +43,7 @@ func TestFinalize(t *testing.T) {
 		ChildIdx: 1,
 	}
 
-	err = task.Finalize(ctx, tCtx, &kubeClient)
+	err := task.Finalize(ctx, tCtx, &kubeClient)
 	assert.NoError(t, err)
 }
 
