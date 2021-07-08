@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/stretchr/testify/mock"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -21,10 +22,10 @@ func TestFinalize(t *testing.T) {
 	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
 
 	resourceManager := mocks.ResourceManager{}
-	pod, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx, "")
-
+	podTemplate, _, err := FlyteArrayJobToK8sPodTemplate(ctx, tCtx, "")
+	pod := addPodFinalizer(&podTemplate)
 	pod.Name = formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), "1")
-	kubeClient.GetClient().Create(ctx, &pod)
+	kubeClient.GetClient().Create(ctx, pod)
 
 	resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	tCtx.OnResourceManager().Return(&resourceManager)
