@@ -17,7 +17,6 @@ func TestReadOrigin(t *testing.T) {
 	opath.OnGetErrorPath().Return("")
 
 	t.Run("user", func(t *testing.T) {
-
 		errorDoc := &core.ErrorDocument{
 			Error: &core.ContainerError{
 				Code:    "red",
@@ -47,7 +46,6 @@ func TestReadOrigin(t *testing.T) {
 	})
 
 	t.Run("system", func(t *testing.T) {
-
 		errorDoc := &core.ErrorDocument{
 			Error: &core.ContainerError{
 				Code:    "red",
