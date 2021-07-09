@@ -47,7 +47,7 @@ const (
 	LaunchReturnState
 )
 
-const finalizer = "array.k8s.finalizers.flyte.k8s.io"
+const finalizer = "finalizers.array.flyte.org"
 
 func addPodFinalizer(pod *corev1.Pod) *corev1.Pod {
 	pod.Finalizers = append(pod.Finalizers, finalizer)
