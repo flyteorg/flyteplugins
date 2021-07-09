@@ -260,7 +260,7 @@ func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kube
 
 	err := kubeClient.GetClient().Get(ctx, k8sTypes.NamespacedName{
 		Name:      podName,
-		Namespace: tCtx.TaskExecutionMetadata().GetNamespace(),
+		Namespace: GetNamespaceForExecution(tCtx, t.Config.NamespaceTemplate),
 	}, pod)
 
 	if err != nil {
