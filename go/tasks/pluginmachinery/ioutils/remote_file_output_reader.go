@@ -64,7 +64,7 @@ func (r RemoteFileOutputReader) ReadError(ctx context.Context) (io.ExecutionErro
 		ExecutionError: &core.ExecutionError{
 			Code:    errorDoc.Error.Code,
 			Message: errorDoc.Error.Message,
-			Kind:   errorDoc.Error.Origin,
+			Kind:    errorDoc.Error.Origin,
 		},
 	}
 
