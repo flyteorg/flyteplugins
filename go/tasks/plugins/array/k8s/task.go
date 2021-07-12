@@ -47,7 +47,7 @@ const (
 	LaunchReturnState
 )
 
-const finalizer = "finalizers.array.flyte.org"
+const finalizer = "flyte/arrayjob"
 
 func addPodFinalizer(pod *corev1.Pod) *corev1.Pod {
 	pod.Finalizers = append(pod.Finalizers, finalizer)
