@@ -67,13 +67,13 @@ func CopilotCommandArgs(storageConfig *storage.Config) []string {
 		"/bin/flyte-copilot",
 		"--storage.enable-multicontainer",
 		"--storage.limits.maxDownloadMBs=0",
-		fmt.Sprintf("--storage.type=%s",storageConfig.Type),
-		fmt.Sprintf("--storage.container=%s",storageConfig.InitContainer),
-		fmt.Sprintf("--storage.connection.secret-key=%s",storageConfig.Connection.SecretKey),
-		fmt.Sprintf("--storage.connection.access-key=%s",storageConfig.Connection.AccessKey),
-		fmt.Sprintf("--storage.connection.auth-type=%s",storageConfig.Connection.AuthType),
-		fmt.Sprintf("--storage.connection.region=%s",storageConfig.Connection.Region),
-		fmt.Sprintf("--storage.connection.endpoint=%s",storageConfig.Connection.Endpoint.String()),
+		fmt.Sprintf("--storage.type=%s", storageConfig.Type),
+		fmt.Sprintf("--storage.container=%s", storageConfig.InitContainer),
+		fmt.Sprintf("--storage.connection.secret-key=%s", storageConfig.Connection.SecretKey),
+		fmt.Sprintf("--storage.connection.access-key=%s", storageConfig.Connection.AccessKey),
+		fmt.Sprintf("--storage.connection.auth-type=%s", storageConfig.Connection.AuthType),
+		fmt.Sprintf("--storage.connection.region=%s", storageConfig.Connection.Region),
+		fmt.Sprintf("--storage.connection.endpoint=%s", storageConfig.Connection.Endpoint.String()),
 	}
 }
 
