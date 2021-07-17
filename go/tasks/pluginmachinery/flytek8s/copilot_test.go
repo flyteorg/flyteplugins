@@ -49,7 +49,7 @@ func TestFlyteCoPilotContainer(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "test-x", c.Name)
 		assert.Equal(t, "test", c.Image)
-		assert.Equal(t, []string{"/bin/flyte-copilot", "--config", "/etc/flyte/config**/*"}, c.Command)
+		assert.Equal(t, CopilotCommandArgs(storage.GetConfig()), c.Command)
 		assert.Equal(t, []string{"hello"}, c.Args)
 		assert.Equal(t, 0, len(c.VolumeMounts))
 		assert.Equal(t, "/", c.WorkingDir)

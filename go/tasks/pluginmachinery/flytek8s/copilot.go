@@ -43,7 +43,7 @@ func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []st
 	return v1.Container{
 		Name:       cfg.NamePrefix + name,
 		Image:      cfg.Image,
-		Command:    []string{"/bin/flyte-copilot", "--config", "/etc/flyte/config**/*"},
+		Command:    CopilotCommandArgs(storage.GetConfig()),
 		Args:       args,
 		WorkingDir: "/",
 		Resources: v1.ResourceRequirements{
@@ -60,6 +60,21 @@ func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []st
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          v1.PullIfNotPresent,
 	}, nil
+}
+
+func CopilotCommandArgs(storageConfig *storage.Config) []string {
+	return []string{
+		"/bin/flyte-copilot",
+		"--storage.enable-multicontainer",
+		"--storage.limits.maxDownloadMBs=0",
+		fmt.Sprintf("--storage.type=%s",storageConfig.Type),
+		fmt.Sprintf("--storage.container=%s",storageConfig.InitContainer),
+		fmt.Sprintf("--storage.connection.secret-key=%s",storageConfig.Connection.SecretKey),
+		fmt.Sprintf("--storage.connection.access-key=%s",storageConfig.Connection.AccessKey),
+		fmt.Sprintf("--storage.connection.auth-type=%s",storageConfig.Connection.AuthType),
+		fmt.Sprintf("--storage.connection.region=%s",storageConfig.Connection.Region),
+		fmt.Sprintf("--storage.connection.endpoint=%s",storageConfig.Connection.Endpoint.String()),
+	}
 }
 
 func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, iface *core.TypedInterface) ([]string, error) {
