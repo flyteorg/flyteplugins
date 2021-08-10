@@ -11,14 +11,32 @@ import (
 	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	mpiOp "github.com/kubeflow/common/pkg/apis/common/v1"
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	v1 "k8s.io/api/core/v1"
 )
 
 const (
 	TensorflowTaskType = "tensorflow"
+	MPITaskType = "mpi"
 	PytorchTaskType    = "pytorch"
 )
+
+func ExtractMPIMPICurrentCondition(jobConditions []mpiOp.JobCondition) (mpiOp.JobCondition, error) {
+	if jobConditions != nil {
+		sort.Slice(jobConditions, func(i, j int) bool {
+			return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
+		})
+
+		for _, jc := range jobConditions {
+			if jc.Status == v1.ConditionTrue {
+				return jc, nil
+			}
+		}
+	}
+
+	return mpiOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
+}
 
 func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
 	if jobConditions != nil {
@@ -49,6 +67,25 @@ func GetPhaseInfo(currentCondition commonOp.JobCondition, occurredAt time.Time,
 		details := fmt.Sprintf("Job failed:\n\t%v - %v", currentCondition.Reason, currentCondition.Message)
 		return pluginsCore.PhaseInfoRetryableFailure(flyteerr.DownstreamSystemError, details, &taskPhaseInfo), nil
 	case commonOp.JobRestarting:
+		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &taskPhaseInfo), nil
+	}
+
+	return pluginsCore.PhaseInfoUndefined, nil
+}
+
+func GetMPIPhaseInfo(currentCondition mpiOp.JobCondition, occurredAt time.Time,
+	taskPhaseInfo pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
+	switch currentCondition.Type {
+	case mpiOp.JobCreated:
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
+	case mpiOp.JobRunning:
+		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &taskPhaseInfo), nil
+	case mpiOp.JobSucceeded:
+		return pluginsCore.PhaseInfoSuccess(&taskPhaseInfo), nil
+	case mpiOp.JobFailed:
+		details := fmt.Sprintf("Job failed:\n\t%v - %v", currentCondition.Reason, currentCondition.Message)
+		return pluginsCore.PhaseInfoRetryableFailure(flyteerr.DownstreamSystemError, details, &taskPhaseInfo), nil
+	case mpiOp.JobRestarting:
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &taskPhaseInfo), nil
 	}
 
@@ -115,6 +152,47 @@ func GetLogs(taskType string, name string, namespace string,
 			return nil, err
 		}
 		taskLogs = append(taskLogs, chiefReplicaLog.TaskLogs...)
+	}
+
+	return taskLogs, nil
+}
+
+func GetMPILogs(name string, namespace string,
+	workersCount int32, launcherReplicasCount int32) ([]*core.TaskLog, error) {
+	taskLogs := make([]*core.TaskLog, 0, 10)
+
+	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
+
+	if err != nil {
+		return nil, err
+	}
+
+	if logPlugin == nil {
+		return nil, nil
+	}
+
+	// get all workers log
+	for workerIndex := int32(0); workerIndex < workersCount; workerIndex++ {
+		workerLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+			PodName:   name + fmt.Sprintf("-worker-%d", workerIndex),
+			Namespace: namespace,
+		})
+		if err != nil {
+			return nil, err
+		}
+		taskLogs = append(taskLogs, workerLog.TaskLogs...)
+	}
+	// get all worker servers logs
+	for psReplicaIndex := int32(0); psReplicaIndex < launcherReplicasCount; psReplicaIndex++ {
+		// TODO: Add launcher pod name, {POD_NAME}-launcher-HASH
+		psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+			PodName:   name + fmt.Sprintf("-launcher-%d", psReplicaIndex),
+			Namespace: namespace,
+		})
+		if err != nil {
+			return nil, err
+		}
+		taskLogs = append(taskLogs, psReplicaLog.TaskLogs...)
 	}
 
 	return taskLogs, nil
