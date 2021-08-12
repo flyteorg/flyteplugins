@@ -37,37 +37,22 @@ func validateAndFinalizePod(
 	finalizedContainers := make([]k8sv1.Container, len(pod.Spec.Containers))
 	resReqs := make([]k8sv1.ResourceRequirements, 0, len(pod.Spec.Containers))
 	for index, container := range pod.Spec.Containers {
+		var resourceMode = flytek8s.LeaveResourcesUnmodified
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
-			container.Resources = *flytek8s.ApplyResourceOverrides(ctx, container.Resources)
-			if taskCtx.TaskExecutionMetadata().GetOverrides() != nil && taskCtx.TaskExecutionMetadata().GetOverrides().GetResources() != nil {
-				resOverrides := taskCtx.TaskExecutionMetadata().GetOverrides().GetResources()
-				flytek8s.MergeResources(*resOverrides, &container.Resources)
-			}
-		}
-		modifiedCommand, err := template.Render(ctx, container.Command, template.Parameters{
-			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
-			Inputs:           taskCtx.InputReader(),
-			OutputPath:       taskCtx.OutputWriter(),
-			Task:             taskCtx.TaskReader(),
-		})
-		if err != nil {
-			return nil, err
-		}
-		container.Command = modifiedCommand
+			resourceMode = flytek8s.MergeExistingResources
 
-		modifiedArgs, err := template.Render(ctx, container.Args, template.Parameters{
+		}
+		templateParameters := template.Parameters{
 			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
 			Inputs:           taskCtx.InputReader(),
 			OutputPath:       taskCtx.OutputWriter(),
 			Task:             taskCtx.TaskReader(),
-		})
+		}
+		err := flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &pod.Spec.Containers[index])
 		if err != nil {
 			return nil, err
 		}
-		container.Args = modifiedArgs
-		container.Env = flytek8s.DecorateEnvVars(ctx, container.Env, taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
-		resReqs = append(resReqs, container.Resources)
 		finalizedContainers[index] = container
 	}
 	if !hasPrimaryContainer {
