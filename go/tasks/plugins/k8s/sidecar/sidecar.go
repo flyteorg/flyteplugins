@@ -41,7 +41,6 @@ func validateAndFinalizePod(
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 			resourceMode = flytek8s.MergeExistingResources
-
 		}
 		templateParameters := template.Parameters{
 			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),

@@ -60,7 +60,7 @@ func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequiremen
 
 	if _, found := resources.Requests[v1.ResourceMemory]; !found {
 		// use memory limit if set else default to config
-		if _, limitSet := resources.Limits[v1.ResourceCPU]; limitSet {
+		if _, limitSet := resources.Limits[v1.ResourceMemory]; limitSet {
 			resources.Requests[v1.ResourceMemory] = resources.Limits[v1.ResourceMemory]
 		} else {
 			resources.Requests[v1.ResourceMemory] = resource.MustParse(config.GetK8sPluginConfig().DefaultMemoryRequest)
@@ -163,19 +163,15 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 
 	if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
 		res := parameters.TaskExecMetadata.GetOverrides().GetResources()
-		if res == nil {
-			return nil
-		}
 		switch mode {
-		case LeaveResourcesUnmodified:
-			return nil
 		case AssignResources:
 			if res = ApplyResourceOverrides(ctx, *res); res != nil {
 				container.Resources = *res
 			}
 		case MergeExistingResources:
-			container.Resources = *ApplyResourceOverrides(ctx, container.Resources)
 			MergeResources(*res, &container.Resources)
+			container.Resources = *ApplyResourceOverrides(ctx, container.Resources)
+		case LeaveResourcesUnmodified:
 		}
 	}
 	return nil
