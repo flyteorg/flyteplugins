@@ -34,7 +34,6 @@ func validateAndFinalizePod(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, pod k8sv1.Pod) (*k8sv1.Pod, error) {
 	var hasPrimaryContainer bool
 
-	finalizedContainers := make([]k8sv1.Container, len(pod.Spec.Containers))
 	resReqs := make([]k8sv1.ResourceRequirements, 0, len(pod.Spec.Containers))
 	for index, container := range pod.Spec.Containers {
 		var resourceMode = flytek8s.LeaveResourcesUnmodified
@@ -52,14 +51,12 @@ func validateAndFinalizePod(
 		if err != nil {
 			return nil, err
 		}
-		finalizedContainers[index] = container
 	}
 	if !hasPrimaryContainer {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
 			"invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
 
 	}
-	pod.Spec.Containers = finalizedContainers
 	flytek8s.UpdatePod(taskCtx.TaskExecutionMetadata(), resReqs, &pod.Spec)
 	return &pod, nil
 }
