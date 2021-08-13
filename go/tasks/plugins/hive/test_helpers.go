@@ -49,10 +49,13 @@ func GetSingleHiveQueryTaskTemplate() idlCore.TaskTemplate {
 		},
 		Interface: &idlCore.TypedInterface{
 			Outputs: &idlCore.VariableMap{
-				Variables: map[string]*idlCore.Variable{
-					"results": &idlCore.Variable{
-						Type: &idlCore.LiteralType{
-							Type: &idlCore.LiteralType_Schema{Schema: &idlCore.SchemaType{}},
+				Variables: []*idlCore.VariableMapFieldEntry{
+					{
+						Key: "results",
+						Value: &idlCore.Variable{
+							Type: &idlCore.LiteralType{
+								Type: &idlCore.LiteralType_Schema{Schema: &idlCore.SchemaType{}},
+							},
 						},
 					},
 				},

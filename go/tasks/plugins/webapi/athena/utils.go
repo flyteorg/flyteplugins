@@ -27,7 +27,15 @@ func writeOutput(ctx context.Context, tCtx webapi.StatusContext, externalLocatio
 		return nil
 	}
 
-	resultsSchema, exists := taskTemplate.Interface.Outputs.Variables["results"]
+	var exists bool
+	var resultsSchema *pb.Variable
+	for _, v := range taskTemplate.Interface.Outputs.Variables {
+		if v.Key == "results" {
+			exists = true
+			resultsSchema = v.Value
+			break
+		}
+	}
 	if !exists {
 		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
 		return nil
