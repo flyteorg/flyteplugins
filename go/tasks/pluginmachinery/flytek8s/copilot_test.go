@@ -57,6 +57,23 @@ func TestFlyteCoPilotContainer(t *testing.T) {
 		assert.Equal(t, 2, len(c.Resources.Requests))
 	})
 
+	t.Run("happy stow backend", func(t *testing.T) {
+		storage.GetConfig().Stow.Kind = "S3"
+		storage.GetConfig().Stow.Config = map[string]string{
+			"path": "config.yaml",
+		}
+		c, err := FlyteCoPilotContainer("x", cfg, []string{"hello"})
+		assert.NoError(t, err)
+		assert.Equal(t, "test-x", c.Name)
+		assert.Equal(t, "test", c.Image)
+		assert.Equal(t, CopilotCommandArgs(storage.GetConfig()), c.Command)
+		assert.Equal(t, []string{"hello"}, c.Args)
+		assert.Equal(t, 0, len(c.VolumeMounts))
+		assert.Equal(t, "/", c.WorkingDir)
+		assert.Equal(t, 2, len(c.Resources.Limits))
+		assert.Equal(t, 2, len(c.Resources.Requests))
+	})
+
 	t.Run("happy-vols", func(t *testing.T) {
 		c, err := FlyteCoPilotContainer("x", cfg, []string{"hello"}, v1.VolumeMount{Name: "X", MountPath: "/"})
 		assert.NoError(t, err)
