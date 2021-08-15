@@ -71,8 +71,12 @@ func CopilotCommandArgs(storageConfig *storage.Config) []string {
 		fmt.Sprintf("--storage.type=%s", storageConfig.Type),
 	}
 	if !reflect.DeepEqual(storageConfig.Stow, storage.StowConfig{}) {
+		var cfg string
+		for key, val := range storageConfig.Stow.Config {
+			cfg += fmt.Sprintf("%s=%s,", key, val)
+		}
 		return append(commands, []string{
-			fmt.Sprintf("--storage.stow.config=%s", storageConfig.Stow.Config),
+			fmt.Sprintf("--storage.stow.config=%s", cfg),
 			fmt.Sprintf("--storage.stow.kind=%s", storageConfig.Stow.Kind),
 		}...)
 
