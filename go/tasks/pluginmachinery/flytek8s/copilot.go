@@ -66,22 +66,24 @@ func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []st
 func CopilotCommandArgs(storageConfig *storage.Config) []string {
 	var commands = []string{
 		"/bin/flyte-copilot",
-		"--storage.enable-multicontainer",
 		"--storage.limits.maxDownloadMBs=0",
-		fmt.Sprintf("--storage.type=%s", storageConfig.Type),
 	}
 	if !reflect.DeepEqual(storageConfig.Stow, storage.StowConfig{}) {
 		var cfg string
 		for key, val := range storageConfig.Stow.Config {
 			cfg += fmt.Sprintf("%s=%s,", key, val)
 		}
-		return append(commands, []string{
+		commands = append(commands, []string{
 			fmt.Sprintf("--storage.stow.config=%s", cfg),
 			fmt.Sprintf("--storage.stow.kind=%s", storageConfig.Stow.Kind),
 		}...)
-
+	}
+	if storageConfig.MultiContainerEnabled {
+		commands = append(commands, "--storage.enable-multicontainer")
 	}
 	return append(commands, []string{
+		fmt.Sprintf("--storage.type=%s", storageConfig.Type),
+		fmt.Sprintf("--storage.enable-multicontainer=%v", storageConfig.MultiContainerEnabled),
 		fmt.Sprintf("--storage.container=%s", storageConfig.InitContainer),
 		fmt.Sprintf("--storage.connection.secret-key=%s", storageConfig.Connection.SecretKey),
 		fmt.Sprintf("--storage.connection.access-key=%s", storageConfig.Connection.AccessKey),

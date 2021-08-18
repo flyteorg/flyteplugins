@@ -27,7 +27,7 @@ var (
 		},
 		CoPilot: FlyteCoPilotConfig{
 			NamePrefix:           "flyte-copilot-",
-			Image:                "ghcr.io/flyteorg/flytecopilot:v0.0.9",
+			Image:                "cr.flyte.org/flyteorg/flytecopilot:v0.0.9",
 			DefaultInputDataPath: "/var/flyte/inputs",
 			InputVolumeName:      "flyte-inputs",
 			DefaultOutputPath:    "/var/flyte/outputs",
