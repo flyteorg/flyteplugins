@@ -24,14 +24,20 @@ const Interrupted = "Interrupted"
 const SIGKILL = 137
 
 func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
-	// Short-circuit if config doesn't specific node selector requirements
+	// Determine node selector terms to add to node affinity
+	var nodeSelectorRequirement v1.NodeSelectorRequirement
 	if interruptible {
 		if config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement == nil {
 			return
 		}
-	} else if config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement == nil {
-		return
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement
+	} else {
+		if config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement == nil {
+			return
+		}
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement
 	}
+
 	if podSpec.Affinity == nil {
 		podSpec.Affinity = &v1.Affinity{}
 	}
@@ -40,13 +46,6 @@ func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
 	}
 	if podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
 		podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{}
-	}
-	// Determine node selector terms to add to node affinity
-	var nodeSelectorRequirement v1.NodeSelectorRequirement
-	if interruptible {
-		nodeSelectorRequirement = *config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement
-	} else {
-		nodeSelectorRequirement = *config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement
 	}
 	if len(podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
 		nodeSelectorTerms := podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
