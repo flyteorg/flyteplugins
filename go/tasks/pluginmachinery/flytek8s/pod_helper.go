@@ -220,8 +220,32 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								// PodInitializing -> Init containers are running
 								return pluginsCore.PhaseInfoInitializing(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("[%s]: %s", finalReason, finalMessage), &pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
 
-							case "CreateContainerConfigError", "CreateContainerError":
-								// This happens if for instance the command to the container is incorrect, ie doesn't run
+							case "CreateContainerError":
+								// This may consist of:
+								// 1. Transient errors: e.g. failed to reserve
+								// container name, container name [...] already in use
+								// by container
+								// 2. Permanent errors: e.g. no command specified
+								// To handle both types of errors gracefully without
+								// arbitrary pattern matching in the message, we simply
+								// allow a grace period for kubelet to resolve
+								// transient issues with the container runtime. If the
+								// error persists beyond this time, the corresponding
+								// task is marked as failed.
+								t := c.LastTransitionTime.Time
+								if v12.Now().After(t.Add(config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)) {
+									return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
+										OccurredAt: &t,
+									}), nil
+								}
+								return pluginsCore.PhaseInfoInitializing(
+									t,
+									pluginsCore.DefaultPhaseVersion,
+									fmt.Sprintf("[%s]: %s", finalReason, finalMessage),
+									&pluginsCore.TaskInfo{OccurredAt: &t},
+								), nil
+
+							case "CreateContainerConfigError":
 								t := c.LastTransitionTime.Time
 								return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 									OccurredAt: &t,
