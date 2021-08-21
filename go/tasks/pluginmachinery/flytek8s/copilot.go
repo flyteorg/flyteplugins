@@ -66,7 +66,7 @@ func CopilotCommandArgs(storageConfig *storage.Config) []string {
 		"/bin/flyte-copilot",
 		"--storage.limits.maxDownloadMBs=0",
 	}
-	if len(storageConfig.Stow.Config) > 0  && len(storageConfig.Stow.Kind) > 0 {
+	if len(storageConfig.Stow.Config) > 0 && len(storageConfig.Stow.Kind) > 0 {
 		var cfg string
 		for key, val := range storageConfig.Stow.Config {
 			cfg += fmt.Sprintf("%s=%s,", key, val)
