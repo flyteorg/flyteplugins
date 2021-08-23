@@ -251,7 +251,7 @@ func createTaskInfo(queryID string, account string) *core.TaskInfo {
 		OccurredAt: &timeNow,
 		Logs: []*flyteIdlCore.TaskLog{
 			{
-				Uri: fmt.Sprintf("https://%v.snowflakecomputing.com/console#/monitoring/queries/detail?queryID=%v",
+				Uri: fmt.Sprintf("https://%v.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=%v",
 					account,
 					queryID),
 				Name: "Snowflake Console",
