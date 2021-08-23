@@ -3,7 +3,6 @@ package snowflake
 import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -65,7 +64,7 @@ func TestBuildRequest(t *testing.T) {
 func TestBuildResponse(t *testing.T) {
 	t.Run("build http response", func(t *testing.T) {
 		bodyStr := `{"data":{"statementHandle":"019c06a4-0000","message":"Statement executed successfully."}}`
-		responseBody := io.NopCloser(strings.NewReader(bodyStr))
+		responseBody := ioutil.NopCloser(strings.NewReader(bodyStr))
 		response := &http.Response{Body: responseBody}
 		actualData, err := buildResponse(response)
 		assert.NoError(t, err)
