@@ -233,7 +233,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								// error persists beyond this time, the corresponding
 								// task is marked as failed.
 								t := c.LastTransitionTime.Time
-								if v12.Now().After(t.Add(config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)) {
+								if time.Since(t) >= config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration {
 									return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 										OccurredAt: &t,
 									}), nil
