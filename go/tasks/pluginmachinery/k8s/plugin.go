@@ -91,3 +91,8 @@ type Plugin interface {
 	// Properties desired by the plugin
 	GetProperties() PluginProperties
 }
+
+// Defines functions to clean up the resource object after the task has been completed or cancelled.
+type PluginCleanupPolicy interface {
+	OnAbort(ctx context.Context, kubeClient client.Client, resource client.Object) error
+}
