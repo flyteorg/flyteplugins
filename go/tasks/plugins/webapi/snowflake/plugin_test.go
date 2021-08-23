@@ -21,8 +21,8 @@ func TestCreateTaskInfo(t *testing.T) {
 
 func TestBuildRequest(t *testing.T) {
 	account := "test-account"
-	token := "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"
-	queryId := "019e70eb-0000-278b-0000-40f100012b1a"
+	dummyToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"
+	queryID := "019e70eb-0000-278b-0000-40f100012b1a"
 	snowflakeUrl := "https://" + account + ".snowflakecomputing.com/api/statements"
 	t.Run("build http request for submitting a snowflake query", func(t *testing.T) {
 		queryInfo := QueryInfo{
@@ -33,9 +33,9 @@ func TestBuildRequest(t *testing.T) {
 			Statement: "SELECT 1",
 		}
 
-		req, err := buildRequest("POST", queryInfo, account, token, queryId, false)
+		req, err := buildRequest("POST", queryInfo, account, dummyToken, queryID, false)
 		header := http.Header{}
-		header.Add("Authorization", "Bearer "+token)
+		header.Add("Authorization", "Bearer "+dummyToken)
 		header.Add("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
 		header.Add("Content-Type", "application/json")
 		header.Add("Accept", "application/json")
@@ -46,17 +46,17 @@ func TestBuildRequest(t *testing.T) {
 		assert.Equal(t, "POST", req.Method)
 	})
 	t.Run("build http request for getting a snowflake query status", func(t *testing.T) {
-		req, err := buildRequest("GET", QueryInfo{}, account, token, queryId, false)
+		req, err := buildRequest("GET", QueryInfo{}, account, dummyToken, queryID, false)
 
 		assert.NoError(t, err)
-		assert.Equal(t, snowflakeUrl+"/"+queryId, req.URL.String())
+		assert.Equal(t, snowflakeUrl+"/"+queryID, req.URL.String())
 		assert.Equal(t, "GET", req.Method)
 	})
 	t.Run("build http request for deleting a snowflake query", func(t *testing.T) {
-		req, err := buildRequest("POST", QueryInfo{}, account, token, queryId, true)
+		req, err := buildRequest("POST", QueryInfo{}, account, dummyToken, queryID, true)
 
 		assert.NoError(t, err)
-		assert.Equal(t, snowflakeUrl+"/"+queryId+"/cancel", req.URL.String())
+		assert.Equal(t, snowflakeUrl+"/"+queryID+"/cancel", req.URL.String())
 		assert.Equal(t, "POST", req.Method)
 	})
 }

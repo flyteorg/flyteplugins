@@ -132,10 +132,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-	queryId := fmt.Sprintf("%v", data["statementHandle"])
+	queryID := fmt.Sprintf("%v", data["statementHandle"])
 	message := fmt.Sprintf("%v", data["message"])
 
-	return ResourceMetaWrapper{queryId, queryInfo.Account},
+	return ResourceMetaWrapper{queryID, queryInfo.Account},
 		ResourceWrapper{Status: resp.Status, Message: message}, nil
 }
 
@@ -202,11 +202,11 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 }
 
 func buildRequest(method string, queryInfo QueryInfo, account string, token string,
-	queryId string, isCancel bool) (*http.Request, error) {
-	snowflakeUrl := "https://" + account + ".snowflakecomputing.com/api/statements"
+	queryID string, isCancel bool) (*http.Request, error) {
+	snowflakeURL := "https://" + account + ".snowflakecomputing.com/api/statements"
 	var data []byte
 	if method == "POST" && !isCancel {
-		snowflakeUrl += "?async=true"
+		snowflakeURL += "?async=true"
 		data = []byte(fmt.Sprintf(`{
 		  "statement": "%v",
 		  "database": "%v",
@@ -214,13 +214,13 @@ func buildRequest(method string, queryInfo QueryInfo, account string, token stri
 		  "warehouse": "%v"
 		}`, queryInfo.Statement, queryInfo.Database, queryInfo.Schema, queryInfo.Warehouse))
 	} else {
-		snowflakeUrl += "/" + queryId
+		snowflakeURL += "/" + queryID
 	}
 	if isCancel {
-		snowflakeUrl += "/cancel"
+		snowflakeURL += "/cancel"
 	}
 
-	req, err := http.NewRequest(method, snowflakeUrl, bytes.NewBuffer(data))
+	req, err := http.NewRequest(method, snowflakeURL, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
@@ -244,16 +244,16 @@ func buildResponse(response *http.Response) (map[string]interface{}, error) {
 	return data, nil
 }
 
-func createTaskInfo(queryId string, account string) *core.TaskInfo {
+func createTaskInfo(queryID string, account string) *core.TaskInfo {
 	timeNow := time.Now()
 
 	return &core.TaskInfo{
 		OccurredAt: &timeNow,
 		Logs: []*flyteIdlCore.TaskLog{
 			{
-				Uri: fmt.Sprintf("https://%v.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=%v",
+				Uri: fmt.Sprintf("https://%v.snowflakecomputing.com/console#/monitoring/queries/detail?queryID=%v",
 					account,
-					queryId),
+					queryID),
 				Name: "Snowflake Console",
 			},
 		},
