@@ -2,11 +2,12 @@ package snowflake
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateTaskInfo(t *testing.T) {
@@ -21,9 +22,9 @@ func TestCreateTaskInfo(t *testing.T) {
 
 func TestBuildRequest(t *testing.T) {
 	account := "test-account"
-	dummyToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"
+	token := getSnowflakeToken()
 	queryID := "019e70eb-0000-278b-0000-40f100012b1a"
-	snowflakeUrl := "https://" + account + ".snowflakecomputing.com/api/statements"
+	snowflakeURL := "https://" + account + ".snowflakecomputing.com/api/statements"
 	t.Run("build http request for submitting a snowflake query", func(t *testing.T) {
 		queryInfo := QueryInfo{
 			Account:   account,
@@ -33,30 +34,30 @@ func TestBuildRequest(t *testing.T) {
 			Statement: "SELECT 1",
 		}
 
-		req, err := buildRequest("POST", queryInfo, account, dummyToken, queryID, false)
+		req, err := buildRequest("POST", queryInfo, account, token, queryID, false)
 		header := http.Header{}
-		header.Add("Authorization", "Bearer "+dummyToken)
+		header.Add("Authorization", "Bearer "+token)
 		header.Add("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
 		header.Add("Content-Type", "application/json")
 		header.Add("Accept", "application/json")
 
 		assert.NoError(t, err)
 		assert.Equal(t, header, req.Header)
-		assert.Equal(t, snowflakeUrl+"?async=true", req.URL.String())
+		assert.Equal(t, snowflakeURL+"?async=true", req.URL.String())
 		assert.Equal(t, "POST", req.Method)
 	})
 	t.Run("build http request for getting a snowflake query status", func(t *testing.T) {
-		req, err := buildRequest("GET", QueryInfo{}, account, dummyToken, queryID, false)
+		req, err := buildRequest("GET", QueryInfo{}, account, token, queryID, false)
 
 		assert.NoError(t, err)
-		assert.Equal(t, snowflakeUrl+"/"+queryID, req.URL.String())
+		assert.Equal(t, snowflakeURL+"/"+queryID, req.URL.String())
 		assert.Equal(t, "GET", req.Method)
 	})
 	t.Run("build http request for deleting a snowflake query", func(t *testing.T) {
-		req, err := buildRequest("POST", QueryInfo{}, account, dummyToken, queryID, true)
+		req, err := buildRequest("POST", QueryInfo{}, account, token, queryID, true)
 
 		assert.NoError(t, err)
-		assert.Equal(t, snowflakeUrl+"/"+queryID+"/cancel", req.URL.String())
+		assert.Equal(t, snowflakeURL+"/"+queryID+"/cancel", req.URL.String())
 		assert.Equal(t, "POST", req.Method)
 	})
 }

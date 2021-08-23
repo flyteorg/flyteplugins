@@ -1,10 +1,11 @@
 package snowflake
 
 import (
+	"testing"
+
 	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
-	"testing"
 )
 
 func TestUnmarshalSnowflakeQueryConfig(t *testing.T) {
