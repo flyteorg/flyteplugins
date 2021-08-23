@@ -115,10 +115,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if len(queryInfo.Warehouse) == 0 {
 		queryInfo.Warehouse = p.cfg.DefaultWarehouse
 	}
-
-	if len(queryInfo.Warehouse) == 0 {
-		queryInfo.Warehouse = p.cfg.DefaultWarehouse
-	}
 	req, err := buildRequest("POST", queryInfo, queryInfo.Account, p.snowflakeToken, "", false)
 	if err != nil {
 		return nil, nil, err
