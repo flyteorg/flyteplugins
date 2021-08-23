@@ -232,6 +232,14 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								// transient issues with the container runtime. If the
 								// error persists beyond this time, the corresponding
 								// task is marked as failed.
+								// NOTE: The current implementation checks for a timeout
+								// by comparing the condition's LastTransitionTime
+								// based on the corresponding kubelet's clock with the
+								// current time based on FlytePropeller's clock. This
+								// is not ideal given that these 2 clocks are NOT
+								// synced, and therefore, only provides an
+								// approximation of the elapsed time since the last
+								// transition.
 								t := c.LastTransitionTime.Time
 								if time.Since(t) >= config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration {
 									return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
