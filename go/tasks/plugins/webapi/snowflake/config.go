@@ -54,6 +54,9 @@ type Config struct {
 	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 
 	DefaultWarehouse string `json:"defaultWarehouse" pflag:",Defines the default warehouse to use when running on Snowflake unless overwritten by the task."`
+
+	// snowflakeEndpoint overrides Snowflake client endpoint, only for testing
+	snowflakeEndpoint string
 }
 
 func GetConfig() *Config {

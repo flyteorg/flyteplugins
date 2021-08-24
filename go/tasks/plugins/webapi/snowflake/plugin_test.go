@@ -79,6 +79,7 @@ func TestBuildRequest(t *testing.T) {
 	account := "test-account"
 	token := getSnowflakeToken()
 	queryID := "019e70eb-0000-278b-0000-40f100012b1a"
+	snowflakeEndpoint := ""
 	snowflakeURL := "https://" + account + ".snowflakecomputing.com/api/statements"
 	t.Run("build http request for submitting a snowflake query", func(t *testing.T) {
 		queryInfo := QueryInfo{
@@ -89,7 +90,7 @@ func TestBuildRequest(t *testing.T) {
 			Statement: "SELECT 1",
 		}
 
-		req, err := buildRequest("POST", queryInfo, account, token, queryID, false)
+		req, err := buildRequest("POST", queryInfo, snowflakeEndpoint, account, token, queryID, false)
 		header := http.Header{}
 		header.Add("Authorization", "Bearer "+token)
 		header.Add("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
@@ -102,14 +103,14 @@ func TestBuildRequest(t *testing.T) {
 		assert.Equal(t, "POST", req.Method)
 	})
 	t.Run("build http request for getting a snowflake query status", func(t *testing.T) {
-		req, err := buildRequest("GET", QueryInfo{}, account, token, queryID, false)
+		req, err := buildRequest("GET", QueryInfo{}, snowflakeEndpoint, account, token, queryID, false)
 
 		assert.NoError(t, err)
 		assert.Equal(t, snowflakeURL+"/"+queryID, req.URL.String())
 		assert.Equal(t, "GET", req.Method)
 	})
 	t.Run("build http request for deleting a snowflake query", func(t *testing.T) {
-		req, err := buildRequest("POST", QueryInfo{}, account, token, queryID, true)
+		req, err := buildRequest("POST", QueryInfo{}, snowflakeEndpoint, account, token, queryID, true)
 
 		assert.NoError(t, err)
 		assert.Equal(t, snowflakeURL+"/"+queryID+"/cancel", req.URL.String())

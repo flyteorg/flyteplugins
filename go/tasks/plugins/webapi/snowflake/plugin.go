@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -39,8 +38,8 @@ type Plugin struct {
 }
 
 type ResourceWrapper struct {
-	Status  string
-	Message string
+	StatusCode int
+	Message    string
 }
 
 type ResourceMetaWrapper struct {
@@ -115,7 +114,8 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if len(queryInfo.Warehouse) == 0 {
 		queryInfo.Warehouse = p.cfg.DefaultWarehouse
 	}
-	req, err := buildRequest("POST", queryInfo, queryInfo.Account, p.snowflakeToken, "", false)
+	req, err := buildRequest("POST", queryInfo, p.cfg.snowflakeEndpoint,
+		queryInfo.Account, p.snowflakeToken, "", false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,16 +129,18 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
+
 	queryID := fmt.Sprintf("%v", data["statementHandle"])
 	message := fmt.Sprintf("%v", data["message"])
 
-	return ResourceMetaWrapper{queryID, queryInfo.Account},
-		ResourceWrapper{Status: resp.Status, Message: message}, nil
+	return &ResourceMetaWrapper{queryID, queryInfo.Account},
+		&ResourceWrapper{StatusCode: resp.StatusCode, Message: message}, nil
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	req, err := buildRequest("GET", QueryInfo{}, exec.Account, p.snowflakeToken, exec.QueryID, false)
+	req, err := buildRequest("GET", QueryInfo{}, p.cfg.snowflakeEndpoint,
+		exec.Account, p.snowflakeToken, exec.QueryID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -153,15 +155,16 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		return nil, err
 	}
 	message := fmt.Sprintf("%v", data["message"])
-	return ResourceWrapper{
-		Status:  resp.Status,
-		Message: message,
+	return &ResourceWrapper{
+		StatusCode: resp.StatusCode,
+		Message:    message,
 	}, nil
 }
 
 func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	req, err := buildRequest("POST", QueryInfo{}, exec.Account, p.snowflakeToken, exec.QueryID, true)
+	req, err := buildRequest("POST", QueryInfo{}, p.cfg.snowflakeEndpoint,
+		exec.Account, p.snowflakeToken, exec.QueryID, true)
 	if err != nil {
 		return err
 	}
@@ -178,14 +181,11 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 
 func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	status := taskCtx.Resource().(*ResourceWrapper).Status
-	if status == "" {
+	statusCode := taskCtx.Resource().(*ResourceWrapper).StatusCode
+	if statusCode == 0 {
 		return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "No Status field set.")
 	}
-	statusCode, err := strconv.Atoi(status)
-	if err != nil {
-		return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", status)
-	}
+
 	taskInfo := createTaskInfo(exec.QueryID, exec.Account)
 	switch statusCode {
 	case http.StatusAccepted:
@@ -193,14 +193,21 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	case http.StatusOK:
 		return pluginsCore.PhaseInfoSuccess(taskInfo), nil
 	case http.StatusUnprocessableEntity:
-		return pluginsCore.PhaseInfoFailure(status, "phaseReason", taskInfo), nil
+		return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), "phaseReason", taskInfo), nil
 	}
-	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", status)
+	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", statusCode)
 }
 
-func buildRequest(method string, queryInfo QueryInfo, account string, token string,
+func buildRequest(method string, queryInfo QueryInfo, snowflakeEndpoint string, account string, token string,
 	queryID string, isCancel bool) (*http.Request, error) {
-	snowflakeURL := "https://" + account + ".snowflakecomputing.com/api/statements"
+	var snowflakeURL string
+	// for mocking/testing purposes
+	if snowflakeEndpoint == "" {
+		snowflakeURL = "https://" + account + ".snowflakecomputing.com/api/statements"
+	} else {
+		snowflakeURL = snowflakeEndpoint + "/api/statements"
+	}
+
 	var data []byte
 	if method == "POST" && !isCancel {
 		snowflakeURL += "?async=true"
