@@ -15,6 +15,24 @@ type PluginCleanupPolicy struct {
 	mock.Mock
 }
 
+type PluginCleanupPolicy_OnAbort struct {
+	*mock.Call
+}
+
+func (_m PluginCleanupPolicy_OnAbort) Return(_a0 error) *PluginCleanupPolicy_OnAbort {
+	return &PluginCleanupPolicy_OnAbort{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *PluginCleanupPolicy) OnOnAbort(ctx context.Context, kubeClient client.Client, resource client.Object) *PluginCleanupPolicy_OnAbort {
+	c := _m.On("OnAbort", ctx, kubeClient, resource)
+	return &PluginCleanupPolicy_OnAbort{Call: c}
+}
+
+func (_m *PluginCleanupPolicy) OnOnAbortMatch(matchers ...interface{}) *PluginCleanupPolicy_OnAbort {
+	c := _m.On("OnAbort", matchers...)
+	return &PluginCleanupPolicy_OnAbort{Call: c}
+}
+
 // OnAbort provides a mock function with given fields: ctx, kubeClient, resource
 func (_m *PluginCleanupPolicy) OnAbort(ctx context.Context, kubeClient client.Client, resource client.Object) error {
 	ret := _m.Called(ctx, kubeClient, resource)
