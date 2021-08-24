@@ -1,13 +1,20 @@
 package snowflake
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestCreateTaskInfo(t *testing.T) {
@@ -17,6 +24,54 @@ func TestCreateTaskInfo(t *testing.T) {
 		assert.Equal(t, 1, len(taskInfo.Logs))
 		assert.Equal(t, taskInfo.Logs[0].Uri, "https://test-account.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=d5493e36")
 		assert.Equal(t, taskInfo.Logs[0].Name, "Snowflake Console")
+	})
+}
+
+func TestPlugin(t *testing.T) {
+	fakeSetupContext := pluginCoreMocks.SetupContext{}
+	fakeSetupContext.OnMetricsScope().Return(promutils.NewScope("test"))
+	plugin := Plugin{
+		metricScope:    fakeSetupContext.MetricsScope(),
+		cfg:            GetConfig(),
+		snowflakeToken: getSnowflakeToken(),
+	}
+	t.Run("get config", func(t *testing.T) {
+		cfg := defaultConfig
+		cfg.WebAPI.Caching.Workers = 1
+		cfg.WebAPI.Caching.ResyncInterval.Duration = 5 * time.Second
+		err := SetConfig(&cfg)
+		assert.NoError(t, err)
+		assert.Equal(t, cfg.WebAPI, plugin.GetConfig())
+	})
+	t.Run("get ResourceRequirements", func(t *testing.T) {
+		namespace, constraints, err := plugin.ResourceRequirements(context.TODO(), nil)
+		assert.NoError(t, err)
+		assert.Equal(t, core.ResourceNamespace("default"), namespace)
+		assert.Equal(t, plugin.cfg.ResourceConstraints, constraints)
+	})
+}
+
+func TestUnmarshalSnowflakeQueryConfig(t *testing.T) {
+	custom := structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"Account":   structpb.NewStringValue("test-account"),
+			"Warehouse": structpb.NewStringValue("test-warehouse"),
+			"Schema":    structpb.NewStringValue("test-schema"),
+			"Database":  structpb.NewStringValue("test-database"),
+			"Statement": structpb.NewStringValue("SELECT 1"),
+		},
+	}
+
+	prestoQuery := QueryJobConfig{}
+	err := pluginUtils.UnmarshalStructToObj(&custom, &prestoQuery)
+	assert.NoError(t, err)
+
+	assert.Equal(t, prestoQuery, QueryJobConfig{
+		Account:   "test-account",
+		Warehouse: "test-warehouse",
+		Schema:    "test-schema",
+		Database:  "test-database",
+		Statement: "SELECT 1",
 	})
 }
 
