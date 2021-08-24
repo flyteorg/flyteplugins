@@ -36,10 +36,10 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 		template.Interface = &idlCore.TypedInterface{
 			Inputs: nil,
 			Outputs: &idlCore.VariableMap{
-				Variables: []*idlCore.VariableMapFieldEntry{
+				Variables: []*idlCore.VariableMapEntry{
 					{
-						Key: "x",
-						Value: &idlCore.Variable{
+						Name: "x",
+						Var: &idlCore.Variable{
 							Type: &idlCore.LiteralType{
 								Type: &idlCore.LiteralType_CollectionType{
 									CollectionType: &idlCore.LiteralType{Type: &idlCore.LiteralType_Simple{Simple: idlCore.SimpleType_INTEGER}},
@@ -74,10 +74,10 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 		template.Interface = &idlCore.TypedInterface{
 			Inputs: nil,
 			Outputs: &idlCore.VariableMap{
-				Variables: []*idlCore.VariableMapFieldEntry{
+				Variables: []*idlCore.VariableMapEntry{
 					{
-						Key: "x",
-						Value: &idlCore.Variable{
+						Name: "x",
+						Var: &idlCore.Variable{
 							Type: &idlCore.LiteralType{
 								Type: &idlCore.LiteralType_CollectionType{
 									CollectionType: &idlCore.LiteralType{Type: &idlCore.LiteralType_Simple{Simple: idlCore.SimpleType_INTEGER}},

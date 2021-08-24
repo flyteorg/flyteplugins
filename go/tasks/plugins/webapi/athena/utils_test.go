@@ -41,10 +41,10 @@ func Test_writeOutput(t *testing.T) {
 		taskReader.OnRead(ctx).Return(&core.TaskTemplate{
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key:   "myOutput",
-							Value: &core.Variable{},
+							Name: "myOutput",
+							Var:  &core.Variable{},
 						},
 					},
 				},
@@ -76,10 +76,10 @@ func Test_writeOutput(t *testing.T) {
 		taskReader.OnRead(ctx).Return(&core.TaskTemplate{
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "results",
-							Value: &core.Variable{
+							Name: "results",
+							Var: &core.Variable{
 								Type: &core.LiteralType{
 									Type: &core.LiteralType_Schema{
 										Schema: &core.SchemaType{
@@ -164,10 +164,10 @@ func Test_ExtractQueryInfo(t *testing.T) {
 				Type: validProto.taskType,
 				Interface: &core.TypedInterface{
 					Outputs: &core.VariableMap{
-						Variables: []*core.VariableMapFieldEntry{
+						Variables: []*core.VariableMapEntry{
 							{
-								Key: "results",
-								Value: &core.Variable{
+								Name: "results",
+								Var: &core.Variable{
 									Type: &core.LiteralType{
 										Type: &core.LiteralType_Schema{
 											Schema: &core.SchemaType{

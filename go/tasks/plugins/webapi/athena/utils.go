@@ -30,9 +30,9 @@ func writeOutput(ctx context.Context, tCtx webapi.StatusContext, externalLocatio
 	var exists bool
 	var resultsSchema *pb.Variable
 	for _, v := range taskTemplate.Interface.Outputs.Variables {
-		if v.Key == "results" {
+		if v.Name == "results" {
 			exists = true
-			resultsSchema = v.Value
+			resultsSchema = v.Var
 			break
 		}
 	}

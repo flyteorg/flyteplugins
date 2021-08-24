@@ -515,9 +515,9 @@ func WriteOutputs(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 	}
 	if len(outputs) == 1 {
 		results := outputs[0]
-		if results.GetKey() == "results" {
-			if results.GetValue().GetType().GetSchema() == nil {
-				return currentState, errors.Errorf(errors.BadTaskSpecification, "A non-SchemaType was found [%v]", results.GetValue().GetType())
+		if results.GetName() == "results" {
+			if results.GetVar().GetType().GetSchema() == nil {
+				return currentState, errors.Errorf(errors.BadTaskSpecification, "A non-SchemaType was found [%v]", results.GetVar().GetType())
 			}
 			logger.Debugf(ctx, "Writing outputs file for Hive task at [%s]", tCtx.OutputWriter().GetOutputPrefixPath())
 			err = tCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(
@@ -528,7 +528,7 @@ func WriteOutputs(ctx context.Context, tCtx core.TaskExecutionContext, currentSt
 								Scalar: &idlCore.Scalar{Value: &idlCore.Scalar_Schema{
 									Schema: &idlCore.Schema{
 										Uri:  externalLocation.String(),
-										Type: results.GetValue().GetType().GetSchema(),
+										Type: results.GetVar().GetType().GetSchema(),
 									},
 								},
 								},

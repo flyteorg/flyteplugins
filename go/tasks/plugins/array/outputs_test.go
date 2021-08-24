@@ -295,10 +295,10 @@ func TestAssembleFinalOutputs(t *testing.T) {
 		tReader.OnReadMatch(mock.Anything).Return(&core.TaskTemplate{
 			Interface: &core.TypedInterface{
 				Outputs: &core.VariableMap{
-					Variables: []*core.VariableMapFieldEntry{
+					Variables: []*core.VariableMapEntry{
 						{
-							Key: "var1",
-							Value: &core.Variable{
+							Name: "var1",
+							Var: &core.Variable{
 								Type: &core.LiteralType{Type: &core.LiteralType_Simple{Simple: core.SimpleType_INTEGER}},
 							},
 						},

@@ -114,10 +114,10 @@ func generateMockHyperparameterTuningJobTaskTemplate(id string, hpoJobCustomObj 
 		Custom: &structObj,
 		Interface: &flyteIdlCore.TypedInterface{
 			Inputs: &flyteIdlCore.VariableMap{
-				Variables: []*flyteIdlCore.VariableMapFieldEntry{
+				Variables: []*flyteIdlCore.VariableMapEntry{
 					{
-						Key: "input",
-						Value: &flyteIdlCore.Variable{
+						Name: "input",
+						Var: &flyteIdlCore.Variable{
 							Type: &flyteIdlCore.LiteralType{
 								Type: &flyteIdlCore.LiteralType_CollectionType{
 									CollectionType: &flyteIdlCore.LiteralType{Type: &flyteIdlCore.LiteralType_Simple{Simple: flyteIdlCore.SimpleType_INTEGER}},
@@ -128,10 +128,10 @@ func generateMockHyperparameterTuningJobTaskTemplate(id string, hpoJobCustomObj 
 				},
 			},
 			Outputs: &flyteIdlCore.VariableMap{
-				Variables: []*flyteIdlCore.VariableMapFieldEntry{
+				Variables: []*flyteIdlCore.VariableMapEntry{
 					{
-						Key: "output",
-						Value: &flyteIdlCore.Variable{
+						Name: "output",
+						Var: &flyteIdlCore.Variable{
 							Type: &flyteIdlCore.LiteralType{
 								Type: &flyteIdlCore.LiteralType_CollectionType{
 									CollectionType: &flyteIdlCore.LiteralType{Type: &flyteIdlCore.LiteralType_Simple{Simple: flyteIdlCore.SimpleType_INTEGER}},

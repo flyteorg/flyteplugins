@@ -450,9 +450,9 @@ func writeOutput(ctx context.Context, tCtx core.TaskExecutionContext, externalLo
 	var exists bool
 	var results *pb.Variable
 	for _, v := range taskTemplate.Interface.Outputs.Variables {
-		if v.Key == "results" {
+		if v.Name == "results" {
 			exists = true
-			results = v.Value
+			results = v.Var
 			break
 		}
 	}
