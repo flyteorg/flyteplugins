@@ -31,10 +31,16 @@ const (
 	ErrSystem errors.ErrorCode = "System"
 )
 
+// for mocking/testing purposes, and we'll override this method
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type Plugin struct {
 	metricScope    promutils.Scope
 	cfg            *Config
 	snowflakeToken string
+	client         HTTPClient
 }
 
 type ResourceWrapper struct {
@@ -119,8 +125,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,8 +149,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -168,8 +172,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	if err != nil {
 		return err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -276,6 +279,7 @@ func newSnowflakeJobTaskPlugin() webapi.PluginEntry {
 			return &Plugin{
 				metricScope:    iCtx.MetricsScope(),
 				cfg:            GetConfig(),
+				client:         &http.Client{},
 				snowflakeToken: getSnowflakeToken(),
 			}, nil
 		},

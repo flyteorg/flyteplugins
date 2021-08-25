@@ -9,7 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	mocks3 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi/mocks"
+	"github.com/flyteorg/flytestdlib/utils"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -17,22 +23,26 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestCreateTaskInfo(t *testing.T) {
-	t.Run("create task info", func(t *testing.T) {
-		taskInfo := createTaskInfo("d5493e36", "test-account")
+type MockClient struct {
+}
 
-		assert.Equal(t, 1, len(taskInfo.Logs))
-		assert.Equal(t, taskInfo.Logs[0].Uri, "https://test-account.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=d5493e36")
-		assert.Equal(t, taskInfo.Logs[0].Name, "Snowflake Console")
-	})
+var (
+	MockDo func(req *http.Request) (*http.Response, error)
+)
+
+func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
+	return MockDo(req)
 }
 
 func TestPlugin(t *testing.T) {
+	ctx := context.Background()
 	fakeSetupContext := pluginCoreMocks.SetupContext{}
 	fakeSetupContext.OnMetricsScope().Return(promutils.NewScope("test"))
+
 	plugin := Plugin{
 		metricScope:    fakeSetupContext.MetricsScope(),
 		cfg:            GetConfig(),
+		client:         &MockClient{},
 		snowflakeToken: getSnowflakeToken(),
 	}
 	t.Run("get config", func(t *testing.T) {
@@ -46,8 +56,87 @@ func TestPlugin(t *testing.T) {
 	t.Run("get ResourceRequirements", func(t *testing.T) {
 		namespace, constraints, err := plugin.ResourceRequirements(context.TODO(), nil)
 		assert.NoError(t, err)
-		assert.Equal(t, core.ResourceNamespace("default"), namespace)
+		assert.Equal(t, pluginsCore.ResourceNamespace("default"), namespace)
 		assert.Equal(t, plugin.cfg.ResourceConstraints, constraints)
+	})
+	t.Run("create snowflake query", func(t *testing.T) {
+		tCtx := &mocks.TaskExecutionContextReader{}
+		taskReader := &mocks2.TaskReader{}
+		queryInfo := QueryInfo{
+			Account:   "test-account",
+			Warehouse: "test-warehouse",
+			Schema:    "test-schema",
+			Database:  "test-database",
+			Statement: "SELECT 1",
+		}
+		st, err := utils.MarshalObjToStruct(queryInfo)
+		if !assert.NoError(t, err) {
+			assert.FailNowf(t, "expected to be able to marshal", "")
+		}
+
+		taskReader.OnRead(ctx).Return(&core.TaskTemplate{
+			Interface: &core.TypedInterface{
+				Outputs: &core.VariableMap{
+					Variables: map[string]*core.Variable{
+						"results": {
+							Type: &core.LiteralType{
+								Type: &core.LiteralType_Schema{
+									Schema: &core.SchemaType{
+										Columns: []*core.SchemaType_SchemaColumn{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Custom: st,
+		}, nil)
+
+		tCtx.OnTaskReader().Return(taskReader)
+
+		tMeta := &mocks2.TaskExecutionMetadata{}
+		tCtx.OnTaskExecutionMetadata().Return(tMeta)
+
+		tID := &mocks2.TaskExecutionID{}
+		tMeta.OnGetTaskExecutionID().Return(tID)
+
+		tID.OnGetGeneratedName().Return("generated-name")
+
+		ow := &mocks3.OutputWriter{}
+		tCtx.OnOutputWriter().Return(ow)
+		ow.OnGetOutputPrefixPath().Return("s3://another")
+		ow.OnGetRawOutputPrefix().Return("s3://another/output")
+
+		ir := &mocks3.InputReader{}
+		tCtx.OnInputReader().Return(ir)
+		ir.OnGetInputPath().Return("s3://something")
+		ir.OnGetInputPrefixPath().Return("s3://something/2")
+		ir.OnGet(ctx).Return(nil, nil)
+
+		bodyStr := `{"statementHandle":"019c06a4-0000", "message":"Statement executed successfully."}`
+		responseBody := ioutil.NopCloser(strings.NewReader(bodyStr))
+		MockDo = func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       responseBody,
+			}, nil
+		}
+
+		resourceMeta, resource, err := plugin.Create(context.TODO(), tCtx)
+		assert.NoError(t, err)
+		assert.Equal(t, &ResourceMetaWrapper{"019c06a4-0000", queryInfo.Account}, resourceMeta)
+		assert.Equal(t, &ResourceWrapper{200, "Statement executed successfully."}, resource)
+	})
+}
+
+func TestCreateTaskInfo(t *testing.T) {
+	t.Run("create task info", func(t *testing.T) {
+		taskInfo := createTaskInfo("d5493e36", "test-account")
+
+		assert.Equal(t, 1, len(taskInfo.Logs))
+		assert.Equal(t, taskInfo.Logs[0].Uri, "https://test-account.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=d5493e36")
+		assert.Equal(t, taskInfo.Logs[0].Name, "Snowflake Console")
 	})
 }
 
@@ -120,7 +209,7 @@ func TestBuildRequest(t *testing.T) {
 
 func TestBuildResponse(t *testing.T) {
 	t.Run("build http response", func(t *testing.T) {
-		bodyStr := `{"data":{"statementHandle":"019c06a4-0000","message":"Statement executed successfully."}}`
+		bodyStr := `{"statementHandle":"019c06a4-0000", "message":"Statement executed successfully."}`
 		responseBody := ioutil.NopCloser(strings.NewReader(bodyStr))
 		response := &http.Response{Body: responseBody}
 		actualData, err := buildResponse(response)
