@@ -33,10 +33,9 @@ func TestPlugin(t *testing.T) {
 	fakeSetupContext.OnMetricsScope().Return(promutils.NewScope("test"))
 
 	plugin := Plugin{
-		metricScope:    fakeSetupContext.MetricsScope(),
-		cfg:            GetConfig(),
-		client:         &MockClient{},
-		snowflakeToken: getSnowflakeToken(),
+		metricScope: fakeSetupContext.MetricsScope(),
+		cfg:         GetConfig(),
+		client:      &MockClient{},
 	}
 	t.Run("get config", func(t *testing.T) {
 		cfg := defaultConfig
@@ -90,7 +89,7 @@ func TestUnmarshalSnowflakeQueryConfig(t *testing.T) {
 
 func TestBuildRequest(t *testing.T) {
 	account := "test-account"
-	token := getSnowflakeToken()
+	token := "test-token"
 	queryID := "019e70eb-0000-278b-0000-40f100012b1a"
 	snowflakeEndpoint := ""
 	snowflakeURL := "https://" + account + ".snowflakecomputing.com/api/statements"
@@ -103,7 +102,7 @@ func TestBuildRequest(t *testing.T) {
 			Statement: "SELECT 1",
 		}
 
-		req, err := buildRequest("POST", queryInfo, snowflakeEndpoint, account, token, queryID, false)
+		req, err := buildRequest(post, queryInfo, snowflakeEndpoint, account, token, queryID, false)
 		header := http.Header{}
 		header.Add("Authorization", "Bearer "+token)
 		header.Add("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
@@ -113,21 +112,21 @@ func TestBuildRequest(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, header, req.Header)
 		assert.Equal(t, snowflakeURL+"?async=true", req.URL.String())
-		assert.Equal(t, "POST", req.Method)
+		assert.Equal(t, post, req.Method)
 	})
 	t.Run("build http request for getting a snowflake query status", func(t *testing.T) {
-		req, err := buildRequest("GET", QueryInfo{}, snowflakeEndpoint, account, token, queryID, false)
+		req, err := buildRequest(get, QueryInfo{}, snowflakeEndpoint, account, token, queryID, false)
 
 		assert.NoError(t, err)
 		assert.Equal(t, snowflakeURL+"/"+queryID, req.URL.String())
-		assert.Equal(t, "GET", req.Method)
+		assert.Equal(t, get, req.Method)
 	})
 	t.Run("build http request for deleting a snowflake query", func(t *testing.T) {
-		req, err := buildRequest("POST", QueryInfo{}, snowflakeEndpoint, account, token, queryID, true)
+		req, err := buildRequest(post, QueryInfo{}, snowflakeEndpoint, account, token, queryID, true)
 
 		assert.NoError(t, err)
 		assert.Equal(t, snowflakeURL+"/"+queryID+"/cancel", req.URL.String())
-		assert.Equal(t, "POST", req.Method)
+		assert.Equal(t, post, req.Method)
 	})
 }
 

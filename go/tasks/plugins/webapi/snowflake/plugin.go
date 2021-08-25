@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -29,6 +28,8 @@ import (
 const (
 	ErrUser   errors.ErrorCode = "User"
 	ErrSystem errors.ErrorCode = "System"
+	post                       = "POST"
+	get                        = "GET"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -37,10 +38,9 @@ type HTTPClient interface {
 }
 
 type Plugin struct {
-	metricScope    promutils.Scope
-	cfg            *Config
-	snowflakeToken string
-	client         HTTPClient
+	metricScope promutils.Scope
+	cfg         *Config
+	client      HTTPClient
 }
 
 type ResourceWrapper struct {
@@ -51,6 +51,7 @@ type ResourceWrapper struct {
 type ResourceMetaWrapper struct {
 	QueryID string
 	Account string
+	Token   string
 }
 
 func (p Plugin) GetConfig() webapi.PluginConfig {
@@ -88,6 +89,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
+	token, err := taskCtx.SecretManager().Get(ctx, p.cfg.TokenKey)
+	if err != nil {
+		return nil, nil, err
+	}
 	custom := task.GetCustom()
 	snowflakeQuery := QueryJobConfig{}
 	err = pluginUtils.UnmarshalStructToObj(custom, &snowflakeQuery)
@@ -95,10 +100,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, errors.Wrapf(ErrUser, err, "Expects a valid PrestoQuery proto in custom field.")
 	}
 	outputs, err := template.Render(ctx, []string{
-		snowflakeQuery.Account,
-		snowflakeQuery.Warehouse,
-		snowflakeQuery.Schema,
-		snowflakeQuery.Database,
 		snowflakeQuery.Statement,
 	}, template.Parameters{
 		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
@@ -111,17 +112,17 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	}
 	queryInfo := QueryInfo{
 		Account:   outputs[0],
-		Warehouse: outputs[1],
-		Schema:    outputs[2],
-		Database:  outputs[3],
-		Statement: outputs[4],
+		Warehouse: snowflakeQuery.Warehouse,
+		Schema:    snowflakeQuery.Schema,
+		Database:  snowflakeQuery.Database,
+		Statement: snowflakeQuery.Statement,
 	}
 
 	if len(queryInfo.Warehouse) == 0 {
 		queryInfo.Warehouse = p.cfg.DefaultWarehouse
 	}
-	req, err := buildRequest("POST", queryInfo, p.cfg.snowflakeEndpoint,
-		queryInfo.Account, p.snowflakeToken, "", false)
+	req, err := buildRequest(post, queryInfo, p.cfg.snowflakeEndpoint,
+		queryInfo.Account, token, "", false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -135,17 +136,25 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
+	if data["statementHandle"] == "" {
+		return nil, nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err,
+			"Unable to fetch statementHandle from http response")
+	}
+	if data["message"] == "" {
+		return nil, nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err,
+			"Unable to fetch message from http response")
+	}
 	queryID := fmt.Sprintf("%v", data["statementHandle"])
 	message := fmt.Sprintf("%v", data["message"])
 
-	return &ResourceMetaWrapper{queryID, queryInfo.Account},
+	return &ResourceMetaWrapper{queryID, queryInfo.Account, token},
 		&ResourceWrapper{StatusCode: resp.StatusCode, Message: message}, nil
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	req, err := buildRequest("GET", QueryInfo{}, p.cfg.snowflakeEndpoint,
-		exec.Account, p.snowflakeToken, exec.QueryID, false)
+	req, err := buildRequest(get, QueryInfo{}, p.cfg.snowflakeEndpoint,
+		exec.Account, exec.Token, exec.QueryID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +176,8 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 
 func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	req, err := buildRequest("POST", QueryInfo{}, p.cfg.snowflakeEndpoint,
-		exec.Account, p.snowflakeToken, exec.QueryID, true)
+	req, err := buildRequest(post, QueryInfo{}, p.cfg.snowflakeEndpoint,
+		exec.Account, exec.Token, exec.QueryID, true)
 	if err != nil {
 		return err
 	}
@@ -212,7 +221,7 @@ func buildRequest(method string, queryInfo QueryInfo, snowflakeEndpoint string, 
 	}
 
 	var data []byte
-	if method == "POST" && !isCancel {
+	if method == post && !isCancel {
 		snowflakeURL += "?async=true"
 		data = []byte(fmt.Sprintf(`{
 		  "statement": "%v",
@@ -267,20 +276,15 @@ func createTaskInfo(queryID string, account string) *core.TaskInfo {
 	}
 }
 
-func getSnowflakeToken() string {
-	return os.Getenv("SNOWFLAKE_TOKEN")
-}
-
 func newSnowflakeJobTaskPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
 		ID:                 "snowflake",
 		SupportedTaskTypes: []core.TaskType{"snowflake"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
-				metricScope:    iCtx.MetricsScope(),
-				cfg:            GetConfig(),
-				client:         &http.Client{},
-				snowflakeToken: getSnowflakeToken(),
+				metricScope: iCtx.MetricsScope(),
+				cfg:         GetConfig(),
+				client:      &http.Client{},
 			}, nil
 		},
 	}

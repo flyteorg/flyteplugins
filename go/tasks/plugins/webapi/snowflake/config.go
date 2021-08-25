@@ -40,6 +40,7 @@ var (
 			},
 		},
 		DefaultWarehouse: "COMPUTE_WH",
+		TokenKey:         "FLYTE_SNOWFLAKE_CLIENT_TOKEN",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("snowflake", &defaultConfig)
@@ -54,6 +55,8 @@ type Config struct {
 	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 
 	DefaultWarehouse string `json:"defaultWarehouse" pflag:",Defines the default warehouse to use when running on Snowflake unless overwritten by the task."`
+
+	TokenKey string `json:"snowflakeTokenKey" pflag:",Name of the key where to find Snowflake token in the secret manager."`
 
 	// snowflakeEndpoint overrides Snowflake client endpoint, only for testing
 	snowflakeEndpoint string
