@@ -447,15 +447,7 @@ func writeOutput(ctx context.Context, tCtx core.TaskExecutionContext, externalLo
 		return err
 	}
 
-	var exists bool
-	var results *pb.Variable
-	for _, v := range taskTemplate.Interface.Outputs.Variables {
-		if v.Name == "results" {
-			exists = true
-			results = v.Var
-			break
-		}
-	}
+	results, exists := utils.GetResultsVariable(taskTemplate)
 	if !exists {
 		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
 		return nil
