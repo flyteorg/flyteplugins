@@ -60,9 +60,9 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
-	workers := mpiTaskExtraArgs.GetWorkers()
+	workers := mpiTaskExtraArgs.GetWorkerReplicas()
 	launcherReplicas := mpiTaskExtraArgs.GetLauncherReplicas()
-	slots := mpiTaskExtraArgs.GetSlots()
+	slots := mpiTaskExtraArgs.GetSlotsPerWorkers()
 
 	jobSpec := mpi.MPIJobSpec{
 		SlotsPerWorker: &slots,

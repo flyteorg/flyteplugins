@@ -182,18 +182,6 @@ func GetMPILogs(name string, namespace string,
 		}
 		taskLogs = append(taskLogs, workerLog.TaskLogs...)
 	}
-	// get all worker servers logs
-	for psReplicaIndex := int32(0); psReplicaIndex < launcherReplicasCount; psReplicaIndex++ {
-		// TODO: Add launcher pod name, {POD_NAME}-launcher-HASH
-		psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-			PodName:   name + fmt.Sprintf("-launcher-%d", psReplicaIndex),
-			Namespace: namespace,
-		})
-		if err != nil {
-			return nil, err
-		}
-		taskLogs = append(taskLogs, psReplicaLog.TaskLogs...)
-	}
 
 	return taskLogs, nil
 }
