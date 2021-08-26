@@ -80,4 +80,4 @@ replace (
 
 )
 
-replace github.com/flyteorg/flyteidl => github.com/evalsocket/flyteidl v0.18.8-0.20210820144224-2cd6288a159d
+replace github.com/flyteorg/flyteidl => github.com/evalsocket/flyteidl v0.19.26-0.20210827192202-131a810ef743

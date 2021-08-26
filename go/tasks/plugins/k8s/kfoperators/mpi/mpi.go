@@ -61,13 +61,18 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
-	workers := mpiTaskExtraArgs.GetWorkers()
-	launcherReplicas := mpiTaskExtraArgs.GetLauncherReplicas()
+	workers := mpiTaskExtraArgs.GetNumWorkers()
+	launcherReplicas := mpiTaskExtraArgs.GetNumLauncherReplicas()
 	slots := mpiTaskExtraArgs.GetSlots()
+
+	workersPodSpec := podSpec.DeepCopy()
+	for k := range workersPodSpec.Containers {
+		workersPodSpec.Containers[k].Args = []string{}
+		workersPodSpec.Containers[k].Command = []string{}
+	}
 
 	jobSpec := mpi.MPIJobSpec{
 		SlotsPerWorker: &slots,
-		//MainContainer: "",
 		MPIReplicaSpecs: map[mpi.MPIReplicaType]*commonKf.ReplicaSpec{
 			mpi.MPIReplicaTypeLauncher: &commonKf.ReplicaSpec{
 				Replicas: &launcherReplicas,
@@ -79,7 +84,7 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 			mpi.MPIReplicaTypeWorker: &commonKf.ReplicaSpec{
 				Replicas: &workers,
 				Template: v1.PodTemplateSpec{
-					Spec: *podSpec,
+					Spec: *workersPodSpec,
 				},
 				RestartPolicy: commonKf.RestartPolicyNever,
 			},
@@ -103,15 +108,15 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 	app := resource.(*mpi.MPIJob)
 
-	workersCount := app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Replicas
-	launcherReplicasCount := app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeLauncher].Replicas
+	numWorkers := app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Replicas
+	numLauncherReplicas := app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeLauncher].Replicas
 
-	taskLogs, err := common.GetMPILogs(app.Name, app.Namespace,
-		*workersCount, *launcherReplicasCount)
+	taskLogs, err := common.GetLogs(common.MPITaskType, app.Name, app.Namespace,
+		*numWorkers, *numLauncherReplicas, 0)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
-	currentCondition, err := common.ExtractMPIMPICurrentCondition(app.Status.Conditions)
+	currentCondition, err := common.ExtractMPICurrentCondition(app.Status.Conditions)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}

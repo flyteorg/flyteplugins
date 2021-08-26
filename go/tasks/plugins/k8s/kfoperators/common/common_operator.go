@@ -18,11 +18,11 @@ import (
 
 const (
 	TensorflowTaskType = "tensorflow"
-	MPITaskType = "mpi"
+	MPITaskType        = "mpi"
 	PytorchTaskType    = "pytorch"
 )
 
-func ExtractMPIMPICurrentCondition(jobConditions []mpiOp.JobCondition) (mpiOp.JobCondition, error) {
+func ExtractMPICurrentCondition(jobConditions []mpiOp.JobCondition) (mpiOp.JobCondition, error) {
 	if jobConditions != nil {
 		sort.Slice(jobConditions, func(i, j int) bool {
 			return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
@@ -131,56 +131,30 @@ func GetLogs(taskType string, name string, namespace string,
 		}
 		taskLogs = append(taskLogs, workerLog.TaskLogs...)
 	}
-	// get all parameter servers logs
-	for psReplicaIndex := int32(0); psReplicaIndex < psReplicasCount; psReplicaIndex++ {
-		psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-			PodName:   name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
-			Namespace: namespace,
-		})
-		if err != nil {
-			return nil, err
+
+	if taskType != MPITaskType && taskType != PytorchTaskType {
+		// get all parameter servers logs
+		for psReplicaIndex := int32(0); psReplicaIndex < psReplicasCount; psReplicaIndex++ {
+			psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+				PodName:   name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
+				Namespace: namespace,
+			})
+			if err != nil {
+				return nil, err
+			}
+			taskLogs = append(taskLogs, psReplicaLog.TaskLogs...)
 		}
-		taskLogs = append(taskLogs, psReplicaLog.TaskLogs...)
-	}
-	// get chief worker log, and the max number of chief worker is 1
-	if chiefReplicasCount != 0 {
-		chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-			PodName:   name + fmt.Sprintf("-chiefReplica-%d", 0),
-			Namespace: namespace,
-		})
-		if err != nil {
-			return nil, err
+		// get chief worker log, and the max number of chief worker is 1
+		if chiefReplicasCount != 0 {
+			chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+				PodName:   name + fmt.Sprintf("-chiefReplica-%d", 0),
+				Namespace: namespace,
+			})
+			if err != nil {
+				return nil, err
+			}
+			taskLogs = append(taskLogs, chiefReplicaLog.TaskLogs...)
 		}
-		taskLogs = append(taskLogs, chiefReplicaLog.TaskLogs...)
-	}
-
-	return taskLogs, nil
-}
-
-func GetMPILogs(name string, namespace string,
-	workersCount int32, launcherReplicasCount int32) ([]*core.TaskLog, error) {
-	taskLogs := make([]*core.TaskLog, 0, 10)
-
-	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
-
-	if err != nil {
-		return nil, err
-	}
-
-	if logPlugin == nil {
-		return nil, nil
-	}
-
-	// get all workers log
-	for workerIndex := int32(0); workerIndex < workersCount; workerIndex++ {
-		workerLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-			PodName:   name + fmt.Sprintf("-worker-%d", workerIndex),
-			Namespace: namespace,
-		})
-		if err != nil {
-			return nil, err
-		}
-		taskLogs = append(taskLogs, workerLog.TaskLogs...)
 	}
 
 	return taskLogs, nil
