@@ -23,6 +23,41 @@ const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
 
+func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
+	// Determine node selector terms to add to node affinity
+	var nodeSelectorRequirement v1.NodeSelectorRequirement
+	if interruptible {
+		if config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement == nil {
+			return
+		}
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement
+	} else {
+		if config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement == nil {
+			return
+		}
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement
+	}
+
+	if podSpec.Affinity == nil {
+		podSpec.Affinity = &v1.Affinity{}
+	}
+	if podSpec.Affinity.NodeAffinity == nil {
+		podSpec.Affinity.NodeAffinity = &v1.NodeAffinity{}
+	}
+	if podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{}
+	}
+	if len(podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
+		nodeSelectorTerms := podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
+		for i := range nodeSelectorTerms {
+			nst := &nodeSelectorTerms[i]
+			nst.MatchExpressions = append(nst.MatchExpressions, nodeSelectorRequirement)
+		}
+	} else {
+		podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []v1.NodeSelectorTerm{v1.NodeSelectorTerm{MatchExpressions: []v1.NodeSelectorRequirement{nodeSelectorRequirement}}}
+	}
+}
+
 // Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
 func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
@@ -41,9 +76,10 @@ func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	if taskExecutionMetadata.IsInterruptible() {
 		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
-	if podSpec.Affinity == nil {
-		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity
+	if podSpec.Affinity == nil && config.GetK8sPluginConfig().DefaultAffinity != nil {
+		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity.DeepCopy()
 	}
+	ApplyInterruptibleNodeAffinity(taskExecutionMetadata.IsInterruptible(), podSpec)
 }
 
 func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
@@ -56,12 +92,17 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 		logger.Errorf(ctx, "Default Pod creation logic works for default container in the task template only.")
 		return nil, fmt.Errorf("container not specified in task template")
 	}
-	c, err := ToK8sContainer(ctx, task.GetContainer(), task.Interface, template.Parameters{
+	templateParameters := template.Parameters{
 		Task:             tCtx.TaskReader(),
 		Inputs:           tCtx.InputReader(),
 		OutputPath:       tCtx.OutputWriter(),
 		TaskExecMetadata: tCtx.TaskExecutionMetadata(),
-	})
+	}
+	c, err := ToK8sContainer(ctx, task.GetContainer(), task.Interface, templateParameters)
+	if err != nil {
+		return nil, err
+	}
+	err = AddFlyteCustomizationsToContainer(ctx, templateParameters, AssignResources, c)
 	if err != nil {
 		return nil, err
 	}
@@ -179,8 +220,40 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								// PodInitializing -> Init containers are running
 								return pluginsCore.PhaseInfoInitializing(c.LastTransitionTime.Time, pluginsCore.DefaultPhaseVersion, fmt.Sprintf("[%s]: %s", finalReason, finalMessage), &pluginsCore.TaskInfo{OccurredAt: &c.LastTransitionTime.Time}), nil
 
-							case "CreateContainerConfigError", "CreateContainerError":
-								// This happens if for instance the command to the container is incorrect, ie doesn't run
+							case "CreateContainerError":
+								// This may consist of:
+								// 1. Transient errors: e.g. failed to reserve
+								// container name, container name [...] already in use
+								// by container
+								// 2. Permanent errors: e.g. no command specified
+								// To handle both types of errors gracefully without
+								// arbitrary pattern matching in the message, we simply
+								// allow a grace period for kubelet to resolve
+								// transient issues with the container runtime. If the
+								// error persists beyond this time, the corresponding
+								// task is marked as failed.
+								// NOTE: The current implementation checks for a timeout
+								// by comparing the condition's LastTransitionTime
+								// based on the corresponding kubelet's clock with the
+								// current time based on FlytePropeller's clock. This
+								// is not ideal given that these 2 clocks are NOT
+								// synced, and therefore, only provides an
+								// approximation of the elapsed time since the last
+								// transition.
+								t := c.LastTransitionTime.Time
+								if time.Since(t) >= config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration {
+									return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
+										OccurredAt: &t,
+									}), nil
+								}
+								return pluginsCore.PhaseInfoInitializing(
+									t,
+									pluginsCore.DefaultPhaseVersion,
+									fmt.Sprintf("[%s]: %s", finalReason, finalMessage),
+									&pluginsCore.TaskInfo{OccurredAt: &t},
+								), nil
+
+							case "CreateContainerConfigError":
 								t := c.LastTransitionTime.Time
 								return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 									OccurredAt: &t,

@@ -27,7 +27,7 @@ var (
 		},
 		CoPilot: FlyteCoPilotConfig{
 			NamePrefix:           "flyte-copilot-",
-			Image:                "docker.pkg.github.com/flyteorg/flyteplugins/operator:v0.4.0",
+			Image:                "cr.flyte.org/flyteorg/flytecopilot:v0.0.9",
 			DefaultInputDataPath: "/var/flyte/inputs",
 			InputVolumeName:      "flyte-inputs",
 			DefaultOutputPath:    "/var/flyte/outputs",
@@ -40,6 +40,9 @@ var (
 		},
 		DefaultCPURequest:    defaultCPURequest,
 		DefaultMemoryRequest: defaultMemoryRequest,
+		CreateContainerErrorGracePeriod: config2.Duration{
+			Duration: time.Minute * 3,
+		},
 	}
 
 	// K8sPluginConfigSection provides a singular top level config section for all plugins.
@@ -89,7 +92,12 @@ type K8sPluginConfig struct {
 	InterruptibleTolerations []v1.Toleration `json:"interruptible-tolerations"  pflag:"-,Tolerations to be applied for interruptible pods"`
 	// Node Selector Labels for interruptible pods: Similar to InterruptibleTolerations, these node selector labels are added for pods that can tolerate
 	// eviction.
+	// Deprecated: Please use InterruptibleNodeSelectorRequirement/NonInterruptibleNodeSelectorRequirement
 	InterruptibleNodeSelector map[string]string `json:"interruptible-node-selector" pflag:"-,Defines a set of node selector labels to add to the interruptible pods."`
+	// Node Selector Requirements to be added to interruptible and non-interruptible
+	// pods respectively
+	InterruptibleNodeSelectorRequirement    *v1.NodeSelectorRequirement `json:"interruptible-node-selector-requirement" pflag:"-,Node selector requirement to add to interruptible pods"`
+	NonInterruptibleNodeSelectorRequirement *v1.NodeSelectorRequirement `json:"non-interruptible-node-selector-requirement" pflag:"-,Node selector requirement to add to non-interruptible pods"`
 
 	// ----------------------------------------------------------------------
 	// Specific tolerations that are added for certain resources. Useful for maintaining gpu resources separate in the cluster
@@ -105,6 +113,11 @@ type K8sPluginConfig struct {
 	// are kept around (potentially consuming cluster resources). This, however, will cause k8s log links to expire as
 	// soon as the resource is finalized.
 	DeleteResourceOnFinalize bool `json:"delete-resource-on-finalize" pflag:",Instructs the system to delete the resource on finalize. This ensures that no resources are kept around (potentially consuming cluster resources). This, however, will cause k8s log links to expire as soon as the resource is finalized."`
+
+	// Time to wait for transient CreateContainerError errors to be resolved. If the
+	// error persists past this grace period, it will be inferred to be a permanent
+	// one, and the corresponding task marked as failed
+	CreateContainerErrorGracePeriod config2.Duration `json:"create-container-error-grace-period" pflag:"-,Time to wait for transient CreateContainerError errors to be resolved."`
 }
 
 type FlyteCoPilotConfig struct {

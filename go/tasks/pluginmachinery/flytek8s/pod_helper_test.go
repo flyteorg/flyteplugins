@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+	"time"
 
 	config1 "github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/config/viper"
@@ -101,8 +102,93 @@ func TestPodSetup(t *testing.T) {
 	err := configAccessor.UpdateConfig(context.TODO())
 	assert.NoError(t, err)
 
+	t.Run("ApplyInterruptibleNodeAffinity", TestApplyInterruptibleNodeAffinity)
 	t.Run("UpdatePod", updatePod)
 	t.Run("ToK8sPodInterruptible", toK8sPodInterruptible)
+}
+
+func TestApplyInterruptibleNodeAffinity(t *testing.T) {
+	t.Run("WithInterruptibleNodeSelectorRequirement", func(t *testing.T) {
+		podSpec := v1.PodSpec{}
+		ApplyInterruptibleNodeAffinity(true, &podSpec)
+		assert.EqualValues(
+			t,
+			[]v1.NodeSelectorTerm{
+				v1.NodeSelectorTerm{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						v1.NodeSelectorRequirement{
+							Key:      "x/interruptible",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"true"},
+						},
+					},
+				},
+			},
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+		)
+	})
+
+	t.Run("WithNonInterruptibleNodeSelectorRequirement", func(t *testing.T) {
+		podSpec := v1.PodSpec{}
+		ApplyInterruptibleNodeAffinity(false, &podSpec)
+		assert.EqualValues(
+			t,
+			[]v1.NodeSelectorTerm{
+				v1.NodeSelectorTerm{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						v1.NodeSelectorRequirement{
+							Key:      "x/interruptible",
+							Operator: v1.NodeSelectorOpDoesNotExist,
+						},
+					},
+				},
+			},
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+		)
+	})
+
+	t.Run("WithExistingAffinityWithInterruptibleNodeSelectorRequirement", func(t *testing.T) {
+		podSpec := v1.PodSpec{
+			Affinity: &v1.Affinity{
+				NodeAffinity: &v1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+						NodeSelectorTerms: []v1.NodeSelectorTerm{
+							v1.NodeSelectorTerm{
+								MatchExpressions: []v1.NodeSelectorRequirement{
+									v1.NodeSelectorRequirement{
+										Key:      "node selector requirement",
+										Operator: v1.NodeSelectorOpIn,
+										Values:   []string{"exists"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		ApplyInterruptibleNodeAffinity(true, &podSpec)
+		assert.EqualValues(
+			t,
+			[]v1.NodeSelectorTerm{
+				v1.NodeSelectorTerm{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						v1.NodeSelectorRequirement{
+							Key:      "node selector requirement",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"exists"},
+						},
+						v1.NodeSelectorRequirement{
+							Key:      "x/interruptible",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"true"},
+						},
+					},
+				},
+			},
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+		)
+	})
 }
 
 func updatePod(t *testing.T) {
@@ -150,6 +236,73 @@ func updatePod(t *testing.T) {
 		"x/interruptible": "true",
 		"user":            "also configured",
 	}, pod.Spec.NodeSelector)
+	assert.EqualValues(
+		t,
+		[]v1.NodeSelectorTerm{
+			v1.NodeSelectorTerm{
+				MatchExpressions: []v1.NodeSelectorRequirement{
+					v1.NodeSelectorRequirement{
+						Key:      "x/interruptible",
+						Operator: v1.NodeSelectorOpIn,
+						Values:   []string{"true"},
+					},
+				},
+			},
+		},
+		pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+	)
+}
+
+func TestUpdatePodWithDefaultAffinityAndInterruptibleNodeSelectorRequirement(t *testing.T) {
+	taskExecutionMetadata := dummyTaskExecutionMetadata(&v1.ResourceRequirements{})
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		DefaultAffinity: &v1.Affinity{
+			NodeAffinity: &v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+					NodeSelectorTerms: []v1.NodeSelectorTerm{
+						v1.NodeSelectorTerm{
+							MatchExpressions: []v1.NodeSelectorRequirement{
+								v1.NodeSelectorRequirement{
+									Key:      "default node affinity",
+									Operator: v1.NodeSelectorOpIn,
+									Values:   []string{"exists"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		InterruptibleNodeSelectorRequirement: &v1.NodeSelectorRequirement{
+			Key:      "x/interruptible",
+			Operator: v1.NodeSelectorOpIn,
+			Values:   []string{"true"},
+		},
+	}))
+	for i := 0; i < 3; i++ {
+		podSpec := v1.PodSpec{}
+		UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{}, &podSpec)
+		assert.EqualValues(
+			t,
+			[]v1.NodeSelectorTerm{
+				v1.NodeSelectorTerm{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						v1.NodeSelectorRequirement{
+							Key:      "default node affinity",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"exists"},
+						},
+						v1.NodeSelectorRequirement{
+							Key:      "x/interruptible",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"true"},
+						},
+					},
+				},
+			},
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+		)
+	}
 }
 
 func toK8sPodInterruptible(t *testing.T) {
@@ -174,6 +327,21 @@ func toK8sPodInterruptible(t *testing.T) {
 	assert.Equal(t, "interruptible", p.Tolerations[1].Value)
 	assert.Equal(t, 1, len(p.NodeSelector))
 	assert.Equal(t, "true", p.NodeSelector["x/interruptible"])
+	assert.EqualValues(
+		t,
+		[]v1.NodeSelectorTerm{
+			v1.NodeSelectorTerm{
+				MatchExpressions: []v1.NodeSelectorRequirement{
+					v1.NodeSelectorRequirement{
+						Key:      "x/interruptible",
+						Operator: v1.NodeSelectorOpIn,
+						Values:   []string{"true"},
+					},
+				},
+			},
+		},
+		p.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+	)
 }
 
 func TestToK8sPod(t *testing.T) {
@@ -197,8 +365,10 @@ func TestToK8sPod(t *testing.T) {
 		ResourceTolerations: map[v1.ResourceName][]v1.Toleration{
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
-		}}),
-	)
+		},
+		DefaultCPURequest:    "1024m",
+		DefaultMemoryRequest: "1024Mi",
+	}))
 
 	op := &pluginsIOMock.OutputFilePaths{}
 	op.On("GetOutputPrefixPath").Return(storage.DataReference(""))
@@ -262,7 +432,9 @@ func TestToK8sPod(t *testing.T) {
 			DefaultNodeSelector: map[string]string{
 				"nodeId": "123",
 			},
-			SchedulerName: "myScheduler",
+			SchedulerName:        "myScheduler",
+			DefaultCPURequest:    "1024m",
+			DefaultMemoryRequest: "1024Mi",
 		}))
 
 		p, err := ToK8sPodSpec(ctx, x)
@@ -275,6 +447,11 @@ func TestToK8sPod(t *testing.T) {
 }
 
 func TestDemystifyPending(t *testing.T) {
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		CreateContainerErrorGracePeriod: config1.Duration{
+			Duration: time.Minute * 3,
+		},
+	}))
 
 	t.Run("PodNotScheduled", func(t *testing.T) {
 		s := v1.PodStatus{
@@ -490,19 +667,40 @@ func TestDemystifyPending(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhasePermanentFailure, taskStatus.Phase())
 	})
 
-	t.Run("CreateContainerError", func(t *testing.T) {
-		s.ContainerStatuses = []v1.ContainerStatus{
+	t.Run("CreateContainerErrorWithinGracePeriod", func(t *testing.T) {
+		s2 := *s.DeepCopy()
+		s2.Conditions[0].LastTransitionTime = metaV1.Now()
+		s2.ContainerStatuses = []v1.ContainerStatus{
 			{
 				Ready: false,
 				State: v1.ContainerState{
 					Waiting: &v1.ContainerStateWaiting{
 						Reason:  "CreateContainerError",
-						Message: "this an error",
+						Message: "this is a transient error",
 					},
 				},
 			},
 		}
-		taskStatus, err := DemystifyPending(s)
+		taskStatus, err := DemystifyPending(s2)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginsCore.PhaseInitializing, taskStatus.Phase())
+	})
+
+	t.Run("CreateContainerErrorOutsideGracePeriod", func(t *testing.T) {
+		s2 := *s.DeepCopy()
+		s2.Conditions[0].LastTransitionTime.Time = metaV1.Now().Add(-config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)
+		s2.ContainerStatuses = []v1.ContainerStatus{
+			{
+				Ready: false,
+				State: v1.ContainerState{
+					Waiting: &v1.ContainerStateWaiting{
+						Reason:  "CreateContainerError",
+						Message: "this a permanent error",
+					},
+				},
+			},
+		}
+		taskStatus, err := DemystifyPending(s2)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhasePermanentFailure, taskStatus.Phase())
 	})

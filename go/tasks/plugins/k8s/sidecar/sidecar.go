@@ -34,44 +34,29 @@ func validateAndFinalizePod(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, pod k8sv1.Pod) (*k8sv1.Pod, error) {
 	var hasPrimaryContainer bool
 
-	finalizedContainers := make([]k8sv1.Container, len(pod.Spec.Containers))
 	resReqs := make([]k8sv1.ResourceRequirements, 0, len(pod.Spec.Containers))
 	for index, container := range pod.Spec.Containers {
+		var resourceMode = flytek8s.LeaveResourcesUnmodified
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
+			resourceMode = flytek8s.MergeExistingResources
 		}
-		modifiedCommand, err := template.Render(ctx, container.Command, template.Parameters{
+		templateParameters := template.Parameters{
 			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
 			Inputs:           taskCtx.InputReader(),
 			OutputPath:       taskCtx.OutputWriter(),
 			Task:             taskCtx.TaskReader(),
-		})
+		}
+		err := flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &pod.Spec.Containers[index])
 		if err != nil {
 			return nil, err
 		}
-		container.Command = modifiedCommand
-
-		modifiedArgs, err := template.Render(ctx, container.Args, template.Parameters{
-			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
-			Inputs:           taskCtx.InputReader(),
-			OutputPath:       taskCtx.OutputWriter(),
-			Task:             taskCtx.TaskReader(),
-		})
-		if err != nil {
-			return nil, err
-		}
-		container.Args = modifiedArgs
-		container.Env = flytek8s.DecorateEnvVars(ctx, container.Env, taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
-		resources := flytek8s.ApplyResourceOverrides(ctx, container.Resources)
-		resReqs = append(resReqs, *resources)
-		finalizedContainers[index] = container
 	}
 	if !hasPrimaryContainer {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
 			"invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
 
 	}
-	pod.Spec.Containers = finalizedContainers
 	flytek8s.UpdatePod(taskCtx.TaskExecutionMetadata(), resReqs, &pod.Spec)
 	return &pod, nil
 }
