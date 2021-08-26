@@ -66,9 +66,9 @@ var (
 
 func dummyMPICustomObj(workers int32, launcher int32, slots int32) *plugins.DistributedMPITrainingTask {
 	return &plugins.DistributedMPITrainingTask{
-		Workers:       workers,
-		LauncherReplicas:    launcher,
-		Slots: slots,
+		Workers:          workers,
+		LauncherReplicas: launcher,
+		Slots:            slots,
 	}
 }
 
@@ -349,11 +349,9 @@ func TestGetLogs(t *testing.T) {
 	mpiJob := dummyMPIJobResource(mpiResourceHandler, workers, launcher, slots, commonKf.JobRunning)
 	jobLogs, err := common.GetMPILogs(mpiJob.Name, mpiJob.Namespace, workers, launcher)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(jobLogs))
+	assert.Equal(t, 2, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=mpi-namespace", jobNamespace, jobName), jobLogs[0].Uri)
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-1/pod?namespace=mpi-namespace", jobNamespace, jobName), jobLogs[1].Uri
-	// TODO: Update launcher pod name
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-launcher-0/pod?namespace=mpi-namespace", jobNamespace, jobName), jobLogs[2].Uri)
+	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-1/pod?namespace=mpi-namespace", jobNamespace, jobName), jobLogs[1].Uri)
 }
 
 func TestGetProperties(t *testing.T) {

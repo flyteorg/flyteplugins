@@ -2,6 +2,8 @@ package mpi
 
 import (
 	"context"
+	"time"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -16,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 type mpiOperatorResourceHandler struct {
@@ -60,9 +61,9 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
-	workers := mpiTaskExtraArgs.GetWorkerReplicas()
+	workers := mpiTaskExtraArgs.GetWorkers()
 	launcherReplicas := mpiTaskExtraArgs.GetLauncherReplicas()
-	slots := mpiTaskExtraArgs.GetSlotsPerWorkers()
+	slots := mpiTaskExtraArgs.GetSlots()
 
 	jobSpec := mpi.MPIJobSpec{
 		SlotsPerWorker: &slots,
