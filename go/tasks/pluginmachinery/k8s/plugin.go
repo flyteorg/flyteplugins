@@ -51,6 +51,31 @@ type PluginProperties struct {
 	// override that behavior unless the resource that gets created for this plugin does not consume resources (cluster's
 	// cpu/memory... etc. or external resources) once the plugin's Plugin.GetTaskPhase() returns a terminal phase.
 	DisableDeleteResourceOnFinalize bool
+	// Optionally specifies an override for the default OnAbort behavior (deleting the underlying resource).
+	AbortOverride PluginAbortOverride
+}
+
+type PluginAbortOverride interface {
+	OnAbort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, resource client.Object) (behavior AbortBehavior, err error)
+}
+
+type AbortBehavior struct {
+	// Optional override to the default k8s Resource being acted on.
+	Resource       client.Object
+	DeleteResource bool
+	Update         *UpdateResourceOperation
+	Patch          *PatchResourceOperation
+	// Determines whether to delete the Resource if the specified operations return an error.
+	DeleteOnErr    bool
+}
+
+type PatchResourceOperation struct {
+	Patch     client.Patch
+	Options []client.PatchOption
+}
+
+type UpdateResourceOperation struct {
+	Options []client.UpdateOption
 }
 
 // Special context passed in to plugins when checking task phase
@@ -90,9 +115,4 @@ type Plugin interface {
 
 	// Properties desired by the plugin
 	GetProperties() PluginProperties
-}
-
-// Defines functions to clean up the resource object after the task has been completed or cancelled.
-type PluginCleanupPolicy interface {
-	OnAbort(ctx context.Context, kubeClient client.Client, resource client.Object) error
 }
