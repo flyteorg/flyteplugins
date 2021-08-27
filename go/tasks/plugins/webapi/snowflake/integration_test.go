@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	pluginsIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -43,19 +46,19 @@ func TestEndToEnd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("SELECT 1", func(t *testing.T) {
-		queryJobConfig := QueryJobConfig{
+		snowflakeQuery := pluginsIdl.SnowflakeQuery{
 			Account:   "test-account",
 			Warehouse: "test-warehouse",
 			Schema:    "test-schema",
 			Database:  "test-database",
-			Statement: "SELECT 1",
 		}
 
 		inputs, _ := coreutils.MakeLiteralMap(map[string]interface{}{"x": 1})
-		custom, _ := pluginUtils.MarshalObjToStruct(queryJobConfig)
+		custom, _ := pluginUtils.MarshalObjToStruct(snowflakeQuery)
 		template := flyteIdlCore.TaskTemplate{
 			Type:   "snowflake",
 			Custom: custom,
+			Target: &coreIdl.TaskTemplate_Sql{Sql: &coreIdl.Sql{Statement: "SELECT 1", Dialect: coreIdl.Sql_ANSI}},
 		}
 
 		phase := tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)

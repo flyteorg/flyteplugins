@@ -11,6 +11,7 @@ import (
 	"time"
 
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	pluginsIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
@@ -66,15 +67,6 @@ type QueryInfo struct {
 	Statement string
 }
 
-// TODO: Add QueryJobConfig in Flyteidl
-type QueryJobConfig struct {
-	Account   string `json:"account"`
-	Warehouse string `json:"warehouse"`
-	Schema    string `json:"schema"`
-	Database  string `json:"database"`
-	Statement string `json:"statement"`
-}
-
 func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionContextReader) (
 	namespace core.ResourceNamespace, constraints core.ResourceConstraintsSpec, err error) {
 
@@ -94,13 +86,13 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 	custom := task.GetCustom()
-	snowflakeQuery := QueryJobConfig{}
+	snowflakeQuery := pluginsIdl.SnowflakeQuery{}
 	err = pluginUtils.UnmarshalStructToObj(custom, &snowflakeQuery)
 	if err != nil {
 		return nil, nil, errors.Wrapf(ErrUser, err, "Expects a valid PrestoQuery proto in custom field.")
 	}
 	outputs, err := template.Render(ctx, []string{
-		snowflakeQuery.Statement,
+		task.GetSql().Statement,
 	}, template.Parameters{
 		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
 		Inputs:           taskCtx.InputReader(),
@@ -111,18 +103,18 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 	queryInfo := QueryInfo{
-		Account:   outputs[0],
+		Account:   snowflakeQuery.Account,
 		Warehouse: snowflakeQuery.Warehouse,
 		Schema:    snowflakeQuery.Schema,
 		Database:  snowflakeQuery.Database,
-		Statement: snowflakeQuery.Statement,
+		Statement: outputs[0],
 	}
 
 	if len(queryInfo.Warehouse) == 0 {
 		queryInfo.Warehouse = p.cfg.DefaultWarehouse
 	}
 	req, err := buildRequest(post, queryInfo, p.cfg.snowflakeEndpoint,
-		queryInfo.Account, token, "", false)
+		snowflakeQuery.Account, token, "", false)
 	if err != nil {
 		return nil, nil, err
 	}

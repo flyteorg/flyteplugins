@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	pluginsIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -70,20 +72,18 @@ func TestUnmarshalSnowflakeQueryConfig(t *testing.T) {
 			"Warehouse": structpb.NewStringValue("test-warehouse"),
 			"Schema":    structpb.NewStringValue("test-schema"),
 			"Database":  structpb.NewStringValue("test-database"),
-			"Statement": structpb.NewStringValue("SELECT 1"),
 		},
 	}
 
-	prestoQuery := QueryJobConfig{}
-	err := pluginUtils.UnmarshalStructToObj(&custom, &prestoQuery)
+	snowflakeQuery := pluginsIdl.SnowflakeQuery{}
+	err := pluginUtils.UnmarshalStructToObj(&custom, &snowflakeQuery)
 	assert.NoError(t, err)
 
-	assert.Equal(t, prestoQuery, QueryJobConfig{
+	assert.Equal(t, snowflakeQuery, pluginsIdl.SnowflakeQuery{
 		Account:   "test-account",
 		Warehouse: "test-warehouse",
 		Schema:    "test-schema",
 		Database:  "test-database",
-		Statement: "SELECT 1",
 	})
 }
 
