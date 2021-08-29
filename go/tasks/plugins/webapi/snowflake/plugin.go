@@ -11,11 +11,10 @@ import (
 	"time"
 
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	pluginsIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
-	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -27,10 +26,9 @@ import (
 )
 
 const (
-	ErrUser   errors.ErrorCode = "User"
 	ErrSystem errors.ErrorCode = "System"
-	post                       = "POST"
-	get                        = "GET"
+	post      string           = "POST"
+	get       string           = "GET"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -85,12 +83,8 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-	custom := task.GetCustom()
-	snowflakeQuery := pluginsIdl.SnowflakeQuery{}
-	err = pluginUtils.UnmarshalStructToObj(custom, &snowflakeQuery)
-	if err != nil {
-		return nil, nil, errors.Wrapf(ErrUser, err, "Expects a valid PrestoQuery proto in custom field.")
-	}
+	config := task.GetConfig()
+
 	outputs, err := template.Render(ctx, []string{
 		task.GetSql().Statement,
 	}, template.Parameters{
@@ -103,18 +97,24 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 	queryInfo := QueryInfo{
-		Account:   snowflakeQuery.Account,
-		Warehouse: snowflakeQuery.Warehouse,
-		Schema:    snowflakeQuery.Schema,
-		Database:  snowflakeQuery.Database,
+		Account:   config["account"],
+		Warehouse: config["warehouse"],
+		Schema:    config["schema"],
+		Database:  config["database"],
 		Statement: outputs[0],
 	}
 
 	if len(queryInfo.Warehouse) == 0 {
 		queryInfo.Warehouse = p.cfg.DefaultWarehouse
 	}
+	if len(queryInfo.Account) == 0 {
+		return nil, nil, errors.Errorf(errors2.BadTaskSpecification, "Account must not be empty.")
+	}
+	if len(queryInfo.Database) == 0 {
+		return nil, nil, errors.Errorf(errors2.BadTaskSpecification, "Database must not be empty.")
+	}
 	req, err := buildRequest(post, queryInfo, p.cfg.snowflakeEndpoint,
-		snowflakeQuery.Account, token, "", false)
+		config["account"], token, "", false)
 	if err != nil {
 		return nil, nil, err
 	}

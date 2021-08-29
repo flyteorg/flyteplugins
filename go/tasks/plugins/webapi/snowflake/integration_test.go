@@ -8,15 +8,12 @@ import (
 	"testing"
 	"time"
 
-	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	pluginsIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
-	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteplugins/tests"
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils"
@@ -46,18 +43,16 @@ func TestEndToEnd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("SELECT 1", func(t *testing.T) {
-		snowflakeQuery := pluginsIdl.SnowflakeQuery{
-			Account:   "test-account",
-			Warehouse: "test-warehouse",
-			Schema:    "test-schema",
-			Database:  "test-database",
-		}
+		config := make(map[string]string)
+		config["database"] = "my-database"
+		config["account"] = "snowflake"
+		config["schema"] = "my-schema"
+		config["warehouse"] = "my-warehouse"
 
 		inputs, _ := coreutils.MakeLiteralMap(map[string]interface{}{"x": 1})
-		custom, _ := pluginUtils.MarshalObjToStruct(snowflakeQuery)
 		template := flyteIdlCore.TaskTemplate{
 			Type:   "snowflake",
-			Custom: custom,
+			Config: config,
 			Target: &coreIdl.TaskTemplate_Sql{Sql: &coreIdl.Sql{Statement: "SELECT 1", Dialect: coreIdl.Sql_ANSI}},
 		}
 
