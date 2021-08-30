@@ -51,8 +51,6 @@ type PluginProperties struct {
 	// override that behavior unless the resource that gets created for this plugin does not consume resources (cluster's
 	// cpu/memory... etc. or external resources) once the plugin's Plugin.GetTaskPhase() returns a terminal phase.
 	DisableDeleteResourceOnFinalize bool
-	// Optionally specifies an override for the default OnAbort behavior (deleting the underlying resource).
-	AbortOverride PluginAbortOverride
 }
 
 type PluginAbortOverride interface {
