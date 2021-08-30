@@ -53,29 +53,6 @@ type PluginProperties struct {
 	DisableDeleteResourceOnFinalize bool
 }
 
-type PluginAbortOverride interface {
-	OnAbort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, resource client.Object) (behavior AbortBehavior, err error)
-}
-
-type AbortBehavior struct {
-	// Optional override to the default k8s Resource being acted on.
-	Resource       client.Object
-	DeleteResource bool
-	Update         *UpdateResourceOperation
-	Patch          *PatchResourceOperation
-	// Determines whether to delete the Resource if the specified operations return an error.
-	DeleteOnErr    bool
-}
-
-type PatchResourceOperation struct {
-	Patch     client.Patch
-	Options []client.PatchOption
-}
-
-type UpdateResourceOperation struct {
-	Options []client.UpdateOption
-}
-
 // Special context passed in to plugins when checking task phase
 type PluginContext interface {
 	// Returns a TaskReader, to retrieve task details
@@ -113,4 +90,69 @@ type Plugin interface {
 
 	// Properties desired by the plugin
 	GetProperties() PluginProperties
+}
+
+type PluginAbortOverride interface {
+	OnAbort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, resource client.Object) (behavior AbortBehavior, err error)
+}
+
+type AbortBehavior struct {
+	// Optional override to the default k8s Resource being acted on.
+	Resource       client.Object
+	DeleteResource bool
+	Update         *UpdateResourceOperation
+	Patch          *PatchResourceOperation
+	// Determines whether to delete the Resource if the specified operations return an error.
+	DeleteOnErr    bool
+}
+
+type PatchResourceOperation struct {
+	Patch     client.Patch
+	Options []client.PatchOption
+}
+
+type UpdateResourceOperation struct {
+	Options []client.UpdateOption
+}
+
+func AbortBehaviorPatchDefaultResource(patchOperation PatchResourceOperation, deleteOnErr bool) AbortBehavior {
+	return AbortBehaviorPatch(patchOperation, deleteOnErr, nil)
+}
+
+func AbortBehaviorPatch(patchOperation PatchResourceOperation, deleteOnErr bool, resource client.Object) AbortBehavior {
+	return AbortBehavior {
+		Resource: resource,
+		DeleteResource: false,
+		Update: nil,
+		Patch: &patchOperation,
+		DeleteOnErr: deleteOnErr,
+	}
+}
+
+func AbortBehaviorUpdateDefaultResource(updateOperation UpdateResourceOperation, deleteOnErr bool) AbortBehavior {
+	return AbortBehaviorUpdate(updateOperation, deleteOnErr, nil)
+}
+
+func AbortBehaviorUpdate(updateOperation UpdateResourceOperation, deleteOnErr bool, resource client.Object) AbortBehavior {
+	return AbortBehavior {
+		Resource: resource,
+		DeleteResource: false,
+		Update: &updateOperation,
+		Patch: nil,
+		DeleteOnErr: deleteOnErr,
+	}
+}
+
+func AbortBehaviorDeleteDefaultResource() AbortBehavior {
+	return AbortBehaviorDelete(nil)
+}
+
+func AbortBehaviorDelete(resource client.Object) AbortBehavior {
+	return AbortBehavior {
+		Resource: resource,
+		DeleteResource: true,
+		Update: nil,
+		Patch: nil,
+		DeleteOnErr: false,
+	}
 }
