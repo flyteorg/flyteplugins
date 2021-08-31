@@ -9,14 +9,10 @@ import (
 	"testing"
 	"time"
 
-	pluginsIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
-	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type MockClient struct {
@@ -62,28 +58,6 @@ func TestCreateTaskInfo(t *testing.T) {
 		assert.Equal(t, 1, len(taskInfo.Logs))
 		assert.Equal(t, taskInfo.Logs[0].Uri, "https://test-account.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=d5493e36")
 		assert.Equal(t, taskInfo.Logs[0].Name, "Snowflake Console")
-	})
-}
-
-func TestUnmarshalSnowflakeQueryConfig(t *testing.T) {
-	custom := structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			"Account":   structpb.NewStringValue("test-account"),
-			"Warehouse": structpb.NewStringValue("test-warehouse"),
-			"Schema":    structpb.NewStringValue("test-schema"),
-			"Database":  structpb.NewStringValue("test-database"),
-		},
-	}
-
-	snowflakeQuery := pluginsIdl.SnowflakeQuery{}
-	err := pluginUtils.UnmarshalStructToObj(&custom, &snowflakeQuery)
-	assert.NoError(t, err)
-
-	assert.Equal(t, snowflakeQuery, pluginsIdl.SnowflakeQuery{
-		Account:   "test-account",
-		Warehouse: "test-warehouse",
-		Schema:    "test-schema",
-		Database:  "test-database",
 	})
 }
 
