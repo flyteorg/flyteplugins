@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"testing"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestGetResultsVariable(t *testing.T) {
