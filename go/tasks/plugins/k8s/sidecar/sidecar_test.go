@@ -34,6 +34,10 @@ import (
 const ResourceNvidiaGPU = "nvidia.com/gpu"
 
 var resourceRequirements = &v1.ResourceRequirements{
+	Requests: v1.ResourceList{
+		"cpu":    resource.MustParse("10"),
+		"memory": resource.MustParse("1000Mi"),
+	},
 	Limits: v1.ResourceList{
 		v1.ResourceCPU:              resource.MustParse("2048m"),
 		v1.ResourceEphemeralStorage: resource.MustParse("100M"),

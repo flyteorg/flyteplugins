@@ -163,6 +163,8 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 
 	if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
 		res := parameters.TaskExecMetadata.GetOverrides().GetResources()
+		logger.Warnf(ctx, "customizing flyte container using mode [%+v], with resources [%+v] and container resources [%+v]",
+			mode, res, container.Resources)
 		switch mode {
 		case AssignResources:
 			if res = ApplyResourceOverrides(ctx, *res); res != nil {
