@@ -122,10 +122,7 @@ type UpdateResourceOperation struct {
 
 // AbortBehavior that patches the default resource
 func AbortBehaviorPatchDefaultResource(patchOperation PatchResourceOperation, deleteOnErr bool) AbortBehavior {
-	return AbortBehavior {
-		Patch: &patchOperation,
-		DeleteOnErr: deleteOnErr,
-	}
+	return AbortBehaviorPatch(patchOperation, deleteOnErr, nil)
 }
 
 // AbortBehavior that patches the specified resource
@@ -139,10 +136,7 @@ func AbortBehaviorPatch(patchOperation PatchResourceOperation, deleteOnErr bool,
 
 // AbortBehavior that updates the default resource
 func AbortBehaviorUpdateDefaultResource(updateOperation UpdateResourceOperation, deleteOnErr bool) AbortBehavior {
-	return AbortBehavior {
-		Update: &updateOperation,
-		DeleteOnErr: deleteOnErr,
-	}
+	return AbortBehaviorUpdate(updateOperation, deleteOnErr, nil)
 }
 
 // AbortBehavior that updates the specified resource
@@ -156,9 +150,7 @@ func AbortBehaviorUpdate(updateOperation UpdateResourceOperation, deleteOnErr bo
 
 // AbortBehavior that deletes the default resource
 func AbortBehaviorDeleteDefaultResource() AbortBehavior {
-	return AbortBehavior {
-		DeleteResource: true,
-	}
+	return AbortBehaviorDelete(nil)
 }
 
 // AbortBehavior that deletes the specified resource
