@@ -97,7 +97,7 @@ type PluginAbortOverride interface {
 	OnAbort(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, resource client.Object) (behavior AbortBehavior, err error)
 }
 
-// Defines the overriden OnAbort behavior. The resource (by default, the underlying resource, although this
+// Defines the overridden OnAbort behavior. The resource (by default, the underlying resource, although this
 // can be overridden) can be either patched, updated, or deleted.
 type AbortBehavior struct {
 	// Optional override to the default k8s Resource being acted on.
@@ -106,12 +106,12 @@ type AbortBehavior struct {
 	Update         *UpdateResourceOperation
 	Patch          *PatchResourceOperation
 	// Determines whether to delete the Resource if the specified operations return an error
-	DeleteOnErr    bool
+	DeleteOnErr bool
 }
 
 // Defines a Patch operation on a Resource
 type PatchResourceOperation struct {
-	Patch     client.Patch
+	Patch   client.Patch
 	Options []client.PatchOption
 }
 
@@ -127,9 +127,9 @@ func AbortBehaviorPatchDefaultResource(patchOperation PatchResourceOperation, de
 
 // AbortBehavior that patches the specified resource
 func AbortBehaviorPatch(patchOperation PatchResourceOperation, deleteOnErr bool, resource client.Object) AbortBehavior {
-	return AbortBehavior {
-		Resource: resource,
-		Patch: &patchOperation,
+	return AbortBehavior{
+		Resource:    resource,
+		Patch:       &patchOperation,
 		DeleteOnErr: deleteOnErr,
 	}
 }
@@ -141,9 +141,9 @@ func AbortBehaviorUpdateDefaultResource(updateOperation UpdateResourceOperation,
 
 // AbortBehavior that updates the specified resource
 func AbortBehaviorUpdate(updateOperation UpdateResourceOperation, deleteOnErr bool, resource client.Object) AbortBehavior {
-	return AbortBehavior {
-		Resource: resource,
-		Update: &updateOperation,
+	return AbortBehavior{
+		Resource:    resource,
+		Update:      &updateOperation,
 		DeleteOnErr: deleteOnErr,
 	}
 }
@@ -155,8 +155,8 @@ func AbortBehaviorDeleteDefaultResource() AbortBehavior {
 
 // AbortBehavior that deletes the specified resource
 func AbortBehaviorDelete(resource client.Object) AbortBehavior {
-	return AbortBehavior {
-		Resource: resource,
+	return AbortBehavior{
+		Resource:       resource,
 		DeleteResource: true,
 	}
 }
