@@ -172,8 +172,8 @@ func TestMergeResources_EmptyIn(t *testing.T) {
 		},
 	}
 	outResources := expectedResources.DeepCopy()
-	MergeResources(v1.ResourceRequirements{}, outResources)
-	assert.EqualValues(t, *outResources, expectedResources)
+	merged := MergeResources(v1.ResourceRequirements{}, *outResources)
+	assert.EqualValues(t, merged, expectedResources)
 }
 
 func TestMergeResources_EmptyOut(t *testing.T) {
@@ -191,8 +191,8 @@ func TestMergeResources_EmptyOut(t *testing.T) {
 		},
 	}
 	outResources := v1.ResourceRequirements{}
-	MergeResources(expectedResources, &outResources)
-	assert.EqualValues(t, outResources, expectedResources)
+	merged := MergeResources(expectedResources, outResources)
+	assert.EqualValues(t, merged, expectedResources)
 }
 
 func TestMergeResources_PartialRequirements(t *testing.T) {
@@ -204,8 +204,8 @@ func TestMergeResources_PartialRequirements(t *testing.T) {
 	}
 	inResources := v1.ResourceRequirements{Requests: resourceList}
 	outResources := v1.ResourceRequirements{Limits: resourceList}
-	MergeResources(inResources, &outResources)
-	assert.EqualValues(t, outResources, v1.ResourceRequirements{
+	merged := MergeResources(inResources, outResources)
+	assert.EqualValues(t, merged, v1.ResourceRequirements{
 		Requests: resourceList,
 		Limits:   resourceList,
 	})
@@ -231,8 +231,8 @@ func TestMergeResources_PartialResourceKeys(t *testing.T) {
 		Requests: resourceList2,
 		Limits:   resourceList1,
 	}
-	MergeResources(inResources, &outResources)
-	assert.EqualValues(t, outResources, v1.ResourceRequirements{
+	merged := MergeResources(inResources, outResources)
+	assert.EqualValues(t, merged, v1.ResourceRequirements{
 		Requests: expectedResourceList,
 		Limits:   expectedResourceList,
 	})
@@ -261,15 +261,16 @@ func TestToK8sContainer(t *testing.T) {
 
 	mockTaskExecMetadata := mocks.TaskExecutionMetadata{}
 	mockTaskOverrides := mocks.TaskOverrides{}
-	mockTaskOverrides.OnGetResources().Return(&v1.ResourceRequirements{
-		Limits: v1.ResourceList{
-			v1.ResourceEphemeralStorage: resource.MustParse("1024Mi"),
-		},
-	})
+	mockTaskOverrides.OnGetResources().Return(nil)
 	mockTaskExecMetadata.OnGetOverrides().Return(&mockTaskOverrides)
 	mockTaskExecutionID := mocks.TaskExecutionID{}
 	mockTaskExecutionID.OnGetGeneratedName().Return("gen_name")
 	mockTaskExecMetadata.OnGetTaskExecutionID().Return(&mockTaskExecutionID)
+	mockTaskExecMetadata.OnGetResources().Return(&v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceEphemeralStorage: resource.MustParse("1024Mi"),
+		},
+	})
 
 	templateParameters := template.Parameters{
 		TaskExecMetadata: &mockTaskExecMetadata,
@@ -298,7 +299,7 @@ func TestToK8sContainer(t *testing.T) {
 	assert.Nil(t, errs)
 }
 
-func TestAddFlyteCustomizationsToContainer(t *testing.T) {
+func getTemplateParametersForTest(overrides *v1.ResourceRequirements) template.Parameters {
 	mockTaskExecMetadata := mocks.TaskExecutionMetadata{}
 	mockTaskExecutionID := mocks.TaskExecutionID{}
 	mockTaskExecutionID.OnGetGeneratedName().Return("gen_name")
@@ -323,7 +324,9 @@ func TestAddFlyteCustomizationsToContainer(t *testing.T) {
 	mockTaskExecMetadata.OnGetTaskExecutionID().Return(&mockTaskExecutionID)
 
 	mockOverrides := mocks.TaskOverrides{}
-	mockOverrides.OnGetResources().Return(&v1.ResourceRequirements{
+	mockOverrides.OnGetResources().Return(overrides)
+	mockTaskExecMetadata.OnGetOverrides().Return(&mockOverrides)
+	mockTaskExecMetadata.OnGetResources().Return(&v1.ResourceRequirements{
 		Requests: v1.ResourceList{
 			v1.ResourceEphemeralStorage: resource.MustParse("1024Mi"),
 		},
@@ -331,7 +334,6 @@ func TestAddFlyteCustomizationsToContainer(t *testing.T) {
 			v1.ResourceEphemeralStorage: resource.MustParse("2048Mi"),
 		},
 	})
-	mockTaskExecMetadata.OnGetOverrides().Return(&mockOverrides)
 
 	mockInputReader := mocks2.InputReader{}
 	mockInputPath := storage.DataReference("s3://input/path")
@@ -349,6 +351,10 @@ func TestAddFlyteCustomizationsToContainer(t *testing.T) {
 		Inputs:           &mockInputReader,
 		OutputPath:       &mockOutputPath,
 	}
+	return templateParameters
+}
+
+func TestAddFlyteCustomizationsToContainer(t *testing.T) {
 	container := &v1.Container{
 		Command: []string{
 			"{{ .Input }}",
@@ -357,11 +363,131 @@ func TestAddFlyteCustomizationsToContainer(t *testing.T) {
 			"{{ .OutputPrefix }}",
 		},
 	}
-	err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, AssignResources, container)
+	err := AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(nil), ContainerTaskResources, container)
 	assert.NoError(t, err)
 	assert.EqualValues(t, container.Args, []string{"s3://output/path"})
 	assert.EqualValues(t, container.Command, []string{"s3://input/path"})
 	assert.Len(t, container.Resources.Limits, 3)
 	assert.Len(t, container.Resources.Requests, 3)
 	assert.Len(t, container.Env, 12)
+}
+
+func TestAddFlyteCustomizationsToContainer_WithOverrides(t *testing.T) {
+	overrides := v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("2"),
+			v1.ResourceMemory: resource.MustParse("200"),
+			v1.ResourceEphemeralStorage: resource.MustParse("300"),
+		},
+		Limits: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("4"),
+			v1.ResourceMemory: resource.MustParse("400"),
+			v1.ResourceEphemeralStorage: resource.MustParse("600"),
+		},
+	}
+	container := &v1.Container{
+		Command: []string{
+			"{{ .Input }}",
+		},
+		Args: []string{
+			"{{ .OutputPrefix }}",
+		},
+	}
+	err := AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(&overrides), ContainerTaskResources, container)
+	assert.NoError(t, err)
+	assert.EqualValues(t, container.Resources, overrides)
+}
+
+func TestAddFlyteCustomizationsToContainer_PrimarySidecar(t *testing.T) {
+	alreadyDefinedResources := v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("1"),
+			v1.ResourceMemory: resource.MustParse("100"),
+			v1.ResourceEphemeralStorage: resource.MustParse("1000"),
+		},
+		Limits: v1.ResourceList{
+
+			v1.ResourceCPU: resource.MustParse("2"),
+			v1.ResourceMemory: resource.MustParse("200"),
+			v1.ResourceEphemeralStorage: resource.MustParse("2000"),
+		},
+	}
+	container := &v1.Container{
+		Command: []string{
+			"{{ .Input }}",
+		},
+		Args: []string{
+			"{{ .OutputPrefix }}",
+		},
+		Resources: alreadyDefinedResources,
+	}
+	AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(nil), PodTaskPrimaryContainerResources, container)
+	assert.EqualValues(t, container.Resources, alreadyDefinedResources)
+}
+
+func TestAddFlyteCustomizationsToContainer_PrimarySidecarWithOverrides(t *testing.T) {
+	overrides := v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("3"),
+			v1.ResourceMemory: resource.MustParse("300"),
+			v1.ResourceEphemeralStorage: resource.MustParse("3000"),
+		},
+		Limits: v1.ResourceList{
+
+			v1.ResourceCPU: resource.MustParse("3"),
+			v1.ResourceMemory: resource.MustParse("300"),
+			v1.ResourceEphemeralStorage: resource.MustParse("3000"),
+		},
+	}
+	container := &v1.Container{
+		Command: []string{
+			"{{ .Input }}",
+		},
+		Args: []string{
+			"{{ .OutputPrefix }}",
+		},
+		Resources: v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceCPU: resource.MustParse("1"),
+				v1.ResourceMemory: resource.MustParse("100"),
+				v1.ResourceEphemeralStorage: resource.MustParse("1000"),
+			},
+			Limits: v1.ResourceList{
+
+				v1.ResourceCPU: resource.MustParse("2"),
+				v1.ResourceMemory: resource.MustParse("200"),
+				v1.ResourceEphemeralStorage: resource.MustParse("2000"),
+			},
+		},
+	}
+	AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(&overrides), PodTaskPrimaryContainerResources, container)
+	assert.EqualValues(t, container.Resources, overrides)
+}
+
+func TestAddFlyteCustomizationsToContainer_NoContainerResourcesSet(t *testing.T) {
+	container := &v1.Container{
+		Command: []string{
+			"{{ .Input }}",
+		},
+		Args: []string{
+			"{{ .OutputPrefix }}",
+		},
+	}
+	AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(nil), ContainerTaskResources, container)
+	assert.EqualValues(t, container.Resources, v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			// Values come from defaults set in the config
+			v1.ResourceCPU:    resource.MustParse("1000m"),
+			v1.ResourceMemory: resource.MustParse("1024Mi"),
+			// Value comes from node resources
+			v1.ResourceEphemeralStorage: resource.MustParse("1024Mi"),
+		},
+		Limits: v1.ResourceList{
+			// Values come from defaults set in the config
+			v1.ResourceCPU:    resource.MustParse("1000m"),
+			v1.ResourceMemory: resource.MustParse("1024Mi"),
+			// Value comes from node resources
+			v1.ResourceEphemeralStorage: resource.MustParse("2048Mi"),
+		},
+	})
 }

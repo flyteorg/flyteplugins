@@ -22,21 +22,22 @@ const resourceGPU = "gpu"
 // Copied from: k8s.io/autoscaler/cluster-autoscaler/utils/gpu/gpu.go
 const ResourceNvidiaGPU = "nvidia.com/gpu"
 
-func MergeResources(in v1.ResourceRequirements, out *v1.ResourceRequirements) {
-	if out.Limits == nil {
-		out.Limits = in.Limits
-	} else if in.Limits != nil {
-		for key, val := range in.Limits {
-			out.Limits[key] = val
+func MergeResources(preferred v1.ResourceRequirements, resources v1.ResourceRequirements) v1.ResourceRequirements {
+	if resources.Limits == nil {
+		resources.Limits = preferred.Limits
+	} else if preferred.Limits != nil {
+		for key, val := range preferred.Limits {
+			resources.Limits[key] = val
 		}
 	}
-	if out.Requests == nil {
-		out.Requests = in.Requests
-	} else if in.Requests != nil {
-		for key, val := range in.Requests {
-			out.Requests[key] = val
+	if resources.Requests == nil {
+		resources.Requests = preferred.Requests
+	} else if preferred.Requests != nil {
+		for key, val := range preferred.Requests {
+			resources.Requests[key] = val
 		}
 	}
+	return resources
 }
 
 func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequirements) *v1.ResourceRequirements {
@@ -112,7 +113,7 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 	if parameters.TaskExecMetadata.GetOverrides() == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "platform/compiler error, overrides not set for task")
 	}
-	if parameters.TaskExecMetadata.GetOverrides() == nil || parameters.TaskExecMetadata.GetOverrides().GetResources() == nil {
+	if parameters.TaskExecMetadata.GetOverrides() == nil || parameters.TaskExecMetadata.GetResources() == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
 	}
 	// Make the container name the same as the pod name, unless it violates K8s naming conventions
@@ -138,9 +139,9 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 type ResourceCustomizationMode int
 
 const (
-	AssignResources ResourceCustomizationMode = iota
-	MergeExistingResources
-	LeaveResourcesUnmodified
+	ContainerTaskResources ResourceCustomizationMode = iota
+	PodTaskPrimaryContainerResources
+	PodTaskSecondaryContainersResources
 )
 
 // Takes a container definition which specifies how to run a Flyte task and fills in templated command and argument
@@ -161,19 +162,40 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 
 	container.Env = DecorateEnvVars(ctx, container.Env, parameters.TaskExecMetadata.GetTaskExecutionID())
 
-	if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
-		res := parameters.TaskExecMetadata.GetOverrides().GetResources()
-		logger.Warnf(ctx, "customizing flyte container using mode [%+v], with resources [%+v] and container resources [%+v]",
-			mode, res, container.Resources)
+	if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetResources() != nil {
+		res := parameters.TaskExecMetadata.GetResources()
+		var overrides *v1.ResourceRequirements
+		if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
+			res = parameters.TaskExecMetadata.GetOverrides().GetResources()
+		}
 		switch mode {
-		case AssignResources:
-			if res = ApplyResourceOverrides(ctx, *res); res != nil {
+		case ContainerTaskResources:
+			var assignableResources = res
+			if overrides != nil {
+				assignableResources = overrides
+			}
+			if res = ApplyResourceOverrides(ctx, *assignableResources); res != nil {
 				container.Resources = *res
 			}
-		case MergeExistingResources:
-			MergeResources(*res, &container.Resources)
-			container.Resources = *ApplyResourceOverrides(ctx, container.Resources)
-		case LeaveResourcesUnmodified:
+		case PodTaskPrimaryContainerResources:
+			// Resource reconciliation is unfortunately a tad complicated for primary containers in pod tasks.
+			// The order of preference is as follows:
+			// 1) If a node override is specified, always use that value
+			// 2) If the primary container in the pod task PodSpec definition defines resources, use those
+			// 3) Otherwise, default to using the platform defaults resolved at compilation time and assigned to
+			// 	TaskExecMetadata.GetResources()
+			// In the call to MergeResources, the first argument's values take precedence over the latter one's.
+			var mergedResources = container.Resources
+			if res != nil {
+				mergedResources = MergeResources(container.Resources, *res)
+			}
+			// The value of res now contains the merged values between the container definition (default) with the
+			// compiled platform resource values.
+			if overrides != nil {
+				mergedResources = MergeResources(*overrides, mergedResources)
+			}
+			container.Resources = *ApplyResourceOverrides(ctx, mergedResources)
+		case PodTaskSecondaryContainersResources:
 		}
 	}
 	return nil

@@ -102,7 +102,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	if err != nil {
 		return nil, err
 	}
-	err = AddFlyteCustomizationsToContainer(ctx, templateParameters, AssignResources, c)
+	err = AddFlyteCustomizationsToContainer(ctx, templateParameters, ContainerTaskResources, c)
 	if err != nil {
 		return nil, err
 	}
