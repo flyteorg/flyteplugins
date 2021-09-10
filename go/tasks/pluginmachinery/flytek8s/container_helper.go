@@ -34,14 +34,14 @@ func MergeResources(preferred v1.ResourceRequirements, resources v1.ResourceRequ
 		result.Requests[key] = val
 	}
 	if resources.Limits == nil {
-		resources.Limits = preferred.Limits
+		result.Limits = preferred.Limits
 	} else if preferred.Limits != nil {
 		for key, val := range preferred.Limits {
 			result.Limits[key] = val
 		}
 	}
 	if resources.Requests == nil {
-		resources.Requests = preferred.Requests
+		result.Requests = preferred.Requests
 	} else if preferred.Requests != nil {
 		for key, val := range preferred.Requests {
 			result.Requests[key] = val
@@ -197,17 +197,14 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 			// In the call to MergeResources, the first argument's values take precedence over the latter one's.
 			var mergedResources = container.Resources
 			if res != nil {
-				logger.Warnf(ctx, "Merging container.Resources [%+v] with res [%+v]", container.Resources, res)
 				mergedResources = MergeResources(container.Resources, *res)
 			}
 			// The value of res now contains the merged values between the container definition (default) with the
 			// compiled platform resource values.
 			if overrides != nil {
-				logger.Warnf(ctx, "Merging overrides [%+v] with mergedResources [%+v]", overrides, mergedResources)
 				mergedResources = MergeResources(*overrides, mergedResources)
 			}
 			container.Resources = *ApplyResourceOverrides(ctx, mergedResources)
-			logger.Warnf(ctx, "set resources to [%+v]", container.Resources)
 		case PodTaskSecondaryContainersResources:
 		}
 	}
