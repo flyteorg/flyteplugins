@@ -421,8 +421,9 @@ func TestAddFlyteCustomizationsToContainer_PrimarySidecar(t *testing.T) {
 		},
 		Resources: alreadyDefinedResources,
 	}
-	AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(nil), PodTaskPrimaryContainerResources, container)
+	err := AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(nil), PodTaskPrimaryContainerResources, container)
 	assert.EqualValues(t, container.Resources, alreadyDefinedResources)
+	assert.NoError(t, err)
 }
 
 func TestAddFlyteCustomizationsToContainer_PrimarySidecarWithOverrides(t *testing.T) {
@@ -460,7 +461,8 @@ func TestAddFlyteCustomizationsToContainer_PrimarySidecarWithOverrides(t *testin
 			},
 		},
 	}
-	AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(&overrides), PodTaskPrimaryContainerResources, container)
+	err := AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(&overrides), PodTaskPrimaryContainerResources, container)
+	assert.NoError(t, err)
 	assert.EqualValues(t, container.Resources, overrides)
 }
 
@@ -473,7 +475,8 @@ func TestAddFlyteCustomizationsToContainer_NoContainerResourcesSet(t *testing.T)
 			"{{ .OutputPrefix }}",
 		},
 	}
-	AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(nil), ContainerTaskResources, container)
+	err := AddFlyteCustomizationsToContainer(context.TODO(), getTemplateParametersForTest(nil), ContainerTaskResources, container)
+	assert.NoError(t, err)
 	assert.EqualValues(t, container.Resources, v1.ResourceRequirements{
 		Requests: v1.ResourceList{
 			// Values come from defaults set in the config
