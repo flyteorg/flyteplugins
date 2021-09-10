@@ -170,7 +170,9 @@ func TestFlyteArrayJobToK8sPodTemplate(t *testing.T) {
 	tMeta.OnGetSecurityContext().Return(core.SecurityContext{})
 	tMeta.OnGetK8sServiceAccount().Return("sa")
 	mockResourceOverrides := mocks.TaskOverrides{}
-	mockResourceOverrides.OnGetResources().Return(&v1.ResourceRequirements{
+	mockResourceOverrides.OnGetResources().Return(nil)
+	tMeta.OnGetOverrides().Return(&mockResourceOverrides)
+	tMeta.OnGetResources().Return(&v1.ResourceRequirements{
 		Requests: v1.ResourceList{
 			"ephemeral-storage": resource.MustParse("1024Mi"),
 		},
@@ -178,7 +180,6 @@ func TestFlyteArrayJobToK8sPodTemplate(t *testing.T) {
 			"ephemeral-storage": resource.MustParse("2048Mi"),
 		},
 	})
-	tMeta.OnGetOverrides().Return(&mockResourceOverrides)
 	tID := &mocks.TaskExecutionID{}
 	tID.OnGetID().Return(core.TaskExecutionIdentifier{
 		NodeExecutionId: &core.NodeExecutionIdentifier{

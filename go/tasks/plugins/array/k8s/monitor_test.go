@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
@@ -14,8 +17,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
 	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/stretchr/testify/mock"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
@@ -63,15 +64,16 @@ func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContex
 	})
 
 	overrides := &mocks.TaskOverrides{}
-	overrides.OnGetResources().Return(&v1.ResourceRequirements{
-		Requests: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("10"),
-		},
-	})
+	overrides.OnGetResources().Return(nil)
 
 	tMeta := &mocks.TaskExecutionMetadata{}
 	tMeta.OnGetTaskExecutionID().Return(tID)
 	tMeta.OnGetOverrides().Return(overrides)
+	tMeta.OnGetResources().Return(&v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("10"),
+		},
+	})
 	tMeta.OnIsInterruptible().Return(false)
 	tMeta.OnGetK8sServiceAccount().Return("s")
 

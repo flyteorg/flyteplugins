@@ -33,7 +33,7 @@ import (
 
 const ResourceNvidiaGPU = "nvidia.com/gpu"
 
-var resourceRequirements = &v1.ResourceRequirements{
+var resourceRequirements = v1.ResourceRequirements{
 	Requests: v1.ResourceList{
 		"cpu":    resource.MustParse("10"),
 		"memory": resource.MustParse("1000Mi"),
@@ -59,7 +59,7 @@ func getSidecarTaskTemplateForTest(sideCarJob sidecarJob) *core.TaskTemplate {
 	}
 }
 
-func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
+func dummyContainerTaskMetadata(resources v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
 	taskMetadata := &pluginsCoreMock.TaskExecutionMetadata{}
 	taskMetadata.On("GetNamespace").Return("test-namespace")
 	taskMetadata.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
@@ -93,12 +93,12 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	to := &pluginsCoreMock.TaskOverrides{}
 	to.On("GetResources").Return(nil)
 	taskMetadata.On("GetOverrides").Return(to)
-	taskMetadata.OnGetResources().Return(resources)
+	taskMetadata.OnGetResources().Return(&resources)
 
 	return taskMetadata
 }
 
-func getDummySidecarTaskContext(taskTemplate *core.TaskTemplate, resources *v1.ResourceRequirements) pluginsCore.TaskExecutionContext {
+func getDummySidecarTaskContext(taskTemplate *core.TaskTemplate, resources v1.ResourceRequirements) pluginsCore.TaskExecutionContext {
 	taskCtx := &pluginsCoreMock.TaskExecutionContext{}
 	dummyTaskMetadata := dummyContainerTaskMetadata(resources)
 	inputReader := &pluginsIOMock.InputReader{}
@@ -448,16 +448,7 @@ func TestBuildSidecarResource(t *testing.T) {
 		DefaultMemoryRequest: "1024Mi",
 	}))
 	handler := &sidecarResourceHandler{}
-	taskCtx := getDummySidecarTaskContext(&task, &v1.ResourceRequirements{
-		Requests: v1.ResourceList{
-			"cpu":    resource.MustParse("10"),
-			"memory": resource.MustParse("1000Mi"),
-		},
-		Limits: v1.ResourceList{
-			v1.ResourceCPU:              resource.MustParse("2048m"),
-			v1.ResourceEphemeralStorage: resource.MustParse("100M"),
-		},
-	})
+	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
 	res, err := handler.BuildResource(context.TODO(), taskCtx)
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{

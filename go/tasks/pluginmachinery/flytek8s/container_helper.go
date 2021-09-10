@@ -23,21 +23,31 @@ const resourceGPU = "gpu"
 const ResourceNvidiaGPU = "nvidia.com/gpu"
 
 func MergeResources(preferred v1.ResourceRequirements, resources v1.ResourceRequirements) v1.ResourceRequirements {
+	var result = v1.ResourceRequirements{
+		Limits:   make(v1.ResourceList),
+		Requests: make(v1.ResourceList),
+	}
+	for key, val := range resources.Limits {
+		result.Limits[key] = val
+	}
+	for key, val := range resources.Requests {
+		result.Requests[key] = val
+	}
 	if resources.Limits == nil {
 		resources.Limits = preferred.Limits
 	} else if preferred.Limits != nil {
 		for key, val := range preferred.Limits {
-			resources.Limits[key] = val
+			result.Limits[key] = val
 		}
 	}
 	if resources.Requests == nil {
 		resources.Requests = preferred.Requests
 	} else if preferred.Requests != nil {
 		for key, val := range preferred.Requests {
-			resources.Requests[key] = val
+			result.Requests[key] = val
 		}
 	}
-	return resources
+	return result
 }
 
 func ApplyResourceOverrides(ctx context.Context, resources v1.ResourceRequirements) *v1.ResourceRequirements {
@@ -166,15 +176,15 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 		res := parameters.TaskExecMetadata.GetResources()
 		var overrides *v1.ResourceRequirements
 		if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
-			res = parameters.TaskExecMetadata.GetOverrides().GetResources()
+			overrides = parameters.TaskExecMetadata.GetOverrides().GetResources()
 		}
 		switch mode {
 		case ContainerTaskResources:
-			var assignableResources = res
+			var assignableResources = *res
 			if overrides != nil {
-				assignableResources = overrides
+				assignableResources = *overrides
 			}
-			if res = ApplyResourceOverrides(ctx, *assignableResources); res != nil {
+			if res = ApplyResourceOverrides(ctx, assignableResources); res != nil {
 				container.Resources = *res
 			}
 		case PodTaskPrimaryContainerResources:
@@ -187,14 +197,17 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 			// In the call to MergeResources, the first argument's values take precedence over the latter one's.
 			var mergedResources = container.Resources
 			if res != nil {
+				logger.Warnf(ctx, "Merging container.Resources [%+v] with res [%+v]", container.Resources, res)
 				mergedResources = MergeResources(container.Resources, *res)
 			}
 			// The value of res now contains the merged values between the container definition (default) with the
 			// compiled platform resource values.
 			if overrides != nil {
+				logger.Warnf(ctx, "Merging overrides [%+v] with mergedResources [%+v]", overrides, mergedResources)
 				mergedResources = MergeResources(*overrides, mergedResources)
 			}
 			container.Resources = *ApplyResourceOverrides(ctx, mergedResources)
+			logger.Warnf(ctx, "set resources to [%+v]", container.Resources)
 		case PodTaskSecondaryContainersResources:
 		}
 	}
