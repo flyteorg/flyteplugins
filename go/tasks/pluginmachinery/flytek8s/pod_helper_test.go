@@ -52,9 +52,10 @@ func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	taskExecutionMetadata.On("GetTaskExecutionID").Return(tID)
 
 	to := &pluginsCoreMock.TaskOverrides{}
-	to.On("GetResources").Return(resources)
+	to.On("GetResources").Return(nil)
 	taskExecutionMetadata.On("GetOverrides").Return(to)
 	taskExecutionMetadata.On("IsInterruptible").Return(true)
+	taskExecutionMetadata.OnGetResources().Return(resources)
 	return taskExecutionMetadata
 }
 

@@ -130,7 +130,7 @@ func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskEx
 	tID.OnGetGeneratedName().Return("some-acceptable-name")
 
 	resources := &mocks.TaskOverrides{}
-	resources.OnGetResources().Return(resourceRequirements)
+	resources.OnGetResources().Return(nil)
 
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
@@ -144,6 +144,7 @@ func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskEx
 	taskExecutionMetadata.OnIsInterruptible().Return(true)
 	taskExecutionMetadata.OnGetOverrides().Return(resources)
 	taskExecutionMetadata.OnGetK8sServiceAccount().Return(serviceAccount)
+	taskExecutionMetadata.OnGetResources().Return(resourceRequirements)
 	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
 	return taskCtx
 }

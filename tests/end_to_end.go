@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/go-test/deep"
@@ -15,8 +17,6 @@ import (
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/types"
-
-	"k8s.io/apimachinery/pkg/api/resource"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -148,14 +148,15 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 	overrides.OnGetConfig().Return(&v1.ConfigMap{Data: map[string]string{
 		"dynamic-queue": "queue1",
 	}})
-	overrides.OnGetResources().Return(&v1.ResourceRequirements{
-		Requests: map[v1.ResourceName]resource.Quantity{},
-		Limits:   map[v1.ResourceName]resource.Quantity{},
-	})
+	overrides.OnGetResources().Return(nil)
 
 	tMeta := &coreMocks.TaskExecutionMetadata{}
 	tMeta.OnGetTaskExecutionID().Return(tID)
 	tMeta.OnGetOverrides().Return(overrides)
+	tMeta.OnGetResources().Return(&v1.ResourceRequirements{
+		Requests: map[v1.ResourceName]resource.Quantity{},
+		Limits:   map[v1.ResourceName]resource.Quantity{},
+	})
 	tMeta.OnGetK8sServiceAccount().Return("s")
 	tMeta.OnGetNamespace().Return("fake-development")
 	tMeta.OnGetSecurityContext().Return(idlCore.SecurityContext{

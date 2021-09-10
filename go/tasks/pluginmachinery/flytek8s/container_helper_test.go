@@ -375,13 +375,13 @@ func TestAddFlyteCustomizationsToContainer(t *testing.T) {
 func TestAddFlyteCustomizationsToContainer_WithOverrides(t *testing.T) {
 	overrides := v1.ResourceRequirements{
 		Requests: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("2"),
-			v1.ResourceMemory: resource.MustParse("200"),
+			v1.ResourceCPU:              resource.MustParse("2"),
+			v1.ResourceMemory:           resource.MustParse("200"),
 			v1.ResourceEphemeralStorage: resource.MustParse("300"),
 		},
 		Limits: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("4"),
-			v1.ResourceMemory: resource.MustParse("400"),
+			v1.ResourceCPU:              resource.MustParse("4"),
+			v1.ResourceMemory:           resource.MustParse("400"),
 			v1.ResourceEphemeralStorage: resource.MustParse("600"),
 		},
 	}
@@ -401,14 +401,14 @@ func TestAddFlyteCustomizationsToContainer_WithOverrides(t *testing.T) {
 func TestAddFlyteCustomizationsToContainer_PrimarySidecar(t *testing.T) {
 	alreadyDefinedResources := v1.ResourceRequirements{
 		Requests: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("1"),
-			v1.ResourceMemory: resource.MustParse("100"),
+			v1.ResourceCPU:              resource.MustParse("1"),
+			v1.ResourceMemory:           resource.MustParse("100"),
 			v1.ResourceEphemeralStorage: resource.MustParse("1000"),
 		},
 		Limits: v1.ResourceList{
 
-			v1.ResourceCPU: resource.MustParse("2"),
-			v1.ResourceMemory: resource.MustParse("200"),
+			v1.ResourceCPU:              resource.MustParse("2"),
+			v1.ResourceMemory:           resource.MustParse("200"),
 			v1.ResourceEphemeralStorage: resource.MustParse("2000"),
 		},
 	}
@@ -428,14 +428,14 @@ func TestAddFlyteCustomizationsToContainer_PrimarySidecar(t *testing.T) {
 func TestAddFlyteCustomizationsToContainer_PrimarySidecarWithOverrides(t *testing.T) {
 	overrides := v1.ResourceRequirements{
 		Requests: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("3"),
-			v1.ResourceMemory: resource.MustParse("300"),
+			v1.ResourceCPU:              resource.MustParse("3"),
+			v1.ResourceMemory:           resource.MustParse("300"),
 			v1.ResourceEphemeralStorage: resource.MustParse("3000"),
 		},
 		Limits: v1.ResourceList{
 
-			v1.ResourceCPU: resource.MustParse("3"),
-			v1.ResourceMemory: resource.MustParse("300"),
+			v1.ResourceCPU:              resource.MustParse("3"),
+			v1.ResourceMemory:           resource.MustParse("300"),
 			v1.ResourceEphemeralStorage: resource.MustParse("3000"),
 		},
 	}
@@ -448,14 +448,14 @@ func TestAddFlyteCustomizationsToContainer_PrimarySidecarWithOverrides(t *testin
 		},
 		Resources: v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceCPU: resource.MustParse("1"),
-				v1.ResourceMemory: resource.MustParse("100"),
+				v1.ResourceCPU:              resource.MustParse("1"),
+				v1.ResourceMemory:           resource.MustParse("100"),
 				v1.ResourceEphemeralStorage: resource.MustParse("1000"),
 			},
 			Limits: v1.ResourceList{
 
-				v1.ResourceCPU: resource.MustParse("2"),
-				v1.ResourceMemory: resource.MustParse("200"),
+				v1.ResourceCPU:              resource.MustParse("2"),
+				v1.ResourceMemory:           resource.MustParse("200"),
 				v1.ResourceEphemeralStorage: resource.MustParse("2000"),
 			},
 		},

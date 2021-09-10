@@ -62,9 +62,10 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	taskMetadata.On("GetTaskExecutionID").Return(tID)
 
 	to := &pluginsCoreMock.TaskOverrides{}
-	to.On("GetResources").Return(resources)
+	to.On("GetResources").Return(nil)
 	taskMetadata.On("GetOverrides").Return(to)
 	taskMetadata.On("IsInterruptible").Return(true)
+	taskMetadata.OnGetResources().Return(resources)
 	return taskMetadata
 }
 
