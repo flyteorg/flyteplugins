@@ -253,7 +253,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 									&pluginsCore.TaskInfo{OccurredAt: &t},
 								), nil
 
-							case "CreateContainerConfigError":
+							case "CreateContainerConfigError", "InvalidImageName":
 								t := c.LastTransitionTime.Time
 								return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 									OccurredAt: &t,
@@ -264,6 +264,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								return pluginsCore.PhaseInfoRetryableFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 									OccurredAt: &t,
 								}), nil
+
 							default:
 								// Since we are not checking for all error states, we may end up perpetually
 								// in the queued state returned at the bottom of this function, until the Pod is reaped
