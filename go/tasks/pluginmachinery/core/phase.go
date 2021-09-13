@@ -66,6 +66,10 @@ func (p Phase) IsWaitingForResources() bool {
 	return p == PhaseWaitingForResources
 }
 
+func (p Phase) IsRetryableFailure() bool {
+	return p == PhaseRetryableFailure
+}
+
 type TaskInfo struct {
 	// log information for the task execution
 	Logs []*core.TaskLog
