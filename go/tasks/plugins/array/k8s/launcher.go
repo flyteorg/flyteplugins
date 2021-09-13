@@ -9,6 +9,7 @@ import (
 	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 
 	errors2 "github.com/flyteorg/flytestdlib/errors"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -43,19 +44,23 @@ func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.P
 	return pod
 }
 
-func applyNodeSelectorLabels(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
+func applyNodeSelectorLabels(ctx context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
 	if len(cfg.NodeSelector) != 0 {
+		logger.Info(ctx, "Applying pod node selecter using config %v", cfg.NodeSelector)
 		pod.Spec.NodeSelector = cfg.NodeSelector
 	}
 
+	logger.Info(ctx, "applyNodeSelectorLabels Pod:  %v", pod)
 	return pod
 }
 
-func applyPodTolerations(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
+func applyPodTolerations(ctx context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
 	if len(cfg.Tolerations) != 0 {
+		logger.Info(ctx, "Applying pod tolerations using config %v", cfg.Tolerations)
 		pod.Spec.Tolerations = cfg.Tolerations
 	}
 
+	logger.Info(ctx, "applyPodTolerations Pod:  %v", pod)
 	return pod
 }
 
