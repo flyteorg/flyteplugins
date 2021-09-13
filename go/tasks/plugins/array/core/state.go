@@ -243,20 +243,26 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	return phaseInfo, nil
 }
 
-func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {
+func SummaryToPhase(ctx context.Context, minSuccesses int64, status arraystatus.ArrayStatus) Phase {
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
 	totalFailures := int64(0)
 	totalRunning := int64(0)
+	totalTasksRetried := int64(0)
 	totalWaitingForResources := int64(0)
-	for phase, count := range summary {
+
+	// for phase, count := range *status.Detailed.BitSet {
+
+	// }
+
+	for phase, count := range status.Summary {
 		totalCount += count
 		if phase.IsTerminal() {
 			if phase.IsSuccess() {
 				totalSuccesses += count
+			} else if phase.IsRetryableFailure() {
+				totalTasksRetried += count
 			} else {
-				// TODO: Split out retryable failures to be retried without doing the entire array task.
-				// TODO: Other option: array tasks are only retryable as a full set and to get single task retriability
 				// TODO: dynamic_task must be updated to not auto-combine to array tasks.  For scale reasons, it is
 				// TODO: preferable to auto-combine to array tasks for now.
 				totalFailures += count
@@ -289,8 +295,8 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 		return PhaseWriteToDiscovery
 	}
 
-	logger.Debugf(ctx, "Array is still running [Successes: %v, Failures: %v, Total: %v, MinSuccesses: %v]",
-		totalSuccesses, totalFailures, totalCount, minSuccesses)
+	logger.Debugf(ctx, "Array is still running [Successes: %v, Tasks Retried: %v, Failures: %v, Total: %v, MinSuccesses: %v]",
+		totalSuccesses, totalTasksRetried, totalFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
 }
 
