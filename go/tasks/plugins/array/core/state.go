@@ -243,7 +243,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	return phaseInfo, nil
 }
 
-func SummaryToPhase(ctx context.Context, minSuccesses int64, status arraystatus.ArrayStatus) Phase {
+func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
 	totalFailures := int64(0)
@@ -251,7 +251,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, status arraystatus.
 	totalTasksRetried := int64(0)
 	totalWaitingForResources := int64(0)
 
-	for phase, count := range status.Summary {
+	for phase, count := range summary {
 		totalCount += count
 		if phase.IsTerminal() {
 			if phase.IsSuccess() {

@@ -183,7 +183,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 	newState = newState.SetArrayStatus(*newArrayStatus)
 
-	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), *newArrayStatus)
+	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), *newArrayStatus.Summary)
 	if phase == arrayCore.PhaseWriteToDiscoveryThenFail {
 		errorMsg := msg.Summary(GetConfig().MaxErrorStringLength)
 		newState = newState.SetReason(errorMsg)
