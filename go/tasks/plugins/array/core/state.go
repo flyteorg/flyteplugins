@@ -251,10 +251,6 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, status arraystatus.
 	totalTasksRetried := int64(0)
 	totalWaitingForResources := int64(0)
 
-	// for phase, count := range *status.Detailed.BitSet {
-
-	// }
-
 	for phase, count := range status.Summary {
 		totalCount += count
 		if phase.IsTerminal() {
