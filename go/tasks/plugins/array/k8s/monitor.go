@@ -103,17 +103,14 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				if existingPhase.IsRetryableFailure() && childIdx == maxRetryCountIdx {
 					newArrayStatus.Summary.Inc(core.PhasePermanentFailure)
 					newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
-
 				} else {
+					// This is a non retryable failure and we should update the status array and
+					// break out of the inner loop
 					newArrayStatus.Summary.Inc(existingPhase)
 					newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
-					// originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
 				}
 
-				// newArrayStatus.Summary.Inc(existingPhase)
-				// newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 				originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
-
 				phaseInfo, err := FetchPodStatusAndLogs(ctx, kubeClient,
 					k8sTypes.NamespacedName{
 						Name:      podName,
@@ -131,7 +128,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 					logLinks = append(logLinks, phaseInfo.Info().Logs...)
 				}
 
-				continue
+				break
 			}
 
 			task := &Task{
