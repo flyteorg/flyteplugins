@@ -69,7 +69,7 @@ func (Plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecuti
 	pod := flytek8s.BuildPodWithSpec(podSpec)
 
 	pod.Spec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
-	pod.Name = "hardcode-for-failure"
+
 	return pod, nil
 }
 
