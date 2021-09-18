@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"k8s.io/apimachinery/pkg/util/validation"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func TestConvertToDNS1123CompatibleString(t *testing.T) {
