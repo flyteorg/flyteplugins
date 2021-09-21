@@ -8,6 +8,7 @@ import (
 	grpcStatus "google.golang.org/grpc/status"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 )
@@ -76,7 +77,9 @@ func NewCatalogEntry(outputs io.OutputReader, status Status) Entry {
 // Default Catalog client that allows memoization and indexing of intermediate data in Flyte
 type Client interface {
 	Get(ctx context.Context, key Key) (Entry, error)
+	GetOrExtendReservation(ctx context.Context, key Key, ownerID string) (*datacatalog.Reservation, error)
 	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) (Status, error)
+	ReleaseReservation(ctx context.Context, key Key, ownerID string) (error)
 }
 
 func IsNotFound(err error) bool {

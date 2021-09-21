@@ -7,6 +7,8 @@ import (
 
 	catalog "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/catalog"
 
+	datacatalog "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/datacatalog"
+
 	io "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	mock "github.com/stretchr/testify/mock"
@@ -56,6 +58,47 @@ func (_m *Client) Get(ctx context.Context, key catalog.Key) (catalog.Entry, erro
 	return r0, r1
 }
 
+type Client_GetOrExtendReservation struct {
+	*mock.Call
+}
+
+func (_m Client_GetOrExtendReservation) Return(_a0 *datacatalog.Reservation, _a1 error) *Client_GetOrExtendReservation {
+	return &Client_GetOrExtendReservation{Call: _m.Call.Return(_a0, _a1)}
+}
+
+func (_m *Client) OnGetOrExtendReservation(ctx context.Context, key catalog.Key, ownerID string) *Client_GetOrExtendReservation {
+	c := _m.On("GetOrExtendReservation", ctx, key, ownerID)
+	return &Client_GetOrExtendReservation{Call: c}
+}
+
+func (_m *Client) OnGetOrExtendReservationMatch(matchers ...interface{}) *Client_GetOrExtendReservation {
+	c := _m.On("GetOrExtendReservation", matchers...)
+	return &Client_GetOrExtendReservation{Call: c}
+}
+
+// GetOrExtendReservation provides a mock function with given fields: ctx, key, ownerID
+func (_m *Client) GetOrExtendReservation(ctx context.Context, key catalog.Key, ownerID string) (*datacatalog.Reservation, error) {
+	ret := _m.Called(ctx, key, ownerID)
+
+	var r0 *datacatalog.Reservation
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.Key, string) *datacatalog.Reservation); ok {
+		r0 = rf(ctx, key, ownerID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*datacatalog.Reservation)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, catalog.Key, string) error); ok {
+		r1 = rf(ctx, key, ownerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 type Client_Put struct {
 	*mock.Call
 }
@@ -93,4 +136,36 @@ func (_m *Client) Put(ctx context.Context, key catalog.Key, reader io.OutputRead
 	}
 
 	return r0, r1
+}
+
+type Client_ReleaseReservation struct {
+	*mock.Call
+}
+
+func (_m Client_ReleaseReservation) Return(_a0 error) *Client_ReleaseReservation {
+	return &Client_ReleaseReservation{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *Client) OnReleaseReservation(ctx context.Context, key catalog.Key, ownerID string) *Client_ReleaseReservation {
+	c := _m.On("ReleaseReservation", ctx, key, ownerID)
+	return &Client_ReleaseReservation{Call: c}
+}
+
+func (_m *Client) OnReleaseReservationMatch(matchers ...interface{}) *Client_ReleaseReservation {
+	c := _m.On("ReleaseReservation", matchers...)
+	return &Client_ReleaseReservation{Call: c}
+}
+
+// ReleaseReservation provides a mock function with given fields: ctx, key, ownerID
+func (_m *Client) ReleaseReservation(ctx context.Context, key catalog.Key, ownerID string) error {
+	ret := _m.Called(ctx, key, ownerID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.Key, string) error); ok {
+		r0 = rf(ctx, key, ownerID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
