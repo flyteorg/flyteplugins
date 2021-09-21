@@ -51,10 +51,11 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, p Client, cach
 	cacheItem.Phase = newPluginPhase
 
 	if newPluginPhase.IsTerminal() {
-		// Persist the updated item in the cache
+		// Queue item for deletion in the cache.
 		err = cache.DeleteDelayed(cacheItemID)
 		if err != nil {
-			logger.Warnf(ctx, "Failed to delete item from the cache with Item Id: [%v]. Error: %v", cacheItemID, err)
+			logger.Warnf(ctx, "Failed to queue item for deletion in the cache with Item Id: [%v]. Error: %v",
+				cacheItemID, err)
 		}
 	}
 
