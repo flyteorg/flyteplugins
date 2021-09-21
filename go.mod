@@ -51,4 +51,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.8.2
 )
 
-replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+replace (
+	github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+	github.com/flyteorg/flytestdlib => github.com/flyteorg/flytestdlib v0.3.35-0.20210921230634-e3b48f1cd432
+)
