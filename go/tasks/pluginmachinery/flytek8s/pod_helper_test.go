@@ -613,7 +613,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
+		assert.Equal(t, pluginsCore.PhasePermanentFailure, taskStatus.Phase())
 	})
 
 	t.Run("RegistryUnavailable", func(t *testing.T) {
@@ -773,6 +773,38 @@ func TestConvertPodFailureToError(t *testing.T) {
 			},
 		})
 		assert.Equal(t, code, "OOMKilled")
+	})
+
+	t.Run("OOMKilled", func(t *testing.T) {
+		code, _ := ConvertPodFailureToError(v1.PodStatus{
+			ContainerStatuses: []v1.ContainerStatus{
+				{
+					LastTerminationState: v1.ContainerState{
+						Terminated: &v1.ContainerStateTerminated{
+							Reason:   OOMKilled,
+							ExitCode: 137,
+						},
+					},
+				},
+			},
+		})
+		assert.Equal(t, code, "OOMKilled")
+	})
+
+	t.Run("SIGKILL", func(t *testing.T) {
+		code, _ := ConvertPodFailureToError(v1.PodStatus{
+			ContainerStatuses: []v1.ContainerStatus{
+				{
+					LastTerminationState: v1.ContainerState{
+						Terminated: &v1.ContainerStateTerminated{
+							Reason:   "some reason",
+							ExitCode: SIGKILL,
+						},
+					},
+				},
+			},
+		})
+		assert.Equal(t, code, "Interrupted")
 	})
 }
 

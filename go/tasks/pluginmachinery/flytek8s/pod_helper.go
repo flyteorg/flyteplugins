@@ -253,7 +253,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 									&pluginsCore.TaskInfo{OccurredAt: &t},
 								), nil
 
-							case "CreateContainerConfigError":
+							case "CreateContainerConfigError", "InvalidImageName":
 								t := c.LastTransitionTime.Time
 								return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 									OccurredAt: &t,
@@ -339,7 +339,7 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 			containerState = c.State
 		}
 		if containerState.Terminated != nil {
-			if strings.Contains(c.State.Terminated.Reason, OOMKilled) {
+			if strings.Contains(containerState.Terminated.Reason, OOMKilled) {
 				code = OOMKilled
 			} else if containerState.Terminated.ExitCode == SIGKILL {
 				// in some setups, node termination sends SIGKILL to all the containers running on that node. Capturing and
