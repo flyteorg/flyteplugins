@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	grpcStatus "google.golang.org/grpc/status"
@@ -72,6 +73,49 @@ func NewFailedCatalogEntry(status Status) Entry {
 
 func NewCatalogEntry(outputs io.OutputReader, status Status) Entry {
 	return Entry{outputs: outputs, status: status}
+}
+
+// Indicates the Reservation in Catalog
+type ReservationEntry struct {
+	expiresAt         time.Time
+	heartbeatInterval time.Duration
+	ownerID           string
+	status            core.CatalogReservationStatus
+}
+
+func (r ReservationEntry) GetExpiresAt() time.Time {
+	return r.expiresAt
+}
+
+func (r ReservationEntry) GetHeartbeatInterval() time.Duration {
+	return r.heartbeatInterval
+}
+
+func (r ReservationEntry) GetOwnerID() string {
+	return r.ownerID
+}
+
+func (r ReservationEntry) GetStatus() core.CatalogReservationStatus {
+	return r.status
+}
+
+func NewFailedReservationEntry(status core.CatalogReservationStatus) ReservationEntry {
+	duration, _ := time.ParseDuration("0h")
+	return ReservationEntry{
+		expiresAt:         time.Time{},
+		heartbeatInterval: duration,
+		ownerID:           "",
+		status:            status,
+	}
+}
+
+func NewReservationEntry(expiresAt time.Time, heartbeatInterval time.Duration, ownerID string, status core.CatalogReservationStatus) ReservationEntry {
+	return ReservationEntry{
+		expiresAt:         expiresAt,
+		heartbeatInterval: heartbeatInterval,
+		ownerID:           ownerID,
+		status:            status,
+	}
 }
 
 // Default Catalog client that allows memoization and indexing of intermediate data in Flyte
