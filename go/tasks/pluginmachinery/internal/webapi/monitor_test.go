@@ -53,6 +53,7 @@ func Test_monitor(t *testing.T) {
 
 	assert.NoError(t, cacheObj.Start(ctx))
 
+	// Insert a dummy item to make sure the sync loop keeps getting invoked
 	_, err = cacheObj.GetOrCreate("generated_name2", CacheItem{Resource: "fake_resource2"})
 	assert.NoError(t, err)
 
@@ -66,8 +67,14 @@ func Test_monitor(t *testing.T) {
 	assert.NotNil(t, phaseInfo)
 	assert.Equal(t, core2.PhaseSuccess.String(), phaseInfo.Phase().String())
 
+	// Make sure the item is still in the cache as is...
+	cachedItem, err := cacheObj.GetOrCreate("generated_name", CacheItem{Resource: "shouldnt_insert"})
+	assert.NoError(t, err)
+	assert.Equal(t, "fake_resource", cachedItem.(CacheItem).Resource.(string))
+
+	// Wait for sync to run to actually delete the resource
 	wg.Wait()
-	cachedItem, err := cacheObj.GetOrCreate("generated_name", CacheItem{Resource: "new_resource"})
+	cachedItem, err = cacheObj.GetOrCreate("generated_name", CacheItem{Resource: "new_resource"})
 	assert.NoError(t, err)
 	assert.Equal(t, "new_resource", cachedItem.(CacheItem).Resource.(string))
 }
