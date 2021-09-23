@@ -99,8 +99,8 @@ func (r ReservationEntry) GetStatus() core.CatalogReservationStatus {
 	return r.status
 }
 
-func NewFailedReservationEntry(status core.CatalogReservationStatus) ReservationEntry {
-	duration, _ := time.ParseDuration("0h")
+func NewReservationEntryStatus(status core.CatalogReservationStatus) ReservationEntry {
+	duration := 0 * time.Second
 	return ReservationEntry{
 		expiresAt:         time.Time{},
 		heartbeatInterval: duration,
@@ -121,7 +121,7 @@ func NewReservationEntry(expiresAt time.Time, heartbeatInterval time.Duration, o
 // Default Catalog client that allows memoization and indexing of intermediate data in Flyte
 type Client interface {
 	Get(ctx context.Context, key Key) (Entry, error)
-	GetOrExtendReservation(ctx context.Context, key Key, ownerID string) (*datacatalog.Reservation, error)
+	GetOrExtendReservation(ctx context.Context, key Key, ownerID string, heartbeatInterval time.Duration) (*datacatalog.Reservation, error)
 	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) (Status, error)
 	ReleaseReservation(ctx context.Context, key Key, ownerID string) (error)
 }
