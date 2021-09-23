@@ -123,7 +123,7 @@ type Client interface {
 	Get(ctx context.Context, key Key) (Entry, error)
 	GetOrExtendReservation(ctx context.Context, key Key, ownerID string, heartbeatInterval time.Duration) (*datacatalog.Reservation, error)
 	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) (Status, error)
-	ReleaseReservation(ctx context.Context, key Key, ownerID string) (error)
+	ReleaseReservation(ctx context.Context, key Key, ownerID string) error
 }
 
 func IsNotFound(err error) bool {
