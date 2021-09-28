@@ -13,7 +13,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 	commonKf "github.com/kubeflow/common/pkg/apis/common/v1"
-	mpi "github.com/kubeflow/mpi-operator/pkg/apis/kubeflow/v1"
+	mpi "github.com/kubeflow/mpi-operator/v2/pkg/apis/kubeflow/v2beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"

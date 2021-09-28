@@ -12,7 +12,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	commonKf "github.com/kubeflow/common/pkg/apis/common/v1"
-	mpi "github.com/kubeflow/mpi-operator/pkg/apis/kubeflow/v1"
+	mpi "github.com/kubeflow/mpi-operator/v2/pkg/apis/kubeflow/v2beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
