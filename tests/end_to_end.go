@@ -63,6 +63,19 @@ func BuildTaskTemplate() *idlCore.TaskTemplate {
 	}
 }
 
+func BuildTaskTemplateWithRetries(retries int) *idlCore.TaskTemplate {
+	return &idlCore.TaskTemplate{
+		Target: &idlCore.TaskTemplate_Container{
+			Container: createSampleContainerTask(),
+		},
+		Metadata: &idlCore.TaskMetadata{
+			Retries: &idlCore.RetryStrategy{
+				Retries: uint32(retries),
+			},
+		},
+	}
+}
+
 func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *idlCore.TaskTemplate,
 	inputs *idlCore.LiteralMap, expectedOutputs *idlCore.LiteralMap, expectedFailure *idlCore.ExecutionError,
 	iterationUpdate func(ctx context.Context, tCtx pluginCore.TaskExecutionContext) error) pluginCore.PhaseInfo {

@@ -62,12 +62,19 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	maxRetriesPerTask := int(taskTemplate.Metadata.Retries.Retries)
 	newArrayStatus := &arraystatus.ArrayStatus{
 		Summary:  arraystatus.ArraySummary{},
-		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize() + maxRetriesPerTask)),
+		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
 	subTaskIDs = make([]*string, 0, len(currentState.GetArrayStatus().Detailed.GetItems()))
 
 	if len(currentState.GetArrayStatus().Detailed.GetItems()) == 0 {
+		// Initialize array status with size of (# of retries + 1) * # of subTasks
+		newArraySize := currentState.GetExecutionArraySize() * (maxRetriesPerTask + 1)
+		newArrayStatus = &arraystatus.ArrayStatus{
+			Summary:  arraystatus.ArraySummary{},
+			Detailed: arrayCore.NewPhasesCompactArray(uint(newArraySize)),
+		}
 		currentState.ArrayStatus = *newArrayStatus
+		currentState.ExecutionArraySize = newArraySize
 	}
 
 	logPlugin, err := logs.InitializeLogPlugins(&config.LogConfig.Config)
@@ -76,10 +83,11 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		return currentState, logLinks, subTaskIDs, err
 	}
 
-	for i := 0; i < currentState.GetExecutionArraySize(); i += maxRetriesPerTask {
-
-		maxRetryCountIdx := i + maxRetriesPerTask
-		for childIdx := i; childIdx < maxRetryCountIdx; childIdx++ {
+	for subTaskIdx := 0; subTaskIdx < currentState.GetExecutionArraySize(); subTaskIdx += (maxRetriesPerTask + 1) {
+		// Get the index of where the next subtask begins
+		maxRetryCountIdx := (subTaskIdx + 1) * (maxRetriesPerTask + 1)
+	retryLoop:
+		for childIdx := subTaskIdx; childIdx < maxRetryCountIdx; childIdx++ {
 
 			detailedArray := currentState.GetArrayStatus().Detailed
 			existingPhaseIdx := detailedArray.GetItem(childIdx)
@@ -100,7 +108,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 				// If we've reached a terminal phase and reached the maxRetryCountIdx in the state array
 				// then we have maxed out the number of retries for a task so we consider it as a failure.
-				if existingPhase.IsRetryableFailure() && childIdx == maxRetryCountIdx {
+				if existingPhase.IsRetryableFailure() && childIdx == maxRetryCountIdx-1 {
 					newArrayStatus.Summary.Inc(core.PhasePermanentFailure)
 					newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 				} else {
@@ -110,14 +118,16 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 					newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 				}
 
+				// caculate original Child Idx here?
 				originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
+				retryAttempt := subTaskIdx - childIdx
 				phaseInfo, err := FetchPodStatusAndLogs(ctx, kubeClient,
 					k8sTypes.NamespacedName{
 						Name:      podName,
 						Namespace: GetNamespaceForExecution(tCtx, config.NamespaceTemplate),
 					},
 					originalIdx,
-					tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt,
+					uint32(retryAttempt),
 					logPlugin)
 
 				if err != nil {
@@ -128,7 +138,10 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 					logLinks = append(logLinks, phaseInfo.Info().Logs...)
 				}
 
-				break
+				if existingPhase.IsFailure() {
+					break
+				}
+
 			}
 
 			task := &Task{
@@ -151,13 +164,13 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			switch launchResult {
 			case LaunchSuccess:
 				// Continue with execution if successful by breaking out of inner loop
-				continue
+				break retryLoop
 			case LaunchError:
 				return currentState, logLinks, subTaskIDs, err
 			// If Resource manager is enabled and there are currently not enough resources we can skip this round
 			// for a subtask and wait until there are enough resources.
 			case LaunchWaiting:
-				continue
+				break retryLoop
 			case LaunchReturnState:
 				return currentState, logLinks, subTaskIDs, nil
 			}
@@ -176,9 +189,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				}
 				return currentState, logLinks, subTaskIDs, err
 			}
-
 		}
-
 	}
 
 	newState = newState.SetArrayStatus(*newArrayStatus)
