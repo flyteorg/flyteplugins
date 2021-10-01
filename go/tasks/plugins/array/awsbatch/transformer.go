@@ -77,7 +77,11 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 
 	envVars := getEnvVarsForTask(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID(), taskTemplate.GetContainer().GetEnv(), cfg.DefaultEnvVars)
 	res := tCtx.TaskExecutionMetadata().GetOverrides().GetResources()
-	res = flytek8s.ApplyResourceOverrides(ctx, *res)
+	platformResources := tCtx.TaskExecutionMetadata().GetPlatformResources()
+	if platformResources == nil {
+		platformResources = &v1.ResourceRequirements{}
+	}
+	res = flytek8s.ApplyResourceOverrides(*res, *platformResources)
 
 	return &batch.SubmitJobInput{
 		JobName:            refStr(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),

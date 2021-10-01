@@ -8,6 +8,8 @@ package config
 import (
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	config2 "github.com/flyteorg/flytestdlib/config"
 	v1 "k8s.io/api/core/v1"
 
@@ -17,8 +19,9 @@ import (
 //go:generate pflags K8sPluginConfig --default-var=defaultK8sConfig
 
 const k8sPluginConfigSectionKey = "k8s"
-const defaultCPURequest = "1000m"
-const defaultMemoryRequest = "1024Mi"
+
+var defaultCPURequest = resource.MustParse("1000m")
+var defaultMemoryRequest = resource.MustParse("1024Mi")
 
 var (
 	defaultK8sConfig = K8sPluginConfig{
@@ -69,9 +72,9 @@ type K8sPluginConfig struct {
 	DefaultEnvVarsFromEnv map[string]string `json:"default-env-vars-from-env" pflag:"-,Additional environment variable that should be injected into every resource"`
 
 	// default cpu requests for a container
-	DefaultCPURequest string `json:"default-cpus" pflag:",Defines a default value for cpu for containers if not specified."`
+	DefaultCPURequest resource.Quantity `json:"default-cpus" pflag:",Defines a default value for cpu for containers if not specified."`
 	// default memory requests for a container
-	DefaultMemoryRequest string `json:"default-memory" pflag:",Defines a default value for memory for containers if not specified."`
+	DefaultMemoryRequest resource.Quantity `json:"default-memory" pflag:",Defines a default value for memory for containers if not specified."`
 
 	// Default Tolerations that will be added to every Pod that is created by Flyte. These can be used in heterogenous clusters, where one wishes to keep all pods created by Flyte on a separate
 	// set of nodes.

@@ -72,6 +72,7 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 		Namespace: "test-namespace",
 		Name:      "test-owner-name",
 	})
+	taskMetadata.OnGetPlatformResources().Return(&v1.ResourceRequirements{})
 
 	tID := &pluginsCoreMock.TaskExecutionID{}
 	tID.On("GetID").Return(core.TaskExecutionIdentifier{
@@ -220,8 +221,8 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -321,8 +322,8 @@ func TestBuildSidecarResource_TaskType1(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -387,8 +388,8 @@ func TestBuildSideResource_TaskType1_InvalidSpec(t *testing.T) {
 			v1.ResourceStorage: {},
 			ResourceNvidiaGPU:  {},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -439,8 +440,8 @@ func TestBuildSidecarResource(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
