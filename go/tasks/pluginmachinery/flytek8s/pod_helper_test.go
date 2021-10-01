@@ -106,6 +106,7 @@ func TestPodSetup(t *testing.T) {
 	t.Run("ApplyInterruptibleNodeAffinity", TestApplyInterruptibleNodeAffinity)
 	t.Run("UpdatePod", updatePod)
 	t.Run("ToK8sPodInterruptible", toK8sPodInterruptible)
+	t.Run("toK8sPodInterruptibleFalse", toK8sPodInterruptibleFalse)
 }
 
 func TestApplyInterruptibleNodeAffinity(t *testing.T) {
@@ -329,6 +330,43 @@ func toK8sPodInterruptible(t *testing.T) {
 	assert.Equal(t, 1, len(p.NodeSelector))
 	assert.Equal(t, "true", p.NodeSelector["x/interruptible"])
 	assert.EqualValues(
+		t,
+		[]v1.NodeSelectorTerm{
+			v1.NodeSelectorTerm{
+				MatchExpressions: []v1.NodeSelectorRequirement{
+					v1.NodeSelectorRequirement{
+						Key:      "x/interruptible",
+						Operator: v1.NodeSelectorOpIn,
+						Values:   []string{"true"},
+					},
+				},
+			},
+		},
+		p.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+	)
+}
+
+func toK8sPodInterruptibleFalse(t *testing.T) {
+	ctx := context.TODO()
+
+	x := dummyExecContext(&v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+			ResourceNvidiaGPU:  resource.MustParse("1"),
+		},
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+		},
+	})
+
+	p, err := ToK8sPodSpecWithInterruptible(ctx, x, true)
+	assert.NoError(t, err)
+	assert.Len(t, p.Tolerations, 1)
+	assert.Equal(t, 0, len(p.NodeSelector))
+	assert.Equal(t, "", p.NodeSelector["x/interruptible"])
+	assert.NotEqualValues(
 		t,
 		[]v1.NodeSelectorTerm{
 			v1.NodeSelectorTerm{
@@ -614,7 +652,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
+		assert.Equal(t, pluginsCore.PhasePermanentFailure, taskStatus.Phase())
 	})
 
 	t.Run("RegistryUnavailable", func(t *testing.T) {
