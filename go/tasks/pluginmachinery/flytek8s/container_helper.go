@@ -3,6 +3,7 @@ package flytek8s
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -212,14 +213,19 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 		if platformResources == nil {
 			platformResources = &v1.ResourceRequirements{}
 		}
+		logger.Warnf(ctx, "Using mode [%+v]", mode)
 		switch mode {
 		case AssignResources:
 			if res = ApplyResourceOverrides(*res, *platformResources); res != nil {
 				container.Resources = *res
 			}
 		case MergeExistingResources:
+			logger.Warnf(ctx, "merging resources [%+v] and [%+v]", *res, container.Resources)
 			MergeResources(*res, &container.Resources)
+			logger.Warnf(ctx, "merged resources [%+v]", container.Resources)
+			logger.Warnf(ctx, "platform resources [%+v]", platformResources)
 			container.Resources = *ApplyResourceOverrides(container.Resources, *platformResources)
+			logger.Warnf(ctx, "overridden resources [%+v]", container.Resources)
 		case LeaveResourcesUnmodified:
 		}
 	}
