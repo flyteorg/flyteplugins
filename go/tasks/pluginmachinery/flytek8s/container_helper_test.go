@@ -71,6 +71,30 @@ func TestAssignResource(t *testing.T) {
 	})
 }
 
+func TestValidateResource(t *testing.T) {
+	platformLimit := resource.MustParse("5")
+	t.Run("adjust when request > limit", func(t *testing.T) {
+		res := validateResource(resource.MustParse("4"), resource.MustParse("3"), platformLimit)
+		assert.True(t, res.request.Equal(resource.MustParse("3")))
+		assert.True(t, res.limit.Equal(resource.MustParse("3")))
+	})
+	t.Run("adjust when request > platformLimit", func(t *testing.T) {
+		res := validateResource(resource.MustParse("6"), platformLimit, platformLimit)
+		assert.True(t, res.request.Equal(platformLimit))
+		assert.True(t, res.limit.Equal(platformLimit))
+	})
+	t.Run("adjust when limit > platformLimit", func(t *testing.T) {
+		res := validateResource(resource.MustParse("4"), resource.MustParse("6"), platformLimit)
+		assert.True(t, res.request.Equal(resource.MustParse("4")))
+		assert.True(t, res.limit.Equal(platformLimit))
+	})
+	t.Run("nothing to do", func(t *testing.T) {
+		res := validateResource(resource.MustParse("1"), resource.MustParse("2"), platformLimit)
+		assert.True(t, res.request.Equal(resource.MustParse("1")))
+		assert.True(t, res.limit.Equal(resource.MustParse("2")))
+	})
+}
+
 func TestApplyResourceOverrides_OverrideCpu(t *testing.T) {
 	platformRequirements := v1.ResourceRequirements{
 		Requests: v1.ResourceList{

@@ -2,9 +2,6 @@ package flytek8s
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -87,7 +84,7 @@ func assignResource(request, limit, platformRequest, platformLimit resource.Quan
 	}
 
 	if limit.Cmp(platformLimit) == 1 && !platformLimit.IsZero() {
-		println(fmt.Sprintf("platform limit [%+v]", platformLimit.String()))
+
 		// Adjust the limit downwards to not exceed the max limit if it's set.
 		limit = platformLimit
 	}
@@ -111,6 +108,10 @@ func validateResource(request, limit, platformLimit resource.Quantity) assignedR
 
 	if !limit.IsZero() && !platformLimit.IsZero() && limit.Cmp(platformLimit) == 1 {
 		limit = platformLimit
+	}
+
+	if request.Cmp(limit) == 1 {
+		request = limit
 	}
 
 	return assignedResource{
@@ -185,12 +186,8 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	// Override GPU
 	if res, found := resources.Requests[resourceGPU]; found {
 		resources.Requests[ResourceNvidiaGPU] = res
-	} else if res, found := resources.Requests[ResourceNvidiaGPU]; found {
-		resources.Requests[ResourceNvidiaGPU] = res
 	}
 	if res, found := resources.Limits[resourceGPU]; found {
-		resources.Limits[ResourceNvidiaGPU] = res
-	} else if res, found := resources.Limits[ResourceNvidiaGPU]; found {
 		resources.Limits[ResourceNvidiaGPU] = res
 	}
 
@@ -263,7 +260,6 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 		if platformResources == nil {
 			platformResources = &v1.ResourceRequirements{}
 		}
-		logger.Warnf(ctx, "Using mode [%+v]", mode)
 		switch mode {
 		case AssignResources:
 			container.Resources = ApplyResourceOverrides(*res, *platformResources, assignIfUnset)
