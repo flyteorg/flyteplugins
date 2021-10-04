@@ -26,6 +26,11 @@ func TestConvertToDNS1123CompatibleString(t *testing.T) {
 			want: "t7vyqhzju1-fib-5-0",
 		},
 		{
+			name: "good pod name with dots",
+			args: args{"t7v.yqh.zju1-fib-5-0"},
+			want: "t7v.yqh.zju1-fib-5-0",
+		},
+		{
 			name: "leading hyphen",
 			args: args{"-t7vyqhzju1-fib-5-0"},
 			want: "t7vyqhzju1-fib-5-0",
@@ -46,9 +51,14 @@ func TestConvertToDNS1123CompatibleString(t *testing.T) {
 			want: "t7vyqhzju1-fib-5-0",
 		},
 		{
-			name: "longer than max len (63)",
+			name: "long name",
 			args: args{"0123456789012345678901234567890123456789012345678901234567890123456789"},
-			want: "012345678901234567890123456789012345678901-ftvgdpoq",
+			want: "0123456789012345678901234567890123456789012345678901234567890123456789",
+		},
+		{
+			name: "longer than max len (253)",
+			args: args{"0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"},
+			want: "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-fbbrvh4i",
 		},
 		{
 			name: "very invalid name",
@@ -58,12 +68,12 @@ func TestConvertToDNS1123CompatibleString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertToDNS1123CompatibleString(tt.args.name)
-			if errs := validation.IsDNS1123Label(got); len(errs) > 0 {
-				t.Errorf("ConvertToDNS1123CompatibleString() = %v, which is not DNS-1123 compatible", got)
+			got := ConvertToDNS1123SubdomainCompatibleString(tt.args.name)
+			if errs := validation.IsDNS1123Subdomain(got); len(errs) > 0 {
+				t.Errorf("ConvertToDNS1123SubdomainCompatibleString() = %v, which is not DNS-1123 subdomain compatible", got)
 			}
 			if got != tt.want {
-				t.Errorf("ConvertToDNS1123CompatibleString() = %v, want %v", got, tt.want)
+				t.Errorf("ConvertToDNS1123SubdomainCompatibleString() = %v, want %v", got, tt.want)
 			}
 		})
 	}
