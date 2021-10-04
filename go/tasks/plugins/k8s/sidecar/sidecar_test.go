@@ -128,10 +128,12 @@ func getPodSpec() v1.PodSpec {
 					Limits: v1.ResourceList{
 						"cpu":    resource.MustParse("2"),
 						"memory": resource.MustParse("200Mi"),
+						"gpu": resource.MustParse("1"),
 					},
 					Requests: v1.ResourceList{
 						"cpu":    resource.MustParse("1"),
 						"memory": resource.MustParse("100Mi"),
+						"gpu": resource.MustParse("1"),
 					},
 				},
 				VolumeMounts: []v1.VolumeMount{
@@ -142,6 +144,14 @@ func getPodSpec() v1.PodSpec {
 			},
 			{
 				Name: "secondary container",
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						"gpu": resource.MustParse("2"),
+					},
+					Requests: v1.ResourceList{
+						"gpu": resource.MustParse("2"),
+					},
+				},
 			},
 		},
 		Volumes: []v1.Volume{
@@ -255,6 +265,13 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 	assert.Equal(t, expectedMemLimit.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Limits.Memory().Value())
 	expectedEphemeralStorageLimit := resource.MustParse("100M")
 	assert.Equal(t, expectedEphemeralStorageLimit.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Limits.StorageEphemeral().Value())
+
+	expectedGPURes := resource.MustParse("1")
+	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[0].Resources.Requests[ResourceNvidiaGPU]))
+	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[0].Resources.Limits[ResourceNvidiaGPU]))
+	expectedGPURes = resource.MustParse("2")
+	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[1].Resources.Requests[ResourceNvidiaGPU]))
+	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[1].Resources.Limits[ResourceNvidiaGPU]))
 }
 
 func TestBuildSidecarResource_TaskType2_Invalid_Spec(t *testing.T) {

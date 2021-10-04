@@ -85,7 +85,7 @@ func TestApplyResourceOverrides_OverrideCpu(t *testing.T) {
 		Requests: v1.ResourceList{
 			v1.ResourceCPU: cpuRequest,
 		},
-	}, platformRequirements)
+	}, platformRequirements, assignIfUnset)
 	assert.EqualValues(t, cpuRequest, overrides.Requests[v1.ResourceCPU])
 	assert.EqualValues(t, cpuRequest, overrides.Limits[v1.ResourceCPU])
 
@@ -97,7 +97,7 @@ func TestApplyResourceOverrides_OverrideCpu(t *testing.T) {
 		Limits: v1.ResourceList{
 			v1.ResourceCPU: cpuLimit,
 		},
-	}, platformRequirements)
+	}, platformRequirements, assignIfUnset)
 	assert.EqualValues(t, cpuRequest, overrides.Requests[v1.ResourceCPU])
 	assert.EqualValues(t, cpuLimit, overrides.Limits[v1.ResourceCPU])
 
@@ -106,7 +106,7 @@ func TestApplyResourceOverrides_OverrideCpu(t *testing.T) {
 		Limits: v1.ResourceList{
 			v1.ResourceCPU: cpuLimit,
 		},
-	}, platformRequirements)
+	}, platformRequirements, assignIfUnset)
 	assert.EqualValues(t, cpuLimit, overrides.Requests[v1.ResourceCPU])
 	assert.EqualValues(t, cpuLimit, overrides.Limits[v1.ResourceCPU])
 }
@@ -125,7 +125,7 @@ func TestApplyResourceOverrides_OverrideMemory(t *testing.T) {
 		Requests: v1.ResourceList{
 			v1.ResourceMemory: memoryRequest,
 		},
-	}, platformRequirements)
+	}, platformRequirements, assignIfUnset)
 	assert.EqualValues(t, memoryRequest, overrides.Requests[v1.ResourceMemory])
 	assert.EqualValues(t, memoryRequest, overrides.Limits[v1.ResourceMemory])
 
@@ -137,7 +137,7 @@ func TestApplyResourceOverrides_OverrideMemory(t *testing.T) {
 		Limits: v1.ResourceList{
 			v1.ResourceMemory: memoryLimit,
 		},
-	}, platformRequirements)
+	}, platformRequirements, assignIfUnset)
 	assert.EqualValues(t, memoryRequest, overrides.Requests[v1.ResourceMemory])
 	assert.EqualValues(t, memoryLimit, overrides.Limits[v1.ResourceMemory])
 
@@ -146,7 +146,7 @@ func TestApplyResourceOverrides_OverrideMemory(t *testing.T) {
 		Limits: v1.ResourceList{
 			v1.ResourceMemory: memoryLimit,
 		},
-	}, platformRequirements)
+	}, platformRequirements, assignIfUnset)
 	assert.EqualValues(t, memoryLimit, overrides.Requests[v1.ResourceMemory])
 	assert.EqualValues(t, memoryLimit, overrides.Limits[v1.ResourceMemory])
 }
@@ -157,7 +157,7 @@ func TestApplyResourceOverrides_OverrideEphemeralStorage(t *testing.T) {
 		Requests: v1.ResourceList{
 			v1.ResourceEphemeralStorage: ephemeralStorageRequest,
 		},
-	}, v1.ResourceRequirements{})
+	}, v1.ResourceRequirements{}, assignIfUnset)
 	assert.EqualValues(t, ephemeralStorageRequest, overrides.Requests[v1.ResourceEphemeralStorage])
 	assert.EqualValues(t, ephemeralStorageRequest, overrides.Limits[v1.ResourceEphemeralStorage])
 
@@ -169,7 +169,7 @@ func TestApplyResourceOverrides_OverrideEphemeralStorage(t *testing.T) {
 		Limits: v1.ResourceList{
 			v1.ResourceEphemeralStorage: ephemeralStorageLimit,
 		},
-	}, v1.ResourceRequirements{})
+	}, v1.ResourceRequirements{}, assignIfUnset)
 	assert.EqualValues(t, ephemeralStorageRequest, overrides.Requests[v1.ResourceEphemeralStorage])
 	assert.EqualValues(t, ephemeralStorageLimit, overrides.Limits[v1.ResourceEphemeralStorage])
 
@@ -178,7 +178,7 @@ func TestApplyResourceOverrides_OverrideEphemeralStorage(t *testing.T) {
 		Limits: v1.ResourceList{
 			v1.ResourceEphemeralStorage: ephemeralStorageLimit,
 		},
-	}, v1.ResourceRequirements{})
+	}, v1.ResourceRequirements{}, assignIfUnset)
 	assert.EqualValues(t, ephemeralStorageLimit, overrides.Requests[v1.ResourceEphemeralStorage])
 }
 
@@ -196,7 +196,7 @@ func TestApplyResourceOverrides_RemoveStorage(t *testing.T) {
 			v1.ResourceMemory:           requestedResourceQuantity,
 			v1.ResourceEphemeralStorage: requestedResourceQuantity,
 		},
-	}, v1.ResourceRequirements{})
+	}, v1.ResourceRequirements{}, assignIfUnset)
 	assert.EqualValues(t, v1.ResourceList{
 		v1.ResourceMemory:           requestedResourceQuantity,
 		v1.ResourceCPU:              requestedResourceQuantity,
@@ -216,14 +216,14 @@ func TestApplyResourceOverrides_OverrideGpu(t *testing.T) {
 		Requests: v1.ResourceList{
 			resourceGPU: gpuRequest,
 		},
-	}, v1.ResourceRequirements{})
+	}, v1.ResourceRequirements{}, assignIfUnset)
 	assert.EqualValues(t, gpuRequest, overrides.Requests[ResourceNvidiaGPU])
 
 	overrides = ApplyResourceOverrides(v1.ResourceRequirements{
 		Limits: v1.ResourceList{
 			resourceGPU: gpuRequest,
 		},
-	}, v1.ResourceRequirements{})
+	}, v1.ResourceRequirements{}, assignIfUnset)
 	assert.EqualValues(t, gpuRequest, overrides.Limits[ResourceNvidiaGPU])
 }
 
@@ -537,4 +537,38 @@ func TestAddFlyteCustomizationsToContainer_Resources(t *testing.T) {
 		assert.True(t, container.Resources.Requests.Memory().Equal(resource.MustParse("2")))
 		assert.True(t, container.Resources.Limits.Memory().Equal(resource.MustParse("2")))
 	})
+}
+
+func TestAddFlyteCustomizationsToContainer_ValidateExistingResources(t *testing.T) {
+	container := &v1.Container{
+		Command: []string{
+			"{{ .Input }}",
+		},
+		Args: []string{
+			"{{ .OutputPrefix }}",
+		},
+		Resources: v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceCPU: resource.MustParse("100"),
+			},
+			Limits: v1.ResourceList{
+				v1.ResourceCPU: resource.MustParse("200"),
+			},
+		},
+	}
+	templateParameters := getTemplateParametersForTest(&v1.ResourceRequirements{}, &v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("1"),
+			v1.ResourceMemory: resource.MustParse("2"),
+		},
+		Limits: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("10"),
+			v1.ResourceMemory: resource.MustParse("20"),
+		},
+	})
+	err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, ValidateExistingResources, container)
+	assert.NoError(t, err)
+
+	assert.True(t, container.Resources.Requests.Cpu().Equal(resource.MustParse("10")))
+	assert.True(t, container.Resources.Limits.Cpu().Equal(resource.MustParse("10")))
 }
