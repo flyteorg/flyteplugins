@@ -2,6 +2,7 @@ package flytek8s
 
 import (
 	"context"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -262,6 +263,8 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 		}
 		switch mode {
 		case AssignResources:
+			logger.Warnf(ctx, "Applying resource overrides, resources [%+v]/[%+v]", res.Requests.Cpu(), res.Limits.Cpu())
+			logger.Warnf(ctx, "and platform resources [%+v]/[%+v]", platformResources.Requests.Cpu(), platformResources.Limits.Cpu())
 			container.Resources = ApplyResourceOverrides(*res, *platformResources, assignIfUnset)
 		case MergeExistingResources:
 			MergeResources(*res, &container.Resources)
