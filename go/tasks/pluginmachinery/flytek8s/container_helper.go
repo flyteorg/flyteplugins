@@ -223,7 +223,7 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 			logger.Warnf(ctx, "merging resources [%+v] and [%+v]", *res, container.Resources)
 			MergeResources(*res, &container.Resources)
 			logger.Warnf(ctx, "merged resources [%+v]", container.Resources)
-			logger.Warnf(ctx, "platform resources [%+v]", platformResources)
+			logger.Warnf(ctx, "platform resources (memory) request: [%+v], limit [%+v]", platformResources.Requests.Cpu().String(), platformResources.Limits.Cpu().String())
 			container.Resources = *ApplyResourceOverrides(container.Resources, *platformResources)
 			logger.Warnf(ctx, "overridden resources [%+v]", container.Resources)
 		case LeaveResourcesUnmodified:
