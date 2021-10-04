@@ -266,9 +266,7 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 		logger.Warnf(ctx, "Using mode [%+v]", mode)
 		switch mode {
 		case AssignResources:
-			if resources := ApplyResourceOverrides(*res, *platformResources, assignIfUnset); res != nil {
-				container.Resources = resources
-			}
+			container.Resources = ApplyResourceOverrides(*res, *platformResources, assignIfUnset)
 		case MergeExistingResources:
 			MergeResources(*res, &container.Resources)
 			container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, assignIfUnset)
