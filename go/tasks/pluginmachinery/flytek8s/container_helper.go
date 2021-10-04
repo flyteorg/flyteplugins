@@ -186,11 +186,14 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	delete(resources.Limits, v1.ResourceStorage)
 
 	// Override GPU
+	logger.Warnf(context.TODO(), "gpu requested? [%+v]", resources.Requests[resourceGPU])
 	if res, found := resources.Requests[resourceGPU]; found {
 		resources.Requests[ResourceNvidiaGPU] = res
+		delete(resources.Requests, resourceGPU)
 	}
 	if res, found := resources.Limits[resourceGPU]; found {
 		resources.Limits[ResourceNvidiaGPU] = res
+		delete(resources.Limits, resourceGPU)
 	}
 
 	return resources
