@@ -522,11 +522,11 @@ func TestAddFlyteCustomizationsToContainer_Resources(t *testing.T) {
 
 		templateParameters := getTemplateParametersForTest(&v1.ResourceRequirements{}, &v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceCPU: resource.MustParse("1"),
+				v1.ResourceCPU:    resource.MustParse("1"),
 				v1.ResourceMemory: resource.MustParse("2"),
 			},
 			Limits: v1.ResourceList{
-				v1.ResourceCPU: resource.MustParse("10"),
+				v1.ResourceCPU:    resource.MustParse("10"),
 				v1.ResourceMemory: resource.MustParse("20"),
 			},
 		})
@@ -558,11 +558,11 @@ func TestAddFlyteCustomizationsToContainer_ValidateExistingResources(t *testing.
 	}
 	templateParameters := getTemplateParametersForTest(&v1.ResourceRequirements{}, &v1.ResourceRequirements{
 		Requests: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("1"),
+			v1.ResourceCPU:    resource.MustParse("1"),
 			v1.ResourceMemory: resource.MustParse("2"),
 		},
 		Limits: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("10"),
+			v1.ResourceCPU:    resource.MustParse("10"),
 			v1.ResourceMemory: resource.MustParse("20"),
 		},
 	})

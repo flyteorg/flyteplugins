@@ -128,12 +128,12 @@ func getPodSpec() v1.PodSpec {
 					Limits: v1.ResourceList{
 						"cpu":    resource.MustParse("2"),
 						"memory": resource.MustParse("200Mi"),
-						"gpu": resource.MustParse("1"),
+						"gpu":    resource.MustParse("1"),
 					},
 					Requests: v1.ResourceList{
 						"cpu":    resource.MustParse("1"),
 						"memory": resource.MustParse("100Mi"),
-						"gpu": resource.MustParse("1"),
+						"gpu":    resource.MustParse("1"),
 					},
 				},
 				VolumeMounts: []v1.VolumeMount{
