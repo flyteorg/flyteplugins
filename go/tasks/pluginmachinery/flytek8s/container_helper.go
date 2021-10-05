@@ -76,7 +76,7 @@ func assignResource(request, limit, platformRequest, platformLimit resource.Quan
 			request = platformRequest
 		}
 	}
-	if request.Cmp(platformLimit) == 1 && !platformLimit.IsZero() {
+	if !platformLimit.IsZero() && request.Cmp(platformLimit) == 1 {
 		// Adjust the request downwards to not exceed the max limit if it's set.
 		request = platformLimit
 	}
@@ -85,8 +85,7 @@ func assignResource(request, limit, platformRequest, platformLimit resource.Quan
 		limit = request
 	}
 
-	if limit.Cmp(platformLimit) == 1 && !platformLimit.IsZero() {
-
+	if !platformLimit.IsZero() && limit.Cmp(platformLimit) == 1 {
 		// Adjust the limit downwards to not exceed the max limit if it's set.
 		limit = platformLimit
 	}
@@ -185,14 +184,35 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	delete(resources.Requests, v1.ResourceStorage)
 	delete(resources.Limits, v1.ResourceStorage)
 
+	shouldAdjustGPU := false
+	_, gpuRequested := resources.Requests[ResourceNvidiaGPU]
+	_, gpuLimited := resources.Limits[ResourceNvidiaGPU]
+	if gpuRequested || gpuLimited {
+		shouldAdjustGPU = true
+	}
 	// Override GPU
 	if res, found := resources.Requests[resourceGPU]; found {
 		resources.Requests[ResourceNvidiaGPU] = res
 		delete(resources.Requests, resourceGPU)
+		shouldAdjustGPU = true
 	}
 	if res, found := resources.Limits[resourceGPU]; found {
 		resources.Limits[ResourceNvidiaGPU] = res
 		delete(resources.Limits, resourceGPU)
+		shouldAdjustGPU = true
+	}
+	if shouldAdjustGPU {
+		var gpu assignedResource
+		if assignIfUnset {
+			gpu = assignResource(resources.Requests[ResourceNvidiaGPU], resources.Limits[ResourceNvidiaGPU],
+				platformResources.Requests[resourceGPU], platformResources.Limits[resourceGPU])
+		} else {
+			gpu = validateResource(resources.Requests[ResourceNvidiaGPU], resources.Limits[ResourceNvidiaGPU],
+				platformResources.Limits[resourceGPU])
+		}
+
+		resources.Requests[ResourceNvidiaGPU] = gpu.request
+		resources.Limits[ResourceNvidiaGPU] = gpu.limit
 	}
 
 	return resources
