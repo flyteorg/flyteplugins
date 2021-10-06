@@ -44,7 +44,7 @@ func MergeResources(in v1.ResourceRequirements, out *v1.ResourceRequirements) {
 	}
 }
 
-type assignedResource struct {
+type AssignedResource struct {
 	request resource.Quantity
 	limit   resource.Quantity
 }
@@ -68,7 +68,7 @@ func resolvePlatformDefaults(platformResources v1.ResourceRequirements, configCP
 
 // Validates resources conform to platform limits and assigns defaults for request and limit values by:
 // using the request when the limit is unset, and vice versa.
-func assignResource(request, limit, platformRequest, platformLimit resource.Quantity) assignedResource {
+func AssignResource(request, limit, platformRequest, platformLimit resource.Quantity) AssignedResource {
 	if request.IsZero() {
 		if !limit.IsZero() {
 			request = limit
@@ -95,14 +95,14 @@ func assignResource(request, limit, platformRequest, platformLimit resource.Quan
 		limit = request
 	}
 
-	return assignedResource{
+	return AssignedResource{
 		request: request,
 		limit:   limit,
 	}
 }
 
 // Doesn't assign resources unless they  need to be adjusted downwards
-func validateResource(request, limit, platformLimit resource.Quantity) assignedResource {
+func validateResource(request, limit, platformLimit resource.Quantity) AssignedResource {
 	if !request.IsZero() && !platformLimit.IsZero() && request.Cmp(platformLimit) == 1 {
 		request = platformLimit
 	}
@@ -115,7 +115,7 @@ func validateResource(request, limit, platformLimit resource.Quantity) assignedR
 		request = limit
 	}
 
-	return assignedResource{
+	return AssignedResource{
 		request: request,
 		limit:   limit,
 	}
@@ -140,9 +140,9 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	platformResources = resolvePlatformDefaults(platformResources, config.GetK8sPluginConfig().DefaultCPURequest,
 		config.GetK8sPluginConfig().DefaultMemoryRequest)
 
-	var cpu assignedResource
+	var cpu AssignedResource
 	if assignIfUnset {
-		cpu = assignResource(resources.Requests[v1.ResourceCPU], resources.Limits[v1.ResourceCPU],
+		cpu = AssignResource(resources.Requests[v1.ResourceCPU], resources.Limits[v1.ResourceCPU],
 			platformResources.Requests[v1.ResourceCPU], platformResources.Limits[v1.ResourceCPU])
 	} else {
 		cpu = validateResource(resources.Requests[v1.ResourceCPU], resources.Limits[v1.ResourceCPU],
@@ -151,9 +151,9 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	resources.Requests[v1.ResourceCPU] = cpu.request
 	resources.Limits[v1.ResourceCPU] = cpu.limit
 
-	var memory assignedResource
+	var memory AssignedResource
 	if assignIfUnset {
-		memory = assignResource(resources.Requests[v1.ResourceMemory], resources.Limits[v1.ResourceMemory],
+		memory = AssignResource(resources.Requests[v1.ResourceMemory], resources.Limits[v1.ResourceMemory],
 			platformResources.Requests[v1.ResourceMemory], platformResources.Limits[v1.ResourceMemory])
 	} else {
 		memory = validateResource(resources.Requests[v1.ResourceMemory], resources.Limits[v1.ResourceMemory],
@@ -166,9 +166,9 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	_, ephemeralStorageLimited := resources.Limits[v1.ResourceEphemeralStorage]
 
 	if ephemeralStorageRequested || ephemeralStorageLimited {
-		var ephemeralStorage assignedResource
+		var ephemeralStorage AssignedResource
 		if assignIfUnset {
-			ephemeralStorage = assignResource(resources.Requests[v1.ResourceEphemeralStorage], resources.Limits[v1.ResourceEphemeralStorage],
+			ephemeralStorage = AssignResource(resources.Requests[v1.ResourceEphemeralStorage], resources.Limits[v1.ResourceEphemeralStorage],
 				platformResources.Requests[v1.ResourceEphemeralStorage], platformResources.Limits[v1.ResourceEphemeralStorage])
 		} else {
 			ephemeralStorage = validateResource(resources.Requests[v1.ResourceEphemeralStorage], resources.Limits[v1.ResourceEphemeralStorage],
@@ -202,9 +202,9 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 		shouldAdjustGPU = true
 	}
 	if shouldAdjustGPU {
-		var gpu assignedResource
+		var gpu AssignedResource
 		if assignIfUnset {
-			gpu = assignResource(resources.Requests[ResourceNvidiaGPU], resources.Limits[ResourceNvidiaGPU],
+			gpu = AssignResource(resources.Requests[ResourceNvidiaGPU], resources.Limits[ResourceNvidiaGPU],
 				platformResources.Requests[resourceGPU], platformResources.Limits[resourceGPU])
 		} else {
 			gpu = validateResource(resources.Requests[ResourceNvidiaGPU], resources.Limits[ResourceNvidiaGPU],

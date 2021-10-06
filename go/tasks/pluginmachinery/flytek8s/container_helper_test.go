@@ -21,49 +21,49 @@ var zeroQuantity = resource.MustParse("0")
 
 func TestAssignResource(t *testing.T) {
 	t.Run("Leave valid requests and limits unchanged", func(t *testing.T) {
-		res := assignResource(
+		res := AssignResource(
 			resource.MustParse("1"), resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.request.Equal(resource.MustParse("1")))
 		assert.True(t, res.limit.Equal(resource.MustParse("2")))
 	})
 	t.Run("Assign unset request from limit", func(t *testing.T) {
-		res := assignResource(
+		res := AssignResource(
 			zeroQuantity, resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.request.Equal(resource.MustParse("2")))
 		assert.True(t, res.limit.Equal(resource.MustParse("2")))
 	})
 	t.Run("Assign unset limit from request", func(t *testing.T) {
-		res := assignResource(
+		res := AssignResource(
 			resource.MustParse("2"), zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.request.Equal(resource.MustParse("2")))
 		assert.True(t, res.limit.Equal(resource.MustParse("2")))
 	})
 	t.Run("Assign from platform defaults", func(t *testing.T) {
-		res := assignResource(
+		res := AssignResource(
 			zeroQuantity, zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.request.Equal(resource.MustParse("10")))
 		assert.True(t, res.limit.Equal(resource.MustParse("10")))
 	})
 	t.Run("Adjust limit when request > limit", func(t *testing.T) {
-		res := assignResource(
+		res := AssignResource(
 			resource.MustParse("10"), resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.request.Equal(resource.MustParse("10")))
 		assert.True(t, res.limit.Equal(resource.MustParse("10")))
 	})
 	t.Run("Adjust limit > platformLimit", func(t *testing.T) {
-		res := assignResource(
+		res := AssignResource(
 			resource.MustParse("1"), resource.MustParse("40"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.request.Equal(resource.MustParse("1")))
 		assert.True(t, res.limit.Equal(resource.MustParse("20")))
 	})
 	t.Run("Adjust request, limit > platformLimit", func(t *testing.T) {
-		res := assignResource(
+		res := AssignResource(
 			resource.MustParse("40"), resource.MustParse("50"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.request.Equal(resource.MustParse("20")))
