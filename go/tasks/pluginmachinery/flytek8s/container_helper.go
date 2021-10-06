@@ -45,8 +45,8 @@ func MergeResources(in v1.ResourceRequirements, out *v1.ResourceRequirements) {
 }
 
 type AssignedResource struct {
-	request resource.Quantity
-	limit   resource.Quantity
+	Request resource.Quantity
+	Limit   resource.Quantity
 }
 
 func resolvePlatformDefaults(platformResources v1.ResourceRequirements, configCPU, configMemory resource.Quantity) v1.ResourceRequirements {
@@ -66,8 +66,8 @@ func resolvePlatformDefaults(platformResources v1.ResourceRequirements, configCP
 	return platformResources
 }
 
-// Validates resources conform to platform limits and assigns defaults for request and limit values by:
-// using the request when the limit is unset, and vice versa.
+// Validates resources conform to platform limits and assigns defaults for Request and Limit values by:
+// using the Request when the Limit is unset, and vice versa.
 func AssignResource(request, limit, platformRequest, platformLimit resource.Quantity) AssignedResource {
 	if request.IsZero() {
 		if !limit.IsZero() {
@@ -77,7 +77,7 @@ func AssignResource(request, limit, platformRequest, platformLimit resource.Quan
 		}
 	}
 	if !platformLimit.IsZero() && request.Cmp(platformLimit) == 1 {
-		// Adjust the request downwards to not exceed the max limit if it's set.
+		// Adjust the Request downwards to not exceed the max Limit if it's set.
 		request = platformLimit
 	}
 
@@ -86,18 +86,18 @@ func AssignResource(request, limit, platformRequest, platformLimit resource.Quan
 	}
 
 	if !platformLimit.IsZero() && limit.Cmp(platformLimit) == 1 {
-		// Adjust the limit downwards to not exceed the max limit if it's set.
+		// Adjust the Limit downwards to not exceed the max Limit if it's set.
 		limit = platformLimit
 	}
 
 	if request.Cmp(limit) == 1 {
-		// The limit should always be greater than or equal to the request
+		// The Limit should always be greater than or equal to the Request
 		limit = request
 	}
 
 	return AssignedResource{
-		request: request,
-		limit:   limit,
+		Request: request,
+		Limit:   limit,
 	}
 }
 
@@ -116,8 +116,8 @@ func validateResource(request, limit, platformLimit resource.Quantity) AssignedR
 	}
 
 	return AssignedResource{
-		request: request,
-		limit:   limit,
+		Request: request,
+		Limit:   limit,
 	}
 }
 
@@ -148,8 +148,8 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 		cpu = validateResource(resources.Requests[v1.ResourceCPU], resources.Limits[v1.ResourceCPU],
 			platformResources.Limits[v1.ResourceCPU])
 	}
-	resources.Requests[v1.ResourceCPU] = cpu.request
-	resources.Limits[v1.ResourceCPU] = cpu.limit
+	resources.Requests[v1.ResourceCPU] = cpu.Request
+	resources.Limits[v1.ResourceCPU] = cpu.Limit
 
 	var memory AssignedResource
 	if assignIfUnset {
@@ -159,8 +159,8 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 		memory = validateResource(resources.Requests[v1.ResourceMemory], resources.Limits[v1.ResourceMemory],
 			platformResources.Limits[v1.ResourceMemory])
 	}
-	resources.Requests[v1.ResourceMemory] = memory.request
-	resources.Limits[v1.ResourceMemory] = memory.limit
+	resources.Requests[v1.ResourceMemory] = memory.Request
+	resources.Limits[v1.ResourceMemory] = memory.Limit
 
 	_, ephemeralStorageRequested := resources.Requests[v1.ResourceEphemeralStorage]
 	_, ephemeralStorageLimited := resources.Limits[v1.ResourceEphemeralStorage]
@@ -175,8 +175,8 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 				platformResources.Limits[v1.ResourceEphemeralStorage])
 		}
 
-		resources.Requests[v1.ResourceEphemeralStorage] = ephemeralStorage.request
-		resources.Limits[v1.ResourceEphemeralStorage] = ephemeralStorage.limit
+		resources.Requests[v1.ResourceEphemeralStorage] = ephemeralStorage.Request
+		resources.Limits[v1.ResourceEphemeralStorage] = ephemeralStorage.Limit
 	}
 
 	// TODO: Make configurable. 1/15/2019 Flyte Cluster doesn't support setting storage requests/limits.
@@ -211,8 +211,8 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 				platformResources.Limits[resourceGPU])
 		}
 
-		resources.Requests[ResourceNvidiaGPU] = gpu.request
-		resources.Limits[ResourceNvidiaGPU] = gpu.limit
+		resources.Requests[ResourceNvidiaGPU] = gpu.Request
+		resources.Limits[ResourceNvidiaGPU] = gpu.Limit
 	}
 
 	return resources

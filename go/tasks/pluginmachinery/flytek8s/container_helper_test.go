@@ -24,74 +24,74 @@ func TestAssignResource(t *testing.T) {
 		res := AssignResource(
 			resource.MustParse("1"), resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.request.Equal(resource.MustParse("1")))
-		assert.True(t, res.limit.Equal(resource.MustParse("2")))
+		assert.True(t, res.Request.Equal(resource.MustParse("1")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
 	})
-	t.Run("Assign unset request from limit", func(t *testing.T) {
+	t.Run("Assign unset Request from Limit", func(t *testing.T) {
 		res := AssignResource(
 			zeroQuantity, resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.request.Equal(resource.MustParse("2")))
-		assert.True(t, res.limit.Equal(resource.MustParse("2")))
+		assert.True(t, res.Request.Equal(resource.MustParse("2")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
 	})
-	t.Run("Assign unset limit from request", func(t *testing.T) {
+	t.Run("Assign unset Limit from Request", func(t *testing.T) {
 		res := AssignResource(
 			resource.MustParse("2"), zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.request.Equal(resource.MustParse("2")))
-		assert.True(t, res.limit.Equal(resource.MustParse("2")))
+		assert.True(t, res.Request.Equal(resource.MustParse("2")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
 	})
 	t.Run("Assign from platform defaults", func(t *testing.T) {
 		res := AssignResource(
 			zeroQuantity, zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.request.Equal(resource.MustParse("10")))
-		assert.True(t, res.limit.Equal(resource.MustParse("10")))
+		assert.True(t, res.Request.Equal(resource.MustParse("10")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("10")))
 	})
-	t.Run("Adjust limit when request > limit", func(t *testing.T) {
+	t.Run("Adjust Limit when Request > Limit", func(t *testing.T) {
 		res := AssignResource(
 			resource.MustParse("10"), resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.request.Equal(resource.MustParse("10")))
-		assert.True(t, res.limit.Equal(resource.MustParse("10")))
+		assert.True(t, res.Request.Equal(resource.MustParse("10")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("10")))
 	})
-	t.Run("Adjust limit > platformLimit", func(t *testing.T) {
+	t.Run("Adjust Limit > platformLimit", func(t *testing.T) {
 		res := AssignResource(
 			resource.MustParse("1"), resource.MustParse("40"),
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.request.Equal(resource.MustParse("1")))
-		assert.True(t, res.limit.Equal(resource.MustParse("20")))
+		assert.True(t, res.Request.Equal(resource.MustParse("1")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("20")))
 	})
-	t.Run("Adjust request, limit > platformLimit", func(t *testing.T) {
+	t.Run("Adjust Request, Limit > platformLimit", func(t *testing.T) {
 		res := AssignResource(
 			resource.MustParse("40"), resource.MustParse("50"),
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.request.Equal(resource.MustParse("20")))
-		assert.True(t, res.limit.Equal(resource.MustParse("20")))
+		assert.True(t, res.Request.Equal(resource.MustParse("20")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("20")))
 	})
 }
 
 func TestValidateResource(t *testing.T) {
 	platformLimit := resource.MustParse("5")
-	t.Run("adjust when request > limit", func(t *testing.T) {
+	t.Run("adjust when Request > Limit", func(t *testing.T) {
 		res := validateResource(resource.MustParse("4"), resource.MustParse("3"), platformLimit)
-		assert.True(t, res.request.Equal(resource.MustParse("3")))
-		assert.True(t, res.limit.Equal(resource.MustParse("3")))
+		assert.True(t, res.Request.Equal(resource.MustParse("3")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("3")))
 	})
-	t.Run("adjust when request > platformLimit", func(t *testing.T) {
+	t.Run("adjust when Request > platformLimit", func(t *testing.T) {
 		res := validateResource(resource.MustParse("6"), platformLimit, platformLimit)
-		assert.True(t, res.request.Equal(platformLimit))
-		assert.True(t, res.limit.Equal(platformLimit))
+		assert.True(t, res.Request.Equal(platformLimit))
+		assert.True(t, res.Limit.Equal(platformLimit))
 	})
-	t.Run("adjust when limit > platformLimit", func(t *testing.T) {
+	t.Run("adjust when Limit > platformLimit", func(t *testing.T) {
 		res := validateResource(resource.MustParse("4"), resource.MustParse("6"), platformLimit)
-		assert.True(t, res.request.Equal(resource.MustParse("4")))
-		assert.True(t, res.limit.Equal(platformLimit))
+		assert.True(t, res.Request.Equal(resource.MustParse("4")))
+		assert.True(t, res.Limit.Equal(platformLimit))
 	})
 	t.Run("nothing to do", func(t *testing.T) {
 		res := validateResource(resource.MustParse("1"), resource.MustParse("2"), platformLimit)
-		assert.True(t, res.request.Equal(resource.MustParse("1")))
-		assert.True(t, res.limit.Equal(resource.MustParse("2")))
+		assert.True(t, res.Request.Equal(resource.MustParse("1")))
+		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
 	})
 }
 
@@ -125,7 +125,7 @@ func TestApplyResourceOverrides_OverrideCpu(t *testing.T) {
 	assert.EqualValues(t, cpuRequest, overrides.Requests[v1.ResourceCPU])
 	assert.EqualValues(t, cpuLimit, overrides.Limits[v1.ResourceCPU])
 
-	// request equals limit if not set
+	// Request equals Limit if not set
 	overrides = ApplyResourceOverrides(v1.ResourceRequirements{
 		Limits: v1.ResourceList{
 			v1.ResourceCPU: cpuLimit,
@@ -165,7 +165,7 @@ func TestApplyResourceOverrides_OverrideMemory(t *testing.T) {
 	assert.EqualValues(t, memoryRequest, overrides.Requests[v1.ResourceMemory])
 	assert.EqualValues(t, memoryLimit, overrides.Limits[v1.ResourceMemory])
 
-	// request equals limit if not set
+	// Request equals Limit if not set
 	overrides = ApplyResourceOverrides(v1.ResourceRequirements{
 		Limits: v1.ResourceList{
 			v1.ResourceMemory: memoryLimit,
@@ -197,7 +197,7 @@ func TestApplyResourceOverrides_OverrideEphemeralStorage(t *testing.T) {
 	assert.EqualValues(t, ephemeralStorageRequest, overrides.Requests[v1.ResourceEphemeralStorage])
 	assert.EqualValues(t, ephemeralStorageLimit, overrides.Limits[v1.ResourceEphemeralStorage])
 
-	// request equals limit if not set
+	// Request equals Limit if not set
 	overrides = ApplyResourceOverrides(v1.ResourceRequirements{
 		Limits: v1.ResourceList{
 			v1.ResourceEphemeralStorage: ephemeralStorageLimit,

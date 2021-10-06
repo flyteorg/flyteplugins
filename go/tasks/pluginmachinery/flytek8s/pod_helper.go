@@ -160,7 +160,7 @@ func BuildIdentityPod() *v1.Pod {
 //         The failure transitions from ErrImagePull -> ImagePullBackoff
 // Case II: Not enough resources are available. This is tricky. It could be that the total number of
 //          resources requested is beyond the capability of the system. for this we will rely on configuration
-//          and hence input gates. We should not allow bad requests that request for large number of resource through.
+//          and hence input gates. We should not allow bad requests that Request for large number of resource through.
 //          In the case it makes through, we will fail after timeout
 func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 	// Search over the difference conditions in the status object.  Note that the 'Pending' this function is
