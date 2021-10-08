@@ -38,22 +38,22 @@ func TestAssignResource(t *testing.T) {
 		res := AdjustOrDefaultResource(
 			resource.MustParse("2"), zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.Request.Equal(resource.MustParse("2")))
-		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
+		assert.Equal(t, resource.MustParse("2"), res.Request)
+		assert.Equal(t, resource.MustParse("2"), res.Limit)
 	})
 	t.Run("Assign from platform defaults", func(t *testing.T) {
 		res := AdjustOrDefaultResource(
 			zeroQuantity, zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.Request.Equal(resource.MustParse("10")))
-		assert.True(t, res.Limit.Equal(resource.MustParse("10")))
+		assert.Equal(t, resource.MustParse("10"), res.Request)
+		assert.Equal(t, resource.MustParse("10"), res.Limit)
 	})
 	t.Run("Adjust Limit when Request > Limit", func(t *testing.T) {
 		res := AdjustOrDefaultResource(
 			resource.MustParse("10"), resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.Request.Equal(resource.MustParse("10")))
-		assert.True(t, res.Limit.Equal(resource.MustParse("10")))
+		assert.Equal(t, resource.MustParse("2"), res.Request)
+		assert.Equal(t, resource.MustParse("2"), res.Limit)
 	})
 	t.Run("Adjust Limit > platformLimit", func(t *testing.T) {
 		res := AdjustOrDefaultResource(

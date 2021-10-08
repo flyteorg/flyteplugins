@@ -267,11 +267,11 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 	assert.Equal(t, expectedEphemeralStorageLimit.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Limits.StorageEphemeral().Value())
 
 	expectedGPURes := resource.MustParse("1")
-	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[0].Resources.Requests[ResourceNvidiaGPU]))
-	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[0].Resources.Limits[ResourceNvidiaGPU]))
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[0].Resources.Requests[ResourceNvidiaGPU])
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[0].Resources.Limits[ResourceNvidiaGPU])
 	expectedGPURes = resource.MustParse("2")
-	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[1].Resources.Requests[ResourceNvidiaGPU]))
-	assert.True(t, expectedGPURes.Equal(res.(*v1.Pod).Spec.Containers[1].Resources.Limits[ResourceNvidiaGPU]))
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[1].Resources.Requests[ResourceNvidiaGPU])
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[1].Resources.Limits[ResourceNvidiaGPU])
 }
 
 func TestBuildSidecarResource_TaskType2_Invalid_Spec(t *testing.T) {

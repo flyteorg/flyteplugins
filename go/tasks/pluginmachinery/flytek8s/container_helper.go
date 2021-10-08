@@ -80,6 +80,10 @@ func AdjustOrDefaultResource(request, limit, platformDefault, platformLimit reso
 		}
 	}
 
+	if limit.IsZero() {
+		limit = request
+	}
+
 	return ensureResourceRange(request, limit, platformLimit)
 }
 
