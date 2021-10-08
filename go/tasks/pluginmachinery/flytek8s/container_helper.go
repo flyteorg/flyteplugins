@@ -273,7 +273,7 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 			container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, !assignIfUnset)
 		}
 
-		logger.Info(ctx, "Adjusted container resources [%v]", container.Resources)
+		logger.Infof(ctx, "Adjusted container resources [%v]", container.Resources)
 	}
 	return nil
 }
