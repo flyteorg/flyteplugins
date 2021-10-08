@@ -21,49 +21,49 @@ var zeroQuantity = resource.MustParse("0")
 
 func TestAssignResource(t *testing.T) {
 	t.Run("Leave valid requests and limits unchanged", func(t *testing.T) {
-		res := AssignResource(
+		res := AdjustOrDefaultResource(
 			resource.MustParse("1"), resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.Request.Equal(resource.MustParse("1")))
 		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
 	})
 	t.Run("Assign unset Request from Limit", func(t *testing.T) {
-		res := AssignResource(
+		res := AdjustOrDefaultResource(
 			zeroQuantity, resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.Request.Equal(resource.MustParse("2")))
 		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
 	})
 	t.Run("Assign unset Limit from Request", func(t *testing.T) {
-		res := AssignResource(
+		res := AdjustOrDefaultResource(
 			resource.MustParse("2"), zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.Request.Equal(resource.MustParse("2")))
-		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
+		assert.Equal(t, resource.MustParse("2"), res.Request)
+		assert.Equal(t, resource.MustParse("2"), res.Limit)
 	})
 	t.Run("Assign from platform defaults", func(t *testing.T) {
-		res := AssignResource(
+		res := AdjustOrDefaultResource(
 			zeroQuantity, zeroQuantity,
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.Request.Equal(resource.MustParse("10")))
-		assert.True(t, res.Limit.Equal(resource.MustParse("10")))
+		assert.Equal(t, resource.MustParse("10"), res.Request)
+		assert.Equal(t, resource.MustParse("10"), res.Limit)
 	})
 	t.Run("Adjust Limit when Request > Limit", func(t *testing.T) {
-		res := AssignResource(
+		res := AdjustOrDefaultResource(
 			resource.MustParse("10"), resource.MustParse("2"),
 			resource.MustParse("10"), resource.MustParse("20"))
-		assert.True(t, res.Request.Equal(resource.MustParse("10")))
-		assert.True(t, res.Limit.Equal(resource.MustParse("10")))
+		assert.Equal(t, resource.MustParse("2"), res.Request)
+		assert.Equal(t, resource.MustParse("2"), res.Limit)
 	})
 	t.Run("Adjust Limit > platformLimit", func(t *testing.T) {
-		res := AssignResource(
+		res := AdjustOrDefaultResource(
 			resource.MustParse("1"), resource.MustParse("40"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.Request.Equal(resource.MustParse("1")))
 		assert.True(t, res.Limit.Equal(resource.MustParse("20")))
 	})
 	t.Run("Adjust Request, Limit > platformLimit", func(t *testing.T) {
-		res := AssignResource(
+		res := AdjustOrDefaultResource(
 			resource.MustParse("40"), resource.MustParse("50"),
 			resource.MustParse("10"), resource.MustParse("20"))
 		assert.True(t, res.Request.Equal(resource.MustParse("20")))
@@ -74,22 +74,22 @@ func TestAssignResource(t *testing.T) {
 func TestValidateResource(t *testing.T) {
 	platformLimit := resource.MustParse("5")
 	t.Run("adjust when Request > Limit", func(t *testing.T) {
-		res := validateResource(resource.MustParse("4"), resource.MustParse("3"), platformLimit)
+		res := ensureResourceRange(resource.MustParse("4"), resource.MustParse("3"), platformLimit)
 		assert.True(t, res.Request.Equal(resource.MustParse("3")))
 		assert.True(t, res.Limit.Equal(resource.MustParse("3")))
 	})
 	t.Run("adjust when Request > platformLimit", func(t *testing.T) {
-		res := validateResource(resource.MustParse("6"), platformLimit, platformLimit)
+		res := ensureResourceRange(resource.MustParse("6"), platformLimit, platformLimit)
 		assert.True(t, res.Request.Equal(platformLimit))
 		assert.True(t, res.Limit.Equal(platformLimit))
 	})
 	t.Run("adjust when Limit > platformLimit", func(t *testing.T) {
-		res := validateResource(resource.MustParse("4"), resource.MustParse("6"), platformLimit)
+		res := ensureResourceRange(resource.MustParse("4"), resource.MustParse("6"), platformLimit)
 		assert.True(t, res.Request.Equal(resource.MustParse("4")))
 		assert.True(t, res.Limit.Equal(platformLimit))
 	})
 	t.Run("nothing to do", func(t *testing.T) {
-		res := validateResource(resource.MustParse("1"), resource.MustParse("2"), platformLimit)
+		res := ensureResourceRange(resource.MustParse("1"), resource.MustParse("2"), platformLimit)
 		assert.True(t, res.Request.Equal(resource.MustParse("1")))
 		assert.True(t, res.Limit.Equal(resource.MustParse("2")))
 	})
@@ -456,7 +456,7 @@ func TestAddFlyteCustomizationsToContainer(t *testing.T) {
 			"{{ .OutputPrefix }}",
 		},
 	}
-	err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, AssignResources, container)
+	err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, ResourceCustomizationModeAssignResources, container)
 	assert.NoError(t, err)
 	assert.EqualValues(t, container.Args, []string{"s3://output/path"})
 	assert.EqualValues(t, container.Command, []string{"s3://input/path"})
@@ -496,7 +496,7 @@ func TestAddFlyteCustomizationsToContainer_Resources(t *testing.T) {
 				v1.ResourceMemory: resource.MustParse("20"),
 			},
 		})
-		err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, MergeExistingResources, container)
+		err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, ResourceCustomizationModeMergeExistingResources, container)
 		assert.NoError(t, err)
 		assert.True(t, container.Resources.Requests.Cpu().Equal(resource.MustParse("1")))
 		assert.True(t, container.Resources.Limits.Cpu().Equal(resource.MustParse("10")))
@@ -519,7 +519,7 @@ func TestAddFlyteCustomizationsToContainer_Resources(t *testing.T) {
 				v1.ResourceMemory: resource.MustParse("20"),
 			},
 		})
-		err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, MergeExistingResources, container)
+		err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, ResourceCustomizationModeMergeExistingResources, container)
 		assert.NoError(t, err)
 		assert.True(t, container.Resources.Requests.Cpu().Equal(resource.MustParse("1")))
 		assert.True(t, container.Resources.Limits.Cpu().Equal(resource.MustParse("10")))
@@ -554,7 +554,7 @@ func TestAddFlyteCustomizationsToContainer_Resources(t *testing.T) {
 				v1.ResourceMemory: resource.MustParse("20"),
 			},
 		})
-		err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, MergeExistingResources, container)
+		err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, ResourceCustomizationModeMergeExistingResources, container)
 		assert.NoError(t, err)
 		assert.True(t, container.Resources.Requests.Cpu().Equal(resource.MustParse("10")))
 		assert.True(t, container.Resources.Limits.Cpu().Equal(resource.MustParse("10")))
@@ -590,7 +590,7 @@ func TestAddFlyteCustomizationsToContainer_ValidateExistingResources(t *testing.
 			v1.ResourceMemory: resource.MustParse("20"),
 		},
 	})
-	err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, ValidateExistingResources, container)
+	err := AddFlyteCustomizationsToContainer(context.TODO(), templateParameters, ResourceCustomizationModeEnsureExistingResourcesInRange, container)
 	assert.NoError(t, err)
 
 	assert.True(t, container.Resources.Requests.Cpu().Equal(resource.MustParse("10")))

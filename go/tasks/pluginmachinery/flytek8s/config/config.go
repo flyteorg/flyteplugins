@@ -20,6 +20,10 @@ import (
 
 const k8sPluginConfigSectionKey = "k8s"
 
+// ResourceNvidiaGPU is the name of the Nvidia GPU resource.
+// Copied from: k8s.io/autoscaler/cluster-autoscaler/utils/gpu/gpu.go
+const ResourceNvidiaGPU v1.ResourceName = "nvidia.com/gpu"
+
 var defaultCPURequest = resource.MustParse("1000m")
 var defaultMemoryRequest = resource.MustParse("1024Mi")
 
@@ -46,6 +50,7 @@ var (
 		CreateContainerErrorGracePeriod: config2.Duration{
 			Duration: time.Minute * 3,
 		},
+		GpuResourceName: ResourceNvidiaGPU,
 	}
 
 	// K8sPluginConfigSection provides a singular top level config section for all plugins.
@@ -121,6 +126,9 @@ type K8sPluginConfig struct {
 	// error persists past this grace period, it will be inferred to be a permanent
 	// one, and the corresponding task marked as failed
 	CreateContainerErrorGracePeriod config2.Duration `json:"create-container-error-grace-period" pflag:"-,Time to wait for transient CreateContainerError errors to be resolved."`
+
+	// The name of the GPU resource to use when the task resource requests GPUs.
+	GpuResourceName v1.ResourceName `json:"gpu-resource-name" pflag:",The name of the GPU resource to use when the task resource requests GPUs."`
 }
 
 type FlyteCoPilotConfig struct {

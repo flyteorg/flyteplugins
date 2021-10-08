@@ -112,7 +112,7 @@ func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExe
 	if err != nil {
 		return nil, err
 	}
-	err = AddFlyteCustomizationsToContainer(ctx, templateParameters, AssignResources, c)
+	err = AddFlyteCustomizationsToContainer(ctx, templateParameters, ResourceCustomizationModeAssignResources, c)
 	if err != nil {
 		return nil, err
 	}
