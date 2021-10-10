@@ -132,29 +132,31 @@ func GetLogs(taskType string, name string, namespace string,
 		taskLogs = append(taskLogs, workerLog.TaskLogs...)
 	}
 
-	if taskType != MPITaskType && taskType != PytorchTaskType {
-		// get all parameter servers logs
-		for psReplicaIndex := int32(0); psReplicaIndex < psReplicasCount; psReplicaIndex++ {
-			psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-				PodName:   name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
-				Namespace: namespace,
-			})
-			if err != nil {
-				return nil, err
-			}
-			taskLogs = append(taskLogs, psReplicaLog.TaskLogs...)
+	if taskType == MPITaskType || taskType == PytorchTaskType {
+		return taskLogs, nil
+	}
+
+	// get all parameter servers logs
+	for psReplicaIndex := int32(0); psReplicaIndex < psReplicasCount; psReplicaIndex++ {
+		psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+			PodName:   name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
+			Namespace: namespace,
+		})
+		if err != nil {
+			return nil, err
 		}
-		// get chief worker log, and the max number of chief worker is 1
-		if chiefReplicasCount != 0 {
-			chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-				PodName:   name + fmt.Sprintf("-chiefReplica-%d", 0),
-				Namespace: namespace,
-			})
-			if err != nil {
-				return nil, err
-			}
-			taskLogs = append(taskLogs, chiefReplicaLog.TaskLogs...)
+		taskLogs = append(taskLogs, psReplicaLog.TaskLogs...)
+	}
+	// get chief worker log, and the max number of chief worker is 1
+	if chiefReplicasCount != 0 {
+		chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
+			PodName:   name + fmt.Sprintf("-chiefReplica-%d", 0),
+			Namespace: namespace,
+		})
+		if err != nil {
+			return nil, err
 		}
+		taskLogs = append(taskLogs, chiefReplicaLog.TaskLogs...)
 	}
 
 	return taskLogs, nil

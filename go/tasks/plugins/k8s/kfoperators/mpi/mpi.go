@@ -2,6 +2,7 @@ package mpi
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -57,13 +58,14 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 	}
 
+	workers := mpiTaskExtraArgs.GetNumWorkers()
+	launcherReplicas := mpiTaskExtraArgs.GetNumLauncherReplicas()
+	slots := mpiTaskExtraArgs.GetSlots()
+
 	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
-	workers := mpiTaskExtraArgs.GetNumWorkers()
-	launcherReplicas := mpiTaskExtraArgs.GetNumLauncherReplicas()
-	slots := mpiTaskExtraArgs.GetSlots()
 
 	workersPodSpec := podSpec.DeepCopy()
 	for k := range workersPodSpec.Containers {
@@ -102,14 +104,22 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	return job, nil
 }
 
-// Analyses the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
+// Analyzes the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
 // any operations that might take a long time (limits are configured system-wide) should be offloaded to the
 // background.
 func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
-	app := resource.(*mpi.MPIJob)
+	var numWorkers, numLauncherReplicas *int32
+	app, ok := resource.(*mpi.MPIJob)
+	if !ok {
+		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("failed to convert resource data type")
+	}
 
-	numWorkers := app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Replicas
-	numLauncherReplicas := app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeLauncher].Replicas
+	if numWorkers = app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Replicas; *numWorkers == 0 {
+		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("number of worker should be more then 1 ")
+	}
+	if numLauncherReplicas = app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeLauncher].Replicas; *numLauncherReplicas == 0 {
+		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("number of launch worker should be more then 1")
+	}
 
 	taskLogs, err := common.GetLogs(common.MPITaskType, app.Name, app.Namespace,
 		*numWorkers, *numLauncherReplicas, 0)
