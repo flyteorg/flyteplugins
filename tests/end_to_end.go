@@ -171,6 +171,7 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 		Namespace: "fake-development",
 		Name:      execID,
 	})
+	tMeta.OnGetPlatformResources().Return(&v1.ResourceRequirements{})
 
 	catClient := &catalogMocks.Client{}
 	catData := sync.Map{}
@@ -228,6 +229,9 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pluginCore.AllocationStatusGranted, nil)
 	resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
+	secretManager := &coreMocks.SecretManager{}
+	secretManager.OnGet(ctx, mock.Anything).Return("fake-token", nil)
+
 	tCtx := &coreMocks.TaskExecutionContext{}
 	tCtx.OnInputReader().Return(inputReader)
 	tCtx.OnTaskRefreshIndicator().Return(func(ctx context.Context) {})
@@ -241,8 +245,7 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 	tCtx.OnEventsRecorder().Return(eRecorder)
 	tCtx.OnResourceManager().Return(resourceManager)
 	tCtx.OnMaxDatasetSizeBytes().Return(1000000)
-	// TODO: return that
-	tCtx.OnSecretManager()
+	tCtx.OnSecretManager().Return(secretManager)
 
 	trns := pluginCore.DoTransitionType(pluginCore.TransitionTypeBarrier, pluginCore.PhaseInfoQueued(time.Now(), 0, ""))
 	for !trns.Info().Phase().IsTerminal() {

@@ -55,6 +55,7 @@ func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	to.On("GetResources").Return(resources)
 	taskExecutionMetadata.On("GetOverrides").Return(to)
 	taskExecutionMetadata.On("IsInterruptible").Return(true)
+	taskExecutionMetadata.OnGetPlatformResources().Return(&v1.ResourceRequirements{})
 	return taskExecutionMetadata
 }
 
@@ -105,6 +106,7 @@ func TestPodSetup(t *testing.T) {
 	t.Run("ApplyInterruptibleNodeAffinity", TestApplyInterruptibleNodeAffinity)
 	t.Run("UpdatePod", updatePod)
 	t.Run("ToK8sPodInterruptible", toK8sPodInterruptible)
+	t.Run("toK8sPodInterruptibleFalse", toK8sPodInterruptibleFalse)
 }
 
 func TestApplyInterruptibleNodeAffinity(t *testing.T) {
@@ -344,6 +346,43 @@ func toK8sPodInterruptible(t *testing.T) {
 	)
 }
 
+func toK8sPodInterruptibleFalse(t *testing.T) {
+	ctx := context.TODO()
+
+	x := dummyExecContext(&v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+			ResourceNvidiaGPU:  resource.MustParse("1"),
+		},
+		Requests: v1.ResourceList{
+			v1.ResourceCPU:     resource.MustParse("1024m"),
+			v1.ResourceStorage: resource.MustParse("100M"),
+		},
+	})
+
+	p, err := ToK8sPodSpecWithInterruptible(ctx, x, true)
+	assert.NoError(t, err)
+	assert.Len(t, p.Tolerations, 1)
+	assert.Equal(t, 0, len(p.NodeSelector))
+	assert.Equal(t, "", p.NodeSelector["x/interruptible"])
+	assert.NotEqualValues(
+		t,
+		[]v1.NodeSelectorTerm{
+			v1.NodeSelectorTerm{
+				MatchExpressions: []v1.NodeSelectorRequirement{
+					v1.NodeSelectorRequirement{
+						Key:      "x/interruptible",
+						Operator: v1.NodeSelectorOpIn,
+						Values:   []string{"true"},
+					},
+				},
+			},
+		},
+		p.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+	)
+}
+
 func TestToK8sPod(t *testing.T) {
 	ctx := context.TODO()
 
@@ -366,8 +405,8 @@ func TestToK8sPod(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 
 	op := &pluginsIOMock.OutputFilePaths{}
@@ -433,8 +472,8 @@ func TestToK8sPod(t *testing.T) {
 				"nodeId": "123",
 			},
 			SchedulerName:        "myScheduler",
-			DefaultCPURequest:    "1024m",
-			DefaultMemoryRequest: "1024Mi",
+			DefaultCPURequest:    resource.MustParse("1024m"),
+			DefaultMemoryRequest: resource.MustParse("1024Mi"),
 		}))
 
 		p, err := ToK8sPodSpec(ctx, x)
@@ -613,7 +652,7 @@ func TestDemystifyPending(t *testing.T) {
 		}
 		taskStatus, err := DemystifyPending(s)
 		assert.NoError(t, err)
-		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
+		assert.Equal(t, pluginsCore.PhasePermanentFailure, taskStatus.Phase())
 	})
 
 	t.Run("RegistryUnavailable", func(t *testing.T) {
@@ -773,6 +812,38 @@ func TestConvertPodFailureToError(t *testing.T) {
 			},
 		})
 		assert.Equal(t, code, "OOMKilled")
+	})
+
+	t.Run("OOMKilled", func(t *testing.T) {
+		code, _ := ConvertPodFailureToError(v1.PodStatus{
+			ContainerStatuses: []v1.ContainerStatus{
+				{
+					LastTerminationState: v1.ContainerState{
+						Terminated: &v1.ContainerStateTerminated{
+							Reason:   OOMKilled,
+							ExitCode: 137,
+						},
+					},
+				},
+			},
+		})
+		assert.Equal(t, code, "OOMKilled")
+	})
+
+	t.Run("SIGKILL", func(t *testing.T) {
+		code, _ := ConvertPodFailureToError(v1.PodStatus{
+			ContainerStatuses: []v1.ContainerStatus{
+				{
+					LastTerminationState: v1.ContainerState{
+						Terminated: &v1.ContainerStateTerminated{
+							Reason:   "some reason",
+							ExitCode: SIGKILL,
+						},
+					},
+				},
+			},
+		})
+		assert.Equal(t, code, "Interrupted")
 	})
 }
 

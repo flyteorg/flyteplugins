@@ -61,11 +61,19 @@ func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
 // Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
 func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
+	UpdatePodWithInterruptibleFlag(taskExecutionMetadata, resourceRequirements, podSpec, false)
+}
+
+// Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
+func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
+	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec, omitInterruptible bool) {
+	isInterruptible := !omitInterruptible && taskExecutionMetadata.IsInterruptible()
 	if len(podSpec.RestartPolicy) == 0 {
 		podSpec.RestartPolicy = v1.RestartPolicyNever
 	}
 	podSpec.Tolerations = append(
-		GetPodTolerations(taskExecutionMetadata.IsInterruptible(), resourceRequirements...), podSpec.Tolerations...)
+		GetPodTolerations(isInterruptible, resourceRequirements...), podSpec.Tolerations...)
+
 	if len(podSpec.ServiceAccountName) == 0 {
 		podSpec.ServiceAccountName = taskExecutionMetadata.GetK8sServiceAccount()
 	}
@@ -73,16 +81,19 @@ func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 		podSpec.SchedulerName = config.GetK8sPluginConfig().SchedulerName
 	}
 	podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().DefaultNodeSelector)
-	if taskExecutionMetadata.IsInterruptible() {
+	if isInterruptible {
 		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
 	if podSpec.Affinity == nil && config.GetK8sPluginConfig().DefaultAffinity != nil {
 		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity.DeepCopy()
 	}
-	ApplyInterruptibleNodeAffinity(taskExecutionMetadata.IsInterruptible(), podSpec)
+	ApplyInterruptibleNodeAffinity(isInterruptible, podSpec)
 }
 
 func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
+	return ToK8sPodSpecWithInterruptible(ctx, tCtx, false)
+}
+func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, omitInterruptible bool) (*v1.PodSpec, error) {
 	task, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
@@ -102,7 +113,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	if err != nil {
 		return nil, err
 	}
-	err = AddFlyteCustomizationsToContainer(ctx, templateParameters, AssignResources, c)
+	err = AddFlyteCustomizationsToContainer(ctx, templateParameters, ResourceCustomizationModeAssignResources, c)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +124,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	pod := &v1.PodSpec{
 		Containers: containers,
 	}
-	UpdatePod(tCtx.TaskExecutionMetadata(), []v1.ResourceRequirements{c.Resources}, pod)
+	UpdatePodWithInterruptibleFlag(tCtx.TaskExecutionMetadata(), []v1.ResourceRequirements{c.Resources}, pod, omitInterruptible)
 
 	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), task.GetContainer().GetDataConfig()); err != nil {
 		return nil, err
@@ -150,7 +161,7 @@ func BuildIdentityPod() *v1.Pod {
 //         The failure transitions from ErrImagePull -> ImagePullBackoff
 // Case II: Not enough resources are available. This is tricky. It could be that the total number of
 //          resources requested is beyond the capability of the system. for this we will rely on configuration
-//          and hence input gates. We should not allow bad requests that request for large number of resource through.
+//          and hence input gates. We should not allow bad requests that Request for large number of resource through.
 //          In the case it makes through, we will fail after timeout
 func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 	// Search over the difference conditions in the status object.  Note that the 'Pending' this function is
@@ -253,7 +264,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 									&pluginsCore.TaskInfo{OccurredAt: &t},
 								), nil
 
-							case "CreateContainerConfigError":
+							case "CreateContainerConfigError", "InvalidImageName":
 								t := c.LastTransitionTime.Time
 								return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 									OccurredAt: &t,
@@ -339,7 +350,7 @@ func ConvertPodFailureToError(status v1.PodStatus) (code, message string) {
 			containerState = c.State
 		}
 		if containerState.Terminated != nil {
-			if strings.Contains(c.State.Terminated.Reason, OOMKilled) {
+			if strings.Contains(containerState.Terminated.Reason, OOMKilled) {
 				code = OOMKilled
 			} else if containerState.Terminated.ExitCode == SIGKILL {
 				// in some setups, node termination sends SIGKILL to all the containers running on that node. Capturing and

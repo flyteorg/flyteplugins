@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,10 +35,10 @@ func validateAndFinalizePod(
 
 	resReqs := make([]k8sv1.ResourceRequirements, 0, len(pod.Spec.Containers))
 	for index, container := range pod.Spec.Containers {
-		var resourceMode = flytek8s.LeaveResourcesUnmodified
+		var resourceMode = flytek8s.ResourceCustomizationModeEnsureExistingResourcesInRange
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
-			resourceMode = flytek8s.MergeExistingResources
+			resourceMode = flytek8s.ResourceCustomizationModeMergeExistingResources
 		}
 		templateParameters := template.Parameters{
 			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
@@ -51,6 +50,7 @@ func validateAndFinalizePod(
 		if err != nil {
 			return nil, err
 		}
+		resReqs = append(resReqs, container.Resources)
 	}
 	if !hasPrimaryContainer {
 		return nil, errors.Errorf(errors.BadTaskSpecification,

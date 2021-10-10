@@ -37,6 +37,7 @@ var resourceRequirements = &v1.ResourceRequirements{
 	Limits: v1.ResourceList{
 		v1.ResourceCPU:              resource.MustParse("2048m"),
 		v1.ResourceEphemeralStorage: resource.MustParse("100M"),
+		ResourceNvidiaGPU:           resource.MustParse("1"),
 	},
 }
 
@@ -72,6 +73,7 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 		Namespace: "test-namespace",
 		Name:      "test-owner-name",
 	})
+	taskMetadata.OnGetPlatformResources().Return(&v1.ResourceRequirements{})
 
 	tID := &pluginsCoreMock.TaskExecutionID{}
 	tID.On("GetID").Return(core.TaskExecutionIdentifier{
@@ -127,10 +129,12 @@ func getPodSpec() v1.PodSpec {
 					Limits: v1.ResourceList{
 						"cpu":    resource.MustParse("2"),
 						"memory": resource.MustParse("200Mi"),
+						"gpu":    resource.MustParse("1"),
 					},
 					Requests: v1.ResourceList{
 						"cpu":    resource.MustParse("1"),
 						"memory": resource.MustParse("100Mi"),
+						"gpu":    resource.MustParse("1"),
 					},
 				},
 				VolumeMounts: []v1.VolumeMount{
@@ -141,6 +145,14 @@ func getPodSpec() v1.PodSpec {
 			},
 			{
 				Name: "secondary container",
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						"gpu": resource.MustParse("2"),
+					},
+					Requests: v1.ResourceList{
+						"gpu": resource.MustParse("2"),
+					},
+				},
 			},
 		},
 		Volumes: []v1.Volume{
@@ -157,12 +169,14 @@ func getPodSpec() v1.PodSpec {
 	}
 }
 
-func checkUserTolerations(t *testing.T, res client.Object) {
+func checkTolerations(t *testing.T, res client.Object, gpuTol v1.Toleration) {
 	// Assert user-specified tolerations don't get overridden
-	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 1)
+	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 2)
 	for _, tol := range res.(*v1.Pod).Spec.Tolerations {
 		if tol.Key == "my toleration key" {
 			assert.Equal(t, tol.Value, "my toleration value")
+		} else if tol.Key == gpuTol.Key {
+			assert.Equal(t, tol, gpuTol)
 		} else {
 			t.Fatalf("unexpected toleration [%+v]", tol)
 		}
@@ -220,8 +234,9 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
+		GpuResourceName:      ResourceNvidiaGPU,
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -241,7 +256,8 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 
 	assert.Len(t, res.(*v1.Pod).Spec.Containers[0].VolumeMounts, 1)
 	assert.Equal(t, "volume mount", res.(*v1.Pod).Spec.Containers[0].VolumeMounts[0].Name)
-	checkUserTolerations(t, res)
+
+	checkTolerations(t, res, tolGPU)
 
 	// Assert resource requirements are correctly set
 	expectedCPURequest := resource.MustParse("1")
@@ -254,6 +270,13 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 	assert.Equal(t, expectedMemLimit.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Limits.Memory().Value())
 	expectedEphemeralStorageLimit := resource.MustParse("100M")
 	assert.Equal(t, expectedEphemeralStorageLimit.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Limits.StorageEphemeral().Value())
+
+	expectedGPURes := resource.MustParse("1")
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[0].Resources.Requests[ResourceNvidiaGPU])
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[0].Resources.Limits[ResourceNvidiaGPU])
+	expectedGPURes = resource.MustParse("2")
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[1].Resources.Requests[ResourceNvidiaGPU])
+	assert.Equal(t, expectedGPURes, res.(*v1.Pod).Spec.Containers[1].Resources.Limits[ResourceNvidiaGPU])
 }
 
 func TestBuildSidecarResource_TaskType2_Invalid_Spec(t *testing.T) {
@@ -321,8 +344,8 @@ func TestBuildSidecarResource_TaskType1(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -340,8 +363,7 @@ func TestBuildSidecarResource_TaskType1(t *testing.T) {
 	assert.Len(t, res.(*v1.Pod).Spec.Containers[0].VolumeMounts, 1)
 	assert.Equal(t, "volume mount", res.(*v1.Pod).Spec.Containers[0].VolumeMounts[0].Name)
 
-	checkUserTolerations(t, res)
-
+	checkTolerations(t, res, tolGPU)
 	// Assert resource requirements are correctly set
 	expectedCPURequest := resource.MustParse("1")
 	assert.Equal(t, expectedCPURequest.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Requests.Cpu().Value())
@@ -387,8 +409,8 @@ func TestBuildSideResource_TaskType1_InvalidSpec(t *testing.T) {
 			v1.ResourceStorage: {},
 			ResourceNvidiaGPU:  {},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -439,8 +461,8 @@ func TestBuildSidecarResource(t *testing.T) {
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
 		},
-		DefaultCPURequest:    "1024m",
-		DefaultMemoryRequest: "1024Mi",
+		DefaultCPURequest:    resource.MustParse("1024m"),
+		DefaultMemoryRequest: resource.MustParse("1024Mi"),
 	}))
 	handler := &sidecarResourceHandler{}
 	taskCtx := getDummySidecarTaskContext(&task, resourceRequirements)
@@ -463,20 +485,15 @@ func TestBuildSidecarResource(t *testing.T) {
 	assert.Equal(t, "volume mount", res.(*v1.Pod).Spec.Containers[0].VolumeMounts[0].Name)
 
 	assert.Equal(t, "service-account", res.(*v1.Pod).Spec.ServiceAccountName)
-	// Assert user-specified tolerations don't get overridden
+
 	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 1)
 	for _, tol := range res.(*v1.Pod).Spec.Tolerations {
-		if tol.Key == "flyte/gpu" {
-			assert.Equal(t, tol.Value, "dedicated")
-			assert.Equal(t, tol.Operator, v1.TolerationOperator("Equal"))
-			assert.Equal(t, tol.Effect, v1.TaintEffect("NoSchedule"))
-		} else if tol.Key == "my toleration key" {
+		if tol.Key == "my toleration key" {
 			assert.Equal(t, tol.Value, "my toleration value")
 		} else {
 			t.Fatalf("unexpected toleration [%+v]", tol)
 		}
 	}
-
 	// Assert resource requirements are correctly set
 	expectedCPURequest := resource.MustParse("2048m")
 	assert.Equal(t, expectedCPURequest.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Requests.Cpu().Value())

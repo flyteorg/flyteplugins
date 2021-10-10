@@ -141,7 +141,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		},
 	}
 	if taskTemplate.GetContainer() != nil {
-		podSpec, err := flytek8s.ToK8sPodSpec(ctx, arrTCtx)
+		podSpec, err := flytek8s.ToK8sPodSpecWithInterruptible(ctx, arrTCtx, true)
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}
@@ -166,7 +166,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 			Task:             tCtx.TaskReader(),
 		}
 		err = flytek8s.AddFlyteCustomizationsToContainer(
-			ctx, templateParameters, flytek8s.MergeExistingResources, &pod.Spec.Containers[containerIndex])
+			ctx, templateParameters, flytek8s.ResourceCustomizationModeMergeExistingResources, &pod.Spec.Containers[containerIndex])
 		if err != nil {
 			return v1.Pod{}, nil, err
 		}
