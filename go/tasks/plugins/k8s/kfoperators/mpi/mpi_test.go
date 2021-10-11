@@ -9,9 +9,8 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
-	commonKf "github.com/kubeflow/common/pkg/apis/common/v1"
+	mpiOp "github.com/kubeflow/common/pkg/apis/common/v1"
 	mpi "github.com/kubeflow/mpi-operator/v2/pkg/apis/kubeflow/v2beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -49,14 +48,12 @@ var (
 
 	resourceRequirements = &corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:         resource.MustParse("1000m"),
-			corev1.ResourceMemory:      resource.MustParse("1Gi"),
-			flytek8s.ResourceNvidiaGPU: resource.MustParse("1"),
+			corev1.ResourceCPU:    resource.MustParse("1000m"),
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
 		},
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:         resource.MustParse("100m"),
-			corev1.ResourceMemory:      resource.MustParse("512Mi"),
-			flytek8s.ResourceNvidiaGPU: resource.MustParse("1"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+			corev1.ResourceMemory: resource.MustParse("512Mi"),
 		},
 	}
 
@@ -145,18 +142,19 @@ func dummyMPITaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecut
 	taskExecutionMetadata.OnIsInterruptible().Return(true)
 	taskExecutionMetadata.OnGetOverrides().Return(resources)
 	taskExecutionMetadata.OnGetK8sServiceAccount().Return(serviceAccount)
+	taskExecutionMetadata.OnGetPlatformResources().Return(&corev1.ResourceRequirements{})
 	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
 	return taskCtx
 }
 
 func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
-	workers int32, launcher int32, slots int32, conditionType commonKf.JobConditionType) *mpi.MPIJob {
-	var jobConditions []commonKf.JobCondition
+	workers int32, launcher int32, slots int32, conditionType mpiOp.JobConditionType) *mpi.MPIJob {
+	var jobConditions []mpiOp.JobCondition
 
 	now := time.Now()
 
-	jobCreated := commonKf.JobCondition{
-		Type:    commonKf.JobCreated,
+	jobCreated := mpiOp.JobCondition{
+		Type:    mpiOp.JobCreated,
 		Status:  corev1.ConditionTrue,
 		Reason:  "MPICreated",
 		Message: "MPIJob the-job is created.",
@@ -167,8 +165,8 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 			Time: now,
 		},
 	}
-	jobRunningActive := commonKf.JobCondition{
-		Type:    commonKf.JobRunning,
+	jobRunningActive := mpiOp.JobCondition{
+		Type:    mpiOp.JobRunning,
 		Status:  corev1.ConditionTrue,
 		Reason:  "MPIJobRunning",
 		Message: "MPIJob the-job is running.",
@@ -181,8 +179,8 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 	}
 	jobRunningInactive := *jobRunningActive.DeepCopy()
 	jobRunningInactive.Status = corev1.ConditionFalse
-	jobSucceeded := commonKf.JobCondition{
-		Type:    commonKf.JobSucceeded,
+	jobSucceeded := mpiOp.JobCondition{
+		Type:    mpiOp.JobSucceeded,
 		Status:  corev1.ConditionTrue,
 		Reason:  "MPIJobSucceeded",
 		Message: "MPIJob the-job is successfully completed.",
@@ -193,8 +191,8 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 			Time: now.Add(2 * time.Minute),
 		},
 	}
-	jobFailed := commonKf.JobCondition{
-		Type:    commonKf.JobFailed,
+	jobFailed := mpiOp.JobCondition{
+		Type:    mpiOp.JobFailed,
 		Status:  corev1.ConditionTrue,
 		Reason:  "MPIJobFailed",
 		Message: "MPIJob the-job is failed.",
@@ -205,8 +203,8 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 			Time: now.Add(2 * time.Minute),
 		},
 	}
-	jobRestarting := commonKf.JobCondition{
-		Type:    commonKf.JobRestarting,
+	jobRestarting := mpiOp.JobCondition{
+		Type:    mpiOp.JobRestarting,
 		Status:  corev1.ConditionTrue,
 		Reason:  "MPIJobRestarting",
 		Message: "MPIJob the-job is restarting because some replica(s) failed.",
@@ -219,29 +217,29 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 	}
 
 	switch conditionType {
-	case commonKf.JobCreated:
-		jobConditions = []commonKf.JobCondition{
+	case mpiOp.JobCreated:
+		jobConditions = []mpiOp.JobCondition{
 			jobCreated,
 		}
-	case commonKf.JobRunning:
-		jobConditions = []commonKf.JobCondition{
+	case mpiOp.JobRunning:
+		jobConditions = []mpiOp.JobCondition{
 			jobCreated,
 			jobRunningActive,
 		}
-	case commonKf.JobSucceeded:
-		jobConditions = []commonKf.JobCondition{
+	case mpiOp.JobSucceeded:
+		jobConditions = []mpiOp.JobCondition{
 			jobCreated,
 			jobRunningInactive,
 			jobSucceeded,
 		}
-	case commonKf.JobFailed:
-		jobConditions = []commonKf.JobCondition{
+	case mpiOp.JobFailed:
+		jobConditions = []mpiOp.JobCondition{
 			jobCreated,
 			jobRunningInactive,
 			jobFailed,
 		}
-	case commonKf.JobRestarting:
-		jobConditions = []commonKf.JobCondition{
+	case mpiOp.JobRestarting:
+		jobConditions = []mpiOp.JobCondition{
 			jobCreated,
 			jobRunningInactive,
 			jobFailed,
@@ -262,7 +260,7 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 			Namespace: jobNamespace,
 		},
 		Spec: resource.(*mpi.MPIJob).Spec,
-		Status: commonKf.JobStatus{
+		Status: mpiOp.JobStatus{
 			Conditions:        jobConditions,
 			ReplicaStatuses:   nil,
 			StartTime:         nil,
@@ -300,35 +298,35 @@ func TestGetTaskPhase(t *testing.T) {
 	mpiResourceHandler := mpiOperatorResourceHandler{}
 	ctx := context.TODO()
 
-	dummyMPIJobResourceCreator := func(conditionType commonKf.JobConditionType) *mpi.MPIJob {
+	dummyMPIJobResourceCreator := func(conditionType mpiOp.JobConditionType) *mpi.MPIJob {
 		return dummyMPIJobResource(mpiResourceHandler, 2, 1, 1, conditionType)
 	}
 
-	taskPhase, err := mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(commonKf.JobCreated))
+	taskPhase, err := mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobCreated))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(commonKf.JobRunning))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobRunning))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(commonKf.JobSucceeded))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobSucceeded))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseSuccess, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(commonKf.JobFailed))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobFailed))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(commonKf.JobRestarting))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobRestarting))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
@@ -346,7 +344,7 @@ func TestGetLogs(t *testing.T) {
 	slots := int32(1)
 
 	mpiResourceHandler := mpiOperatorResourceHandler{}
-	mpiJob := dummyMPIJobResource(mpiResourceHandler, workers, launcher, slots, commonKf.JobRunning)
+	mpiJob := dummyMPIJobResource(mpiResourceHandler, workers, launcher, slots, mpiOp.JobRunning)
 	jobLogs, err := common.GetLogs(common.MPITaskType, mpiJob.Name, mpiJob.Namespace, workers, launcher, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobLogs))
