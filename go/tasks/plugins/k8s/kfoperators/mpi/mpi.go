@@ -73,6 +73,13 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 		workersPodSpec.Containers[k].Command = []string{}
 	}
 
+	if workers == 0 {
+		return nil, fmt.Errorf("number of worker should be more then 1 ")
+	}
+	if launcherReplicas == 0 {
+		return nil, fmt.Errorf("number of launch worker should be more then 1")
+	}
+
 	jobSpec := mpi.MPIJobSpec{
 		SlotsPerWorker: &slots,
 		MPIReplicaSpecs: map[mpi.MPIReplicaType]*commonKf.ReplicaSpec{
@@ -112,13 +119,6 @@ func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext 
 	app, ok := resource.(*mpi.MPIJob)
 	if !ok {
 		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("failed to convert resource data type")
-	}
-
-	if numWorkers = app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Replicas; *numWorkers == 0 {
-		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("number of worker should be more then 1 ")
-	}
-	if numLauncherReplicas = app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeLauncher].Replicas; *numLauncherReplicas == 0 {
-		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("number of launch worker should be more then 1")
 	}
 
 	taskLogs, err := common.GetLogs(common.MPITaskType, app.Name, app.Namespace,

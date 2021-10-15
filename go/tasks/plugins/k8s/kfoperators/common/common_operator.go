@@ -11,7 +11,7 @@ import (
 	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	mpiOp "github.com/kubeflow/common/pkg/apis/common/v1"
+	commonKf "github.com/kubeflow/common/pkg/apis/common/v1"
 	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
 	v1 "k8s.io/api/core/v1"
 )
@@ -22,7 +22,7 @@ const (
 	PytorchTaskType    = "pytorch"
 )
 
-func ExtractMPICurrentCondition(jobConditions []mpiOp.JobCondition) (mpiOp.JobCondition, error) {
+func ExtractMPICurrentCondition(jobConditions []commonKf.JobCondition) (commonKf.JobCondition, error) {
 	if jobConditions != nil {
 		sort.Slice(jobConditions, func(i, j int) bool {
 			return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
@@ -35,7 +35,7 @@ func ExtractMPICurrentCondition(jobConditions []mpiOp.JobCondition) (mpiOp.JobCo
 		}
 	}
 
-	return mpiOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
+	return commonKf.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
 }
 
 func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
@@ -73,19 +73,19 @@ func GetPhaseInfo(currentCondition commonOp.JobCondition, occurredAt time.Time,
 	return pluginsCore.PhaseInfoUndefined, nil
 }
 
-func GetMPIPhaseInfo(currentCondition mpiOp.JobCondition, occurredAt time.Time,
+func GetMPIPhaseInfo(currentCondition commonKf.JobCondition, occurredAt time.Time,
 	taskPhaseInfo pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
 	switch currentCondition.Type {
-	case mpiOp.JobCreated:
+	case commonKf.JobCreated:
 		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
-	case mpiOp.JobRunning:
+	case commonKf.JobRunning:
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &taskPhaseInfo), nil
-	case mpiOp.JobSucceeded:
+	case commonKf.JobSucceeded:
 		return pluginsCore.PhaseInfoSuccess(&taskPhaseInfo), nil
-	case mpiOp.JobFailed:
+	case commonKf.JobFailed:
 		details := fmt.Sprintf("Job failed:\n\t%v - %v", currentCondition.Reason, currentCondition.Message)
 		return pluginsCore.PhaseInfoRetryableFailure(flyteerr.DownstreamSystemError, details, &taskPhaseInfo), nil
-	case mpiOp.JobRestarting:
+	case commonKf.JobRestarting:
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &taskPhaseInfo), nil
 	}
 

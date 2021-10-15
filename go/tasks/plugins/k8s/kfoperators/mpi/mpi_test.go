@@ -36,6 +36,8 @@ import (
 
 const testImage = "image://"
 const serviceAccount = "mpi_sa"
+const mpiID = "the job 1"
+const mpiID2 = "the job 2"
 
 var (
 	dummyEnvVars = []*core.KeyValuePair{
@@ -69,7 +71,7 @@ func dummyMPICustomObj(workers int32, launcher int32, slots int32) *plugins.Dist
 	}
 }
 
-func dummySparkTaskTemplate(id string, mpiCustomObj *plugins.DistributedMPITrainingTask) *core.TaskTemplate {
+func dummyMPITaskTemplate(id string, mpiCustomObj *plugins.DistributedMPITrainingTask) *core.TaskTemplate {
 
 	mpiObjJSON, err := utils.MarshalToString(mpiCustomObj)
 	if err != nil {
@@ -248,7 +250,7 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 	}
 
 	mpiObj := dummyMPICustomObj(workers, launcher, slots)
-	taskTemplate := dummySparkTaskTemplate("the job", mpiObj)
+	taskTemplate := dummyMPITaskTemplate(mpiID, mpiObj)
 	resource, err := mpiResourceHandler.BuildResource(context.TODO(), dummyMPITaskContext(taskTemplate))
 	if err != nil {
 		panic(err)
@@ -274,7 +276,7 @@ func TestBuildResourceMPI(t *testing.T) {
 	mpiResourceHandler := mpiOperatorResourceHandler{}
 
 	mpiObj := dummyMPICustomObj(100, 50, 1)
-	taskTemplate := dummySparkTaskTemplate("the job", mpiObj)
+	taskTemplate := dummyMPITaskTemplate(mpiID2, mpiObj)
 
 	resource, err := mpiResourceHandler.BuildResource(context.TODO(), dummyMPITaskContext(taskTemplate))
 	assert.NoError(t, err)
@@ -292,6 +294,23 @@ func TestBuildResourceMPI(t *testing.T) {
 			assert.Equal(t, resourceRequirements.Limits, container.Resources.Limits)
 		}
 	}
+}
+
+func TestBuildResourceMPIForWrongInput(t *testing.T) {
+	mpiResourceHandler := mpiOperatorResourceHandler{}
+
+	mpiObj := dummyMPICustomObj(0, 0, 1)
+	taskTemplate := dummyMPITaskTemplate(mpiID, mpiObj)
+
+	_, err := mpiResourceHandler.BuildResource(context.TODO(), dummyMPITaskContext(taskTemplate))
+	assert.Error(t, err)
+
+	mpiObj = dummyMPICustomObj(1, 0, 1)
+	taskTemplate = dummyMPITaskTemplate(mpiID2, mpiObj)
+
+	_, err = mpiResourceHandler.BuildResource(context.TODO(), dummyMPITaskContext(taskTemplate))
+	assert.Error(t, err)
+
 }
 
 func TestGetTaskPhase(t *testing.T) {
