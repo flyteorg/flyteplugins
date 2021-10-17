@@ -121,6 +121,9 @@ func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext 
 		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("failed to convert resource data type")
 	}
 
+	numWorkers = app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Replicas
+	numLauncherReplicas = app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeLauncher].Replicas
+
 	taskLogs, err := common.GetLogs(common.MPITaskType, app.Name, app.Namespace,
 		*numWorkers, *numLauncherReplicas, 0)
 	if err != nil {
