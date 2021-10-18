@@ -311,6 +311,15 @@ func TestBuildResourceMPIForWrongInput(t *testing.T) {
 	_, err = mpiResourceHandler.BuildResource(context.TODO(), dummyMPITaskContext(taskTemplate))
 	assert.Error(t, err)
 
+	mpiObj = dummyMPICustomObj(1, 1, 1)
+	taskTemplate = dummyMPITaskTemplate(mpiID2, mpiObj)
+
+	resource, err := mpiResourceHandler.BuildResource(context.TODO(), dummyMPITaskContext(taskTemplate))
+	app, ok := resource.(*mpi.MPIJob)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, []string{}, app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Template.Spec.Containers[0].Command)
+	assert.Equal(t, []string{}, app.Spec.MPIReplicaSpecs[mpi.MPIReplicaTypeWorker].Template.Spec.Containers[0].Args)
 }
 
 func TestGetTaskPhase(t *testing.T) {

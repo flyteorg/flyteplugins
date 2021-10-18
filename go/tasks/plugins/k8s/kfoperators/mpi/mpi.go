@@ -67,7 +67,10 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
 
+	// workersPodSpec is deepCopy of podSpec submitted by flyte
+	// WorkerPodSpec doesn't need any Argument & command. It will be trigger from launcher pod
 	workersPodSpec := podSpec.DeepCopy()
+
 	for k := range workersPodSpec.Containers {
 		workersPodSpec.Containers[k].Args = []string{}
 		workersPodSpec.Containers[k].Command = []string{}
