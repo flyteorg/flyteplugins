@@ -22,7 +22,7 @@ type RemoteFileOutputPaths struct {
 	// this prefix
 	outputPrefix storage.DataReference
 	// Implemented of the ReferenceConstructor, used to construct the actual paths
-	store        storage.ReferenceConstructor
+	store storage.ReferenceConstructor
 	// Arbitrary supplied of the RawOutputPath
 	io.RawOutputPaths
 }
@@ -89,12 +89,15 @@ type RemoteCheckpointPaths struct {
 	store storage.ReferenceConstructor
 }
 
+// GetPreviousCheckpointsPrefix returns the Prefix path for checkpoints for the previous attempt, or "" if this is
+// the first attempt
 func (r RemoteCheckpointPaths) GetPreviousCheckpointsPrefix() storage.DataReference {
 	return r.previousPath
 }
 
+// GetCheckpointPrefix returns a new checkpoint path under the raw output prefix.
 func (r RemoteCheckpointPaths) GetCheckpointPrefix() storage.DataReference {
-	return constructPath(r.store, r.GetOutputPrefixPath(), CheckpointPrefix)
+	return ConstructCheckpointPath(r.store, r.GetRawOutputPrefix())
 }
 
 // NewRemoteFileOutputPaths returns a RemoteFileOutputPaths object, where all the paths are configured using the given
@@ -110,8 +113,8 @@ func NewRemoteFileOutputPaths(_ context.Context, store storage.ReferenceConstruc
 // NewCheckpointRemoteFilePaths returns a new object constructed with an optional previousCheckpointPath and derives a new checkpointPath from the outputPrefix
 func NewCheckpointRemoteFilePaths(ctx context.Context, store storage.ReferenceConstructor, outputPrefix storage.DataReference, sandbox io.RawOutputPaths, previousCheckpointPath storage.DataReference) RemoteCheckpointPaths {
 	return RemoteCheckpointPaths{
-		previousPath: previousCheckpointPath,
-		store: store,
+		previousPath:          previousCheckpointPath,
+		store:                 store,
 		RemoteFileOutputPaths: NewRemoteFileOutputPaths(ctx, store, outputPrefix, sandbox),
 	}
 }

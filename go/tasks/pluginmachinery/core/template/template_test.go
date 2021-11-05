@@ -458,11 +458,11 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
 			Inputs:           in,
-			OutputPath:       dummyOutputPaths{
-				outputPath: out.outputPath,
+			OutputPath: dummyOutputPaths{
+				outputPath:          out.outputPath,
 				rawOutputDataPrefix: out.rawOutputDataPrefix,
-				prevCheckpointPath: "s3://prev-checkpoint/prefix",
-				checkpointPath: "s3://new-checkpoint/prefix",
+				prevCheckpointPath:  "s3://prev-checkpoint/prefix",
+				checkpointPath:      "s3://new-checkpoint/prefix",
 			},
 		}
 		actual, err := Render(context.TODO(), []string{
@@ -484,11 +484,11 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
 			Inputs:           in,
-			OutputPath:       dummyOutputPaths{
-				outputPath: out.outputPath,
+			OutputPath: dummyOutputPaths{
+				outputPath:          out.outputPath,
 				rawOutputDataPrefix: out.rawOutputDataPrefix,
-				prevCheckpointPath: "",
-				checkpointPath: "s3://new-checkpoint/prefix",
+				prevCheckpointPath:  "",
+				checkpointPath:      "s3://new-checkpoint/prefix",
 			},
 		}
 		actual, err := Render(context.TODO(), []string{
@@ -514,11 +514,11 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
 			Inputs:           in,
-			OutputPath:       dummyOutputPaths{
-				outputPath: out.outputPath,
+			OutputPath: dummyOutputPaths{
+				outputPath:          out.outputPath,
 				rawOutputDataPrefix: out.rawOutputDataPrefix,
-				prevCheckpointPath: "s3://prev-checkpoint/prefix",
-				checkpointPath: "s3://new-checkpoint/prefix",
+				prevCheckpointPath:  "s3://prev-checkpoint/prefix",
+				checkpointPath:      "s3://new-checkpoint/prefix",
 			},
 		}
 		actual, err := Render(context.TODO(), []string{
@@ -544,11 +544,11 @@ func TestReplaceTemplateCommandArgs(t *testing.T) {
 		params := Parameters{
 			TaskExecMetadata: taskMetadata,
 			Inputs:           in,
-			OutputPath:       dummyOutputPaths{
-				outputPath: out.outputPath,
+			OutputPath: dummyOutputPaths{
+				outputPath:          out.outputPath,
 				rawOutputDataPrefix: out.rawOutputDataPrefix,
-				prevCheckpointPath: "s3://prev-checkpoint/prefix",
-				checkpointPath: "s3://new-checkpoint/prefix",
+				prevCheckpointPath:  "s3://prev-checkpoint/prefix",
+				checkpointPath:      "s3://new-checkpoint/prefix",
 			},
 		}
 		actual, err := Render(context.TODO(), []string{
