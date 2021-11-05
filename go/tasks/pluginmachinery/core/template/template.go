@@ -41,7 +41,7 @@ type Parameters struct {
 	Task             core.TaskTemplatePath
 }
 
-// Evaluates templates in each command with the equivalent value from passed args. Templates are case-insensitive
+// Render Evaluates templates in each command with the equivalent value from passed args. Templates are case-insensitive
 // Supported templates are:
 // - {{ .InputFile }} to receive the input file path. The protocol used will depend on the underlying system
 // 		configuration. E.g. s3://bucket/key/to/file.pb or /var/run/local.pb are both valid.
@@ -86,6 +86,8 @@ var inputVarRegex = regexp.MustCompile(`(?i){{\s*[\.$]Inputs\.(?P<input_name>[^}
 var rawOutputDataPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]RawOutputDataPrefix\s*}}`)
 var perRetryUniqueKey = regexp.MustCompile(`(?i){{\s*[\.$]PerRetryUniqueKey\s*}}`)
 var taskTemplateRegex = regexp.MustCompile(`(?i){{\s*[\.$]TaskTemplatePath\s*}}`)
+var prevCheckpointPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]PrevCheckpointPrefix\s*}}`)
+var currCheckpointPrefixRegex = regexp.MustCompile(`(?i){{\s*[\.$]CheckpointOutputPrefix\s*}}`)
 
 func render(ctx context.Context, inputTemplate string, params Parameters, perRetryKey string) (string, error) {
 
@@ -93,6 +95,12 @@ func render(ctx context.Context, inputTemplate string, params Parameters, perRet
 	val = outputRegex.ReplaceAllString(val, params.OutputPath.GetOutputPrefixPath().String())
 	val = inputPrefixRegex.ReplaceAllString(val, params.Inputs.GetInputPrefixPath().String())
 	val = rawOutputDataPrefixRegex.ReplaceAllString(val, params.OutputPath.GetRawOutputPrefix().String())
+	prevCheckpoint := params.OutputPath.GetPreviousCheckpointsPrefix().String()
+	if prevCheckpoint == "" {
+		prevCheckpoint = "\"\""
+	}
+	val = prevCheckpointPrefixRegex.ReplaceAllString(val, prevCheckpoint)
+	val = currCheckpointPrefixRegex.ReplaceAllString(val, params.OutputPath.GetCheckpointPrefix().String())
 	val = perRetryUniqueKey.ReplaceAllString(val, perRetryKey)
 
 	// For Task template, we will replace only if there is a match. This is because, task template replacement
