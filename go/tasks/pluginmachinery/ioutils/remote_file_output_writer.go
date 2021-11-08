@@ -119,6 +119,11 @@ func NewCheckpointRemoteFilePaths(ctx context.Context, store storage.ReferenceCo
 	}
 }
 
+// NewReadOnlyOutputFilePaths can be used when data is only to be read from an existing remote location
+func NewReadOnlyOutputFilePaths(ctx context.Context, store storage.ReferenceConstructor, outputPrefix storage.DataReference) RemoteCheckpointPaths {
+	return NewCheckpointRemoteFilePaths(ctx, store, outputPrefix, nil, "")
+}
+
 // NewRemoteFileOutputWriter returns a writer that records all outputs to remote files / objects. Given outputs,
 // it will automatically write it to the outputFile / key that is configured.
 func NewRemoteFileOutputWriter(_ context.Context, store storage.ProtobufStore, outputFilePaths io.OutputFilePaths) RemoteFileOutputWriter {
