@@ -25,8 +25,8 @@ const (
 	ErrorsSuffix      = "error.pb"
 	IndexLookupSuffix = "indexlookup.pb"
 	// CheckpointPrefix specifies the common prefix that can be used as a directory where all the checkpoint information
-	// will be stored
-	CheckpointPrefix = "checkpoint"
+	// will be stored. This directory is under the raw output-prefix path
+	CheckpointPrefix = "_flytecheckpoints"
 )
 
 // ConstructCheckpointPath returns a checkpoint path under the given `base` / rawOutputPrefix, following the conventions of
