@@ -80,7 +80,7 @@ type ReservationEntry struct {
 	expiresAt         time.Time
 	heartbeatInterval time.Duration
 	ownerID           string
-	status            core.CatalogReservationStatus
+	status            core.CatalogReservation_Status
 }
 
 func (r ReservationEntry) GetExpiresAt() time.Time {
@@ -95,11 +95,11 @@ func (r ReservationEntry) GetOwnerID() string {
 	return r.ownerID
 }
 
-func (r ReservationEntry) GetStatus() core.CatalogReservationStatus {
+func (r ReservationEntry) GetStatus() core.CatalogReservation_Status {
 	return r.status
 }
 
-func NewReservationEntryStatus(status core.CatalogReservationStatus) ReservationEntry {
+func NewReservationEntryStatus(status core.CatalogReservation_Status) ReservationEntry {
 	duration := 0 * time.Second
 	return ReservationEntry{
 		expiresAt:         time.Time{},
@@ -109,7 +109,7 @@ func NewReservationEntryStatus(status core.CatalogReservationStatus) Reservation
 	}
 }
 
-func NewReservationEntry(expiresAt time.Time, heartbeatInterval time.Duration, ownerID string, status core.CatalogReservationStatus) ReservationEntry {
+func NewReservationEntry(expiresAt time.Time, heartbeatInterval time.Duration, ownerID string, status core.CatalogReservation_Status) ReservationEntry {
 	return ReservationEntry{
 		expiresAt:         expiresAt,
 		heartbeatInterval: heartbeatInterval,
