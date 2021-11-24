@@ -32,7 +32,7 @@ const (
 // ConstructCheckpointPath returns a checkpoint path under the given `base` / rawOutputPrefix, following the conventions of
 // the store
 func ConstructCheckpointPath(store storage.ReferenceConstructor, rawOutputPrefix storage.DataReference) storage.DataReference {
-	if rawOutputPrefix == "" {
+	if len(rawOutputPrefix) == 0 {
 		return ""
 	}
 	return constructPath(store, rawOutputPrefix, CheckpointPrefix)

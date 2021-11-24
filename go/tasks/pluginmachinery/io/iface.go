@@ -9,8 +9,9 @@ import (
 
 //go:generate mockery -all -case=underscore
 
-// InputFilePaths If using Files for IO with tasks, then the input will be written to this path
-// All the files are always created in a sandbox per execution
+// InputFilePaths contains the different ways available for downstream systems to retrieve inputs.
+// If using Files for IO with tasks, then the input will be written to this path. All the files are always created in a
+// sandbox per execution
 type InputFilePaths interface {
 	// GetInputPrefixPath The inputs file path, minus the protobuf file name.
 	GetInputPrefixPath() storage.DataReference
@@ -29,9 +30,9 @@ type InputReader interface {
 // OutputReader provides an abstracted OutputReader interface. The plugins are responsible to provide
 // the implementations for the interface. Some helper implementations can be found in ioutils
 type OutputReader interface {
-	// IsError Returns true if an error was detected when reading the output and false if no error was detected
+	// IsError returns true if an error was detected when reading the output and false if no error was detected
 	IsError(ctx context.Context) (bool, error)
-	// ReadError Returns the error as type ExecutionError
+	// ReadError returns the error as type ExecutionError
 	ReadError(ctx context.Context) (ExecutionError, error)
 	// IsFile Returns true if the outputs are using the OutputFilePaths specified files. If so it allows the system to
 	// optimize the reads of the files
@@ -44,7 +45,11 @@ type OutputReader interface {
 
 // CheckpointPaths provides the paths / keys to input Checkpoints directory and an output checkpoints directory.
 type CheckpointPaths interface {
+	// GetPreviousCheckpointsPrefix returns the storage prefix for checkpoints for the previous iteration / attempt.
+	// It is optional and can be an empty string in some cases
 	GetPreviousCheckpointsPrefix() storage.DataReference
+	// GetCheckpointPrefix returns the storage prefix that should be used to store checkpoints for the current attempt
+	// The path is not accessible to Flyte backend and are stored in the users raw path
 	GetCheckpointPrefix() storage.DataReference
 }
 
