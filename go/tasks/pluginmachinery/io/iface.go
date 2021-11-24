@@ -34,12 +34,12 @@ type OutputReader interface {
 	IsError(ctx context.Context) (bool, error)
 	// ReadError returns the error as type ExecutionError
 	ReadError(ctx context.Context) (ExecutionError, error)
-	// IsFile Returns true if the outputs are using the OutputFilePaths specified files. If so it allows the system to
+	// IsFile returns true if the outputs are using the OutputFilePaths specified files. If so it allows the system to
 	// optimize the reads of the files
 	IsFile(ctx context.Context) bool
-	// Exists Returns true if the output exists false otherwise
+	// Exists returns true if the output exists false otherwise
 	Exists(ctx context.Context) (bool, error)
-	// Read Returns the output -> *core.LiteralMap (nil if void), *ExecutionError if user error when reading the output and error to indicate system problems
+	// Read returns the output -> *core.LiteralMap (nil if void), *ExecutionError if user error when reading the output and error to indicate system problems
 	Read(ctx context.Context) (*core.LiteralMap, *ExecutionError, error)
 }
 
@@ -63,8 +63,9 @@ type RawOutputPaths interface {
 	GetRawOutputPrefix() storage.DataReference
 }
 
-// OutputFilePaths All paths where various meta outputs produced by the task can be placed, such that the framework can directly access them.
-// All paths are represented using storage.DataReference -> an URN for the configured storage backend
+// OutputFilePaths contains and provides all paths where various meta outputs produced by the task can be placed,
+// such that the framework can directly access them. Every path is represented using storage.DataReference ->
+// an URN for the configured storage backend
 type OutputFilePaths interface {
 	// RawOutputPaths are available with OutputFilePaths
 	RawOutputPaths
