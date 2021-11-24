@@ -13,9 +13,9 @@ import (
 // If using Files for IO with tasks, then the input will be written to this path. All the files are always created in a
 // sandbox per execution
 type InputFilePaths interface {
-	// GetInputPrefixPath The inputs file path, minus the protobuf file name.
+	// GetInputPrefixPath returns the inputs file path, minus the protobuf file name.
 	GetInputPrefixPath() storage.DataReference
-	// GetInputPath Gets a path for where the protobuf encoded inputs of type `core.LiteralMap` can be found. The returned value is an URN in the configured storage backend
+	// GetInputPath returns a path for where the protobuf encoded inputs of type `core.LiteralMap` can be found. The returned value is an URN in the configured storage backend
 	GetInputPath() storage.DataReference
 }
 
@@ -73,16 +73,16 @@ type OutputFilePaths interface {
 	// CheckpointPaths that can be optionally used to checkpoint
 	CheckpointPaths
 
-	// GetOutputPrefixPath A path to a directory or prefix that contains all execution metadata for this execution
+	// GetOutputPrefixPath returns a path to a directory or prefix that contains all execution metadata for this execution
 	GetOutputPrefixPath() storage.DataReference
-	// GetOutputPath A fully qualified path (URN) to where the framework expects the output to exist in the configured storage backend
+	// GetOutputPath returns a fully qualified path (URN) to where the framework expects the output to exist in the configured storage backend
 	GetOutputPath() storage.DataReference
-	// GetErrorPath A Fully qualified path (URN) where the error information should be placed as a protobuf core.ErrorDocument. It is not directly
+	// GetErrorPath returns a fully qualified path (URN) where the error information should be placed as a protobuf core.ErrorDocument. It is not directly
 	// used by the framework, but could be used in the future
 	GetErrorPath() storage.DataReference
 }
 
-// OutputWriter Framework Output writing interface.
+// OutputWriter provides an interface to write back the outputs to the engine.
 type OutputWriter interface {
 	OutputFilePaths
 	// Put Once the task completes, use this method to indicate the output accessor to the framework
