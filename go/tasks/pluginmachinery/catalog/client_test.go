@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	cacheStatus = core.CatalogCacheStatus_CACHE_MISS
+	cacheStatus     = core.CatalogCacheStatus_CACHE_MISS
 	catalogMetadata = core.CatalogMetadata{
 		DatasetId: &core.Identifier{
 			Project: "project",
@@ -37,9 +37,9 @@ func TestStatus(t *testing.T) {
 }
 
 func TestEntry(t *testing.T) {
-	tests := []struct{
-		name   string
-		entry  Entry
+	tests := []struct {
+		name  string
+		entry Entry
 	}{
 		{
 			"base",
@@ -66,7 +66,7 @@ func TestEntry(t *testing.T) {
 
 func TestReservationEntry(t *testing.T) {
 	reservationStatus := core.CatalogReservation_RESERVATION_ACQUIRED
-	tests := []struct{
+	tests := []struct {
 		name              string
 		reservationEntry  ReservationEntry
 		expiresAt         time.Time
@@ -76,7 +76,7 @@ func TestReservationEntry(t *testing.T) {
 	}{
 		{
 			"base",
-			NewReservationEntry(time.Time{}, 5 * time.Second, "owner", reservationStatus),
+			NewReservationEntry(time.Time{}, 5*time.Second, "owner", reservationStatus),
 			time.Time{},
 			5 * time.Second,
 			"owner",

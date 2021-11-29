@@ -93,7 +93,7 @@ func (r ReservationEntry) GetHeartbeatInterval() time.Duration {
 	return r.heartbeatInterval
 }
 
-// Returns the id for the current owner of the reservation 
+// Returns the ID of the current reservation owner
 func (r ReservationEntry) GetOwnerID() string {
 	return r.ownerID
 }
