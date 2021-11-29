@@ -75,7 +75,7 @@ func NewCatalogEntry(outputs io.OutputReader, status Status) Entry {
 	return Entry{outputs: outputs, status: status}
 }
 
-// Indicates the Reservation in Catalog
+// ReservationEntry encapsulates the current state of an artifact reservation within the catalog
 type ReservationEntry struct {
 	expiresAt         time.Time
 	heartbeatInterval time.Duration
@@ -83,22 +83,27 @@ type ReservationEntry struct {
 	status            core.CatalogReservation_Status
 }
 
+// Returns the expiration timestamp at which the reservation will no longer be valid
 func (r ReservationEntry) GetExpiresAt() time.Time {
 	return r.expiresAt
 }
 
+// Returns the heartbeat interval, denoting how often the catalog expects a reservation extension request
 func (r ReservationEntry) GetHeartbeatInterval() time.Duration {
 	return r.heartbeatInterval
 }
 
+// Returns the id for the current owner of the reservation 
 func (r ReservationEntry) GetOwnerID() string {
 	return r.ownerID
 }
 
+// Returns the status of the attempted reservation operation
 func (r ReservationEntry) GetStatus() core.CatalogReservation_Status {
 	return r.status
 }
 
+// Creates a new ReservationEntry using the status, all other fields are set to default values
 func NewReservationEntryStatus(status core.CatalogReservation_Status) ReservationEntry {
 	duration := 0 * time.Second
 	return ReservationEntry{
@@ -109,6 +114,7 @@ func NewReservationEntryStatus(status core.CatalogReservation_Status) Reservatio
 	}
 }
 
+// Creates a new ReservationEntry populated with the specified parameters
 func NewReservationEntry(expiresAt time.Time, heartbeatInterval time.Duration, ownerID string, status core.CatalogReservation_Status) ReservationEntry {
 	return ReservationEntry{
 		expiresAt:         expiresAt,

@@ -222,6 +222,7 @@ func PhaseInfoSystemRetryableFailure(code, reason string, info *TaskInfo) PhaseI
 	return PhaseInfoFailed(PhaseRetryableFailure, &core.ExecutionError{Code: code, Message: reason, Kind: core.ExecutionError_SYSTEM}, info)
 }
 
+// Creates a new PhaseInfo with phase set to PhaseWaitingForCache
 func PhaseInfoWaitingForCache(version uint32, info *TaskInfo) PhaseInfo {
 	return phaseInfo(PhaseWaitingForCache, version, nil, info)
 }
