@@ -431,10 +431,11 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 
 // ConstructStaticInputReaders constructs input readers that comply with the io.InputReader interface but have their
 // inputs already populated.
-func ConstructStaticInputReaders(inputPaths io.InputFilePaths, indexesToInclude *bitarray.BitSet, inputs *idlCore.LiteralCollection, inputName string) ([]io.InputReader, error) {
+func ConstructStaticInputReaders(ctx context.Context, inputPaths io.InputFilePaths, indexesToInclude *bitarray.BitSet, inputs *idlCore.LiteralCollection, inputName string) ([]io.InputReader, error) {
 	inputReaders := make([]io.InputReader, 0, len(inputs.Literals))
 	for i := 0; i < len(inputs.Literals); i++ {
 		if indexesToInclude.IsSet(uint(i)) {
+			logger.Infof(ctx, "Including index [%v] in cacheable tasks.", i)
 			inputReaders = append(inputReaders, NewStaticInputReader(inputPaths, &idlCore.LiteralMap{
 				Literals: map[string]*idlCore.Literal{
 					inputName: inputs.Literals[i],
