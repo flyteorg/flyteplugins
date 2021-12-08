@@ -94,7 +94,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		initialIndexesToCache := arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJobSize)), uint(arrayJobSize))
 
 		// build input readers
-		inputReaders, err = ConstructStaticInputReaders(tCtx.InputReader(), initialIndexesToCache, literalCollection, discoveredInputName)
+		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), initialIndexesToCache, literalCollection, discoveredInputName)
 		if err != nil {
 			return state, err
 		}
@@ -230,7 +230,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		}
 
 		// build input readers
-		inputReaders, err = ConstructStaticInputReaders(tCtx.InputReader(), state.GetIndexesToCache(), literalCollection, discoveredInputName)
+		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), state.GetIndexesToCache(), literalCollection, discoveredInputName)
 		if err != nil {
 			return state, err
 		}
