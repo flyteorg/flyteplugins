@@ -229,7 +229,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 			}
 		}
 
-		arrayJob.Size = int64(len(inputs.Literals))
+		arrayJob.Size = int64(len(literalCollection.Literals))
 
 		// build input readers
 		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), state.GetIndexesToCache(), literalCollection, discoveredInputName)
