@@ -204,10 +204,33 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
 	}
 
-	// input readers
-	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
-	if err != nil {
-		return nil, err
+	var inputReaders []io.InputReader
+	if taskTemplate.TaskTypeVersion == 0 {
+		// input readers
+		inputReaders, err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		inputs, err := tCtx.InputReader().Get(ctx)
+		if err != nil {
+			return state, errors.Errorf(errors.MetadataAccessFailed, "Could not read inputs and therefore failed to determine array job size")
+		}
+
+		var literalCollection *idlCore.LiteralCollection
+		var discoveredInputName string
+		for inputName, literal := range inputs.Literals {
+			if literalCollection = literal.GetCollection(); literalCollection != nil {
+				discoveredInputName = inputName
+				break
+			}
+		}
+
+		// build input readers
+		inputReaders, err = ConstructStaticInputReaders(tCtx.InputReader(), literalCollection, discoveredInputName)
+		if err != nil {
+			return state, err
+		}
 	}
 
 	// output reader
