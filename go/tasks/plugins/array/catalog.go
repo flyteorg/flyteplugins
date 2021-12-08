@@ -53,7 +53,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		state = state.SetOriginalMinSuccesses(arrayJob.GetMinSuccesses())
 
 		// build input readers
-		inputReaders, err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
+		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
 		if err != nil {
 			return state, err
 		}
@@ -207,7 +207,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	var inputReaders []io.InputReader
 	if taskTemplate.TaskTypeVersion == 0 {
 		// input readers
-		inputReaders, err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +441,7 @@ func ConstructStaticInputReaders(inputPaths io.InputFilePaths, inputs *idlCore.L
 	return inputReaders, nil
 }
 
-func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
+func ConstructRemoteFileInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
 	size int) ([]io.InputReader, error) {
 
 	inputReaders := make([]io.InputReader, 0, size)
