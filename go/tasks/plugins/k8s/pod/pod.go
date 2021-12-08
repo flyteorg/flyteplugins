@@ -110,17 +110,20 @@ func (plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecuti
 	pod.Spec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	// validate pod
-	hasPrimaryContainer := false
-	for _, container := range pod.Spec.Containers {
-		if container.Name == podSpecResource.primaryContainerName {
-			hasPrimaryContainer = true
+	if podSpecResource.primaryContainerName != "*" {
+		hasPrimaryContainer := false
+		for _, container := range pod.Spec.Containers {
+			if container.Name == podSpecResource.primaryContainerName {
+				hasPrimaryContainer = true
+			}
 		}
-	}
 
-	if !hasPrimaryContainer {
-		return nil, errors.Errorf(errors.BadTaskSpecification,
-			"invalid Sidecar task, primary container [%s] not defined", podSpecResource.primaryContainerName)
+		// TODO - change this error - not a sidecar task
+		if !hasPrimaryContainer {
+			return nil, errors.Errorf(errors.BadTaskSpecification,
+				"invalid Sidecar task, primary container [%s] not defined", podSpecResource.primaryContainerName)
 
+		}
 	}
 
 	return pod, nil
@@ -160,8 +163,17 @@ func (plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext,
 		return pluginsCore.PhaseInfoUndefined, errors.Errorf(errors.BadTaskSpecification,
 			"missing primary container annotation for pod")
 	}
-	primaryContainerPhase := flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
 
+	// TODO - document
+	if primaryContainerName == "*" {
+		if len(info.Logs) > 0 {
+			return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, &info), nil
+		}
+		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
+	}
+
+	// TODO - document
+	primaryContainerPhase := flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
 	if primaryContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, primaryContainerPhase.Info()), nil
 	}
@@ -181,7 +193,8 @@ func buildResourceContainer(ctx context.Context, taskCtx pluginsCore.TaskExecuti
 	res := newPodSpecResource()
 	res.podSpec = *podSpec
 	// TODO - flytek8s.ToK8sPodSpec fails if a container is not found, therefore we are ...
-	res.primaryContainerName = podSpec.Containers[0].Name
+	//res.primaryContainerName = podSpec.Containers[0].Name
+	res.primaryContainerName = "*"
 
 	return res, nil
 }
