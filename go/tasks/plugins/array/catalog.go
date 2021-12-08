@@ -21,8 +21,8 @@ import (
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
-// Check if there are any previously cached tasks. If there are we will only submit an ArrayJob for the
-// non-cached tasks. The ArrayJob is now a different size, and each task will get a new index location
+// DetermineDiscoverability checks if there are any previously cached tasks. If there are we will only submit an
+// ArrayJob for the non-cached tasks. The ArrayJob is now a different size, and each task will get a new index location
 // which is different than their original location. To find the original index we construct an indexLookup array.
 // The subtask can find it's original index value in indexLookup[JOB_ARRAY_INDEX] where JOB_ARRAY_INDEX is an
 // environment variable in the pod
@@ -44,30 +44,43 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	var arrayJobSize int64
+	var inputReaders []io.InputReader
 
 	// Save this in the state
 	if taskTemplate.TaskTypeVersion == 0 {
 		state = state.SetOriginalArraySize(arrayJob.Size)
 		arrayJobSize = arrayJob.Size
 		state = state.SetOriginalMinSuccesses(arrayJob.GetMinSuccesses())
+
+		// build input readers
+		inputReaders, err = ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
+		if err != nil {
+			return state, err
+		}
 	} else {
 		inputs, err := tCtx.InputReader().Get(ctx)
 		if err != nil {
 			return state, errors.Errorf(errors.MetadataAccessFailed, "Could not read inputs and therefore failed to determine array job size")
 		}
+
 		size := 0
-		for _, literal := range inputs.Literals {
-			if literal.GetCollection() != nil {
+		var literalCollection *idlCore.LiteralCollection
+		var discoveredInputName string
+		for inputName, literal := range inputs.Literals {
+			if literalCollection = literal.GetCollection(); literalCollection != nil {
 				size = len(literal.GetCollection().Literals)
+				discoveredInputName = inputName
 				break
 			}
 		}
+
 		if size == 0 {
 			// Something is wrong, we should have inferred the array size when it is not specified by the size of the
 			// input collection (for any input value). Non-collection type inputs are not currently supported for
 			// taskTypeVersion > 0.
 			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputs")
 		}
+
 		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccessRatio()) * float64(size))
 
 		logger.Debugf(ctx, "Computed state: size [%d] and minSuccesses [%d]", int64(size), int64(minSuccesses))
@@ -76,6 +89,12 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		state = state.SetOriginalMinSuccesses(int64(minSuccesses))
 
 		arrayJobSize = int64(size)
+
+		// build input readers
+		inputReaders, err = ConstructStaticInputReaders(tCtx.InputReader(), literalCollection, discoveredInputName)
+		if err != nil {
+			return state, err
+		}
 	}
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
@@ -90,11 +109,6 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
-	// build input readers
-	inputReaders, err := ConstructInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
-	if err != nil {
-		return state, err
-	}
 
 	// build output writers
 	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), int(arrayJobSize))
@@ -387,6 +401,21 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 	}
 
 	return workItems, nil
+}
+
+// ConstructStaticInputReaders constructs input readers that comply with the io.InputReader interface but have their
+// inputs already populated.
+func ConstructStaticInputReaders(inputPaths io.InputFilePaths, inputs *idlCore.LiteralCollection, inputName string) ([]io.InputReader, error) {
+	inputReaders := make([]io.InputReader, 0, len(inputs.Literals))
+	for i := 0; i < len(inputs.Literals); i++ {
+		inputReaders = append(inputReaders, NewStaticInputReader(inputPaths, &idlCore.LiteralMap{
+			Literals: map[string]*idlCore.Literal{
+				inputName: inputs.Literals[i],
+			},
+		}))
+	}
+
+	return inputReaders, nil
 }
 
 func ConstructInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
