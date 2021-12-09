@@ -196,18 +196,11 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		return state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("Task is not discoverable."), nil
 	}
 
-	// Extract the custom plugin pb
-	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
-	if err != nil {
-		return state, err
-	} else if arrayJob == nil {
-		return state, errors.Errorf(errors.BadTaskSpecification, "Could not extract custom array job")
-	}
-
 	var inputReaders []io.InputReader
+	arrayJobSize := int(state.GetOriginalArraySize())
 	if taskTemplate.TaskTypeVersion == 0 {
 		// input readers
-		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJob.Size))
+		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), arrayJobSize)
 		if err != nil {
 			return nil, err
 		}
@@ -226,8 +219,6 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 			}
 		}
 
-		arrayJob.Size = int64(len(literalCollection.Literals))
-
 		// build input readers
 		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), literalCollection, discoveredInputName)
 		if err != nil {
@@ -236,7 +227,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	// output reader
-	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), int(arrayJob.Size))
+	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), arrayJobSize)
 	if err != nil {
 		return nil, err
 	}

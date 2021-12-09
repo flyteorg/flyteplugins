@@ -20,16 +20,14 @@ func (i arrayJobInputReader) GetInputPath() storage.DataReference {
 }
 
 func GetInputReader(tCtx core.TaskExecutionContext, taskTemplate *idlCore.TaskTemplate) io.InputReader {
-	var inputReader io.InputReader
 	if taskTemplate.GetTaskTypeVersion() == 0 {
 		// Prior to task type version == 1, dynamic type tasks (including array tasks) would write input files for each
 		// individual array task instance. In this case we use a modified input reader to only pass in the parent input
 		// directory.
-		inputReader = arrayJobInputReader{tCtx.InputReader()}
-	} else {
-		inputReader = tCtx.InputReader()
+		return arrayJobInputReader{tCtx.InputReader()}
 	}
-	return inputReader
+
+	return tCtx.InputReader()
 }
 
 // StaticInputReader complies with the io.InputReader interface but has the input already populated.
