@@ -90,11 +90,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		arrayJobSize = int64(size)
 
-		// Assume that we will attempt to cache all subtasks unless the task is not marked as cachable or a subtask fails
-		initialIndexesToCache := arrayCore.InvertBitSet(bitarray.NewBitSet(uint(arrayJobSize)), uint(arrayJobSize))
-
 		// build input readers
-		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), initialIndexesToCache, literalCollection, discoveredInputName)
+		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), literalCollection, discoveredInputName)
 		if err != nil {
 			return state, err
 		}
@@ -232,7 +229,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		arrayJob.Size = int64(len(literalCollection.Literals))
 
 		// build input readers
-		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), state.GetIndexesToCache(), literalCollection, discoveredInputName)
+		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), literalCollection, discoveredInputName)
 		if err != nil {
 			return state, err
 		}
@@ -433,17 +430,14 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 
 // ConstructStaticInputReaders constructs input readers that comply with the io.InputReader interface but have their
 // inputs already populated.
-func ConstructStaticInputReaders(ctx context.Context, inputPaths io.InputFilePaths, indexesToInclude *bitarray.BitSet, inputs *idlCore.LiteralCollection, inputName string) ([]io.InputReader, error) {
+func ConstructStaticInputReaders(_ context.Context, inputPaths io.InputFilePaths, inputs *idlCore.LiteralCollection, inputName string) ([]io.InputReader, error) {
 	inputReaders := make([]io.InputReader, 0, len(inputs.Literals))
 	for i := 0; i < len(inputs.Literals); i++ {
-		if indexesToInclude.IsSet(uint(i)) {
-			logger.Infof(ctx, "Including index [%v] in cacheable tasks.", i)
-			inputReaders = append(inputReaders, NewStaticInputReader(inputPaths, &idlCore.LiteralMap{
-				Literals: map[string]*idlCore.Literal{
-					inputName: inputs.Literals[i],
-				},
-			}))
-		}
+		inputReaders = append(inputReaders, NewStaticInputReader(inputPaths, &idlCore.LiteralMap{
+			Literals: map[string]*idlCore.Literal{
+				inputName: inputs.Literals[i],
+			},
+		}))
 	}
 
 	return inputReaders, nil
