@@ -91,10 +91,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		arrayJobSize = int64(size)
 
 		// build input readers
-		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), literalCollection, discoveredInputName)
-		if err != nil {
-			return state, err
-		}
+		inputReaders = ConstructStaticInputReaders(tCtx.InputReader(), literalCollection.Literals, discoveredInputName)
 	}
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
@@ -220,10 +217,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		}
 
 		// build input readers
-		inputReaders, err = ConstructStaticInputReaders(ctx, tCtx.InputReader(), literalCollection, discoveredInputName)
-		if err != nil {
-			return state, err
-		}
+		inputReaders = ConstructStaticInputReaders(tCtx.InputReader(), literalCollection.Literals, discoveredInputName)
 	}
 
 	// output reader
@@ -421,17 +415,17 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 
 // ConstructStaticInputReaders constructs input readers that comply with the io.InputReader interface but have their
 // inputs already populated.
-func ConstructStaticInputReaders(_ context.Context, inputPaths io.InputFilePaths, inputs *idlCore.LiteralCollection, inputName string) ([]io.InputReader, error) {
-	inputReaders := make([]io.InputReader, 0, len(inputs.Literals))
-	for i := 0; i < len(inputs.Literals); i++ {
+func ConstructStaticInputReaders(inputPaths io.InputFilePaths, inputs []*idlCore.Literal, inputName string) []io.InputReader {
+	inputReaders := make([]io.InputReader, 0, len(inputs))
+	for i := 0; i < len(inputs); i++ {
 		inputReaders = append(inputReaders, NewStaticInputReader(inputPaths, &idlCore.LiteralMap{
 			Literals: map[string]*idlCore.Literal{
-				inputName: inputs.Literals[i],
+				inputName: inputs[i],
 			},
 		}))
 	}
 
-	return inputReaders, nil
+	return inputReaders
 }
 
 func ConstructRemoteFileInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
