@@ -28,7 +28,7 @@ type sidecarPodBuilder struct {
 }
 
 func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
-	var podSpec *v1.PodSpec
+	var podSpec v1.PodSpec
 	switch task.TaskTypeVersion {
 	case 0:
 		sidecarJob := sidecarJob{}
@@ -43,9 +43,9 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 				"invalid TaskSpecification, nil PodSpec [%v]", task.GetCustom())
 		}
 
-		podSpec = sidecarJob.PodSpec
+		podSpec = *sidecarJob.PodSpec
 	case 1:
-		err := utils.UnmarshalStructToObj(task.GetCustom(), podSpec)
+		err := utils.UnmarshalStructToObj(task.GetCustom(), &podSpec)
 		if err != nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
@@ -56,7 +56,7 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 				"Pod tasks with task type version > 1 should specify their target as a K8sPod with a defined pod spec")
 		}
 
-		err := utils.UnmarshalStructToObj(task.GetK8SPod().PodSpec, podSpec)
+		err := utils.UnmarshalStructToObj(task.GetK8SPod().PodSpec, &podSpec)
 		if err != nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
@@ -67,7 +67,7 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 	// CrashLoopBackoff after the initial job completion.
 	podSpec.RestartPolicy = v1.RestartPolicyNever
 
-	return podSpec, nil
+	return &podSpec, nil
 }
 
 func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) {
@@ -130,10 +130,17 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 		primaryContainerName = containerName
 	}
 
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+	if pod.Labels == nil {
+		pod.Labels = make(map[string]string)
+	}
+
 	pod.Annotations[primaryContainerKey] = primaryContainerName
 
 	// validate pod
-	if err := validateAndFinalizePodSpec(ctx, taskCtx, primaryContainerKey, &pod.Spec); err != nil {
+	if err := validateAndFinalizePodSpec(ctx, taskCtx, primaryContainerName, &pod.Spec); err != nil {
 		return err
 	}
 
