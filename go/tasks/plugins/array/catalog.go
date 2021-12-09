@@ -487,8 +487,6 @@ func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, ou
 func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, outputPrefix, baseOutputSandbox storage.DataReference,
 	size int) ([]io.OutputReader, error) {
 
-	logger.Infof(ctx, "ConstructOutputReader: size [%v]", size)
-
 	outputReaders := make([]io.OutputReader, 0, size)
 
 	for i := 0; i < size; i++ {

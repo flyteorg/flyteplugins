@@ -130,7 +130,9 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 	pod := podTemplate.DeepCopy()
 	pod.Name = podName
 	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, corev1.EnvVar{
-		Name:  FlyteK8sArrayIndexVarName,
+		Name: FlyteK8sArrayIndexVarName,
+		// Use the OriginalIndex which represents the position of the subtask in the original user's map task before
+		// compacting indexes caused by catalog-cache-check.
 		Value: strconv.Itoa(t.OriginalIndex),
 	})
 
