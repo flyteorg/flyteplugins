@@ -14,7 +14,7 @@ import (
 type containerPodBuilder struct {
 }
 
-func (containerPodBuilder) BuildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
+func (containerPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
 	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, err
@@ -23,6 +23,6 @@ func (containerPodBuilder) BuildPodSpec(ctx context.Context, task *core.TaskTemp
 	return podSpec, nil
 }
 
-func (containerPodBuilder) UpdatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
+func (containerPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
 	return nil
 }

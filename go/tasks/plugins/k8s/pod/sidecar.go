@@ -27,7 +27,7 @@ type sidecarJob struct {
 type sidecarPodBuilder struct {
 }
 
-func (sidecarPodBuilder) BuildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
+func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
 	var podSpec *v1.PodSpec
 	switch task.TaskTypeVersion {
 	case 0:
@@ -72,20 +72,20 @@ func (sidecarPodBuilder) BuildPodSpec(ctx context.Context, task *core.TaskTempla
 
 func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) {
 	if len(task.GetConfig()) == 0 {
-		return "", errors.Errorf(errors.BadTaskSpecification,
+		return "", errors.Errorf(errors.BadTaskSpecification, 
 			"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
 	}
 
 	primaryContainerName, ok := task.GetConfig()[primaryContainerKey]
 	if !ok {
-		return "", errors.Errorf(errors.BadTaskSpecification,
+		return "", errors.Errorf(errors.BadTaskSpecification, 
 			"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
 	}
 
 	return primaryContainerName, nil
 }
 
-func (sidecarPodBuilder) UpdatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
+func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
 	var primaryContainerName string
 	switch task.TaskTypeVersion {
 	case 0:
@@ -170,8 +170,7 @@ func validateAndFinalizePodSpec(ctx context.Context, taskCtx pluginsCore.TaskExe
 
 	// TODO - update message
 	if !hasPrimaryContainer {
-		return errors.Errorf(errors.BadTaskSpecification,
-			"invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
+		return errors.Errorf(errors.BadTaskSpecification, "invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
 	}
 
 	flytek8s.UpdatePod(taskCtx.TaskExecutionMetadata(), resReqs, podSpec)

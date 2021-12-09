@@ -25,20 +25,20 @@ const (
 )
 
 var (
-	podBuilders = map[string]PodBuilder{
+	defaultPodBuilder = containerPodBuilder{}
+	podBuilders = map[string]podBuilder{
 		sidecarTaskType: sidecarPodBuilder{},
 	}
-	defaultPodBuilder = containerPodBuilder{}
 )
 
-type PodBuilder interface {
-	BuildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error)
-	UpdatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error
+type podBuilder interface {
+	buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error)
+	updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error
 }
 
 type plugin struct{
-	defaultPodBuilder PodBuilder
-	podBuilders       map[string]PodBuilder
+	defaultPodBuilder podBuilder
+	podBuilders       map[string]podBuilder
 }
 
 func (plugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (
@@ -55,13 +55,13 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	}
 
 	// initialize PodBuilder
-	podBuilder, exists := p.podBuilders[task.Type]
+	builder, exists := p.podBuilders[task.Type]
 	if !exists {
-		podBuilder = p.defaultPodBuilder
+		builder = p.defaultPodBuilder
 	}
 
 	// build pod
-    podSpec, err := podBuilder.BuildPodSpec(ctx, task, taskCtx)
+    podSpec, err := builder.buildPodSpec(ctx, task, taskCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
     pod := flytek8s.BuildPodWithSpec(podSpec)
 
 	// update pod metadata
-    if err = podBuilder.UpdatePodMetadata(ctx, pod, task, taskCtx); err != nil {
+    if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
 		return nil, err
     }
 
