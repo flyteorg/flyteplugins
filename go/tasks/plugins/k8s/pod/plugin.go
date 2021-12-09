@@ -24,19 +24,29 @@ const (
 	sidecarTaskType     = "sidecar"
 )
 
+var (
+	podBuilders = map[string]PodBuilder{
+		sidecarTaskType: sidecarPodBuilder{},
+	}
+	defaultPodBuilder = containerPodBuilder{}
+)
+
 type PodBuilder interface {
 	BuildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error)
 	UpdatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error
 }
 
-type plugin struct{}
+type plugin struct{
+	defaultPodBuilder PodBuilder
+	podBuilders       map[string]PodBuilder
+}
 
 func (plugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (
 	client.Object, error) {
 	return flytek8s.BuildIdentityPod(), nil
 }
 
-func (plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
+func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	// read TaskTemplate
 	task, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -45,12 +55,9 @@ func (plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecuti
 	}
 
 	// initialize PodBuilder
-	var podBuilder PodBuilder
-	switch task.Type {
-	case sidecarTaskType:
-		podBuilder = sidecarPodBuilder{}
-	default:
-		podBuilder = containerPodBuilder{}
+	podBuilder, exists := p.podBuilders[task.Type]
+	if !exists {
+		podBuilder = p.defaultPodBuilder
 	}
 
 	// build pod
@@ -129,7 +136,10 @@ func init() {
 			ID:                  podTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{containerTaskType, sidecarTaskType},
 			ResourceToWatch:     &v1.Pod{},
-			Plugin:              plugin{},
+			Plugin:              plugin{
+				defaultPodBuilder: defaultPodBuilder,
+				podBuilders:       podBuilders,
+			},
 			IsDefault:           true,
 			DefaultForTaskTypes: []pluginsCore.TaskType{containerTaskType, sidecarTaskType},
 		})
