@@ -92,7 +92,18 @@ func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) 
 	return primaryContainerName, nil
 }
 
+func mergeMapInto(src map[string]string, dst map[string]string) {
+	if src != nil {
+		for key, value := range src {
+			dst[key] = value
+		}
+	}
+}
+
 func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
+	pod.Annotations = make(map[string]string)
+	pod.Labels = make(map[string]string)
+
 	var primaryContainerName string
 	switch task.TaskTypeVersion {
 	case 0:
@@ -103,13 +114,8 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 			return errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
 		}
 
-		if sidecarJob.Annotations != nil {
-			pod.Annotations = sidecarJob.Annotations
-		}
-
-		if sidecarJob.Labels != nil {
-			pod.Labels = sidecarJob.Labels
-		}
+		mergeMapInto(sidecarJob.Annotations, pod.Annotations)
+		mergeMapInto(sidecarJob.Labels, pod.Labels)
 
 		primaryContainerName = sidecarJob.PrimaryContainerName
 	case 1:
@@ -123,13 +129,8 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 	default:
 		// Handles pod tasks that marshal the pod spec to the k8s_pod task target.
 		if task.GetK8SPod() == nil || task.GetK8SPod().Metadata != nil {
-			if task.GetK8SPod().Metadata.Annotations != nil {
-				pod.Annotations = task.GetK8SPod().Metadata.Annotations
-			}
-
-			if task.GetK8SPod().Metadata.Labels != nil {
-				pod.Labels = task.GetK8SPod().Metadata.Labels
-			}
+			mergeMapInto(task.GetK8SPod().Metadata.Annotations, pod.Annotations)
+			mergeMapInto(task.GetK8SPod().Metadata.Labels, pod.Labels)
 		}
 
 		containerName, err := getPrimaryContainerNameFromConfig(task)
@@ -140,22 +141,12 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 		primaryContainerName = containerName
 	}
 
-	// set the pod annotations and labels if they have not yet been set
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
-	}
-
-	if pod.Labels == nil {
-		pod.Labels = make(map[string]string)
-	}
-
-	pod.Annotations[primaryContainerKey] = primaryContainerName
-
 	// validate pod and update resource requirements
 	if err := validateAndFinalizePodSpec(ctx, taskCtx, primaryContainerName, &pod.Spec); err != nil {
 		return err
 	}
 
+	pod.Annotations[primaryContainerKey] = primaryContainerName
 	return nil
 }
 
