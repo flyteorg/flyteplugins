@@ -199,7 +199,7 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 	}
 
 	task := core.TaskTemplate{
-		Type: sidecarTaskType,
+		Type:            sidecarTaskType,
 		TaskTypeVersion: 2,
 		Config: map[string]string{
 			primaryContainerKey: "primary container",

@@ -79,13 +79,13 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 
 func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) {
 	if len(task.GetConfig()) == 0 {
-		return "", errors.Errorf(errors.BadTaskSpecification, 
+		return "", errors.Errorf(errors.BadTaskSpecification,
 			"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
 	}
 
 	primaryContainerName, ok := task.GetConfig()[primaryContainerKey]
 	if !ok {
-		return "", errors.Errorf(errors.BadTaskSpecification, 
+		return "", errors.Errorf(errors.BadTaskSpecification,
 			"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, task.GetConfig())
 	}
 
@@ -93,10 +93,8 @@ func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) 
 }
 
 func mergeMapInto(src map[string]string, dst map[string]string) {
-	if src != nil {
-		for key, value := range src {
-			dst[key] = value
-		}
+	for key, value := range src {
+		dst[key] = value
 	}
 }
 

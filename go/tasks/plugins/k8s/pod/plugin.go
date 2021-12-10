@@ -24,7 +24,7 @@ const (
 
 var (
 	defaultPodBuilder = containerPodBuilder{}
-	podBuilders = map[string]podBuilder{
+	podBuilders       = map[string]podBuilder{
 		sidecarTaskType: sidecarPodBuilder{},
 	}
 )
@@ -34,7 +34,7 @@ type podBuilder interface {
 	updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error
 }
 
-type plugin struct{
+type plugin struct {
 	defaultPodBuilder podBuilder
 	podBuilders       map[string]podBuilder
 }
@@ -59,18 +59,18 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	}
 
 	// build pod
-    podSpec, err := builder.buildPodSpec(ctx, task, taskCtx)
+	podSpec, err := builder.buildPodSpec(ctx, task, taskCtx)
 	if err != nil {
 		return nil, err
 	}
 
 	podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
-    pod := flytek8s.BuildPodWithSpec(podSpec)
+	pod := flytek8s.BuildPodWithSpec(podSpec)
 
 	// update pod metadata
-    if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
+	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
 		return nil, err
-    }
+	}
 
 	return pod, nil
 }
@@ -134,7 +134,7 @@ func init() {
 			ID:                  podTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{containerTaskType, sidecarTaskType},
 			ResourceToWatch:     &v1.Pod{},
-			Plugin:              plugin{
+			Plugin: plugin{
 				defaultPodBuilder: defaultPodBuilder,
 				podBuilders:       podBuilders,
 			},
