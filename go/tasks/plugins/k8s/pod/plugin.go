@@ -18,10 +18,8 @@ import (
 )
 
 const (
-	containerTaskType   = "container"
 	podTaskType         = "pod"
 	primaryContainerKey = "primary_container_name"
-	sidecarTaskType     = "sidecar"
 )
 
 var (
@@ -107,18 +105,18 @@ func (plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext,
 		return pluginsCore.PhaseInfoUndefined, nil
 	}
 
-	// TODO - document
 	primaryContainerName, exists := r.GetAnnotations()[primaryContainerKey]
 	if !exists {
-		// TODO if the primary container does not exist then use the pod phase
-		// i.e. all pods need to complete to mark this as succeeded
+		// if the primary container annotation dos not exist, then the task requires all containers
+		// to succeed to declare success. therefore, if the pod is not in one of the above states we
+		// fallback to declaring the task as 'running'.
 		if len(info.Logs) > 0 {
 			return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, &info), nil
 		}
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
 	}
 
-	// TODO - document
+	// if the primary container annotation exists, we use the status of the specified container
 	primaryContainerPhase := flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
 	if primaryContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, primaryContainerPhase.Info()), nil

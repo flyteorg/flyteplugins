@@ -14,6 +14,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+const (
+	sidecarTaskType = "sidecar"
+)
+
 // Why, you might wonder do we recreate the generated go struct generated from the plugins.SidecarJob proto? Because
 // although we unmarshal the task custom json, the PodSpec itself is not generated from a proto definition,
 // but a proper go struct defined in k8s libraries. Therefore we only unmarshal the sidecar as a json, rather than jsonpb.
@@ -31,6 +35,7 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 	var podSpec v1.PodSpec
 	switch task.TaskTypeVersion {
 	case 0:
+		// Handles pod tasks when they are defined as Sidecar tasks and marshal the podspec using k8s proto.
 		sidecarJob := sidecarJob{}
 		err := utils.UnmarshalStructToObj(task.GetCustom(), &sidecarJob)
 		if err != nil {
@@ -45,12 +50,14 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 
 		podSpec = *sidecarJob.PodSpec
 	case 1:
+		// Handles pod tasks that marshal the pod spec to the task custom.
 		err := utils.UnmarshalStructToObj(task.GetCustom(), &podSpec)
 		if err != nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"Unable to unmarshal task custom [%v], Err: [%v]", task.GetCustom(), err.Error())
 		}
 	default:
+		// Handles pod tasks that marshal the pod spec to the k8s_pod task target.
 		if task.GetK8SPod() == nil || task.GetK8SPod().PodSpec == nil {
 			return nil, errors.Errorf(errors.BadTaskSpecification,
 				"Pod tasks with task type version > 1 should specify their target as a K8sPod with a defined pod spec")
@@ -89,6 +96,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 	var primaryContainerName string
 	switch task.TaskTypeVersion {
 	case 0:
+		// Handles pod tasks when they are defined as Sidecar tasks and marshal the podspec using k8s proto.
 		sidecarJob := sidecarJob{}
 		err := utils.UnmarshalStructToObj(task.GetCustom(), &sidecarJob)
 		if err != nil {
@@ -105,6 +113,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 
 		primaryContainerName = sidecarJob.PrimaryContainerName
 	case 1:
+		// Handles pod tasks that marshal the pod spec to the task custom.
 		containerName, err := getPrimaryContainerNameFromConfig(task)
 		if err != nil {
 			return err
@@ -112,6 +121,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 
 		primaryContainerName = containerName
 	default:
+		// Handles pod tasks that marshal the pod spec to the k8s_pod task target.
 		if task.GetK8SPod() == nil || task.GetK8SPod().Metadata != nil {
 			if task.GetK8SPod().Metadata.Annotations != nil {
 				pod.Annotations = task.GetK8SPod().Metadata.Annotations
@@ -130,16 +140,18 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 		primaryContainerName = containerName
 	}
 
+	// set the pod annotations and labels if they have not yet been set
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
 	}
+
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
 	}
 
 	pod.Annotations[primaryContainerKey] = primaryContainerName
 
-	// validate pod
+	// validate pod and update resource requirements
 	if err := validateAndFinalizePodSpec(ctx, taskCtx, primaryContainerName, &pod.Spec); err != nil {
 		return err
 	}
@@ -175,7 +187,6 @@ func validateAndFinalizePodSpec(ctx context.Context, taskCtx pluginsCore.TaskExe
 		resReqs = append(resReqs, container.Resources)
 	}
 
-	// TODO - update message
 	if !hasPrimaryContainer {
 		return errors.Errorf(errors.BadTaskSpecification, "invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
 	}
