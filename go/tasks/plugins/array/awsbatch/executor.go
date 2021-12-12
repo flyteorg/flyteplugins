@@ -26,6 +26,7 @@ const (
 	executorName              = "aws_array"
 	defaultPluginStateVersion = 0
 	arrayTaskType             = "container_array"
+	awsBatchTaskType = "aws-batch"
 )
 
 type Executor struct {
@@ -189,10 +190,10 @@ func init() {
 	pluginmachinery.PluginRegistry().RegisterCorePlugin(
 		core.PluginEntry{
 			ID:                  executorName,
-			RegisteredTaskTypes: []core.TaskType{arrayTaskType},
+			RegisteredTaskTypes: []core.TaskType{arrayTaskType, awsBatchTaskType},
 			LoadPlugin:          createNewExecutorPlugin,
 			IsDefault:           false,
-			DefaultForTaskTypes: []core.TaskType{arrayTaskType},
+			DefaultForTaskTypes: []core.TaskType{arrayTaskType, awsBatchTaskType},
 		})
 }
 
