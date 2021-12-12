@@ -2,6 +2,8 @@ package awsbatch
 
 import (
 	"context"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flytestdlib/logger"
 	"sort"
 	"time"
 
@@ -48,11 +50,21 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 	jobConfig := newJobConfig().
 		MergeFromKeyValuePairs(taskTemplate.GetContainer().GetConfig()).
 		MergeFromConfigMap(tCtx.TaskExecutionMetadata().GetOverrides().GetConfig())
+	logger.Infof(ctx, "Kevin jobConfig [%v]", jobConfig)
 	if len(jobConfig.DynamicTaskQueue) == 0 {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "config[%v] is missing", DynamicTaskQueueKey)
 	}
+	logger.Infof(ctx, "Kevin taskTemplate [%v]", taskTemplate)
+	logger.Infof(ctx, "Kevin taskTemplate.GetTaskTypeVersion() [%v]", taskTemplate.GetTaskTypeVersion())
+	var inputReader io.InputReader
+	if taskTemplate.Type == awsBatchTaskType {
+		inputReader = tCtx.InputReader()
+	} else {
+		inputReader = array.GetInputReader(tCtx, taskTemplate)
+	}
 
-	inputReader := array.GetInputReader(tCtx, taskTemplate)
+	logger.Infof(ctx, "Kevin array.GetInputReader [%v]", array.GetInputReader(tCtx, taskTemplate))
+	logger.Infof(ctx, "Kevin tCtx.InputReader() [%v]", tCtx.InputReader())
 	cmd, err := template.Render(
 		ctx,
 		taskTemplate.GetContainer().GetCommand(),
@@ -62,6 +74,7 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 			OutputPath:       tCtx.OutputWriter(),
 			Task:             tCtx.TaskReader(),
 		})
+	logger.Infof(ctx, "Kevin cmd [%v]", cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +85,7 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 			OutputPath:       tCtx.OutputWriter(),
 			Task:             tCtx.TaskReader(),
 		})
+	logger.Infof(ctx, "Kevin args [%v]", args)
 	taskTemplate.GetContainer().GetEnv()
 	if err != nil {
 		return nil, err

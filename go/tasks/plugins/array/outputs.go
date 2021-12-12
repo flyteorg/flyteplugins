@@ -74,14 +74,23 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 				return workqueue.WorkStatusFailed, err
 			}
 
-			if executionError == nil && output != nil {
-				appendSubTaskOutput(finalOutputs, output, int64(i.finalPhases.ItemsCount))
-				continue
+			if executionError == nil && output != nil{
+				logger.Infof(ctx, "Kevin i.finalPhases.ItemsCount [%v]", i.finalPhases.ItemsCount)
+				if i.finalPhases.ItemsCount > 1 {
+					appendSubTaskOutput(finalOutputs, output, int64(i.finalPhases.ItemsCount))
+					continue
+				} else {
+					for key, val := range output.GetLiterals() {
+						finalOutputs.Literals[key] = val
+					}
+				}
+				logger.Infof(ctx, "Kevin finalOutputs [%v]", finalOutputs)
 			}
 		}
 
 		// TODO: Do we need the names of the outputs in the literalMap here?
-		appendEmptyOutputs(finalOutputs, i.varNames)
+		logger.Infof(ctx, "Kevin i.varNames [%v]", i.varNames)
+		// appendEmptyOutputs(finalOutputs, i.varNames)
 	}
 
 	ow := ioutils.NewRemoteFileOutputWriter(ctx, i.dataStore, i.outputPaths)
@@ -108,7 +117,7 @@ func appendOneItem(outputs *core.LiteralMap, varName string, literal *core.Liter
 			},
 		}
 	}
-
+	logger.Infof(context.Background(), "Kevin append literal [%v]", literal)
 	list.Literals = append(list.Literals, literal)
 	outputs.Literals[varName] = existingVal
 }
@@ -290,6 +299,7 @@ func (a assembleErrorsWorker) Process(ctx context.Context, workItem workqueue.Wo
 	}
 
 	ow := ioutils.NewRemoteFileOutputWriter(ctx, w.dataStore, w.outputPaths)
+	logger.Infof(ctx, "Kevin w.outputPaths [%v]", w.outputPaths)
 	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, &io.ExecutionError{
 		ExecutionError: &core.ExecutionError{
 			Code:     "",

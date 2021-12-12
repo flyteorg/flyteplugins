@@ -52,11 +52,13 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		arrayJobSize = arrayJob.Size
 		state = state.SetOriginalMinSuccesses(arrayJob.GetMinSuccesses())
 
+		logger.Infof(ctx, "Kevin arrayJobSize [%v]", arrayJobSize)
 		// build input readers
 		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
 		if err != nil {
 			return state, err
 		}
+		logger.Infof(ctx, "ConstructRemoteFileInputReaders", inputReaders)
 	} else {
 		inputs, err := tCtx.InputReader().Get(ctx)
 		if err != nil {
@@ -92,6 +94,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		// build input readers
 		inputReaders = ConstructStaticInputReaders(tCtx.InputReader(), literalCollection.Literals, discoveredInputName)
+		logger.Infof(ctx, "ConstructStaticInputReaders", inputReaders)
 	}
 
 	// If the task is not discoverable, then skip data catalog work and move directly to launch
@@ -221,6 +224,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	// output reader
+	logger.Infof(ctx, "Kevin arrayJobSize [%v]", arrayJobSize)
 	outputReaders, err := ConstructOutputReaders(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), arrayJobSize)
 	if err != nil {
 		return nil, err
@@ -357,6 +361,7 @@ func CatalogBitsetToLiteralCollection(catalogResults *bitarray.BitSet, size int)
 			literals = append(literals, NewLiteralScalarOfInteger(int64(i)))
 		}
 	}
+	logger.Infof(context.Background(), "Kevin literals [%v]", literals)
 	return &idlCore.LiteralCollection{
 		Literals: literals,
 	}
@@ -459,7 +464,7 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return outputWriters, err
 		}
-
+		logger.Infof(ctx, "Kevin ow [%v]", ow.GetOutputPath())
 		outputWriters = append(outputWriters, ow)
 	}
 
@@ -469,6 +474,8 @@ func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, o
 func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, outputPrefix, outputSandbox storage.DataReference,
 	index int) (io.OutputWriter, error) {
 	dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strconv.Itoa(index))
+	logger.Infof(ctx, "Kevin outputPrefix [%v]", outputPrefix)
+	logger.Infof(ctx, "Kevin dataReference [%v]", dataReference)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +495,7 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 		if err != nil {
 			return nil, err
 		}
-
+		logger.Infof(ctx, "Kevin outputReaders [%v]", reader)
 		outputReaders = append(outputReaders, reader)
 	}
 
@@ -498,17 +505,25 @@ func ConstructOutputReaders(ctx context.Context, dataStore *storage.DataStore, o
 func ConstructOutputReader(ctx context.Context, dataStore *storage.DataStore, outputPrefix, baseOutputSandbox storage.DataReference,
 	index int) (io.OutputReader, error) {
 	strIndex := strconv.Itoa(index)
-	dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strIndex)
-	if err != nil {
-		return nil, err
-	}
+
+	// dataReference, err := dataStore.ConstructReference(ctx, outputPrefix, strIndex)
+	dataReference := outputPrefix
+	logger.Infof(ctx, "Kevin dataReference [%v]", dataReference)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	outputSandbox, err := dataStore.ConstructReference(ctx, baseOutputSandbox, strIndex)
 	if err != nil {
 		return nil, err
 	}
-
+	logger.Infof(ctx, "Kevin outputSandbox [%v]", outputSandbox)
 	// TODO when we fix https://github.com/flyteorg/flyte/issues/1276 we should make so that the checkpoint paths are computed correctly
 	outputPath := ioutils.NewCheckpointRemoteFilePaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPaths(ctx, outputSandbox), "")
+	logger.Infof(ctx, "Kevin outputPath.GetOutputPath() [%v]", outputPath.GetOutputPath())
+	logger.Infof(ctx, "Kevin outputPath.GetRawOutputPrefix() [%v]", outputPath.GetRawOutputPrefix())
+	logger.Infof(ctx, "Kevin outputPath.GetCheckpointPrefix() [%v]", outputPath.GetCheckpointPrefix())
+	logger.Infof(ctx, "Kevin outputPath.GetOutputPrefixPath() [%v]", outputPath.GetOutputPrefixPath())
+	logger.Infof(ctx, "Kevin outputPath.GetFuturesPath() [%v]", outputPath.GetFuturesPath())
 	return ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999)), nil
 }
