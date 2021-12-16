@@ -3,6 +3,8 @@ package awsbatch
 import (
 	"testing"
 
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -91,7 +93,7 @@ func TestEnsureJobDefinition(t *testing.T) {
 
 	t.Run("Found", func(t *testing.T) {
 		dCache := definition.NewCache(10)
-		assert.NoError(t, dCache.Put(definition.NewCacheKey("", "img1"), "their-arn"))
+		assert.NoError(t, dCache.Put(definition.NewCacheKey("", "img1", &structpb.Struct{}), "their-arn"))
 
 		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{
 			State: &arrayCore.State{},
@@ -158,7 +160,7 @@ func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 
 	t.Run("Found", func(t *testing.T) {
 		dCache := definition.NewCache(10)
-		assert.NoError(t, dCache.Put(definition.NewCacheKey("new-role", "img1"), "their-arn"))
+		assert.NoError(t, dCache.Put(definition.NewCacheKey("new-role", "img1", &structpb.Struct{}), "their-arn"))
 
 		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{
 			State: &arrayCore.State{},

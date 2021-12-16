@@ -7,6 +7,8 @@ package definition
 import (
 	"fmt"
 
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	"github.com/coocood/freecache"
 )
 
@@ -27,8 +29,9 @@ type CacheKey interface {
 }
 
 type cacheKey struct {
-	role  string
-	image string
+	role      string
+	image     string
+	structObj *structpb.Struct
 }
 
 func (k cacheKey) String() string {
@@ -52,10 +55,11 @@ func (c cache) Put(key CacheKey, definition JobDefinitionArn) error {
 }
 
 // Creates a new deterministic cache key.
-func NewCacheKey(role, image string) CacheKey {
+func NewCacheKey(role, image string, structObj *structpb.Struct) CacheKey {
 	return cacheKey{
-		role:  role,
-		image: image,
+		role:      role,
+		image:     image,
+		structObj: structObj,
 	}
 }
 

@@ -7,6 +7,8 @@ package awsbatch
 import (
 	"context"
 
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	stdConfig "github.com/flyteorg/flytestdlib/config"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/config"
@@ -81,7 +83,7 @@ func TestClient_GetJobDetailsBatch(t *testing.T) {
 
 func TestClient_RegisterJobDefinition(t *testing.T) {
 	c := newClientWithMockBatch()
-	j, err := c.RegisterJobDefinition(context.TODO(), "name-abc", "img", "admin-role")
+	j, err := c.RegisterJobDefinition(context.TODO(), "name-abc", "img", "admin-role", &structpb.Struct{})
 	assert.NoError(t, err)
 	assert.NotNil(t, j)
 }

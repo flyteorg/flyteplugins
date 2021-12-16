@@ -9,6 +9,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
+
+	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	definition2 "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/aws"
@@ -35,7 +40,7 @@ type Client interface {
 	GetJobDetailsBatch(ctx context.Context, ids []JobID) ([]*batch.JobDetail, error)
 
 	// Registers a new Job Definition with AWS Batch provided a name, image and role.
-	RegisterJobDefinition(ctx context.Context, name, image, role string) (arn string, err error)
+	RegisterJobDefinition(ctx context.Context, name, image, role string, structObj *structpb.Struct) (arn string, err error)
 
 	// Gets the single region this client interacts with.
 	GetRegion() string
@@ -68,22 +73,23 @@ func (b client) GetAccountID() string {
 }
 
 // Registers a new job definition. There is no deduping on AWS side (even for the same name).
-func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role string) (arn definition2.JobDefinitionArn, err error) {
+func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role string, structObj *structpb.Struct) (arn definition2.JobDefinitionArn, err error) {
 	logger.Infof(ctx, "Registering job definition with name [%v], image [%v], role [%v]", name, image, role)
+	jobDefinition := batch.RegisterJobDefinitionInput{}
+	err = pluginUtils.UnmarshalStructToObj(structObj, &jobDefinition)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to unmarshal RegisterJobDefinitionInput")
+	}
+	jobDefinition.SetType(*refStr(batch.JobDefinitionTypeContainer)).SetJobDefinitionName(*refStr(name)).SetContainerProperties(&batch.ContainerProperties{
+		Image:      refStr(image),
+		JobRoleArn: refStr(role),
 
-	res, err := b.Batch.RegisterJobDefinitionWithContext(ctx, &batch.RegisterJobDefinitionInput{
-		Type:              refStr(batch.JobDefinitionTypeContainer),
-		JobDefinitionName: refStr(name),
-		ContainerProperties: &batch.ContainerProperties{
-			Image:      refStr(image),
-			JobRoleArn: refStr(role),
-
-			// These will be overwritten on execution
-			Vcpus:  refInt(1),
-			Memory: refInt(100),
-		},
+		// These will be overwritten on execution
+		Vcpus:  refInt(1),
+		Memory: refInt(100),
 	})
-
+	logger.Infof(ctx, "AWS batch job definition [%v]", jobDefinition)
+	res, err := b.Batch.RegisterJobDefinitionWithContext(ctx, &jobDefinition)
 	if err != nil {
 		return "", err
 	}

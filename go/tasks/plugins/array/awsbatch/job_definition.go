@@ -52,7 +52,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 
 	role := awsUtils.GetRoleFromSecurityContext(cfg.RoleAnnotationKey, tCtx.TaskExecutionMetadata())
 
-	cacheKey := definition.NewCacheKey(role, containerImage)
+	cacheKey := definition.NewCacheKey(role, containerImage, taskTemplate.GetCustom())
 	if existingArn, found := definitionCache.Get(cacheKey); found {
 		logger.Infof(ctx, "Found an existing job definition for Image [%v] and Role [%v]. Arn [%v]",
 			containerImage, role, existingArn)
@@ -64,7 +64,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 
 	name := definition.GetJobDefinitionSafeName(containerImageRepository(containerImage))
 
-	arn, err := client.RegisterJobDefinition(ctx, name, containerImage, role)
+	arn, err := client.RegisterJobDefinition(ctx, name, containerImage, role, taskTemplate.GetCustom())
 	if err != nil {
 		return currentState, err
 	}
