@@ -21,6 +21,13 @@ import (
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
+type ArrayJob struct {
+	Parallelism     int64
+	Size            int64
+	MinSuccesses    int64
+	MinSuccessRatio float64
+}
+
 // DetermineDiscoverability checks if there are any previously cached tasks. If there are we will only submit an
 // ArrayJob for the non-cached tasks. The ArrayJob is now a different size, and each task will get a new index location
 // which is different than their original location. To find the original index we construct an indexLookup array.
@@ -38,7 +45,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Extract the custom plugin pb
-	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
+	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.Config, taskTemplate.TaskTypeVersion)
 	if err != nil {
 		return state, err
 	}
@@ -50,7 +57,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	if taskTemplate.TaskTypeVersion == 0 {
 		state = state.SetOriginalArraySize(arrayJob.Size)
 		arrayJobSize = arrayJob.Size
-		state = state.SetOriginalMinSuccesses(arrayJob.GetMinSuccesses())
+		state = state.SetOriginalMinSuccesses(arrayJob.MinSuccesses)
 
 		// build input readers
 		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
@@ -81,7 +88,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputs")
 		}
 
-		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccessRatio()) * float64(size))
+		minSuccesses := math.Ceil(float64(arrayJob.MinSuccesses) * float64(size))
 
 		logger.Debugf(ctx, "Computed state: size [%d] and minSuccesses [%d]", int64(size), int64(minSuccesses))
 		state = state.SetOriginalArraySize(int64(size))

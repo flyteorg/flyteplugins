@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
@@ -13,11 +14,9 @@ import (
 	"github.com/flyteorg/flytestdlib/bitarray"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/flyteorg/flytestdlib/logger"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 )
 
 //go:generate mockery -all -case=underscore
@@ -133,29 +132,36 @@ const (
 	ErrorK8sArrayGeneric  errors.ErrorCode = "ARRAY_JOB_GENERIC_FAILURE"
 )
 
-func ToArrayJob(structObj *structpb.Struct, taskTypeVersion int32) (*idlPlugins.ArrayJob, error) {
-	if structObj == nil {
+func ToArrayJob(config map[string]string, taskTypeVersion int32) (*array.ArrayJob, error) {
+	if config == nil {
 		if taskTypeVersion == 0 {
-
-			return &idlPlugins.ArrayJob{
-				Parallelism: 1,
-				Size:        1,
-				SuccessCriteria: &idlPlugins.ArrayJob_MinSuccesses{
-					MinSuccesses: 1,
-				},
+			return &array.ArrayJob{
+				Parallelism:  1,
+				Size:         1,
+				MinSuccesses: 1,
 			}, nil
 		}
-		return &idlPlugins.ArrayJob{
-			Parallelism: 1,
-			Size:        1,
-			SuccessCriteria: &idlPlugins.ArrayJob_MinSuccessRatio{
-				MinSuccessRatio: 1.0,
-			},
+		return &array.ArrayJob{
+			Parallelism:     1,
+			Size:            1,
+			MinSuccessRatio: 1.0,
 		}, nil
 	}
 
-	arrayJob := &idlPlugins.ArrayJob{}
-	err := utils.UnmarshalStruct(structObj, arrayJob)
+	arrayJob := &array.ArrayJob{}
+	var err error
+	if config["Parallelism"] != "" {
+		arrayJob.Parallelism, err = strconv.Atoi(config["Parallelism"])
+	}
+	if config["Size"] != "" {
+		arrayJob.Size, err = strconv.Atoi(config["Size"])
+	}
+	if config["MinSuccesses"] != "" {
+		arrayJob.MinSuccesses, err = strconv.Atoi(config["MinSuccesses"])
+	}
+	if config["MinSuccessRatio"] != "" {
+		arrayJob.MinSuccessRatio, err = strconv.ParseFloat(config["MinSuccessRatio"], 64)
+	}
 	return arrayJob, err
 }
 

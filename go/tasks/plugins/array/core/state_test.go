@@ -7,7 +7,7 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flytestdlib/bitarray"
@@ -247,24 +247,20 @@ func TestToArrayJob(t *testing.T) {
 	t.Run("task_type_version == 0", func(t *testing.T) {
 		arrayJob, err := ToArrayJob(nil, 0)
 		assert.NoError(t, err)
-		assert.True(t, proto.Equal(arrayJob, &plugins.ArrayJob{
-			Parallelism: 1,
-			Size:        1,
-			SuccessCriteria: &plugins.ArrayJob_MinSuccesses{
-				MinSuccesses: 1,
-			},
-		}))
+		assert.True(t, *arrayJob == array.ArrayJob{
+			Parallelism:  1,
+			Size:         1,
+			MinSuccesses: 1,
+		})
 	})
 
 	t.Run("task_type_version == 1", func(t *testing.T) {
 		arrayJob, err := ToArrayJob(nil, 1)
 		assert.NoError(t, err)
-		assert.True(t, proto.Equal(arrayJob, &plugins.ArrayJob{
-			Parallelism: 1,
-			Size:        1,
-			SuccessCriteria: &plugins.ArrayJob_MinSuccessRatio{
-				MinSuccessRatio: 1.0,
-			},
-		}))
+		assert.True(t, *arrayJob == array.ArrayJob{
+			Parallelism:     1,
+			Size:            1,
+			MinSuccessRatio: 1.0,
+		})
 	})
 }

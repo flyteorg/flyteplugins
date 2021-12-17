@@ -11,10 +11,10 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -42,7 +42,7 @@ var podSpec = v1.PodSpec{
 	},
 }
 
-var arrayJob = idlPlugins.ArrayJob{
+var arrayJob = array.ArrayJob{
 	Size: 100,
 }
 
@@ -57,8 +57,8 @@ func getK8sPodTask(t *testing.T, annotations map[string]string) *core.TaskTempla
 		t.Fatal(err)
 	}
 
-	custom := &structpb.Struct{}
-	if err := utils.MarshalStruct(&arrayJob, custom); err != nil {
+	var custom *structpb.Struct
+	if custom, err = utils.MarshalObjToStruct(&arrayJob); err != nil {
 		t.Fatal(err)
 	}
 
