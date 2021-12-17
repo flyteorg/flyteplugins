@@ -29,7 +29,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -136,7 +136,7 @@ func TestArrayJobToBatchInput(t *testing.T) {
 		},
 	}
 
-	input := &array.ArrayJob{
+	input := &arrayCore.ArrayJob{
 		Size:        10,
 		Parallelism: 5,
 	}

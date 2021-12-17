@@ -15,7 +15,6 @@ import (
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/flyteorg/flytestdlib/logger"
 )
 
@@ -132,32 +131,32 @@ const (
 	ErrorK8sArrayGeneric  errors.ErrorCode = "ARRAY_JOB_GENERIC_FAILURE"
 )
 
-func ToArrayJob(config map[string]string, taskTypeVersion int32) (*array.ArrayJob, error) {
+func ToArrayJob(config map[string]string, taskTypeVersion int32) (*ArrayJob, error) {
 	if config == nil {
 		if taskTypeVersion == 0 {
-			return &array.ArrayJob{
+			return &ArrayJob{
 				Parallelism:  1,
 				Size:         1,
 				MinSuccesses: 1,
 			}, nil
 		}
-		return &array.ArrayJob{
+		return &ArrayJob{
 			Parallelism:     1,
 			Size:            1,
 			MinSuccessRatio: 1.0,
 		}, nil
 	}
 
-	arrayJob := &array.ArrayJob{}
+	arrayJob := &ArrayJob{}
 	var err error
 	if config["Parallelism"] != "" {
-		arrayJob.Parallelism, err = strconv.Atoi(config["Parallelism"])
+		arrayJob.Parallelism, err = strconv.ParseInt(config["Parallelism"], 10,64)
 	}
 	if config["Size"] != "" {
-		arrayJob.Size, err = strconv.Atoi(config["Size"])
+		arrayJob.Size, err = strconv.ParseInt(config["Size"], 10, 64)
 	}
 	if config["MinSuccesses"] != "" {
-		arrayJob.MinSuccesses, err = strconv.Atoi(config["MinSuccesses"])
+		arrayJob.MinSuccesses, err = strconv.ParseInt(config["MinSuccesses"], 10, 64)
 	}
 	if config["MinSuccessRatio"] != "" {
 		arrayJob.MinSuccessRatio, err = strconv.ParseFloat(config["MinSuccessRatio"], 64)

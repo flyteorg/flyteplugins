@@ -243,7 +243,7 @@ func TestDiscoverabilityTaskType1(t *testing.T) {
 		download.OnGetCachedResults().Return(bitarray.NewBitSet(1)).Once()
 		toCache := arrayCore.InvertBitSet(bitarray.NewBitSet(uint(3)), uint(3))
 
-		arrayJob := &ArrayJob{
+		arrayJob := &arrayCore.ArrayJob{
 			MinSuccessRatio: 0.5,
 		}
 		var arrayJobCustom *structpb.Struct

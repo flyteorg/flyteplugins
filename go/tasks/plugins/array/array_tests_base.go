@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteplugins/tests"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/utils"
@@ -47,7 +48,7 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 		}
 
 		var err error
-		template.Custom, err = utils.MarshalObjToStruct(&ArrayJob{
+		template.Custom, err = utils.MarshalObjToStruct(&arrayCore.ArrayJob{
 			Parallelism:  10,
 			Size:         1,
 			MinSuccesses: 1,
@@ -80,7 +81,7 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 		}
 
 		var err error
-		template.Custom, err = utils.MarshalObjToStruct(&ArrayJob{
+		template.Custom, err = utils.MarshalObjToStruct(&arrayCore.ArrayJob{
 			Parallelism:  10,
 			Size:         2,
 			MinSuccesses: 1,
