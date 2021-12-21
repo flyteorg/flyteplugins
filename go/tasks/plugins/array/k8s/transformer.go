@@ -117,12 +117,9 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		arrayInputReader:     array.GetInputReader(tCtx, taskTemplate),
 	}
 
-	var arrayJob *arrayCore.ArrayJob
-	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = core2.ToArrayJob(taskTemplate.GetConfig(), taskTemplate.TaskTypeVersion)
-		if err != nil {
-			return v1.Pod{}, nil, err
-		}
+	arrayJob, err := core2.ToArrayJob(taskTemplate.GetConfig(), taskTemplate.TaskTypeVersion)
+	if err != nil {
+		return v1.Pod{}, nil, err
 	}
 
 	annotations := utils.UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, tCtx.TaskExecutionMetadata().GetAnnotations())
