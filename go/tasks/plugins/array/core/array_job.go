@@ -1,6 +1,5 @@
 package core
 
-
 type ArrayJob struct {
 	Parallelism     int64
 	Size            int64
@@ -23,4 +22,3 @@ func (a ArrayJob) GetMinSuccesses() int64 {
 func (a ArrayJob) GetMinSuccessRatio() float64 {
 	return a.MinSuccessRatio
 }
-

@@ -50,7 +50,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	if taskTemplate.TaskTypeVersion == 0 {
 		state = state.SetOriginalArraySize(arrayJob.Size)
 		arrayJobSize = arrayJob.Size
-		state = state.SetOriginalMinSuccesses(arrayJob.MinSuccesses)
+		state = state.SetOriginalMinSuccesses(arrayJob.GetMinSuccesses())
 
 		// build input readers
 		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
@@ -81,7 +81,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputs")
 		}
 
-		minSuccesses := math.Ceil(float64(arrayJob.MinSuccesses) * float64(size))
+		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccesses()) * float64(size))
 
 		logger.Debugf(ctx, "Computed state: size [%d] and minSuccesses [%d]", int64(size), int64(minSuccesses))
 		state = state.SetOriginalArraySize(int64(size))

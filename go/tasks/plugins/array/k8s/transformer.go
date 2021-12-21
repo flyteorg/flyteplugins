@@ -14,10 +14,10 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	core2 "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

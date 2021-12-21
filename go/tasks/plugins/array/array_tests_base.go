@@ -3,8 +3,8 @@ package array
 import (
 	"testing"
 
-	"github.com/flyteorg/flyteplugins/tests"
 	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
+	"github.com/flyteorg/flyteplugins/tests"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/utils"

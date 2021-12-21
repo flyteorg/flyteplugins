@@ -14,7 +14,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -42,7 +42,7 @@ var podSpec = v1.PodSpec{
 	},
 }
 
-var arrayJob = array.ArrayJob{
+var arrayJob = arrayCore.ArrayJob{
 	Size: 100,
 }
 

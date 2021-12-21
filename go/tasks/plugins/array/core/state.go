@@ -150,7 +150,7 @@ func ToArrayJob(config map[string]string, taskTypeVersion int32) (*ArrayJob, err
 	arrayJob := &ArrayJob{}
 	var err error
 	if config["Parallelism"] != "" {
-		arrayJob.Parallelism, err = strconv.ParseInt(config["Parallelism"], 10,64)
+		arrayJob.Parallelism, err = strconv.ParseInt(config["Parallelism"], 10, 64)
 	}
 	if config["Size"] != "" {
 		arrayJob.Size, err = strconv.ParseInt(config["Size"], 10, 64)
