@@ -90,7 +90,7 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 		}
 
 		// TODO: Do we need the names of the outputs in the literalMap here?
-		if i.isAwsSingleJob == false {
+		if !i.isAwsSingleJob{
 			appendEmptyOutputs(finalOutputs, i.varNames)
 		}
 	}
