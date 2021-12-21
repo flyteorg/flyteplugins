@@ -76,7 +76,9 @@ func (b client) GetAccountID() string {
 func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role string, structObj *structpb.Struct) (arn definition2.JobDefinitionArn, err error) {
 	logger.Infof(ctx, "Registering job definition with name [%v], image [%v], role [%v]", name, image, role)
 	jobDefinition := batch.RegisterJobDefinitionInput{}
-	err = pluginUtils.UnmarshalStructToObj(structObj, &jobDefinition)
+	if structObj != nil {
+		err = pluginUtils.UnmarshalStructToObj(structObj, &jobDefinition)
+	}
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to unmarshal RegisterJobDefinitionInput")
 	}
