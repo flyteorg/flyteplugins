@@ -80,14 +80,11 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 			},
 		}
 
-		var err error
-		template.Custom, err = utils.MarshalObjToStruct(&arrayCore.ArrayJob{
-			Parallelism:  10,
-			Size:         2,
-			MinSuccesses: 1,
-		})
-
-		assert.NoError(t, err)
+		template.Config = map[string]string{
+			"Parallelism":  "10",
+			"Size":         "2",
+			"MinSuccesses": "1",
+		}
 
 		expectedOutputs := coreutils.MustMakeLiteral(map[string]interface{}{
 			"x": []interface{}{5, 5},
