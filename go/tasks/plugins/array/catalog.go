@@ -81,7 +81,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputs")
 		}
 
-		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccessRatio()) * float64(size))
+		minSuccesses := math.Ceil(arrayJob.GetMinSuccessRatio() * float64(size))
 
 		logger.Debugf(ctx, "Computed state: size [%d] and minSuccesses [%d]", int64(size), int64(minSuccesses))
 		state = state.SetOriginalArraySize(int64(size))
