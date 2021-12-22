@@ -5,9 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-
 	stdErrors "github.com/flyteorg/flytestdlib/errors"
 
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
@@ -243,12 +240,9 @@ func TestDiscoverabilityTaskType1(t *testing.T) {
 		download.OnGetCachedResults().Return(bitarray.NewBitSet(1)).Once()
 		toCache := arrayCore.InvertBitSet(bitarray.NewBitSet(uint(3)), uint(3))
 
-		arrayJob := &arrayCore.ArrayJob{
-			MinSuccessRatio: 0.5,
+		arrayJob := map[string]string{
+			"MinSuccessRatio": "0.5",
 		}
-		var arrayJobCustom *structpb.Struct
-		arrayJobCustom, err := utils.MarshalObjToStruct(arrayJob)
-		assert.NoError(t, err)
 		templateType1 := &core.TaskTemplate{
 			Id: &core.Identifier{
 				ResourceType: core.ResourceType_TASK,
@@ -273,7 +267,7 @@ func TestDiscoverabilityTaskType1(t *testing.T) {
 				},
 			},
 			TaskTypeVersion: 1,
-			Custom:          arrayJobCustom,
+			Config:          arrayJob,
 		}
 
 		runDetermineDiscoverabilityTest(t, templateType1, f, &arrayCore.State{

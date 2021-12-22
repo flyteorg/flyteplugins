@@ -149,16 +149,16 @@ func ToArrayJob(config map[string]string, taskTypeVersion int32) (*ArrayJob, err
 
 	arrayJob := &ArrayJob{}
 	var err error
-	if config["Parallelism"] != "" {
+	if len(config["Parallelism"]) != 0 {
 		arrayJob.Parallelism, err = strconv.ParseInt(config["Parallelism"], 10, 64)
 	}
-	if config["Size"] != "" {
+	if len(config["Size"]) != 0 {
 		arrayJob.Size, err = strconv.ParseInt(config["Size"], 10, 64)
 	}
-	if config["MinSuccesses"] != "" {
+	if len(config["MinSuccesses"]) != 0 {
 		arrayJob.MinSuccesses, err = strconv.ParseInt(config["MinSuccesses"], 10, 64)
 	}
-	if config["MinSuccessRatio"] != "" {
+	if len(config["MinSuccessRatio"]) != 0 {
 		arrayJob.MinSuccessRatio, err = strconv.ParseFloat(config["MinSuccessRatio"], 64)
 	}
 	return arrayJob, err
