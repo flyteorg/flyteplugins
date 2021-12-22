@@ -211,7 +211,7 @@ func TestArrayJobToBatchInput(t *testing.T) {
 	taskCtx.OnTaskReader().Return(tr)
 
 	ctx = context.Background()
-	batchInput, err = FlyteTaskToBatchInput(ctx, taskCtx, "", &config.Config{})
+	_, err = FlyteTaskToBatchInput(ctx, taskCtx, "", &config.Config{})
 	assert.NoError(t, err)
 }
 
