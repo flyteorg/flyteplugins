@@ -262,4 +262,20 @@ func TestToArrayJob(t *testing.T) {
 			MinSuccessRatio: 1.0,
 		})
 	})
+
+	t.Run("ToArrayJob with config", func(t *testing.T) {
+		config := map[string]string{
+			"Parallelism": "10",
+			"Size": "10",
+			"MinSuccesses": "1",
+			"MinSuccessRatio": "1.0",
+		}
+
+		arrayJob, err := ToArrayJob(config, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, arrayJob.GetParallelism(), int64(10))
+		assert.Equal(t, arrayJob.GetSize(), int64(10))
+		assert.Equal(t, arrayJob.GetMinSuccesses(), int64(1))
+		assert.Equal(t, arrayJob.GetMinSuccessRatio(), 1.0)
+	})
 }
