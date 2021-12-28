@@ -265,9 +265,9 @@ func TestToArrayJob(t *testing.T) {
 
 	t.Run("ToArrayJob with config", func(t *testing.T) {
 		config := map[string]string{
-			"Parallelism": "10",
-			"Size": "10",
-			"MinSuccesses": "1",
+			"Parallelism":     "10",
+			"Size":            "10",
+			"MinSuccesses":    "1",
 			"MinSuccessRatio": "1.0",
 		}
 
