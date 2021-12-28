@@ -457,6 +457,14 @@ func (p Plugin) newBigQueryClient(ctx context.Context, identity google.Identity)
 		options = append(options,
 			option.WithEndpoint(p.cfg.bigQueryEndpoint),
 			option.WithTokenSource(oauth2.StaticTokenSource(&oauth2.Token{})))
+	} else if p.cfg.GoogleTokenSource.Type != "default" {
+		tokenSource, err := p.googleTokenSource.GetTokenSource(ctx, identity)
+
+		if err != nil {
+			return nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "unable to get token source")
+		}
+
+		options = append(options, option.WithTokenSource(tokenSource))
 	}
 
 	return bigquery.NewService(ctx, options...)
