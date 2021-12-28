@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/google"
@@ -448,6 +450,13 @@ func (p Plugin) newBigQueryClient(ctx context.Context, identity google.Identity)
 		option.WithScopes("https://www.googleapis.com/auth/bigquery"),
 		// FIXME how do I access current version?
 		option.WithUserAgent(fmt.Sprintf("%s/%s", "flytepropeller", "LATEST")),
+	}
+
+	// for mocking/testing purposes
+	if p.cfg.bigQueryEndpoint != "" {
+		options = append(options,
+			option.WithEndpoint(p.cfg.bigQueryEndpoint),
+			option.WithTokenSource(oauth2.StaticTokenSource(&oauth2.Token{})))
 	}
 
 	return bigquery.NewService(ctx, options...)
