@@ -9,8 +9,6 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
-	"golang.org/x/oauth2"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/google"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/api/bigquery/v2"
@@ -105,6 +103,7 @@ func (p Plugin) createImpl(ctx context.Context, taskCtx webapi.TaskExecutionCont
 		return nil, nil, err
 	}
 
+	job.Configuration.Query.Query = taskTemplate.GetSql().Statement
 	job.Configuration.Labels = taskCtx.TaskExecutionMetadata().GetLabels()
 
 	resp, err := client.Jobs.Insert(job.JobReference.ProjectId, job).Do()
@@ -449,21 +448,6 @@ func (p Plugin) newBigQueryClient(ctx context.Context, identity google.Identity)
 		option.WithScopes("https://www.googleapis.com/auth/bigquery"),
 		// FIXME how do I access current version?
 		option.WithUserAgent(fmt.Sprintf("%s/%s", "flytepropeller", "LATEST")),
-	}
-
-	// for mocking/testing purposes
-	if p.cfg.bigQueryEndpoint != "" {
-		options = append(options,
-			option.WithEndpoint(p.cfg.bigQueryEndpoint),
-			option.WithTokenSource(oauth2.StaticTokenSource(&oauth2.Token{})))
-	} else {
-		tokenSource, err := p.googleTokenSource.GetTokenSource(ctx, identity)
-
-		if err != nil {
-			return nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err, "unable to get token source")
-		}
-
-		options = append(options, option.WithTokenSource(tokenSource))
 	}
 
 	return bigquery.NewService(ctx, options...)
