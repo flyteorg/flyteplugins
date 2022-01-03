@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	//"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event" // TODO hamersaw - remove
 
 	"github.com/flyteorg/flytestdlib/errors"
 
@@ -174,16 +174,31 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
-	nowTaskInfo := &core.TaskInfo{
-		OccurredAt: &t,
-		Logs:       logLinks,
+	// TODO hamersaw - remove
+	/*nowTaskInfo := &core.TaskInfo{
+		OccurredAt:        &t,
+		Logs:              logLinks,
 	}
 	if nowTaskInfo.Metadata == nil {
 		nowTaskInfo.Metadata = &event.TaskExecutionMetadata{}
 	}
-	for _, subTaskID := range subTaskIDs {
+	for childIdx, subTaskID := range subTaskIDs {
 		nowTaskInfo.Metadata.ExternalResources = append(nowTaskInfo.Metadata.ExternalResources, &event.ExternalResourceInfo{
-			ExternalId: *subTaskID,
+			ExternalId:   *subTaskID,
+		})
+	}*/
+
+	nowTaskInfo := &core.TaskInfo{
+		OccurredAt:        &t,
+		Logs:              logLinks,
+		ExternalResources: make([]*core.ExternalResource, len(subTaskIDs)),
+	}
+
+	for childIdx, subTaskID := range subTaskIDs {
+		nowTaskInfo.ExternalResources = append(nowTaskInfo.ExternalResources, &core.ExternalResource{
+			ExternalID:   *subTaskID,
+			RetryAttempt: 0, // TODO hamersaw - set retry attempt
+			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIdx)],
 		})
 	}
 

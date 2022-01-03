@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
+	//"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event" // TODO hamersaw - remove
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -69,6 +69,13 @@ func (p Phase) IsWaitingForResources() bool {
 	return p == PhaseWaitingForResources
 }
 
+type ExternalResource struct {
+	// TODO hamersaw - document
+	ExternalID   string
+	RetryAttempt int
+	Phase        Phase
+}
+
 type TaskInfo struct {
 	// log information for the task execution
 	Logs []*core.TaskLog
@@ -78,7 +85,9 @@ type TaskInfo struct {
 	// Custom Event information that the plugin would like to expose to the front-end
 	CustomInfo *structpb.Struct
 	// Metadata around how a task was executed
-	Metadata *event.TaskExecutionMetadata
+	//Metadata *event.TaskExecutionMetadata // TODO hamersaw - remove
+	// A collection of information about external resources launched by this task
+	ExternalResources []*ExternalResource
 }
 
 func (t *TaskInfo) String() string {
