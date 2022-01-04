@@ -136,7 +136,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks, subTaskIDs)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks, subTaskIDs, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
 	if err != nil {
 		return core.UnknownTransition, err
 	}

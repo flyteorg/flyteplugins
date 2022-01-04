@@ -71,7 +71,7 @@ type ExternalResource struct {
 	// A unique identifier for the external resource
 	ExternalID string
 	// The nubmer of times this external resource has been attempted
-	RetryAttempt int
+	RetryAttempt uint32
 	// Phase (if exists) associated with the external resource
 	Phase Phase
 }
