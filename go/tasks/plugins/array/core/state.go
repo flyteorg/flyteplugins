@@ -183,7 +183,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 			ExternalID: *subTaskID,
 			// Currently a failure within any map subtask triggers re-execution of all subtasks,
 			// therefore the RetryAttempt is identical for all external resources. Tracking retries
-			// over individual subtasks may be implemented as an additional ArrayStatus data 
+			// over individual subtasks may be implemented as an additional ArrayStatus data
 			// structure, this should be updated accordingly.
 			RetryAttempt: retryAttempt,
 			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIdx)],
