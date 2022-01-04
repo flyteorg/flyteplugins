@@ -195,11 +195,11 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	}
 
 	for childIdx, subTaskID := range subTaskIDs {
-		nowTaskInfo.ExternalResources = append(nowTaskInfo.ExternalResources, &core.ExternalResource{
+		nowTaskInfo.ExternalResources[childIdx] = &core.ExternalResource{
 			ExternalID:   *subTaskID,
 			RetryAttempt: 0, // TODO hamersaw - set retry attempt
 			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIdx)],
-		})
+		}
 	}
 
 	switch p, version := state.GetPhase(); p {
