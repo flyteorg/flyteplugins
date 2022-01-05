@@ -458,6 +458,7 @@ func (p Plugin) newBigQueryClient(ctx context.Context, identity google.Identity)
 			option.WithEndpoint(p.cfg.bigQueryEndpoint),
 			option.WithTokenSource(oauth2.StaticTokenSource(&oauth2.Token{})))
 	} else if p.cfg.GoogleTokenSource.Type != "default" {
+
 		tokenSource, err := p.googleTokenSource.GetTokenSource(ctx, identity)
 
 		if err != nil {
@@ -465,6 +466,8 @@ func (p Plugin) newBigQueryClient(ctx context.Context, identity google.Identity)
 		}
 
 		options = append(options, option.WithTokenSource(tokenSource))
+	} else {
+		logger.Infof(ctx, "BigQuery client read $GOOGLE_APPLICATION_CREDENTIALS by default")
 	}
 
 	return bigquery.NewService(ctx, options...)
