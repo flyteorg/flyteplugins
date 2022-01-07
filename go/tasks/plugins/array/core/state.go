@@ -112,6 +112,11 @@ func (s *State) SetReason(reason string) *State {
 	return s
 }
 
+func (s *State) SetRetryAttempts(retryAttempts bitarray.CompactArray) *State {
+	s.RetryAttempts = retryAttempts
+	return s
+}
+
 func (s *State) SetExecutionArraySize(size int) *State {
 	s.ExecutionArraySize = size
 	return s
@@ -184,7 +189,6 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	for childIdx, subTaskID := range subTaskIDs {
 		nowTaskInfo.ExternalResources[childIdx] = &core.ExternalResource{
 			ExternalID:   *subTaskID,
-			// TODO hamersaw - need to set RetryAttempts on awsbatch state
 			RetryAttempt: uint32(state.RetryAttempts.GetItem(childIdx)),
 			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIdx)],
 		}
