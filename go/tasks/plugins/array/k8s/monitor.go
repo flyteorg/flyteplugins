@@ -61,6 +61,26 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		currentState.ArrayStatus = *newArrayStatus
 	}
 
+	// TODO hamersaw - initialize attempts? maxRetries?
+	if len(currentState.RetryAttempts.GetItems()) == 0 {
+		count := uint(currentState.GetOriginalArraySize())
+		maxValue := bitarray.Item(tCtx.TaskExecutionMetadata().GetMaxAttempts())
+
+		retryAttemptsArray, err := bitarray.NewCompactArray(count, maxValue)
+		if err != nil {
+			logger.Errorf(context.Background(), "Failed to create attempts compact array with [count: %v, maxValue: %v]", count, maxValue)
+			return currentState, logLinks, subTaskIDs, nil
+		}
+
+		retryAttempt := bitarray.Item(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
+		for i := 0; i<currentState.GetExecutionArraySize(); i++ {
+			originalIndex := arrayCore.CalculateOriginalIndex(i, currentState.GetIndexesToCache())
+			retryAttemptsArray.SetItem(originalIndex, retryAttempt)
+		}
+
+		currentState.RetryAttempts = retryAttemptsArray
+	}
+
 	logPlugin, err := logs.InitializeLogPlugins(&config.LogConfig.Config)
 	if err != nil {
 		logger.Errorf(ctx, "Error initializing LogPlugins: [%s]", err)

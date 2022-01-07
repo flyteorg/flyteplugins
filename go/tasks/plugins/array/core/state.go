@@ -50,6 +50,9 @@ type State struct {
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
 	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
+
+	// TODO hamersaw - document
+	RetryAttempts bitarray.CompactArray `json:"retryAttempts"`
 }
 
 func (s State) GetReason() string {
@@ -168,7 +171,7 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskIDs []*string, retryAttempt uint32) (core.PhaseInfo, error) {
+func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskIDs []*string) (core.PhaseInfo, error) {
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
 
@@ -179,13 +182,12 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	}
 
 	for childIdx, subTaskID := range subTaskIDs {
+		originalIdx := CalculateOriginalIndex(childIdx, state.GetIndexesToCache())
+
 		nowTaskInfo.ExternalResources[childIdx] = &core.ExternalResource{
-			ExternalID: *subTaskID,
-			// Currently a failure within any map subtask triggers re-execution of all subtasks,
-			// therefore the RetryAttempt is identical for all external resources. Tracking retries
-			// over individual subtasks may be implemented as an additional ArrayStatus data
-			// structure, this should be updated accordingly.
-			RetryAttempt: retryAttempt,
+			ExternalID:   *subTaskID,
+			// TODO hamersaw - need to set RetryAttempts on awsbatch state
+			RetryAttempt: uint32(state.RetryAttempts.GetItem(originalIdx)),
 			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIdx)],
 		}
 	}
