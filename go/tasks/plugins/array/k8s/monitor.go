@@ -78,7 +78,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		// Once retries over individual subtasks is implemented we should revisit this logic and instead
 		// increment the RetryAttempt on each subtask everytime a new pod is created.
 		retryAttempt := bitarray.Item(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
-		for i := 0; i<currentState.GetExecutionArraySize(); i++ {
+		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
 			originalIndex := arrayCore.CalculateOriginalIndex(i, currentState.GetIndexesToCache())
 			retryAttemptsArray.SetItem(originalIndex, retryAttempt)
 		}
