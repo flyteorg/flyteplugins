@@ -51,7 +51,7 @@ type State struct {
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
 	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
 
-	// TODO hamersaw - document
+	// Tracks the number of subtask retries using the execution index
 	RetryAttempts bitarray.CompactArray `json:"retryAttempts"`
 }
 
@@ -182,12 +182,10 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	}
 
 	for childIdx, subTaskID := range subTaskIDs {
-		originalIdx := CalculateOriginalIndex(childIdx, state.GetIndexesToCache())
-
 		nowTaskInfo.ExternalResources[childIdx] = &core.ExternalResource{
 			ExternalID:   *subTaskID,
 			// TODO hamersaw - need to set RetryAttempts on awsbatch state
-			RetryAttempt: uint32(state.RetryAttempts.GetItem(originalIdx)),
+			RetryAttempt: uint32(state.RetryAttempts.GetItem(childIdx)),
 			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIdx)],
 		}
 	}

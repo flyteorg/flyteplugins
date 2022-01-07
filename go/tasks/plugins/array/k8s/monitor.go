@@ -61,9 +61,10 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		currentState.ArrayStatus = *newArrayStatus
 	}
 
-	// TODO hamersaw - initialize attempts? maxRetries?
+	// If the current State is a newly minted then we must initialize RetryAttempts to track how
+	// many times each subtask is executed.
 	if len(currentState.RetryAttempts.GetItems()) == 0 {
-		count := uint(currentState.GetOriginalArraySize())
+		count := uint(currentState.GetExecutionArraySize())
 		maxValue := bitarray.Item(tCtx.TaskExecutionMetadata().GetMaxAttempts())
 
 		retryAttemptsArray, err := bitarray.NewCompactArray(count, maxValue)
@@ -72,6 +73,10 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			return currentState, logLinks, subTaskIDs, nil
 		}
 
+		// Currently if any subtask fails then all subtasks are retried up to MaxAttempts. Therefore, we
+		// all subtasks have an identical RetryAttempt, namely that of the map task execution metadata.
+		// Once retries over individual subtasks is implemented we should revisit this logic and instead
+		// increment the RetryAttempt on each subtask everytime a new pod is created.
 		retryAttempt := bitarray.Item(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
 		for i := 0; i<currentState.GetExecutionArraySize(); i++ {
 			originalIndex := arrayCore.CalculateOriginalIndex(i, currentState.GetIndexesToCache())
