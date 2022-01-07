@@ -186,11 +186,14 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 		ExternalResources: make([]*core.ExternalResource, len(subTaskIDs)),
 	}
 
-	for childIdx, subTaskID := range subTaskIDs {
-		nowTaskInfo.ExternalResources[childIdx] = &core.ExternalResource{
+	for childIndex, subTaskID := range subTaskIDs {
+		originalIndex := CalculateOriginalIndex(childIndex, state.GetIndexesToCache())
+
+		nowTaskInfo.ExternalResources[childIndex] = &core.ExternalResource{
 			ExternalID:   *subTaskID,
-			RetryAttempt: uint32(state.RetryAttempts.GetItem(childIdx)),
-			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIdx)],
+			Index:        uint32(originalIndex),
+			RetryAttempt: uint32(state.RetryAttempts.GetItem(childIndex)),
+			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIndex)],
 		}
 	}
 

@@ -67,6 +67,7 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 
 	var subTaskIDs = make([]*string, subTaskCount)
 	detailedArray := NewPhasesCompactArray(uint(subTaskCount))
+	indexesToCache := InvertBitSet(bitarray.NewBitSet(uint(subTaskCount)), uint(subTaskCount))
 	retryAttemptsArray, err := bitarray.NewCompactArray(uint(subTaskCount), bitarray.Item(1))
 	assert.NoError(t, err)
 
@@ -84,7 +85,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedArray,
 			},
-			RetryAttempts: retryAttemptsArray,
+			IndexesToCache: indexesToCache,
+			RetryAttempts:  retryAttemptsArray,
 		}
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)
 		assert.NoError(t, err)
@@ -98,7 +100,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedArray,
 			},
-			RetryAttempts: retryAttemptsArray,
+			IndexesToCache: indexesToCache,
+			RetryAttempts:  retryAttemptsArray,
 		}
 
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)
@@ -115,7 +118,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedArray,
 			},
-			RetryAttempts: retryAttemptsArray,
+			IndexesToCache: indexesToCache,
+			RetryAttempts:  retryAttemptsArray,
 		}
 
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)
@@ -134,7 +138,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedArray,
 			},
-			RetryAttempts: retryAttemptsArray,
+			IndexesToCache: indexesToCache,
+			RetryAttempts:  retryAttemptsArray,
 		}
 
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)
@@ -151,7 +156,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedArray,
 			},
-			RetryAttempts: retryAttemptsArray,
+			IndexesToCache: indexesToCache,
+			RetryAttempts:  retryAttemptsArray,
 		}
 
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)
@@ -167,7 +173,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedArray,
 			},
-			RetryAttempts: retryAttemptsArray,
+			IndexesToCache: indexesToCache,
+			RetryAttempts:  retryAttemptsArray,
 		}
 
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)
@@ -183,7 +190,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailedArray,
 			},
-			RetryAttempts: retryAttemptsArray,
+			IndexesToCache: indexesToCache,
+			RetryAttempts:  retryAttemptsArray,
 		}
 
 		phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)
@@ -199,7 +207,8 @@ func TestMapArrayStateToPluginPhase(t *testing.T) {
 				ArrayStatus: arraystatus.ArrayStatus{
 					Detailed: detailedArray,
 				},
-				RetryAttempts: retryAttemptsArray,
+				IndexesToCache: indexesToCache,
+				RetryAttempts:  retryAttemptsArray,
 			}
 
 			phaseInfo, err := MapArrayStateToPluginPhase(ctx, &s, nil, subTaskIDs)

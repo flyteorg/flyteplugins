@@ -73,14 +73,13 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			return currentState, logLinks, subTaskIDs, nil
 		}
 
-		// Currently if any subtask fails then all subtasks are retried up to MaxAttempts. Therefore, we
-		// all subtasks have an identical RetryAttempt, namely that of the map task execution metadata.
-		// Once retries over individual subtasks is implemented we should revisit this logic and instead
+		// Currently if any subtask fails then all subtasks are retried up to MaxAttempts. Therefore, all
+		// subtasks have an identical RetryAttempt, namely that of the map task execution metadata. Once
+		// retries over individual subtasks is implemented we should revisit this logic and instead
 		// increment the RetryAttempt on each subtask everytime a new pod is created.
 		retryAttempt := bitarray.Item(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
 		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
-			originalIndex := arrayCore.CalculateOriginalIndex(i, currentState.GetIndexesToCache())
-			retryAttemptsArray.SetItem(originalIndex, retryAttempt)
+			retryAttemptsArray.SetItem(i, retryAttempt)
 		}
 
 		currentState.RetryAttempts = retryAttemptsArray
