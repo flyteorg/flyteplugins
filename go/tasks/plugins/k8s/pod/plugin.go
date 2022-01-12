@@ -129,15 +129,42 @@ func (plugin) GetProperties() k8s.PluginProperties {
 }
 
 func init() {
+	podPlugin := plugin{
+		defaultPodBuilder: defaultPodBuilder,
+		podBuilders:       podBuilders,
+	}
+
+	// Register containerTaskType and sidecarTaskType plugin entries. These separate task types
+	// still exist within the system, only now both are evaluated using the same internal pod plugin
+	// instance. This simplifies migration as users may keep the same configuration but are
+	// seamlessly transitioned from separate container and sidecar plugins to a single pod plugin.
+	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
+		k8s.PluginEntry{
+			ID:                  containerTaskType,
+			RegisteredTaskTypes: []pluginsCore.TaskType{containerTaskType},
+			ResourceToWatch:     &v1.Pod{},
+			Plugin:              podPlugin,
+			IsDefault:           true,
+			DefaultForTaskTypes: []pluginsCore.TaskType{containerTaskType},
+		})
+
+	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
+		k8s.PluginEntry{
+			ID:                  sidecarTaskType,
+			RegisteredTaskTypes: []pluginsCore.TaskType{sidecarTaskType},
+			ResourceToWatch:     &v1.Pod{},
+			Plugin:              podPlugin,
+			IsDefault:           false,
+			DefaultForTaskTypes: []pluginsCore.TaskType{sidecarTaskType},
+		})
+
+	// register podTaskType plugin entry
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
 		k8s.PluginEntry{
 			ID:                  podTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{containerTaskType, sidecarTaskType},
 			ResourceToWatch:     &v1.Pod{},
-			Plugin: plugin{
-				defaultPodBuilder: defaultPodBuilder,
-				podBuilders:       podBuilders,
-			},
+			Plugin:              podPlugin,
 			IsDefault:           true,
 			DefaultForTaskTypes: []pluginsCore.TaskType{containerTaskType, sidecarTaskType},
 		})
