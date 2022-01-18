@@ -38,7 +38,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Extract the custom plugin pb
-	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetConfig(), taskTemplate.TaskTypeVersion)
+	arrayJob, err := arrayCore.ToArrayJob(taskTemplate, taskTemplate.TaskTypeVersion)
 	if err != nil {
 		return state, err
 	}

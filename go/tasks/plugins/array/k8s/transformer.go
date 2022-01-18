@@ -117,7 +117,7 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		arrayInputReader:     array.GetInputReader(tCtx, taskTemplate),
 	}
 
-	arrayJob, err := core2.ToArrayJob(taskTemplate.GetConfig(), taskTemplate.TaskTypeVersion)
+	arrayJob, err := core2.ToArrayJob(taskTemplate, taskTemplate.TaskTypeVersion)
 	if err != nil {
 		return v1.Pod{}, nil, err
 	}

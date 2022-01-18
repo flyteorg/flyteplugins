@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-
 	"github.com/golang/protobuf/proto"
 
-	"github.com/flyteorg/flytestdlib/bitarray"
-
+	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -270,8 +269,8 @@ func TestToArrayJob(t *testing.T) {
 			"MinSuccesses":    "1",
 			"MinSuccessRatio": "1.0",
 		}
-
-		arrayJob, err := ToArrayJob(config, 0)
+		taskTemplate := &idlCore.TaskTemplate{Config: config}
+		arrayJob, err := ToArrayJob(taskTemplate, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, arrayJob.GetParallelism(), int64(10))
 		assert.Equal(t, arrayJob.GetSize(), int64(10))

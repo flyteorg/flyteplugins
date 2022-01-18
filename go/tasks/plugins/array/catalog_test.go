@@ -5,6 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	stdErrors "github.com/flyteorg/flytestdlib/errors"
 
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
@@ -269,6 +273,28 @@ func TestDiscoverabilityTaskType1(t *testing.T) {
 			TaskTypeVersion: 1,
 			Config:          arrayJob,
 		}
+
+		runDetermineDiscoverabilityTest(t, templateType1, f, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhasePreLaunch,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			ExecutionArraySize:   3,
+			OriginalArraySize:    3,
+			OriginalMinSuccesses: 2,
+			IndexesToCache:       toCache,
+			Reason:               "Task is not discoverable.",
+		}, nil)
+
+		// Get ArrayJob information from taskTemplate.config
+		arrayJobProto := &plugins.ArrayJob{
+			SuccessCriteria: &plugins.ArrayJob_MinSuccessRatio{
+				MinSuccessRatio: 0.5,
+			},
+		}
+		var arrayJobCustom structpb.Struct
+		err := utils.MarshalStruct(arrayJobProto, &arrayJobCustom)
+		assert.NoError(t, err)
+		templateType1.Config = nil
+		templateType1.Custom = &arrayJobCustom
 
 		runDetermineDiscoverabilityTest(t, templateType1, f, &arrayCore.State{
 			CurrentPhase:         arrayCore.PhasePreLaunch,

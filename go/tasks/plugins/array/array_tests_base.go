@@ -3,12 +3,9 @@ package array
 import (
 	"testing"
 
-	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/flyteorg/flyteplugins/tests"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flytestdlib/utils"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
 	"context"
@@ -48,11 +45,11 @@ func RunArrayTestsEndToEnd(t *testing.T, executor core.Plugin, iter AdvanceItera
 		}
 
 		var err error
-		template.Custom, err = utils.MarshalObjToStruct(&arrayCore.ArrayJob{
-			Parallelism:  10,
-			Size:         1,
-			MinSuccesses: 1,
-		})
+		template.Config = map[string]string{
+			"Parallelism":  "10",
+			"Size":         "1",
+			"MinSuccesses": "1",
+		}
 
 		assert.NoError(t, err)
 
