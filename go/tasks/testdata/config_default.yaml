@@ -1,5 +1,0 @@
-# Sample plugins config
-plugins:
-  # Set of enabled plugins at root level
-  enabled-plugins:
-    - container
