@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"testing"
 
+	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flytestdlib/utils"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
 	"github.com/golang/protobuf/proto"
 
@@ -275,6 +278,25 @@ func TestToArrayJob(t *testing.T) {
 		assert.Equal(t, arrayJob.GetParallelism(), int64(10))
 		assert.Equal(t, arrayJob.GetSize(), int64(10))
 		assert.Equal(t, arrayJob.GetMinSuccesses(), int64(1))
+		assert.Equal(t, arrayJob.GetMinSuccessRatio(), 1.0)
+	})
+
+	t.Run("ToArrayJob with custom", func(t *testing.T) {
+		arrayJobProto := &idlPlugins.ArrayJob{
+			Parallelism: 10,
+			Size:        10,
+			SuccessCriteria: &idlPlugins.ArrayJob_MinSuccessRatio{
+				MinSuccessRatio: 1.0,
+			},
+		}
+		custom, err := utils.MarshalPbToStruct(arrayJobProto)
+		assert.NoError(t, err)
+		taskTemplate := &idlCore.TaskTemplate{Custom: custom}
+		arrayJob, err := ToArrayJob(taskTemplate, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, arrayJob.GetParallelism(), int64(10))
+		assert.Equal(t, arrayJob.GetSize(), int64(10))
+		assert.Equal(t, arrayJob.GetMinSuccesses(), int64(0))
 		assert.Equal(t, arrayJob.GetMinSuccessRatio(), 1.0)
 	})
 }
