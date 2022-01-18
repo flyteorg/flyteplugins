@@ -76,7 +76,6 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 			}
 
 			if executionError == nil && output != nil {
-				logger.Infof(ctx, "Kevin i.finalPhases.ItemsCount [%v]", i.finalPhases.ItemsCount)
 				if i.isAwsSingleJob {
 					for key, val := range output.GetLiterals() {
 						finalOutputs.Literals[key] = val
@@ -86,7 +85,6 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 					continue
 				}
 			}
-			logger.Infof(ctx, "Kevin finalOutputs [%v]", finalOutputs)
 		}
 
 		// TODO: Do we need the names of the outputs in the literalMap here?
