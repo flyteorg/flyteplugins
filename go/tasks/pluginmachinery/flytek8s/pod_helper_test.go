@@ -518,8 +518,7 @@ func TestToK8sPod(t *testing.T) {
 	})
 
 	t.Run("skipSettingHostNetwork", func(t *testing.T) {
-		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
-		}))
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
 		p, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
