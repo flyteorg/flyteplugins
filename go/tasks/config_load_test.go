@@ -87,6 +87,8 @@ func TestLoadConfig(t *testing.T) {
 		assert.NotNil(t, k8sConfig.DefaultSecurityContext)
 		assert.NotNil(t, k8sConfig.DefaultSecurityContext.AllowPrivilegeEscalation)
 		assert.False(t, *k8sConfig.DefaultSecurityContext.AllowPrivilegeEscalation)
+		assert.NotNil(t, k8sConfig.EnableHostNetworkingPod)
+		assert.True(t, *k8sConfig.EnableHostNetworkingPod)
 	})
 
 	t.Run("logs-config-test", func(t *testing.T) {
@@ -107,5 +109,26 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("sagemaker-config-test", func(t *testing.T) {
 		assert.NotNil(t, sagemakerConfig.GetSagemakerConfig())
+	})
+}
+
+func TestLoadConfigDefault(t *testing.T) {
+	configAccessor := viper.NewAccessor(config.Options{
+		StrictMode:  true,
+		SearchPaths: []string{"testdata/config_default.yaml"},
+	})
+
+	err := configAccessor.UpdateConfig(context.TODO())
+	assert.NoError(t, err)
+
+	t.Run("root-config-test", func(t *testing.T) {
+		assert.Equal(t, 1, len(pluginsConfig.GetConfig().EnabledPlugins))
+	})
+
+	t.Run("k8s-config-test", func(t *testing.T) {
+		k8sConfig := flyteK8sConfig.GetK8sPluginConfig()
+		assert.False(t, k8sConfig.InjectFinalizer)
+		assert.Nil(t, k8sConfig.EnableHostNetworkingPod)
+		assert.Nil(t, k8sConfig.DefaultPodSecurityContext)
 	})
 }
