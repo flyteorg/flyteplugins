@@ -177,7 +177,7 @@ func TestDetermineDiscoverability(t *testing.T) {
 
 	t.Run("Run AWS Batch single job", func(t *testing.T) {
 		toCache := arrayCore.InvertBitSet(bitarray.NewBitSet(1), 1)
-		template.Type = awsBatchTaskType
+		template.Type = AwsBatchTaskType
 		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
 			CurrentPhase:         arrayCore.PhasePreLaunch,
 			PhaseVersion:         core2.DefaultPhaseVersion,
