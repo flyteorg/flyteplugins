@@ -44,7 +44,13 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	// Extract the custom plugin pb
 	var arrayJob *idlPlugins.ArrayJob
 	if taskTemplate.Type == awsBatchTaskType {
-		arrayJob, err = arrayCore.ToArrayJob(nil, taskTemplate.TaskTypeVersion)
+		arrayJob = &idlPlugins.ArrayJob{
+			Parallelism: 1,
+			Size:        1,
+			SuccessCriteria: &idlPlugins.ArrayJob_MinSuccesses{
+				MinSuccesses: 1,
+			},
+		}
 	} else {
 		arrayJob, err = arrayCore.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
 	}

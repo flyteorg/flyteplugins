@@ -5,8 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 
 	"github.com/aws/aws-sdk-go/service/batch"
@@ -54,12 +52,7 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 		return nil, errors.Errorf(errors.BadTaskSpecification, "config[%v] is missing", DynamicTaskQueueKey)
 	}
 
-	var inputReader io.InputReader
-	if taskTemplate.Type == awsBatchTaskType {
-		inputReader = tCtx.InputReader()
-	} else {
-		inputReader = array.GetInputReader(tCtx, taskTemplate)
-	}
+	inputReader := array.GetInputReader(tCtx, taskTemplate)
 	cmd, err := template.Render(
 		ctx,
 		taskTemplate.GetContainer().GetCommand(),

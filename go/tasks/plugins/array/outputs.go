@@ -77,6 +77,8 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 
 			if executionError == nil && output != nil {
 				if i.isAwsSingleJob {
+					// We will only have one output.pb when running aws single job, so we don't need
+					// to aggregate outputs here
 					for key, val := range output.GetLiterals() {
 						finalOutputs.Literals[key] = val
 					}
