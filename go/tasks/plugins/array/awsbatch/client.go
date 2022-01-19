@@ -9,21 +9,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
-	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-
-	definition2 "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/aws"
-	"github.com/flyteorg/flytestdlib/utils"
-
-	"github.com/flyteorg/flytestdlib/logger"
-
 	a "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/batch"
+	"github.com/flyteorg/flyteplugins/go/tasks/aws"
+	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	definition2 "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
+	"github.com/flyteorg/flytestdlib/logger"
+	"github.com/flyteorg/flytestdlib/utils"
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
+	"github.com/pkg/errors"
 )
 
 //go:generate mockery -all -case=underscore
