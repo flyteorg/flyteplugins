@@ -35,7 +35,7 @@ type cacheKey struct {
 }
 
 func (k cacheKey) String() string {
-	return fmt.Sprintf("%v-%v-%v", k.image, k.role, k.jobDefinitionPb)
+	return fmt.Sprintf("%v-%v-%v", k.image, k.role, k.jobDefinitionPb.String())
 }
 
 type cache struct {
