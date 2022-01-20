@@ -66,7 +66,10 @@ func (b client) GetAccountID() string {
 
 // Registers a new job definition. There is no deduping on AWS side (even for the same name).
 func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role string, jobDefinitionInput *batch.RegisterJobDefinitionInput) (arn definition2.JobDefinitionArn, err error) {
-	logger.Infof(ctx, "Registering job definition with name [%v], image [%v], role [%v]", name, image, role)
+	if jobDefinitionInput == nil {
+		jobDefinitionInput = &batch.RegisterJobDefinitionInput{}
+	}
+	logger.Infof(ctx, "Registering job definition with name [%v], image [%v], role [%v], jobDefinitionInput [%v]", name, image, role, jobDefinitionInput)
 	jobDefinitionInput.SetType(*refStr(batch.JobDefinitionTypeContainer)).SetJobDefinitionName(*refStr(name)).SetContainerProperties(&batch.ContainerProperties{
 		Image:      refStr(image),
 		JobRoleArn: refStr(role),
@@ -75,7 +78,6 @@ func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role st
 		Vcpus:  refInt(1),
 		Memory: refInt(100),
 	})
-	logger.Infof(ctx, "AWS batch job definition [%v]", jobDefinitionInput)
 	res, err := b.Batch.RegisterJobDefinitionWithContext(ctx, jobDefinitionInput)
 	if err != nil {
 		return "", err

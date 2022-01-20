@@ -64,8 +64,8 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 	}
 	cacheKey := definition.NewCacheKey(role, containerImage, jobDefinitionInput)
 	if existingArn, found := definitionCache.Get(cacheKey); found {
-		logger.Infof(ctx, "Found an existing job definition for Image [%v] and Role [%v]. Arn [%v]",
-			containerImage, role, existingArn)
+		logger.Infof(ctx, "Found an existing job definition for Image [%v], Role [%v], JobDefinitionInput [%v]. Arn [%v]",
+			containerImage, role, jobDefinitionInput, existingArn)
 
 		nextState = currentState.SetJobDefinitionArn(existingArn)
 		nextState.State = nextState.SetPhase(arrayCore.PhaseLaunch, 0).SetReason("AWS job definition already exist.")
