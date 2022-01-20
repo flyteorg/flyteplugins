@@ -106,6 +106,10 @@ func TestEnsureJobDefinition(t *testing.T) {
 
 func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 	ctx := context.Background()
+	JobDefinitionName := "flyte"
+	jobDefinitionInput := batch.RegisterJobDefinitionInput{JobDefinitionName: &JobDefinitionName}
+	structObj, err := utils.MarshalObjToStruct(jobDefinitionInput)
+	assert.NoError(t, err)
 
 	tReader := &mocks.TaskReader{}
 	tReader.OnReadMatch(mock.Anything).Return(&core.TaskTemplate{
@@ -117,6 +121,7 @@ func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 		Target: &core.TaskTemplate_Container{
 			Container: createSampleContainerTask(),
 		},
+		Custom: structObj,
 	}, nil)
 
 	overrides := &mocks.TaskOverrides{}
@@ -160,8 +165,6 @@ func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 
 	t.Run("Found", func(t *testing.T) {
 		dCache := definition.NewCache(10)
-		JobDefinitionName := "flyte"
-		jobDefinitionInput := batch.RegisterJobDefinitionInput{JobDefinitionName: &JobDefinitionName}
 		assert.NoError(t, dCache.Put(definition.NewCacheKey("new-role", "img1", jobDefinitionInput), "their-arn"))
 
 		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{
