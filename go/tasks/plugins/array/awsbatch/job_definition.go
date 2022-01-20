@@ -4,6 +4,9 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/aws/aws-sdk-go/service/batch"
+	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/config"
@@ -52,7 +55,14 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 
 	role := awsUtils.GetRoleFromSecurityContext(cfg.RoleAnnotationKey, tCtx.TaskExecutionMetadata())
 
-	cacheKey := definition.NewCacheKey(role, containerImage, taskTemplate.GetCustom())
+	jobDefinitionInput := batch.RegisterJobDefinitionInput{}
+	if taskTemplate.GetCustom() != nil {
+		err = pluginUtils.UnmarshalStructToObj(taskTemplate.GetCustom(), &jobDefinitionInput)
+		if err != nil {
+			return currentState, errors.Wrapf(pluginErrors.CorruptedPluginState, err, "failed to unmarshal RegisterJobDefinitionInput")
+		}
+	}
+	cacheKey := definition.NewCacheKey(role, containerImage, jobDefinitionInput)
 	if existingArn, found := definitionCache.Get(cacheKey); found {
 		logger.Infof(ctx, "Found an existing job definition for Image [%v] and Role [%v]. Arn [%v]",
 			containerImage, role, existingArn)
@@ -64,7 +74,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 
 	name := definition.GetJobDefinitionSafeName(containerImageRepository(containerImage))
 
-	arn, err := client.RegisterJobDefinition(ctx, name, containerImage, role, taskTemplate.GetCustom())
+	arn, err := client.RegisterJobDefinition(ctx, name, containerImage, role, &jobDefinitionInput)
 	if err != nil {
 		return currentState, err
 	}

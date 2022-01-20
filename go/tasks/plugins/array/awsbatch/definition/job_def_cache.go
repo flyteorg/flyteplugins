@@ -7,7 +7,7 @@ package definition
 import (
 	"fmt"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/aws/aws-sdk-go/service/batch"
 
 	"github.com/coocood/freecache"
 )
@@ -29,13 +29,13 @@ type CacheKey interface {
 }
 
 type cacheKey struct {
-	role            string
-	image           string
-	jobDefinitionPb *structpb.Struct
+	role               string
+	image              string
+	jobDefinitionInput batch.RegisterJobDefinitionInput
 }
 
 func (k cacheKey) String() string {
-	return fmt.Sprintf("%v-%v-%v", k.image, k.role, k.jobDefinitionPb.String())
+	return fmt.Sprintf("%v-%v-%v", k.image, k.role, k.jobDefinitionInput.String())
 }
 
 type cache struct {
@@ -55,11 +55,11 @@ func (c cache) Put(key CacheKey, definition JobDefinitionArn) error {
 }
 
 // Creates a new deterministic cache key.
-func NewCacheKey(role, image string, jobDefinitionPb *structpb.Struct) CacheKey {
+func NewCacheKey(role, image string, jobDefinitionInput batch.RegisterJobDefinitionInput) CacheKey {
 	return cacheKey{
-		role:            role,
-		image:           image,
-		jobDefinitionPb: jobDefinitionPb,
+		role:               role,
+		image:              image,
+		jobDefinitionInput: jobDefinitionInput,
 	}
 }
 

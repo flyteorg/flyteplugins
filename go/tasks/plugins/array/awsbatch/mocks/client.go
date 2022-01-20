@@ -141,19 +141,19 @@ func (_m *Client) OnRegisterJobDefinitionMatch(matchers ...interface{}) *Client_
 }
 
 // RegisterJobDefinition provides a mock function with given fields: ctx, name, image, role, structObj
-func (_m *Client) RegisterJobDefinition(ctx context.Context, name string, image string, role string, structObj *structpb.Struct) (string, error) {
-	ret := _m.Called(ctx, name, image, role, structObj)
+func (_m *Client) RegisterJobDefinition(ctx context.Context, name string, image string, role string, jobDefinitionInput *batch.RegisterJobDefinitionInput) (string, error) {
+	ret := _m.Called(ctx, name, image, role, jobDefinitionInput)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *structpb.Struct) string); ok {
-		r0 = rf(ctx, name, image, role, structObj)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *batch.RegisterJobDefinitionInput) string); ok {
+		r0 = rf(ctx, name, image, role, jobDefinitionInput)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, *structpb.Struct) error); ok {
-		r1 = rf(ctx, name, image, role, structObj)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, *batch.RegisterJobDefinitionInput) error); ok {
+		r1 = rf(ctx, name, image, role, jobDefinitionInput)
 	} else {
 		r1 = ret.Error(1)
 	}
