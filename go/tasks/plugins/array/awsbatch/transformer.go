@@ -5,6 +5,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 
 	"github.com/aws/aws-sdk-go/service/batch"
@@ -85,14 +87,21 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 	}
 	resources := flytek8s.ApplyResourceOverrides(*res, *platformResources, assignResources)
 
-	return &batch.SubmitJobInput{
+	submitJobInput := &batch.SubmitJobInput{
 		JobName:            refStr(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
 		JobDefinition:      refStr(jobDefinition),
 		JobQueue:           refStr(jobConfig.DynamicTaskQueue),
 		RetryStrategy:      toRetryStrategy(ctx, toBackoffLimit(taskTemplate.Metadata), cfg.MinRetries, cfg.MaxRetries),
 		ContainerOverrides: toContainerOverrides(ctx, append(cmd, args...), &resources, envVars),
 		Timeout:            toTimeout(taskTemplate.Metadata.GetTimeout(), cfg.DefaultTimeOut.Duration),
-	}, nil
+	}
+	err = utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &submitJobInput)
+	if err != nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification,
+			"invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
+	}
+
+	return submitJobInput, nil
 }
 
 func UpdateBatchInputForArray(_ context.Context, batchInput *batch.SubmitJobInput, arraySize int64) *batch.SubmitJobInput {

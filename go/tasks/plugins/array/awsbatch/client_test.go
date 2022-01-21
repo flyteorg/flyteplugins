@@ -81,13 +81,7 @@ func TestClient_GetJobDetailsBatch(t *testing.T) {
 
 func TestClient_RegisterJobDefinition(t *testing.T) {
 	c := newClientWithMockBatch()
-	propagateTags := false
-	jobDefinitionInput := batch.RegisterJobDefinitionInput{PropagateTags: &propagateTags}
-	j, err := c.RegisterJobDefinition(context.TODO(), "name-abc", "img", "admin-role", &jobDefinitionInput)
-	assert.NoError(t, err)
-	assert.NotNil(t, j)
-
-	j, err = c.RegisterJobDefinition(context.TODO(), "name-abc", "img", "admin-role", nil)
+	j, err := c.RegisterJobDefinition(context.TODO(), "name-abc", "img", "admin-role", defaultComputeEngine)
 	assert.NoError(t, err)
 	assert.NotNil(t, j)
 }

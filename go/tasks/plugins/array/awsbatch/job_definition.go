@@ -4,9 +4,6 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/aws/aws-sdk-go/service/batch"
-	pluginUtils "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/config"
@@ -18,6 +15,8 @@ import (
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/definition"
 )
+
+const defaultComputeEngine = "EC2"
 
 func getContainerImage(_ context.Context, task *core.TaskTemplate) string {
 	if task.GetContainer() != nil && len(task.GetContainer().Image) > 0 {
@@ -54,18 +53,15 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 	}
 
 	role := awsUtils.GetRoleFromSecurityContext(cfg.RoleAnnotationKey, tCtx.TaskExecutionMetadata())
-
-	jobDefinitionInput := batch.RegisterJobDefinitionInput{}
-	if taskTemplate.GetCustom() != nil {
-		err = pluginUtils.UnmarshalStructToObj(taskTemplate.GetCustom(), &jobDefinitionInput)
-		if err != nil {
-			return currentState, errors.Wrapf(pluginErrors.CorruptedPluginState, err, "failed to unmarshal RegisterJobDefinitionInput")
-		}
+	platformCapabilities := taskTemplate.GetConfig()["platformCapabilities"]
+	if len(platformCapabilities) == 0 {
+		platformCapabilities = defaultComputeEngine
 	}
-	cacheKey := definition.NewCacheKey(role, containerImage, jobDefinitionInput)
+
+	cacheKey := definition.NewCacheKey(role, containerImage, platformCapabilities)
 	if existingArn, found := definitionCache.Get(cacheKey); found {
 		logger.Infof(ctx, "Found an existing job definition for Image [%v], Role [%v], JobDefinitionInput [%v]. Arn [%v]",
-			containerImage, role, jobDefinitionInput, existingArn)
+			containerImage, role, platformCapabilities, existingArn)
 
 		nextState = currentState.SetJobDefinitionArn(existingArn)
 		nextState.State = nextState.SetPhase(arrayCore.PhaseLaunch, 0).SetReason("AWS job definition already exist.")
@@ -74,7 +70,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 
 	name := definition.GetJobDefinitionSafeName(containerImageRepository(containerImage))
 
-	arn, err := client.RegisterJobDefinition(ctx, name, containerImage, role, &jobDefinitionInput)
+	arn, err := client.RegisterJobDefinition(ctx, name, containerImage, role, platformCapabilities)
 	if err != nil {
 		return currentState, err
 	}

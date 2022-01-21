@@ -1,12 +1,7 @@
 package awsbatch
 
 import (
-	"fmt"
 	"testing"
-
-	"github.com/shomali11/util/xhashes"
-
-	"github.com/aws/aws-sdk-go/service/batch"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -96,7 +91,7 @@ func TestEnsureJobDefinition(t *testing.T) {
 
 	t.Run("Found", func(t *testing.T) {
 		dCache := definition.NewCache(10)
-		assert.NoError(t, dCache.Put(definition.NewCacheKey("", "img1", batch.RegisterJobDefinitionInput{}), "their-arn"))
+		assert.NoError(t, dCache.Put(definition.NewCacheKey("", "img1", defaultComputeEngine), "their-arn"))
 
 		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{
 			State: &arrayCore.State{},
@@ -107,19 +102,13 @@ func TestEnsureJobDefinition(t *testing.T) {
 	})
 
 	t.Run("Test New Cache Key", func(t *testing.T) {
-		propagateTags := false
-		jobDefinitionInput := batch.RegisterJobDefinitionInput{PropagateTags: &propagateTags}
-		cacheKey := definition.NewCacheKey("default", "img1", jobDefinitionInput)
-		assert.Equal(t, cacheKey.String(), fmt.Sprintf("img1-default-%v", xhashes.FNV64a(jobDefinitionInput.String())))
+		cacheKey := definition.NewCacheKey("default", "img1", defaultComputeEngine)
+		assert.Equal(t, cacheKey.String(), "img1-default-EC2")
 	})
 }
 
 func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 	ctx := context.Background()
-	JobDefinitionName := "flyte"
-	jobDefinitionInput := batch.RegisterJobDefinitionInput{JobDefinitionName: &JobDefinitionName}
-	structObj, err := utils.MarshalObjToStruct(jobDefinitionInput)
-	assert.NoError(t, err)
 
 	tReader := &mocks.TaskReader{}
 	tReader.OnReadMatch(mock.Anything).Return(&core.TaskTemplate{
@@ -131,7 +120,7 @@ func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 		Target: &core.TaskTemplate_Container{
 			Container: createSampleContainerTask(),
 		},
-		Custom: structObj,
+		Config: map[string]string{"platformCapabilities": defaultComputeEngine},
 	}, nil)
 
 	overrides := &mocks.TaskOverrides{}
@@ -175,7 +164,7 @@ func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 
 	t.Run("Found", func(t *testing.T) {
 		dCache := definition.NewCache(10)
-		assert.NoError(t, dCache.Put(definition.NewCacheKey("new-role", "img1", jobDefinitionInput), "their-arn"))
+		assert.NoError(t, dCache.Put(definition.NewCacheKey("new-role", "img1", defaultComputeEngine), "their-arn"))
 
 		nextState, err := EnsureJobDefinition(ctx, tCtx, cfg, batchClient, dCache, &State{
 			State: &arrayCore.State{},

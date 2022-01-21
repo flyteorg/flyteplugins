@@ -7,9 +7,7 @@ package definition
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/coocood/freecache"
-	"github.com/shomali11/util/xhashes"
 )
 
 type JobDefinitionArn = string
@@ -29,13 +27,13 @@ type CacheKey interface {
 }
 
 type cacheKey struct {
-	role               string
-	image              string
-	jobDefinitionInput batch.RegisterJobDefinitionInput
+	role                 string
+	image                string
+	platformCapabilities string
 }
 
 func (k cacheKey) String() string {
-	return fmt.Sprintf("%v-%v-%v", k.image, k.role, xhashes.FNV64a(k.jobDefinitionInput.String()))
+	return fmt.Sprintf("%v-%v-%v", k.image, k.role, k.platformCapabilities)
 }
 
 type cache struct {
@@ -55,11 +53,11 @@ func (c cache) Put(key CacheKey, definition JobDefinitionArn) error {
 }
 
 // Creates a new deterministic cache key.
-func NewCacheKey(role, image string, jobDefinitionInput batch.RegisterJobDefinitionInput) CacheKey {
+func NewCacheKey(role, image string, platformCapabilities string) CacheKey {
 	return cacheKey{
-		role:               role,
-		image:              image,
-		jobDefinitionInput: jobDefinitionInput,
+		role:                 role,
+		image:                image,
+		platformCapabilities: platformCapabilities,
 	}
 }
 

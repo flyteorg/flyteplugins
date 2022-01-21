@@ -79,9 +79,7 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 				if i.isAwsSingleJob {
 					// We will only have one output.pb when running aws single job, so we don't need
 					// to aggregate outputs here
-					for key, val := range output.GetLiterals() {
-						finalOutputs.Literals[key] = val
-					}
+					finalOutputs.Literals = output.GetLiterals()
 				} else {
 					appendSubTaskOutput(finalOutputs, output, int64(i.finalPhases.ItemsCount))
 					continue
