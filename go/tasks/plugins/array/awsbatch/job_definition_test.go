@@ -1,6 +1,7 @@
 package awsbatch
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/batch"
@@ -101,6 +102,13 @@ func TestEnsureJobDefinition(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, nextState)
 		assert.Equal(t, "their-arn", nextState.JobDefinitionArn)
+	})
+
+	t.Run("Test New Cache Key", func(t *testing.T) {
+		propagateTags := false
+		jobDefinitionInput := batch.RegisterJobDefinitionInput{PropagateTags: &propagateTags}
+		cacheKey := definition.NewCacheKey("default", "img1", jobDefinitionInput)
+		assert.Equal(t, cacheKey.String(), fmt.Sprintf("img1-default-%v", jobDefinitionInput.String()))
 	})
 }
 
