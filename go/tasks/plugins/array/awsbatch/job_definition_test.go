@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/shomali11/util/xhashes"
+
 	"github.com/aws/aws-sdk-go/service/batch"
 
 	v1 "k8s.io/api/core/v1"
@@ -108,7 +110,7 @@ func TestEnsureJobDefinition(t *testing.T) {
 		propagateTags := false
 		jobDefinitionInput := batch.RegisterJobDefinitionInput{PropagateTags: &propagateTags}
 		cacheKey := definition.NewCacheKey("default", "img1", jobDefinitionInput)
-		assert.Equal(t, cacheKey.String(), fmt.Sprintf("img1-default-%v", jobDefinitionInput.String()))
+		assert.Equal(t, cacheKey.String(), fmt.Sprintf("img1-default-%v", xhashes.FNV64a(jobDefinitionInput.String())))
 	})
 }
 

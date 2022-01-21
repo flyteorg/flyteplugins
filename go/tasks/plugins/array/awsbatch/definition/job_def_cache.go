@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/service/batch"
-
 	"github.com/coocood/freecache"
+	"github.com/shomali11/util/xhashes"
 )
 
 type JobDefinitionArn = string
@@ -35,7 +35,7 @@ type cacheKey struct {
 }
 
 func (k cacheKey) String() string {
-	return fmt.Sprintf("%v-%v-%v", k.image, k.role, k.jobDefinitionInput.String())
+	return fmt.Sprintf("%v-%v-%v", k.image, k.role, xhashes.FNV64a(k.jobDefinitionInput.String()))
 }
 
 type cache struct {
