@@ -95,12 +95,13 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 		ContainerOverrides: toContainerOverrides(ctx, append(cmd, args...), &resources, envVars),
 		Timeout:            toTimeout(taskTemplate.Metadata.GetTimeout(), cfg.DefaultTimeOut.Duration),
 	}
-	err = utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &submitJobInput)
-	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification,
-			"invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
+	if taskTemplate.GetCustom() != nil {
+		err = utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &submitJobInput)
+		if err != nil {
+			return nil, errors.Errorf(errors.BadTaskSpecification,
+				"invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
+		}
 	}
-
 	return submitJobInput, nil
 }
 
