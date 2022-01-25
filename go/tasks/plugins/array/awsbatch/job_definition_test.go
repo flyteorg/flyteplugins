@@ -120,7 +120,7 @@ func TestEnsureJobDefinitionWithSecurityContext(t *testing.T) {
 		Target: &core.TaskTemplate_Container{
 			Container: createSampleContainerTask(),
 		},
-		Config: map[string]string{"platformCapabilities": defaultComputeEngine},
+		Config: map[string]string{platformCapabilities: defaultComputeEngine},
 	}, nil)
 
 	overrides := &mocks.TaskOverrides{}

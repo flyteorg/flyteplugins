@@ -53,7 +53,7 @@ func (c cache) Put(key CacheKey, definition JobDefinitionArn) error {
 }
 
 // Creates a new deterministic cache key.
-func NewCacheKey(role, image string, platformCapabilities string) CacheKey {
+func NewCacheKey(role, image, platformCapabilities string) CacheKey {
 	return cacheKey{
 		role:                 role,
 		image:                image,
