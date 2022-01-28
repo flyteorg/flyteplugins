@@ -111,7 +111,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			// so that is not attempted again. If it can be retried, increment the retry attempts
 			// value and transition the task to "Undefined" so that it is reevaluated.
 			if existingPhase == core.PhaseRetryableFailure {
-				if uint32(retryAttempt) < tCtx.TaskExecutionMetadata().GetMaxAttempts() {
+				if uint32(retryAttempt + 1) < tCtx.TaskExecutionMetadata().GetMaxAttempts() {
 					newState.RetryAttempts.SetItem(childIdx, retryAttempt+1)
 
 					newArrayStatus.Summary.Inc(core.PhaseUndefined)
