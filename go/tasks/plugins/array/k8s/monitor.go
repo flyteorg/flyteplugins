@@ -73,13 +73,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			return currentState, logLinks, subTaskIDs, nil
 		}
 
-		// Currently if any subtask fails then all subtasks are retried up to MaxAttempts. Therefore, all
-		// subtasks have an identical RetryAttempt, namely that of the map task execution metadata. Once
-		// retries over individual subtasks are implemented we should revisit this logic and instead
-		// increment the RetryAttempt for each subtask everytime a new pod is created.
-		retryAttempt := bitarray.Item(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
 		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
-			retryAttemptsArray.SetItem(i, retryAttempt)
+			retryAttemptsArray.SetItem(i, 0)
 		}
 
 		currentState.RetryAttempts = retryAttemptsArray
@@ -93,20 +88,40 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
-		indexStr := strconv.Itoa(childIdx)
-		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr)
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
+
+		indexStr := strconv.Itoa(childIdx)
+		retryAttemptStr := strconv.FormatUint(currentState.RetryAttempts.GetItem(childIdx), 10)
+		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
 
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
 			// the phase after all processing is done (e.g. check outputs/errors file, record events... etc.).
 
 			// Since we know we have already "processed" this terminal phase we can safely deallocate resource
-			err = deallocateResource(ctx, tCtx, config, childIdx)
+			err = deallocateResource(ctx, tCtx, config, podName)
 			if err != nil {
 				logger.Errorf(ctx, "Error releasing allocation token [%s] in LaunchAndCheckSubTasks [%s]", podName, err)
 				return currentState, logLinks, subTaskIDs, errors2.Wrapf(ErrCheckPodStatus, err, "Error releasing allocation token.")
 			}
+
+			// If a subtask is marked as a retryable failure we check if the number of retries
+			// exceeds the maximum attempts. If so, transition the task to a permanent failure
+			// so that is not attempted again. If it can be retried, increment the retry attempts
+			// value and transition the task to "Undefined" so that it is reevaluated.
+			if existingPhase == core.PhaseRetryableFailure {
+				retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
+				if uint32(retryAttempt) < tCtx.TaskExecutionMetadata().GetMaxAttempts() {
+					newState.RetryAttempts.SetItem(childIdx, retryAttempt + 1)
+
+					newArrayStatus.Summary.Inc(core.PhaseUndefined)
+					newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseUndefined))
+					continue
+				} else {
+					existingPhase = core.PhasePermanentFailure
+				}
+			}
+
 			newArrayStatus.Summary.Inc(existingPhase)
 			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 

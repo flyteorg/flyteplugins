@@ -33,8 +33,8 @@ var arrayJobEnvVars = []corev1.EnvVar{
 	},
 }
 
-func formatSubTaskName(_ context.Context, parentName, suffix string) (subTaskName string) {
-	return utils.ConvertToDNS1123SubdomainCompatibleString(fmt.Sprintf("%v-%v", parentName, suffix))
+func formatSubTaskName(_ context.Context, parentName, indexStr, retryAttemptStr string) (subTaskName string) {
+	return utils.ConvertToDNS1123SubdomainCompatibleString(fmt.Sprintf("%v-%v-%v", parentName, indexStr, retryAttemptStr))
 }
 
 func ApplyPodPolicies(_ context.Context, cfg *Config, pod *corev1.Pod) *corev1.Pod {
