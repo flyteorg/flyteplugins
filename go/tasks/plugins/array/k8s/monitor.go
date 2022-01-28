@@ -112,7 +112,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			if existingPhase == core.PhaseRetryableFailure {
 				retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
 				if uint32(retryAttempt) < tCtx.TaskExecutionMetadata().GetMaxAttempts() {
-					newState.RetryAttempts.SetItem(childIdx, retryAttempt + 1)
+					newState.RetryAttempts.SetItem(childIdx, retryAttempt+1)
 
 					newArrayStatus.Summary.Inc(core.PhaseUndefined)
 					newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseUndefined))

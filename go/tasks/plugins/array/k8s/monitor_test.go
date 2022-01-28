@@ -113,7 +113,7 @@ func TestGetNamespaceForExecution(t *testing.T) {
 func testSubTaskIDs(t *testing.T, actual []*string) {
 	var expected = make([]*string, 5)
 	for i := 0; i < len(expected); i++ {
-		subTaskID := fmt.Sprintf("notfound-%d", i)
+		subTaskID := fmt.Sprintf("notfound-%d-0", i)
 		expected[i] = &subTaskID
 	}
 	assert.EqualValues(t, expected, actual)
@@ -174,10 +174,10 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.Equal(t, 10, len(logLinks))
 		for i := 0; i < 10; i = i + 2 {
 			assert.Equal(t, fmt.Sprintf("Kubernetes Logs #0-%d (PhaseRunning)", i/2), logLinks[i].Name)
-			assert.Equal(t, fmt.Sprintf("k8s/log/a-n-b/notfound-%d/pod?namespace=a-n-b", i/2), logLinks[i].Uri)
+			assert.Equal(t, fmt.Sprintf("k8s/log/a-n-b/notfound-%d-0/pod?namespace=a-n-b", i/2), logLinks[i].Uri)
 
 			assert.Equal(t, fmt.Sprintf("Cloudwatch Logs #0-%d (PhaseRunning)", i/2), logLinks[i+1].Name)
-			assert.Equal(t, fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.notfound-%d;streamFilter=typeLogStreamPrefix", i/2), logLinks[i+1].Uri)
+			assert.Equal(t, fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.notfound-%d-0;streamFilter=typeLogStreamPrefix", i/2), logLinks[i+1].Uri)
 		}
 
 		p, _ := newState.GetPhase()
