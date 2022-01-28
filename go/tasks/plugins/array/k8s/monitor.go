@@ -91,7 +91,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
 
 		indexStr := strconv.Itoa(childIdx)
-		retryAttemptStr := strconv.FormatUint(currentState.RetryAttempts.GetItem(childIdx), 10)
+		retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
+		retryAttemptStr := strconv.FormatUint(retryAttempt, 10)
 		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
 
 		if existingPhase.IsTerminal() {
@@ -110,7 +111,6 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			// so that is not attempted again. If it can be retried, increment the retry attempts
 			// value and transition the task to "Undefined" so that it is reevaluated.
 			if existingPhase == core.PhaseRetryableFailure {
-				retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
 				if uint32(retryAttempt) < tCtx.TaskExecutionMetadata().GetMaxAttempts() {
 					newState.RetryAttempts.SetItem(childIdx, retryAttempt+1)
 
@@ -132,6 +132,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				},
 				originalIdx,
 				tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt,
+				retryAttempt,
 				logPlugin)
 
 			if err != nil {
@@ -224,7 +225,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	return newState, logLinks, subTaskIDs, nil
 }
 
-func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName, index int, retryAttempt uint32, logPlugin tasklog.Plugin) (
+func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8sTypes.NamespacedName, index int, retryAttempt uint32, subtaskRetryAttempt uint64, logPlugin tasklog.Plugin) (
 	info core.PhaseInfo, err error) {
 
 	pod := &v1.Pod{
@@ -264,7 +265,7 @@ func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8s
 			o, err := logPlugin.GetTaskLogs(tasklog.Input{
 				PodName:          pod.Name,
 				Namespace:        pod.Namespace,
-				LogName:          fmt.Sprintf(" #%d-%d", retryAttempt, index),
+				LogName:          fmt.Sprintf(" #%d-%d-%d", retryAttempt, index, subtaskRetryAttempt),
 				PodUnixStartTime: pod.CreationTimestamp.Unix(),
 			})
 

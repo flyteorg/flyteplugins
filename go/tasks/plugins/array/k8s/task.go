@@ -188,7 +188,8 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference,
 	logPlugin tasklog.Plugin) (MonitorResult, []*idlCore.TaskLog, error) {
 	indexStr := strconv.Itoa(t.ChildIdx)
-	retryAttemptStr := strconv.FormatUint(t.State.RetryAttempts.GetItem(t.ChildIdx), 10)
+	retryAttempt := t.State.RetryAttempts.GetItem(t.ChildIdx)
+	retryAttemptStr := strconv.FormatUint(retryAttempt, 10)
 	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
 	t.SubTaskIDs = append(t.SubTaskIDs, &podName)
 	var loglinks []*idlCore.TaskLog
@@ -202,6 +203,7 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		},
 		originalIdx,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt,
+		retryAttempt,
 		logPlugin)
 	if err != nil {
 		return MonitorError, loglinks, errors2.Wrapf(ErrCheckPodStatus, err, "Failed to check pod status.")
