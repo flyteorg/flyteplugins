@@ -17,7 +17,7 @@ import (
 )
 
 const defaultComputeEngine = "EC2"
-const platformCapabilities = "platformCapabilities"
+const platformCapabilitiesConfigKey = "platformCapabilities"
 
 func getContainerImage(_ context.Context, task *core.TaskTemplate) string {
 	if task.GetContainer() != nil && len(task.GetContainer().Image) > 0 {
@@ -54,7 +54,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 	}
 
 	role := awsUtils.GetRoleFromSecurityContext(cfg.RoleAnnotationKey, tCtx.TaskExecutionMetadata())
-	platformCapabilities := taskTemplate.GetConfig()[platformCapabilities]
+	platformCapabilities := taskTemplate.GetConfig()[platformCapabilitiesConfigKey]
 	if len(platformCapabilities) == 0 {
 		platformCapabilities = defaultComputeEngine
 	}

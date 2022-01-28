@@ -87,14 +87,7 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 	}
 	resources := flytek8s.ApplyResourceOverrides(*res, *platformResources, assignResources)
 
-	submitJobInput := &batch.SubmitJobInput{
-		JobName:            refStr(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()),
-		JobDefinition:      refStr(jobDefinition),
-		JobQueue:           refStr(jobConfig.DynamicTaskQueue),
-		RetryStrategy:      toRetryStrategy(ctx, toBackoffLimit(taskTemplate.Metadata), cfg.MinRetries, cfg.MaxRetries),
-		ContainerOverrides: toContainerOverrides(ctx, append(cmd, args...), &resources, envVars),
-		Timeout:            toTimeout(taskTemplate.Metadata.GetTimeout(), cfg.DefaultTimeOut.Duration),
-	}
+	submitJobInput := &batch.SubmitJobInput{}
 	if taskTemplate.GetCustom() != nil {
 		err = utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &submitJobInput)
 		if err != nil {
@@ -102,6 +95,12 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 				"invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 		}
 	}
+	submitJobInput.SetJobName(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()).
+		SetJobDefinition(jobDefinition).SetJobQueue(jobConfig.DynamicTaskQueue).
+		SetRetryStrategy(toRetryStrategy(ctx, toBackoffLimit(taskTemplate.Metadata), cfg.MinRetries, cfg.MaxRetries)).
+		SetContainerOverrides(toContainerOverrides(ctx, append(cmd, args...), &resources, envVars)).
+		SetTimeout(toTimeout(taskTemplate.Metadata.GetTimeout(), cfg.DefaultTimeOut.Duration))
+
 	return submitJobInput, nil
 }
 
