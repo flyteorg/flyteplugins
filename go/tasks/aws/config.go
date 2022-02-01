@@ -6,11 +6,14 @@ package aws
 
 import (
 	"context"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	awsHttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/logger"
+	"net/http"
+	"net/url"
 
 	pluginsConfig "github.com/flyteorg/flyteplugins/go/tasks/config"
 )
@@ -34,6 +37,7 @@ type Config struct {
 	AccountID string            `json:"accountId" pflag:",AWS Account Identifier."`
 	Retries   int               `json:"retries" pflag:",Number of retries."`
 	LogLevel  aws.ClientLogMode `json:"logLevel" pflag:"-,Defines the Sdk Log Level."`
+	ProxyURL  string            `json:"proxyUrl" pflag:"-,If specified will be used as http proxy"`
 }
 
 type RateLimiterConfig struct {
@@ -47,6 +51,8 @@ func GetConfig() *Config {
 }
 
 func (cfg Config) GetSdkConfig() (aws.Config, error) {
+	ctx := context.Background()
+
 	sdkConfig, err := awsConfig.LoadDefaultConfig(context.TODO(),
 		awsConfig.WithRegion(cfg.Region),
 		awsConfig.WithRetryer(func() aws.Retryer {
@@ -54,7 +60,21 @@ func (cfg Config) GetSdkConfig() (aws.Config, error) {
 				options.MaxAttempts = cfg.Retries
 			})
 		}),
-		awsConfig.WithClientLogMode(cfg.LogLevel))
+		awsConfig.WithClientLogMode(cfg.LogLevel),
+		func(o *awsConfig.LoadOptions) error {
+			if cfg.ProxyURL != "" {
+				proxyURL, err := url.Parse(cfg.ProxyURL)
+				if err != nil {
+					return err
+				}
+				httpClient := awsHttp.NewBuildableClient().WithTransportOptions(func(tr *http.Transport) {
+					tr.Proxy = http.ProxyURL(proxyURL)
+				})
+				o.HTTPClient = httpClient
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		return aws.Config{}, err
 	}
