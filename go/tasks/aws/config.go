@@ -51,8 +51,6 @@ func GetConfig() *Config {
 }
 
 func (cfg Config) GetSdkConfig() (aws.Config, error) {
-	ctx := context.Background()
-
 	sdkConfig, err := awsConfig.LoadDefaultConfig(context.TODO(),
 		awsConfig.WithRegion(cfg.Region),
 		awsConfig.WithRetryer(func() aws.Retryer {
