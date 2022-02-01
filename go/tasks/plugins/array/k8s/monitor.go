@@ -3,7 +3,6 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
@@ -90,10 +89,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		existingPhase := core.Phases[existingPhaseIdx]
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
 
-		indexStr := strconv.Itoa(childIdx)
 		retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
-		retryAttemptStr := strconv.FormatUint(retryAttempt, 10)
-		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
+		podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), childIdx, retryAttempt)
 
 		if existingPhase.IsTerminal() {
 			// If we get here it means we have already "processed" this terminal phase since we will only persist
@@ -260,12 +257,20 @@ func FetchPodStatusAndLogs(ctx context.Context, client core.KubeClient, name k8s
 	}
 
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
+		// We append the subtaskRetryAttempt to the log name only when it is > 0 to ensure backwards
+		// compatibility when dynamically transitioning running map tasks to use subtask retry attempts.
+		var logName string
+		if subtaskRetryAttempt == 0 {
+			logName = fmt.Sprintf(" #%d-%d", retryAttempt, index)
+		} else {
+			logName = fmt.Sprintf(" #%d-%d-%d", retryAttempt, index, subtaskRetryAttempt)
+		}
 
 		if logPlugin != nil {
 			o, err := logPlugin.GetTaskLogs(tasklog.Input{
 				PodName:          pod.Name,
 				Namespace:        pod.Namespace,
-				LogName:          fmt.Sprintf(" #%d-%d-%d", retryAttempt, index, subtaskRetryAttempt),
+				LogName:          logName,
 				PodUnixStartTime: pod.CreationTimestamp.Unix(),
 			})
 

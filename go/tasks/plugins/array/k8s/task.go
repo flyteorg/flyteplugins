@@ -114,9 +114,7 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 		return LaunchError, err
 	}
 
-	indexStr := strconv.Itoa(t.ChildIdx)
-	retryAttemptStr := strconv.FormatUint(t.State.RetryAttempts.GetItem(t.ChildIdx), 10)
-	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
+	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), t.ChildIdx, t.State.RetryAttempts.GetItem(t.ChildIdx))
 	allocationStatus, err := allocateResource(ctx, tCtx, t.Config, podName)
 	if err != nil {
 		return LaunchError, err
@@ -187,10 +185,8 @@ func (t Task) Launch(ctx context.Context, tCtx core.TaskExecutionContext, kubeCl
 
 func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference,
 	logPlugin tasklog.Plugin) (MonitorResult, []*idlCore.TaskLog, error) {
-	indexStr := strconv.Itoa(t.ChildIdx)
 	retryAttempt := t.State.RetryAttempts.GetItem(t.ChildIdx)
-	retryAttemptStr := strconv.FormatUint(retryAttempt, 10)
-	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
+	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), t.ChildIdx, retryAttempt)
 	t.SubTaskIDs = append(t.SubTaskIDs, &podName)
 	var loglinks []*idlCore.TaskLog
 
@@ -232,9 +228,7 @@ func (t *Task) Monitor(ctx context.Context, tCtx core.TaskExecutionContext, kube
 }
 
 func (t Task) Abort(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) error {
-	indexStr := strconv.Itoa(t.ChildIdx)
-	retryAttemptStr := strconv.FormatUint(t.State.RetryAttempts.GetItem(t.ChildIdx), 10)
-	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
+	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), t.ChildIdx, t.State.RetryAttempts.GetItem(t.ChildIdx))
 	pod := &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       PodKind,
@@ -260,9 +254,7 @@ func (t Task) Abort(ctx context.Context, tCtx core.TaskExecutionContext, kubeCli
 }
 
 func (t Task) Finalize(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient) error {
-	indexStr := strconv.Itoa(t.ChildIdx)
-	retryAttemptStr := strconv.FormatUint(t.State.RetryAttempts.GetItem(t.ChildIdx), 10)
-	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), indexStr, retryAttemptStr)
+	podName := formatSubTaskName(ctx, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), t.ChildIdx, t.State.RetryAttempts.GetItem(t.ChildIdx))
 
 	pod := &v1.Pod{
 		TypeMeta: metaV1.TypeMeta{
