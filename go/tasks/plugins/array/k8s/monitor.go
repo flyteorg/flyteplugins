@@ -72,8 +72,11 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			return currentState, logLinks, subTaskIDs, nil
 		}
 
+		// Set subtask retryAttempts using the existing task context retry attempt. For new tasks
+		// this will initialize to 0, but running tasks will use the existing retry attempt.
+		retryAttempt := bitarray.Item(tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().RetryAttempt)
 		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
-			retryAttemptsArray.SetItem(i, 0)
+			retryAttemptsArray.SetItem(i, retryAttempt)
 		}
 
 		currentState.RetryAttempts = retryAttemptsArray
