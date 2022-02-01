@@ -1,8 +1,8 @@
 package k8s
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
