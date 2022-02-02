@@ -192,13 +192,13 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		// validate map task parallelism
 		newSubtaskPhase := core.Phases[newArrayStatus.Detailed.GetItem(childIdx)]
 		if !newSubtaskPhase.IsTerminal() || newSubtaskPhase == core.PhaseRetryableFailure {
-			currentParallelism += 1
+			currentParallelism++
 		}
 
 		if maxParallelism != 0 && currentParallelism >= maxParallelism {
 			// If max parallelism has been achieved we need to fill the subtask phase summary with
-			// the remaining subtasks so the overall map task phase can be accurately identified. 
-			for i := childIdx+1; i<len(currentState.GetArrayStatus().Detailed.GetItems()); i++ {
+			// the remaining subtasks so the overall map task phase can be accurately identified.
+			for i := childIdx + 1; i < len(currentState.GetArrayStatus().Detailed.GetItems()); i++ {
 				childSubtaskPhase := core.Phases[newArrayStatus.Detailed.GetItem(i)]
 				newArrayStatus.Summary.Inc(childSubtaskPhase)
 			}
