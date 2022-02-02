@@ -142,7 +142,6 @@ const (
 func ToArrayJob(structObj *structpb.Struct, taskTypeVersion int32) (*idlPlugins.ArrayJob, error) {
 	if structObj == nil {
 		if taskTypeVersion == 0 {
-
 			return &idlPlugins.ArrayJob{
 				Parallelism: 0,
 				Size:        1,
