@@ -254,8 +254,8 @@ func TestCheckSubTasksStateParallelism(t *testing.T) {
 			newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 				ExecutionArraySize:   subtaskCount,
-				OriginalArraySize:    int64(subtaskCount*2),
-				OriginalMinSuccesses: int64(subtaskCount*2),
+				OriginalArraySize:    int64(subtaskCount * 2),
+				OriginalMinSuccesses: int64(subtaskCount * 2),
 				IndexesToCache:       cacheIndexes,
 				ArrayStatus: arraystatus.ArrayStatus{
 					Detailed: arrayCore.NewPhasesCompactArray(uint(subtaskCount)),
