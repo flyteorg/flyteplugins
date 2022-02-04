@@ -62,14 +62,12 @@ func main() {
 		}
 		fmt.Println("waiting.")
 		time.Sleep(duration)
-
 	}
-	if qrop.QueryExecution.Status.State == "SUCCEEDED" {
 
+	if qrop.QueryExecution.Status.State == "SUCCEEDED" {
 		ip := athena.GetQueryResultsInput{
 			QueryExecutionId: resp.QueryExecutionId,
 		}
-
 		op, err := client.GetQueryResults(ctx, &ip)
 		if err != nil {
 			fmt.Println(err)
@@ -78,6 +76,5 @@ func main() {
 		fmt.Printf("%+v", op.ResultSet.Rows)
 	} else {
 		fmt.Println(qrop.QueryExecution.Status.State)
-
 	}
 }
