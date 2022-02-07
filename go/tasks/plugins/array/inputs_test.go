@@ -6,6 +6,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -35,6 +36,16 @@ func TestGetInputReader(t *testing.T) {
 
 		inputReader := GetInputReader(taskCtx, &core.TaskTemplate{
 			TaskTypeVersion: 1,
+		})
+		assert.Equal(t, inputReader.GetInputPath().String(), "test-data-reference")
+	})
+
+	t.Run("task_type_version == AwsBatchTaskType", func(t *testing.T) {
+		taskCtx := &pluginsCoreMock.TaskExecutionContext{}
+		taskCtx.On("InputReader").Return(inputReader)
+
+		inputReader := GetInputReader(taskCtx, &core.TaskTemplate{
+			Type: arrayCore.AwsBatchTaskType,
 		})
 		assert.Equal(t, inputReader.GetInputPath().String(), "test-data-reference")
 	})
