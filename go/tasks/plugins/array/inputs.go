@@ -6,6 +6,7 @@ import (
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/flyteorg/flytestdlib/storage"
 )
 
@@ -20,7 +21,7 @@ func (i arrayJobInputReader) GetInputPath() storage.DataReference {
 }
 
 func GetInputReader(tCtx core.TaskExecutionContext, taskTemplate *idlCore.TaskTemplate) io.InputReader {
-	if taskTemplate.GetTaskTypeVersion() == 0 && taskTemplate.Type != AwsBatchTaskType {
+	if taskTemplate.GetTaskTypeVersion() == 0 && taskTemplate.Type != arrayCore.AwsBatchTaskType {
 		// Prior to task type version == 1, dynamic type tasks (including array tasks) would write input files for each
 		// individual array task instance. In this case we use a modified input reader to only pass in the parent input
 		// directory.

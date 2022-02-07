@@ -10,7 +10,6 @@ import (
 
 	"github.com/flyteorg/flytestdlib/errors"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
 	"github.com/flyteorg/flytestdlib/bitarray"
 
@@ -39,6 +38,8 @@ const (
 	PhaseRetryableFailure
 	PhasePermanentFailure
 )
+
+const AwsBatchTaskType = "aws-batch"
 
 type State struct {
 	CurrentPhase         Phase                   `json:"phase"`
@@ -176,7 +177,7 @@ func ToArrayJob(taskTemplate *idlCore.TaskTemplate, taskTypeVersion int32) (*Arr
 		}, nil
 	}
 
-	if taskTypeVersion == 0 || taskTemplate.Type == array.AwsBatchTaskType {
+	if taskTypeVersion == 0 || taskTemplate.Type == AwsBatchTaskType {
 		return &ArrayJob{
 			Parallelism:  1,
 			Size:         1,

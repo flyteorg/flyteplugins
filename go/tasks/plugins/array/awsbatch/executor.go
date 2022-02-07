@@ -189,10 +189,10 @@ func init() {
 	pluginmachinery.PluginRegistry().RegisterCorePlugin(
 		core.PluginEntry{
 			ID:                  executorName,
-			RegisteredTaskTypes: []core.TaskType{arrayTaskType, array.AwsBatchTaskType},
+			RegisteredTaskTypes: []core.TaskType{arrayTaskType, arrayCore.AwsBatchTaskType},
 			LoadPlugin:          createNewExecutorPlugin,
 			IsDefault:           false,
-			DefaultForTaskTypes: []core.TaskType{arrayTaskType, array.AwsBatchTaskType},
+			DefaultForTaskTypes: []core.TaskType{arrayTaskType, arrayCore.AwsBatchTaskType},
 		})
 }
 

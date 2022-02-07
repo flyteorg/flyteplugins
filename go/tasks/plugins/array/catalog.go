@@ -21,7 +21,6 @@ import (
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
-const AwsBatchTaskType = "aws-batch"
 
 // DetermineDiscoverability checks if there are any previously cached tasks. If there are we will only submit an
 // ArrayJob for the non-cached tasks. The ArrayJob is now a different size, and each task will get a new index location

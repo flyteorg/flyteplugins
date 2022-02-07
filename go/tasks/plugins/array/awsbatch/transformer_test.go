@@ -207,7 +207,7 @@ func TestArrayJobToBatchInput(t *testing.T) {
 	assert.NotNil(t, batchInput)
 	assert.Equal(t, *expectedBatchInput, *batchInput)
 
-	taskTemplate.Type = array.AwsBatchTaskType
+	taskTemplate.Type = arrayCore.AwsBatchTaskType
 	tr.OnReadMatch(mock.Anything).Return(taskTemplate, nil)
 	taskCtx.OnTaskReader().Return(tr)
 

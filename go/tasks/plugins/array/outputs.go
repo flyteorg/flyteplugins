@@ -198,7 +198,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 			finalPhases:    finalPhases,
 			outputPaths:    tCtx.OutputWriter(),
 			dataStore:      tCtx.DataStore(),
-			isAwsSingleJob: taskTemplate.Type == AwsBatchTaskType,
+			isAwsSingleJob: taskTemplate.Type == arrayCore.AwsBatchTaskType,
 		})
 
 		if err != nil {
