@@ -8,10 +8,9 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/event"
-
 	"github.com/flyteorg/flytestdlib/errors"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
 	"github.com/flyteorg/flytestdlib/bitarray"
 
@@ -53,6 +52,9 @@ type State struct {
 
 	// Which sub-tasks to cache, (using the original index, that is, the length is ArrayJob.size)
 	IndexesToCache *bitarray.BitSet `json:"indexesToCache"`
+
+	// Tracks the number of subtask retries using the execution index
+	RetryAttempts bitarray.CompactArray `json:"retryAttempts"`
 }
 
 func (s State) GetReason() string {
@@ -109,6 +111,11 @@ func (s *State) SetOriginalMinSuccesses(size int64) *State {
 
 func (s *State) SetReason(reason string) *State {
 	s.Reason = reason
+	return s
+}
+
+func (s *State) SetRetryAttempts(retryAttempts bitarray.CompactArray) *State {
+	s.RetryAttempts = retryAttempts
 	return s
 }
 
@@ -169,7 +176,7 @@ func ToArrayJob(taskTemplate *idlCore.TaskTemplate, taskTypeVersion int32) (*Arr
 		}, nil
 	}
 
-	if taskTypeVersion == 0 {
+	if taskTypeVersion == 0 || taskTemplate.Type == array.AwsBatchTaskType {
 		return &ArrayJob{
 			Parallelism:  1,
 			Size:         1,
@@ -195,20 +202,24 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
 func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskIDs []*string) (core.PhaseInfo, error) {
-
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
+
 	nowTaskInfo := &core.TaskInfo{
-		OccurredAt: &t,
-		Logs:       logLinks,
+		OccurredAt:        &t,
+		Logs:              logLinks,
+		ExternalResources: make([]*core.ExternalResource, len(subTaskIDs)),
 	}
-	if nowTaskInfo.Metadata == nil {
-		nowTaskInfo.Metadata = &event.TaskExecutionMetadata{}
-	}
-	for _, subTaskID := range subTaskIDs {
-		nowTaskInfo.Metadata.ExternalResources = append(nowTaskInfo.Metadata.ExternalResources, &event.ExternalResourceInfo{
-			ExternalId: *subTaskID,
-		})
+
+	for childIndex, subTaskID := range subTaskIDs {
+		originalIndex := CalculateOriginalIndex(childIndex, state.GetIndexesToCache())
+
+		nowTaskInfo.ExternalResources[childIndex] = &core.ExternalResource{
+			ExternalID:   *subTaskID,
+			Index:        uint32(originalIndex),
+			RetryAttempt: uint32(state.RetryAttempts.GetItem(childIndex)),
+			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIndex)],
+		}
 	}
 
 	switch p, version := state.GetPhase(); p {
@@ -270,24 +281,23 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
-	totalFailures := int64(0)
+	totalPermanentFailures := int64(0)
+	totalRetryableFailures := int64(0)
 	totalRunning := int64(0)
 	totalWaitingForResources := int64(0)
 	for phase, count := range summary {
 		totalCount += count
-		if phase.IsTerminal() {
-			if phase.IsSuccess() {
-				totalSuccesses += count
-			} else {
-				// TODO: Split out retryable failures to be retried without doing the entire array task.
-				// TODO: Other option: array tasks are only retryable as a full set and to get single task retriability
-				// TODO: dynamic_task must be updated to not auto-combine to array tasks.  For scale reasons, it is
-				// TODO: preferable to auto-combine to array tasks for now.
-				totalFailures += count
-			}
-		} else if phase.IsWaitingForResources() {
+
+		switch phase {
+		case core.PhaseSuccess:
+			totalSuccesses += count
+		case core.PhasePermanentFailure:
+			totalPermanentFailures += count
+		case core.PhaseRetryableFailure:
+			totalRetryableFailures += count
+		case core.PhaseWaitingForResources:
 			totalWaitingForResources += count
-		} else {
+		default:
 			totalRunning += count
 		}
 	}
@@ -298,9 +308,9 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	}
 
 	// No chance to reach the required success numbers.
-	if totalRunning+totalSuccesses+totalWaitingForResources < minSuccesses {
-		logger.Infof(ctx, "Array failed early because total failures > minSuccesses[%v]. Snapshot totalRunning[%v] + totalSuccesses[%v] + totalWaitingForResource[%v]",
-			minSuccesses, totalRunning, totalSuccesses, totalWaitingForResources)
+	if totalRunning+totalSuccesses+totalWaitingForResources+totalRetryableFailures < minSuccesses {
+		logger.Infof(ctx, "Array failed early because total failures > minSuccesses[%v]. Snapshot totalRunning[%v] + totalSuccesses[%v] + totalWaitingForResource[%v] + totalRetryableFailures[%v]",
+			minSuccesses, totalRunning, totalSuccesses, totalWaitingForResources, totalRetryableFailures)
 		return PhaseWriteToDiscoveryThenFail
 	}
 
@@ -313,8 +323,8 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 		return PhaseWriteToDiscovery
 	}
 
-	logger.Debugf(ctx, "Array is still running [Successes: %v, Failures: %v, Total: %v, MinSuccesses: %v]",
-		totalSuccesses, totalFailures, totalCount, minSuccesses)
+	logger.Debugf(ctx, "Array is still running [Successes: %v, PermanentFailures: %v, RetryableFailures: %v, Total: %v, MinSuccesses: %v]",
+		totalSuccesses, totalPermanentFailures, totalRetryableFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
 }
 

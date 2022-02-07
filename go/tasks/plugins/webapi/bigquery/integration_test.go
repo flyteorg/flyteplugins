@@ -47,7 +47,6 @@ func TestEndToEnd(t *testing.T) {
 	t.Run("SELECT 1", func(t *testing.T) {
 		queryJobConfig := QueryJobConfig{
 			ProjectID: "flyte",
-			Query:     "SELECT 1",
 		}
 
 		inputs, _ := coreutils.MakeLiteralMap(map[string]interface{}{"x": 1})
@@ -55,6 +54,7 @@ func TestEndToEnd(t *testing.T) {
 		template := flyteIdlCore.TaskTemplate{
 			Type:   bigqueryQueryJobTask,
 			Custom: custom,
+			Target: &flyteIdlCore.TaskTemplate_Sql{Sql: &flyteIdlCore.Sql{Statement: "SELECT 1", Dialect: flyteIdlCore.Sql_ANSI}},
 		}
 
 		phase := tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)
@@ -75,7 +75,11 @@ func newFakeBigQueryServer() *httptest.Server {
 
 		if strings.HasPrefix(request.URL.Path, "/projects/flyte/jobs/") && request.Method == "GET" {
 			writer.WriteHeader(200)
-			job := bigquery.Job{Status: &bigquery.JobStatus{State: "DONE"}}
+			job := bigquery.Job{Status: &bigquery.JobStatus{State: "DONE"},
+				Configuration: &bigquery.JobConfiguration{
+					Query: &bigquery.JobConfigurationQuery{
+						DestinationTable: &bigquery.TableReference{
+							ProjectId: "project", DatasetId: "dataset", TableId: "table"}}}}
 			bytes, _ := json.Marshal(job)
 			_, _ = writer.Write(bytes)
 			return

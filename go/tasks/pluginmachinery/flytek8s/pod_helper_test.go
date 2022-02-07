@@ -494,6 +494,79 @@ func TestToK8sPod(t *testing.T) {
 		assert.NotNil(t, p.SecurityContext)
 		assert.Equal(t, *p.SecurityContext.RunAsGroup, v)
 	})
+
+	t.Run("enableHostNetwork", func(t *testing.T) {
+		enabled := true
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+			EnableHostNetworkingPod: &enabled,
+		}))
+		x := dummyExecContext(&v1.ResourceRequirements{})
+		p, err := ToK8sPodSpec(ctx, x)
+		assert.NoError(t, err)
+		assert.True(t, p.HostNetwork)
+	})
+
+	t.Run("explicitDisableHostNetwork", func(t *testing.T) {
+		enabled := false
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+			EnableHostNetworkingPod: &enabled,
+		}))
+		x := dummyExecContext(&v1.ResourceRequirements{})
+		p, err := ToK8sPodSpec(ctx, x)
+		assert.NoError(t, err)
+		assert.False(t, p.HostNetwork)
+	})
+
+	t.Run("skipSettingHostNetwork", func(t *testing.T) {
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{}))
+		x := dummyExecContext(&v1.ResourceRequirements{})
+		p, err := ToK8sPodSpec(ctx, x)
+		assert.NoError(t, err)
+		assert.False(t, p.HostNetwork)
+	})
+
+	t.Run("default-pod-dns-config", func(t *testing.T) {
+		val1 := "1"
+		val2 := "1"
+		val3 := "3"
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+			DefaultPodDNSConfig: &v1.PodDNSConfig{
+				Nameservers: []string{"8.8.8.8", "8.8.4.4"},
+				Options: []v1.PodDNSConfigOption{
+					{
+						Name:  "ndots",
+						Value: &val1,
+					},
+					{
+						Name: "single-request-reopen",
+					},
+					{
+						Name:  "timeout",
+						Value: &val2,
+					},
+					{
+						Name:  "attempts",
+						Value: &val3,
+					},
+				},
+				Searches: []string{"ns1.svc.cluster-domain.example", "my.dns.search.suffix"},
+			},
+		}))
+
+		x := dummyExecContext(&v1.ResourceRequirements{})
+		p, err := ToK8sPodSpec(ctx, x)
+		assert.NoError(t, err)
+		assert.NotNil(t, p.DNSConfig)
+		assert.Equal(t, []string{"8.8.8.8", "8.8.4.4"}, p.DNSConfig.Nameservers)
+		assert.Equal(t, "ndots", p.DNSConfig.Options[0].Name)
+		assert.Equal(t, val1, *p.DNSConfig.Options[0].Value)
+		assert.Equal(t, "single-request-reopen", p.DNSConfig.Options[1].Name)
+		assert.Equal(t, "timeout", p.DNSConfig.Options[2].Name)
+		assert.Equal(t, val2, *p.DNSConfig.Options[2].Value)
+		assert.Equal(t, "attempts", p.DNSConfig.Options[3].Name)
+		assert.Equal(t, val3, *p.DNSConfig.Options[3].Value)
+		assert.Equal(t, []string{"ns1.svc.cluster-domain.example", "my.dns.search.suffix"}, p.DNSConfig.Searches)
+	})
 }
 
 func TestDemystifyPending(t *testing.T) {
@@ -798,19 +871,25 @@ func TestDemystifySuccess(t *testing.T) {
 	})
 }
 
-func TestConvertPodFailureToError(t *testing.T) {
+func TestDemystifyFailure(t *testing.T) {
 	t.Run("unknown-error", func(t *testing.T) {
-		code, _ := ConvertPodFailureToError(v1.PodStatus{})
-		assert.Equal(t, code, "UnknownError")
+		phaseInfo, err := DemystifyFailure(v1.PodStatus{}, pluginsCore.TaskInfo{})
+		assert.Nil(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		assert.Equal(t, "UnknownError", phaseInfo.Err().Code)
+		assert.Equal(t, core.ExecutionError_USER, phaseInfo.Err().Kind)
 	})
 
 	t.Run("known-error", func(t *testing.T) {
-		code, _ := ConvertPodFailureToError(v1.PodStatus{Reason: "hello"})
-		assert.Equal(t, code, "hello")
+		phaseInfo, err := DemystifyFailure(v1.PodStatus{Reason: "hello"}, pluginsCore.TaskInfo{})
+		assert.Nil(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		assert.Equal(t, "hello", phaseInfo.Err().Code)
+		assert.Equal(t, core.ExecutionError_USER, phaseInfo.Err().Kind)
 	})
 
 	t.Run("OOMKilled", func(t *testing.T) {
-		code, _ := ConvertPodFailureToError(v1.PodStatus{
+		phaseInfo, err := DemystifyFailure(v1.PodStatus{
 			ContainerStatuses: []v1.ContainerStatus{
 				{
 					State: v1.ContainerState{
@@ -821,28 +900,15 @@ func TestConvertPodFailureToError(t *testing.T) {
 					},
 				},
 			},
-		})
-		assert.Equal(t, code, "OOMKilled")
-	})
-
-	t.Run("OOMKilled", func(t *testing.T) {
-		code, _ := ConvertPodFailureToError(v1.PodStatus{
-			ContainerStatuses: []v1.ContainerStatus{
-				{
-					LastTerminationState: v1.ContainerState{
-						Terminated: &v1.ContainerStateTerminated{
-							Reason:   OOMKilled,
-							ExitCode: 137,
-						},
-					},
-				},
-			},
-		})
-		assert.Equal(t, code, "OOMKilled")
+		}, pluginsCore.TaskInfo{})
+		assert.Nil(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		assert.Equal(t, "OOMKilled", phaseInfo.Err().Code)
+		assert.Equal(t, core.ExecutionError_USER, phaseInfo.Err().Kind)
 	})
 
 	t.Run("SIGKILL", func(t *testing.T) {
-		code, _ := ConvertPodFailureToError(v1.PodStatus{
+		phaseInfo, err := DemystifyFailure(v1.PodStatus{
 			ContainerStatuses: []v1.ContainerStatus{
 				{
 					LastTerminationState: v1.ContainerState{
@@ -853,8 +919,22 @@ func TestConvertPodFailureToError(t *testing.T) {
 					},
 				},
 			},
-		})
-		assert.Equal(t, code, "Interrupted")
+		}, pluginsCore.TaskInfo{})
+		assert.Nil(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		assert.Equal(t, "Interrupted", phaseInfo.Err().Code)
+		assert.Equal(t, core.ExecutionError_USER, phaseInfo.Err().Kind)
+	})
+
+	t.Run("GKE kubelet graceful node shutdown", func(t *testing.T) {
+		phaseInfo, err := DemystifyFailure(v1.PodStatus{
+			Message: "Pod Node is in progress of shutting down, not admitting any new pods",
+			Reason:  "Shutdown",
+		}, pluginsCore.TaskInfo{})
+		assert.Nil(t, err)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
+		assert.Equal(t, "Interrupted", phaseInfo.Err().Code)
+		assert.Equal(t, core.ExecutionError_SYSTEM, phaseInfo.Err().Kind)
 	})
 }
 

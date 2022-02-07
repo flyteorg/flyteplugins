@@ -75,6 +75,7 @@ func getMockTaskExecutionContext(ctx context.Context) *mocks.TaskExecutionContex
 	tMeta.OnIsInterruptible().Return(false)
 	tMeta.OnGetK8sServiceAccount().Return("s")
 
+	tMeta.OnGetMaxAttempts().Return(2)
 	tMeta.OnGetNamespace().Return("n")
 	tMeta.OnGetLabels().Return(nil)
 	tMeta.OnGetAnnotations().Return(nil)
@@ -194,6 +195,9 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 		}
 
+		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(0))
+		assert.NoError(t, err)
+
 		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
@@ -203,6 +207,7 @@ func TestCheckSubTasksState(t *testing.T) {
 				Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
 			},
 			IndexesToCache: bitarray.NewBitSet(5),
+			RetryAttempts:  retryAttemptsArray,
 		})
 
 		assert.Nil(t, err)
@@ -210,6 +215,77 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.Equal(t, arrayCore.PhaseWaitingForResources.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 5)
 		assert.Empty(t, subTaskIDs, "subtask ids are only populated when monitor is called for a successfully launched task")
+	})
+
+	t.Run("RetryableSubtaskFailure", func(t *testing.T) {
+		failureIndex := 2
+
+		config := Config{
+			MaxArrayJobSize:      100,
+			MaxErrorStringLength: 200,
+		}
+
+		detailed := arrayCore.NewPhasesCompactArray(uint(5))
+		detailed.SetItem(failureIndex, bitarray.Item(core.PhaseRetryableFailure))
+
+		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(1))
+		assert.NoError(t, err)
+
+		cacheIndexes := bitarray.NewBitSet(5)
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
+			ExecutionArraySize:   5,
+			OriginalArraySize:    10,
+			OriginalMinSuccesses: 5,
+			IndexesToCache:       cacheIndexes,
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: detailed,
+			},
+			RetryAttempts: retryAttemptsArray,
+		})
+
+		assert.Nil(t, err)
+
+		p, _ := newState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+		assert.Equal(t, core.PhaseUndefined, core.Phases[newState.ArrayStatus.Detailed.GetItem(failureIndex)])
+		assert.Equal(t, uint64(1), newState.RetryAttempts.GetItem(failureIndex))
+	})
+
+	t.Run("PermanentSubtaskFailure", func(t *testing.T) {
+		failureIndex := 2
+
+		config := Config{
+			MaxArrayJobSize:      100,
+			MaxErrorStringLength: 200,
+		}
+
+		detailed := arrayCore.NewPhasesCompactArray(uint(5))
+		detailed.SetItem(failureIndex, bitarray.Item(core.PhaseRetryableFailure))
+
+		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(1))
+		assert.NoError(t, err)
+		retryAttemptsArray.SetItem(failureIndex, bitarray.Item(1))
+
+		cacheIndexes := bitarray.NewBitSet(5)
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
+			ExecutionArraySize:   5,
+			OriginalArraySize:    10,
+			OriginalMinSuccesses: 5,
+			IndexesToCache:       cacheIndexes,
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: detailed,
+			},
+			RetryAttempts: retryAttemptsArray,
+		})
+
+		assert.Nil(t, err)
+
+		p, _ := newState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+		assert.Equal(t, core.PhasePermanentFailure, core.Phases[newState.ArrayStatus.Detailed.GetItem(failureIndex)])
+		assert.Equal(t, uint64(1), newState.RetryAttempts.GetItem(failureIndex))
 	})
 }
 
@@ -236,6 +312,9 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			},
 		}
 
+		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(0))
+		assert.NoError(t, err)
+
 		cacheIndexes := bitarray.NewBitSet(5)
 		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
@@ -246,6 +325,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
 			},
+			RetryAttempts: retryAttemptsArray,
 		})
 
 		assert.Nil(t, err)
@@ -273,6 +353,9 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 
 		}
 		cacheIndexes := bitarray.NewBitSet(5)
+		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(0))
+		assert.NoError(t, err)
+
 		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
 			ExecutionArraySize:   5,
@@ -280,6 +363,7 @@ func TestCheckSubTasksStateResourceGranted(t *testing.T) {
 			OriginalMinSuccesses: 5,
 			ArrayStatus:          *arrayStatus,
 			IndexesToCache:       cacheIndexes,
+			RetryAttempts:        retryAttemptsArray,
 		})
 
 		assert.Nil(t, err)
