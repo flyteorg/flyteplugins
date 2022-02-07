@@ -14,10 +14,10 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	core2 "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,7 +97,7 @@ func buildPodMapTask(task *idlCore.TaskTemplate, metadata core.TaskExecutionMeta
 // FlyteArrayJobToK8sPodTemplate returns a pod template for the given task context. Note that Name is not set on the
 // result object. It's up to the caller to set the Name before creating the object in K8s.
 func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionContext, namespaceTemplate string) (
-	podTemplate v1.Pod, job *idlPlugins.ArrayJob, err error) {
+	podTemplate v1.Pod, job *arrayCore.ArrayJob, err error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -117,12 +117,9 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		arrayInputReader:     array.GetInputReader(tCtx, taskTemplate),
 	}
 
-	var arrayJob *idlPlugins.ArrayJob
-	if taskTemplate.GetCustom() != nil {
-		arrayJob, err = core2.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
-		if err != nil {
-			return v1.Pod{}, nil, err
-		}
+	arrayJob, err := core2.ToArrayJob(taskTemplate, taskTemplate.TaskTypeVersion)
+	if err != nil {
+		return v1.Pod{}, nil, err
 	}
 
 	annotations := utils.UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, tCtx.TaskExecutionMetadata().GetAnnotations())

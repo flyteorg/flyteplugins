@@ -3,7 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"github.com/flyteorg/flytestdlib/errors"
 
@@ -13,9 +16,7 @@ import (
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flytestdlib/logger"
-	structpb "github.com/golang/protobuf/ptypes/struct"
 )
 
 //go:generate mockery -all -case=underscore
@@ -37,6 +38,8 @@ const (
 	PhaseRetryableFailure
 	PhasePermanentFailure
 )
+
+const AwsBatchTaskType = "aws-batch"
 
 type State struct {
 	CurrentPhase         Phase                   `json:"phase"`
@@ -139,30 +142,53 @@ const (
 	ErrorK8sArrayGeneric  errors.ErrorCode = "ARRAY_JOB_GENERIC_FAILURE"
 )
 
-func ToArrayJob(structObj *structpb.Struct, taskTypeVersion int32) (*idlPlugins.ArrayJob, error) {
-	if structObj == nil {
-		if taskTypeVersion == 0 {
-
-			return &idlPlugins.ArrayJob{
-				Parallelism: 1,
-				Size:        1,
-				SuccessCriteria: &idlPlugins.ArrayJob_MinSuccesses{
-					MinSuccesses: 1,
-				},
-			}, nil
+func ToArrayJob(taskTemplate *idlCore.TaskTemplate, taskTypeVersion int32) (*ArrayJob, error) {
+	if taskTemplate != nil && taskTemplate.GetConfig() != nil {
+		config := taskTemplate.GetConfig()
+		arrayJob := &ArrayJob{}
+		var err error
+		if len(config["Parallelism"]) != 0 {
+			arrayJob.Parallelism, err = strconv.ParseInt(config["Parallelism"], 10, 64)
 		}
-		return &idlPlugins.ArrayJob{
-			Parallelism: 1,
-			Size:        1,
-			SuccessCriteria: &idlPlugins.ArrayJob_MinSuccessRatio{
-				MinSuccessRatio: 1.0,
-			},
+		if len(config["Size"]) != 0 {
+			arrayJob.Size, err = strconv.ParseInt(config["Size"], 10, 64)
+		}
+		if len(config["MinSuccesses"]) != 0 {
+			arrayJob.MinSuccesses, err = strconv.ParseInt(config["MinSuccesses"], 10, 64)
+		}
+		if len(config["MinSuccessRatio"]) != 0 {
+			arrayJob.MinSuccessRatio, err = strconv.ParseFloat(config["MinSuccessRatio"], 64)
+		}
+		return arrayJob, err
+	}
+
+	// Keep backward compatibility for those who use arrayJob proto
+	if taskTemplate != nil && taskTemplate.GetCustom() != nil {
+		arrayJob := &idlPlugins.ArrayJob{}
+		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), arrayJob)
+		if err != nil {
+			return nil, err
+		}
+		return &ArrayJob{
+			Parallelism:     arrayJob.GetParallelism(),
+			Size:            arrayJob.GetSize(),
+			MinSuccessRatio: float64(arrayJob.GetMinSuccessRatio()),
+			MinSuccesses:    arrayJob.GetMinSuccesses(),
 		}, nil
 	}
 
-	arrayJob := &idlPlugins.ArrayJob{}
-	err := utils.UnmarshalStruct(structObj, arrayJob)
-	return arrayJob, err
+	if taskTypeVersion == 0 || (taskTemplate != nil && taskTemplate.Type == AwsBatchTaskType) {
+		return &ArrayJob{
+			Parallelism:  1,
+			Size:         1,
+			MinSuccesses: 1,
+		}, nil
+	}
+	return &ArrayJob{
+		Parallelism:     1,
+		Size:            1,
+		MinSuccessRatio: 1.0,
+	}, nil
 }
 
 func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {

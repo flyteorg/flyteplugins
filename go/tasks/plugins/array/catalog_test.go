@@ -177,7 +177,7 @@ func TestDetermineDiscoverability(t *testing.T) {
 
 	t.Run("Run AWS Batch single job", func(t *testing.T) {
 		toCache := arrayCore.InvertBitSet(bitarray.NewBitSet(1), 1)
-		template.Type = AwsBatchTaskType
+		template.Type = arrayCore.AwsBatchTaskType
 		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
 			CurrentPhase:         arrayCore.PhasePreLaunch,
 			PhaseVersion:         core2.DefaultPhaseVersion,
@@ -258,14 +258,9 @@ func TestDiscoverabilityTaskType1(t *testing.T) {
 		download.OnGetCachedResults().Return(bitarray.NewBitSet(1)).Once()
 		toCache := arrayCore.InvertBitSet(bitarray.NewBitSet(uint(3)), uint(3))
 
-		arrayJob := &plugins.ArrayJob{
-			SuccessCriteria: &plugins.ArrayJob_MinSuccessRatio{
-				MinSuccessRatio: 0.5,
-			},
+		arrayJob := map[string]string{
+			"MinSuccessRatio": "0.5",
 		}
-		var arrayJobCustom structpb.Struct
-		err := utils.MarshalStruct(arrayJob, &arrayJobCustom)
-		assert.NoError(t, err)
 		templateType1 := &core.TaskTemplate{
 			Id: &core.Identifier{
 				ResourceType: core.ResourceType_TASK,
@@ -290,8 +285,30 @@ func TestDiscoverabilityTaskType1(t *testing.T) {
 				},
 			},
 			TaskTypeVersion: 1,
-			Custom:          &arrayJobCustom,
+			Config:          arrayJob,
 		}
+
+		runDetermineDiscoverabilityTest(t, templateType1, f, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhasePreLaunch,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			ExecutionArraySize:   3,
+			OriginalArraySize:    3,
+			OriginalMinSuccesses: 2,
+			IndexesToCache:       toCache,
+			Reason:               "Task is not discoverable.",
+		}, nil)
+
+		// Get ArrayJob information from taskTemplate.config
+		arrayJobProto := &plugins.ArrayJob{
+			SuccessCriteria: &plugins.ArrayJob_MinSuccessRatio{
+				MinSuccessRatio: 0.5,
+			},
+		}
+		var arrayJobCustom structpb.Struct
+		err := utils.MarshalStruct(arrayJobProto, &arrayJobCustom)
+		assert.NoError(t, err)
+		templateType1.Config = nil
+		templateType1.Custom = &arrayJobCustom
 
 		runDetermineDiscoverabilityTest(t, templateType1, f, &arrayCore.State{
 			CurrentPhase:         arrayCore.PhasePreLaunch,

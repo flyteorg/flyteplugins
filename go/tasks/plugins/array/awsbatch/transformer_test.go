@@ -22,7 +22,6 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 
 	v12 "k8s.io/api/core/v1"
@@ -30,7 +29,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/batch"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -137,7 +136,7 @@ func TestArrayJobToBatchInput(t *testing.T) {
 		},
 	}
 
-	input := &plugins.ArrayJob{
+	input := &arrayCore.ArrayJob{
 		Size:        10,
 		Parallelism: 5,
 	}
@@ -207,7 +206,7 @@ func TestArrayJobToBatchInput(t *testing.T) {
 	assert.NotNil(t, batchInput)
 	assert.Equal(t, *expectedBatchInput, *batchInput)
 
-	taskTemplate.Type = array.AwsBatchTaskType
+	taskTemplate.Type = arrayCore.AwsBatchTaskType
 	tr.OnReadMatch(mock.Anything).Return(taskTemplate, nil)
 	taskCtx.OnTaskReader().Return(tr)
 

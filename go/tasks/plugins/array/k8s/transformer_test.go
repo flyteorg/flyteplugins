@@ -11,10 +11,9 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -42,7 +41,7 @@ var podSpec = v1.PodSpec{
 	},
 }
 
-var arrayJob = idlPlugins.ArrayJob{
+var arrayJob = arrayCore.ArrayJob{
 	Size: 100,
 }
 
@@ -57,15 +56,11 @@ func getK8sPodTask(t *testing.T, annotations map[string]string) *core.TaskTempla
 		t.Fatal(err)
 	}
 
-	custom := &structpb.Struct{}
-	if err := utils.MarshalStruct(&arrayJob, custom); err != nil {
-		t.Fatal(err)
-	}
-
 	return &core.TaskTemplate{
 		TaskTypeVersion: 2,
 		Config: map[string]string{
 			primaryContainerKey: testPrimaryContainerName,
+			"Size":              "100",
 		},
 		Target: &core.TaskTemplate_K8SPod{
 			K8SPod: &core.K8SPod{
@@ -78,7 +73,6 @@ func getK8sPodTask(t *testing.T, annotations map[string]string) *core.TaskTempla
 				},
 			},
 		},
-		Custom: custom,
 	}
 }
 
