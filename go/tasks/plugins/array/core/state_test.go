@@ -312,6 +312,17 @@ func TestToArrayJob(t *testing.T) {
 		})
 	})
 
+	t.Run("task_type_version == AwsBatchTaskType", func(t *testing.T) {
+		taskTemplate := &idlCore.TaskTemplate{Type: AwsBatchTaskType}
+		arrayJob, err := ToArrayJob(taskTemplate, 1)
+		assert.NoError(t, err)
+		assert.True(t, *arrayJob == ArrayJob{
+			Parallelism:  1,
+			Size:         1,
+			MinSuccesses: 1,
+		})
+	})
+
 	t.Run("ToArrayJob with config", func(t *testing.T) {
 		config := map[string]string{
 			"Parallelism":     "10",

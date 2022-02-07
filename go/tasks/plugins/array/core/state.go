@@ -143,7 +143,7 @@ const (
 )
 
 func ToArrayJob(taskTemplate *idlCore.TaskTemplate, taskTypeVersion int32) (*ArrayJob, error) {
-	if taskTemplate.GetConfig() != nil {
+	if taskTemplate != nil && taskTemplate.GetConfig() != nil {
 		config := taskTemplate.GetConfig()
 		arrayJob := &ArrayJob{}
 		var err error
@@ -163,7 +163,7 @@ func ToArrayJob(taskTemplate *idlCore.TaskTemplate, taskTypeVersion int32) (*Arr
 	}
 
 	// Keep backward compatibility for those who use arrayJob proto
-	if taskTemplate.GetCustom() != nil {
+	if taskTemplate != nil && taskTemplate.GetCustom() != nil {
 		arrayJob := &idlPlugins.ArrayJob{}
 		err := utils.UnmarshalStruct(taskTemplate.GetCustom(), arrayJob)
 		if err != nil {
@@ -177,7 +177,7 @@ func ToArrayJob(taskTemplate *idlCore.TaskTemplate, taskTypeVersion int32) (*Arr
 		}, nil
 	}
 
-	if taskTypeVersion == 0 || taskTemplate.Type == AwsBatchTaskType {
+	if taskTypeVersion == 0 || (taskTemplate != nil && taskTemplate.Type == AwsBatchTaskType) {
 		return &ArrayJob{
 			Parallelism:  1,
 			Size:         1,
