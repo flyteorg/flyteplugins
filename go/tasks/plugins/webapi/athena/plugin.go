@@ -74,8 +74,9 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextRead
 	}
 
 	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
+	ts := time.Now().UTC().Format("20060102150405")
 	resp, err := p.client.StartQueryExecution(ctx, &athena.StartQueryExecutionInput{
-		ClientRequestToken: awsSdk.String(fmt.Sprintf("%v-%v-%v", execID.Project, execID.Domain, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())),
+		ClientRequestToken: awsSdk.String(fmt.Sprintf("%v-%v-%v-%s", execID.Project, execID.Domain, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), ts)),
 		QueryExecutionContext: &athenaTypes.QueryExecutionContext{
 			Database: awsSdk.String(queryInfo.Database),
 			Catalog:  awsSdk.String(queryInfo.Catalog),
