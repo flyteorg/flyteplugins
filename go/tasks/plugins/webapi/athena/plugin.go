@@ -3,6 +3,7 @@ package athena
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
@@ -53,6 +54,17 @@ func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionCo
 	return "default", p.cfg.ResourceConstraints, nil
 }
 
+// AWS Athena now expects that the token is at least 32 characters long
+func (p Plugin) getClientRequestToken(execID core.TaskExecutionID) string {
+	ts := time.Now().UTC().Format("20060102150405")
+	nodeExecID := execID.GetID().NodeExecutionId.GetExecutionId()
+	token := fmt.Sprintf("%v-%v-%v-%s", nodeExecID.Project, nodeExecID.Domain, execID.GetGeneratedName(), ts)
+	if len(token) < 32 {
+		token = token + strings.Repeat("0", 32-len(token))
+	}
+	return token
+}
+
 func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextReader) (resourceMeta webapi.ResourceMeta,
 	resource webapi.Resource, err error) {
 
@@ -73,10 +85,8 @@ func (p Plugin) Create(ctx context.Context, tCtx webapi.TaskExecutionContextRead
 		return nil, nil, errors.Errorf(errors2.BadTaskSpecification, "Database must not be empty.")
 	}
 
-	execID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().NodeExecutionId.GetExecutionId()
-	ts := time.Now().UTC().Format("20060102150405")
 	resp, err := p.client.StartQueryExecution(ctx, &athena.StartQueryExecutionInput{
-		ClientRequestToken: awsSdk.String(fmt.Sprintf("%v-%v-%v-%s", execID.Project, execID.Domain, tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), ts)),
+		ClientRequestToken: awsSdk.String(p.getClientRequestToken(tCtx.TaskExecutionMetadata().GetTaskExecutionID())),
 		QueryExecutionContext: &athenaTypes.QueryExecutionContext{
 			Database: awsSdk.String(queryInfo.Database),
 			Catalog:  awsSdk.String(queryInfo.Catalog),
