@@ -21,7 +21,7 @@ type TaskExecutionID interface {
 
 	// GetGeneratedNameWith returns the generated name within a bounded length. If the name is smaller than minLength,
 	// it'll get right-padded with character '0'. If the name is bigger than maxLength, it'll get hashed to fit within.
-	GetGeneratedNameWith(minLength, maxLength uint) string
+	GetGeneratedNameWith(minLength, maxLength int) (string, error)
 
 	// GetID returns the underlying idl task identifier.
 	GetID() core.TaskExecutionIdentifier
