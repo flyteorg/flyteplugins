@@ -8,6 +8,7 @@ import (
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
@@ -101,6 +102,12 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		currentState.RetryAttempts = retryAttemptsArray
 	}
 
+	// initialize log plugin
+	logPlugin, err := logs.InitializeLogPlugins(&config.LogConfig.Config)
+	if err != nil {
+		return currentState, logLinks, subTaskIDs, err
+	}
+
 	// identify max parallelism
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -168,7 +175,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		// monitor pod
-		phaseInfo, err := getSubtaskPhaseInfo(ctx, stCtx, kubeClient)
+		phaseInfo, err := getSubtaskPhaseInfo(ctx, stCtx, kubeClient, logPlugin)
 		if err != nil {
 			return currentState, logLinks, subTaskIDs, err
 		}

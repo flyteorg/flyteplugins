@@ -11,6 +11,7 @@ import (
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -77,7 +78,16 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	return pod, nil
 }
 
-func (plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
+func (p plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
+	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
+	if err != nil {
+		return pluginsCore.PhaseInfoUndefined, err
+	}
+
+	return p.GetTaskPhaseWithLogPlugin(ctx, pluginContext, r, logPlugin)
+}
+
+func (plugin) GetTaskPhaseWithLogPlugin(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
 	pod := r.(*v1.Pod)
 
 	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
@@ -86,7 +96,7 @@ func (plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext,
 	}
 
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		taskLogs, err := logs.GetLogsForContainerInPod(ctx, pod, 0, " (User)")
+		taskLogs, err := logs.GetLogsForContainerInPod(ctx, logPlugin, pod, 0, " (User)")
 		if err != nil {
 			return pluginsCore.PhaseInfoUndefined, err
 		}

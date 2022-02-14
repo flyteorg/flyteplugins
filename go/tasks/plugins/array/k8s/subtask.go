@@ -8,11 +8,12 @@ import (
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
 
 	errors2 "github.com/flyteorg/flytestdlib/errors"
-	"github.com/flyteorg/flytestdlib/logger"
+	//"github.com/flyteorg/flytestdlib/logger" // TODO hamersaw - remove
 
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -121,14 +122,13 @@ func finalizeSubtask() error {
 	return nil
 }
 
-func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
+func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, kubeClient pluginsCore.KubeClient, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	pod := o.(*v1.Pod)
-	logger.Infof(ctx, "BEFORE: %v", pod)
 	addMetadata(stCtx, pod)
 
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
@@ -151,8 +151,7 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, kub
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	logger.Infof(ctx, "AFTER: %v", pod)
-	return podPlugin.DefaultPodPlugin.GetTaskPhase(ctx, stCtx, pod)
+	return podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogPlugin(ctx, stCtx, pod, logPlugin)
 }
 
 func getTaskContainerIndex(pod *v1.Pod) (int, error) {
