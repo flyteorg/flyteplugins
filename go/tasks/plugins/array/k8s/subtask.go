@@ -13,7 +13,6 @@ import (
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
 
 	errors2 "github.com/flyteorg/flytestdlib/errors"
-	"github.com/flyteorg/flytestdlib/logger" // TODO hamersaw - remove
 
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -57,8 +56,6 @@ func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, pod *v1.Pod) {
 	pod.SetAnnotations(utils.UnionMaps(k8sPluginCfg.DefaultAnnotations, pod.GetAnnotations(), utils.CopyMap(taskExecutionMetadata.GetAnnotations())))
 	pod.SetLabels(utils.UnionMaps(pod.GetLabels(), utils.CopyMap(taskExecutionMetadata.GetLabels()), k8sPluginCfg.DefaultLabels))
 	pod.SetName(taskExecutionMetadata.GetTaskExecutionID().GetGeneratedName())
-
-	logger.Infof(context.Background(),"NAME: %s", pod.GetName())
 
 	if !cfg.RemoteClusterConfig.Enabled {
 		pod.OwnerReferences = []metav1.OwnerReference{taskExecutionMetadata.GetOwnerReference()}
@@ -131,8 +128,6 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 
 	pod := o.(*v1.Pod)
 	addMetadata(stCtx, config, pod)
-
-	logger.Infof(ctx, "POD: %v", pod)
 
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
 	nsName := k8stypes.NamespacedName{Namespace: pod.GetNamespace(), Name: pod.GetName()}

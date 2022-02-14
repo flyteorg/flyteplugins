@@ -39,6 +39,7 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 
 func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
 	arrayInputReader := array.GetInputReader(tCtx, taskTemplate) 
+	//metadataOverride := tCtx.TaskExecutionMetadata()
 	taskExecutionMetadata := tCtx.TaskExecutionMetadata()
 	taskExecutionID := taskExecutionMetadata.GetTaskExecutionID()
 	metadataOverride := SubTaskExecutionMetadata{
@@ -85,7 +86,6 @@ func (s SubTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) {
 	return s.subtaskTemplate, nil
 }
 
-//s.stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 type SubTaskExecutionID struct {
 	pluginsCore.TaskExecutionID
 	originalIndex   int
@@ -115,6 +115,10 @@ type SubTaskExecutionMetadata struct {
 	subtaskExecutionID SubTaskExecutionID
 	//annotations map[string]string
 	//labels      map[string]string
+}
+
+func (s SubTaskExecutionMetadata) GetTaskExecutionID() pluginsCore.TaskExecutionID {
+	return s.subtaskExecutionID
 }
 
 /*func (t TaskExecutionMetadata) GetLabels() map[string]string {

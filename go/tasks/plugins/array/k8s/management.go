@@ -138,6 +138,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
 		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, originalIdx, retryAttempt)
 		podName := stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+		logger.Infof(ctx, "PODNAME: %v", podName)
 
 		if existingPhase == core.PhaseUndefined || existingPhase == core.PhaseWaitingForResources || existingPhase == core.PhaseRetryableFailure {
 			// attempt to allocateResource
