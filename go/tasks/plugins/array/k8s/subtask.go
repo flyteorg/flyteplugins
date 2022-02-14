@@ -13,7 +13,7 @@ import (
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
 
 	errors2 "github.com/flyteorg/flytestdlib/errors"
-	//"github.com/flyteorg/flytestdlib/logger" // TODO hamersaw - remove
+	"github.com/flyteorg/flytestdlib/logger" // TODO hamersaw - remove
 
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,8 +39,7 @@ var (
 	namespaceRegex = regexp.MustCompile("(?i){{.namespace}}(?i)")
 )
 
-func addMetadata(stCtx SubTaskExecutionContext, pod *v1.Pod) {
-	cfg := GetConfig()
+func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, pod *v1.Pod) {
 	k8sPluginCfg := config.GetK8sPluginConfig()
 	taskExecutionMetadata := stCtx.TaskExecutionMetadata()
 
@@ -58,6 +57,8 @@ func addMetadata(stCtx SubTaskExecutionContext, pod *v1.Pod) {
 	pod.SetAnnotations(utils.UnionMaps(k8sPluginCfg.DefaultAnnotations, pod.GetAnnotations(), utils.CopyMap(taskExecutionMetadata.GetAnnotations())))
 	pod.SetLabels(utils.UnionMaps(pod.GetLabels(), utils.CopyMap(taskExecutionMetadata.GetLabels()), k8sPluginCfg.DefaultLabels))
 	pod.SetName(taskExecutionMetadata.GetTaskExecutionID().GetGeneratedName())
+
+	logger.Infof(context.Background(),"NAME: %s", pod.GetName())
 
 	if !cfg.RemoteClusterConfig.Enabled {
 		pod.OwnerReferences = []metav1.OwnerReference{taskExecutionMetadata.GetOwnerReference()}
@@ -86,14 +87,14 @@ func abortSubtask() error {
 	return nil
 }
 
-func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, kubeClient pluginsCore.KubeClient) error {
+func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient) error {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
 	pod := o.(*v1.Pod)
 	if err != nil {
 		return err
 	}
 
-	addMetadata(stCtx, pod)
+	addMetadata(stCtx, config, pod)
 
 	// inject maptask specific container environment variables
 	if len(pod.Spec.Containers) == 0 {
@@ -122,14 +123,16 @@ func finalizeSubtask() error {
 	return nil
 }
 
-func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, kubeClient pluginsCore.KubeClient, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
+func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	pod := o.(*v1.Pod)
-	addMetadata(stCtx, pod)
+	addMetadata(stCtx, config, pod)
+
+	logger.Infof(ctx, "POD: %v", pod)
 
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
 	nsName := k8stypes.NamespacedName{Namespace: pod.GetNamespace(), Name: pod.GetName()}

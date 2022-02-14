@@ -155,7 +155,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			}
 
 			// create subtask
-			launchSubtask(ctx, stCtx, kubeClient)
+			launchSubtask(ctx, stCtx, config, kubeClient)
 			if err != nil && !k8serrors.IsAlreadyExists(err) {
 				if k8serrors.IsForbidden(err) {
 					if strings.Contains(err.Error(), "exceeded quota") {
@@ -175,7 +175,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		// monitor pod
-		phaseInfo, err := getSubtaskPhaseInfo(ctx, stCtx, kubeClient, logPlugin)
+		phaseInfo, err := getSubtaskPhaseInfo(ctx, stCtx, config, kubeClient, logPlugin)
 		if err != nil {
 			return currentState, logLinks, subTaskIDs, err
 		}
