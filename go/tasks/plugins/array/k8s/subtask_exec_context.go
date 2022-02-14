@@ -106,6 +106,15 @@ func (s SubTaskExecutionID) GetGeneratedName() string {
 	return utils.ConvertToDNS1123SubdomainCompatibleString(fmt.Sprintf("%v-%v-%v", s.parentName, indexStr, retryAttemptStr))
 }
 
+func (s SubTaskExecutionID) GetLogSuffix() string {
+	// If retryAttempt is 0 we do not include it in the log suffix to match the pod name.
+	if s.retryAttempt == 0{
+		return fmt.Sprintf(" #%d", s.originalIndex)
+	}
+
+	return fmt.Sprintf(" #%d-%d", s.originalIndex, s.retryAttempt)
+}
+
 // TODO hamersaw - enable secrets
 // TaskExecutionMetadata provides a layer on top of the core TaskExecutionMetadata with customized annotations and labels
 // for k8s plugins.

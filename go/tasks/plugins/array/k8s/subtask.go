@@ -149,7 +149,15 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	return podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogPlugin(ctx, stCtx, pod, logPlugin)
+	/*var logName string
+	if subtaskRetryAttempt == 0 {
+		logName = fmt.Sprintf(" #%d-%d", retryAttempt, index)
+	} else {
+		logName = fmt.Sprintf(" #%d-%d-%d", retryAttempt, index, subtaskRetryAttempt)
+	}*/
+
+	stID, _ := stCtx.TaskExecutionMetadata().GetTaskExecutionID().(SubTaskExecutionID)
+	return podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogs(ctx, stCtx, pod, logPlugin, stID.GetLogSuffix())
 }
 
 func getTaskContainerIndex(pod *v1.Pod) (int, error) {

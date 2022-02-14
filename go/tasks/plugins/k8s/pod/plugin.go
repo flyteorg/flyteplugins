@@ -84,10 +84,10 @@ func (p plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContex
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	return p.GetTaskPhaseWithLogPlugin(ctx, pluginContext, r, logPlugin)
+	return p.GetTaskPhaseWithLogs(ctx, pluginContext, r, logPlugin, " (User)")
 }
 
-func (plugin) GetTaskPhaseWithLogPlugin(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
+func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin, logSuffix string) (pluginsCore.PhaseInfo, error) {
 	pod := r.(*v1.Pod)
 
 	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
@@ -96,7 +96,7 @@ func (plugin) GetTaskPhaseWithLogPlugin(ctx context.Context, pluginContext k8s.P
 	}
 
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		taskLogs, err := logs.GetLogsForContainerInPod(ctx, logPlugin, pod, 0, " (User)")
+		taskLogs, err := logs.GetLogsForContainerInPod(ctx, logPlugin, pod, 0, logSuffix)
 		if err != nil {
 			return pluginsCore.PhaseInfoUndefined, err
 		}
