@@ -107,12 +107,16 @@ func (s SubTaskExecutionID) GetGeneratedName() string {
 }
 
 func (s SubTaskExecutionID) GetLogSuffix() string {
-	// If retryAttempt is 0 we do not include it in the log suffix to match the pod name.
-	if s.retryAttempt == 0{
-		return fmt.Sprintf(" #%d", s.originalIndex)
-	}
+	return fmt.Sprintf(" #%d-%d", s.retryAttempt, s.originalIndex)
 
-	return fmt.Sprintf(" #%d-%d", s.originalIndex, s.retryAttempt)
+	// TODO - I don't think this is correct - 
+	// should be originalIndex-retryAttempt [however](https://github.com/flyteorg/flyteplugins/pull/186#discussion_r666569825)
+	// but [this](https://github.com/flyteorg/flyteplugins/blob/b671abcba2f67cff5610bb9050ee75762dba3d03/go/tasks/plugins/array/k8s/task.go#L183)
+	/*
+	synopsis - the GetGeneratedName uses the taskExecutionContext retryAttempt to compute a name (ex. pod-0)
+	before tracking subtask retry attempts the pod name was this retry attempt with the index (ex. pod-0-0 or pod-1-0) for retry attempt 0 and 1 of index 0
+	now we track subtask retry attempts individually so the pod name could be (pod-0-1-0) we're leaving this for now - but might want to change in the fugure
+	*/
 }
 
 // TODO hamersaw - enable secrets

@@ -149,15 +149,21 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	/*var logName string
-	if subtaskRetryAttempt == 0 {
-		logName = fmt.Sprintf(" #%d-%d", retryAttempt, index)
-	} else {
-		logName = fmt.Sprintf(" #%d-%d-%d", retryAttempt, index, subtaskRetryAttempt)
-	}*/
-
 	stID, _ := stCtx.TaskExecutionMetadata().GetTaskExecutionID().(SubTaskExecutionID)
-	return podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogs(ctx, stCtx, pod, logPlugin, stID.GetLogSuffix())
+	phaseInfo, err := podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogs(ctx, stCtx, pod, logPlugin, stID.GetLogSuffix())
+	if err != nil {
+		return pluginsCore.PhaseInfoUndefined, err
+	}
+
+	if phaseInfo.Info() != nil {
+		// Append sub-job status in Log Name for viz.
+		for _, log := range phaseInfo.Info().Logs {
+			log.Name += fmt.Sprintf(" (%s)", phaseInfo.Phase().String())
+		}
+	}
+
+
+	return phaseInfo, err
 }
 
 func getTaskContainerIndex(pod *v1.Pod) (int, error) {
