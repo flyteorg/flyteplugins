@@ -4,27 +4,29 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/logs"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
-
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
-	"github.com/flyteorg/flytestdlib/bitarray"
-	"github.com/stretchr/testify/mock"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array/arraystatus"
 	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flytestdlib/bitarray"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"golang.org/x/net/context"
 
 	structpb "google.golang.org/protobuf/types/known/structpb"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func createSampleContainerTask() *core2.Container {
@@ -87,7 +89,7 @@ func getMockTaskExecutionContext(ctx context.Context, parallelism int) *mocks.Ta
 	tMeta.OnGetNamespace().Return("n")
 	tMeta.OnGetLabels().Return(nil)
 	tMeta.OnGetAnnotations().Return(nil)
-	tMeta.OnGetOwnerReference().Return(v12.OwnerReference{})
+	tMeta.OnGetOwnerReference().Return(metav1.OwnerReference{})
 	tMeta.OnGetPlatformResources().Return(&v1.ResourceRequirements{})
 
 	ow := &mocks2.OutputWriter{}
@@ -109,37 +111,226 @@ func getMockTaskExecutionContext(ctx context.Context, parallelism int) *mocks.Ta
 	return tCtx
 }
 
-/*func TestGetNamespaceForExecution(t *testing.T) {
-	ctx := context.Background()
-	tCtx := getMockTaskExecutionContext(ctx, 0)
-
-	assert.Equal(t, GetNamespaceForExecution(tCtx, ""), tCtx.TaskExecutionMetadata().GetNamespace())
-	assert.Equal(t, GetNamespaceForExecution(tCtx, "abcd"), "abcd")
-	assert.Equal(t, GetNamespaceForExecution(tCtx, "a-{{.namespace}}-b"), fmt.Sprintf("a-%s-b", tCtx.TaskExecutionMetadata().GetNamespace()))
-}*/
-
-func testSubTaskIDs(t *testing.T, actual []*string) {
-	var expected = make([]*string, 5)
-	for i := 0; i < len(expected); i++ {
-		subTaskID := fmt.Sprintf("notfound-%d", i)
-		expected[i] = &subTaskID
-	}
-	assert.EqualValues(t, expected, actual)
-}
-
 func TestCheckSubTasksState(t *testing.T) {
 	ctx := context.Background()
+	subtaskCount := 5
 
-	tCtx := getMockTaskExecutionContext(ctx, 0)
-	kubeClient := mocks.KubeClient{}
-	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
-	kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
+	config := Config{
+		MaxArrayJobSize: int64(subtaskCount * 10),
+		ResourceConfig: ResourceConfig{
+			PrimaryLabel: "p",
+			Limit:        subtaskCount,
+		},
+	}
 
-	resourceManager := mocks.ResourceManager{}
-	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusExhausted, nil)
-	tCtx.OnResourceManager().Return(&resourceManager)
+	fakeKubeClient := mocks.NewFakeKubeClient()
+	fakeKubeCache := mocks.NewFakeKubeCache()
 
-	t.Run("Happy case", func(t *testing.T) {
+    for i:=0; i<subtaskCount; i++ {
+        pod := flytek8s.BuildIdentityPod()
+        pod.SetName(fmt.Sprintf("notfound-%d", i))
+        pod.SetNamespace("a-n-b")
+		pod.Spec.Containers = append(pod.Spec.Containers, v1.Container{Name: "foo"})
+
+        pod.Status.Phase = v1.PodRunning
+        _ = fakeKubeClient.Create(ctx, pod)
+		_ = fakeKubeCache.Create(ctx, pod)
+    }
+
+	failureFakeKubeClient := mocks.NewFakeKubeClient()
+	failureFakeKubeCache := mocks.NewFakeKubeCache()
+
+    for i:=0; i<subtaskCount; i++ {
+        pod := flytek8s.BuildIdentityPod()
+        pod.SetName(fmt.Sprintf("notfound-%d", i))
+        pod.SetNamespace("a-n-b")
+		pod.Spec.Containers = append(pod.Spec.Containers, v1.Container{Name: "foo"})
+
+        pod.Status.Phase = v1.PodFailed
+        _ = failureFakeKubeClient.Create(ctx, pod)
+		_ = failureFakeKubeCache.Create(ctx, pod)
+    }
+
+	t.Run("Launch", func(t *testing.T) {
+		// initialize metadata
+		kubeClient := mocks.KubeClient{}
+		kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
+		kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
+
+		resourceManager := mocks.ResourceManager{}
+		resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)
+
+		tCtx := getMockTaskExecutionContext(ctx, 0)
+		tCtx.OnResourceManager().Return(&resourceManager)
+
+		currentState := &arrayCore.State{
+			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
+			ExecutionArraySize:   subtaskCount,
+			OriginalArraySize:    int64(subtaskCount),
+			OriginalMinSuccesses: int64(subtaskCount),
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: arrayCore.NewPhasesCompactArray(uint(subtaskCount)), // set all tasks to core.PhaseUndefined
+			},
+			IndexesToCache: arrayCore.InvertBitSet(bitarray.NewBitSet(uint(subtaskCount)), uint(subtaskCount)), // set all tasks to be cached
+		}
+
+		// execute
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
+
+		// validate results
+		assert.Nil(t, err)
+		p, _ := newState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+		resourceManager.AssertNumberOfCalls(t, "AllocateResource", subtaskCount)
+		for _, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
+			assert.Equal(t, core.PhaseRunning, core.Phases[subtaskPhaseIndex])
+		}
+	})
+
+	for i := 1; i <= subtaskCount; i++ {
+		t.Run(fmt.Sprintf("LaunchParallelism%d", i), func(t *testing.T) {
+			// initialize metadata
+			kubeClient := mocks.KubeClient{}
+			kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
+			kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
+
+			resourceManager := mocks.ResourceManager{}
+			resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)
+
+			tCtx := getMockTaskExecutionContext(ctx, i)
+			tCtx.OnResourceManager().Return(&resourceManager)
+
+			currentState := &arrayCore.State{
+				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
+				ExecutionArraySize:   subtaskCount,
+				OriginalArraySize:    int64(subtaskCount),
+				OriginalMinSuccesses: int64(subtaskCount),
+				ArrayStatus: arraystatus.ArrayStatus{
+					Detailed: arrayCore.NewPhasesCompactArray(uint(subtaskCount)), // set all tasks to core.PhaseUndefined
+				},
+				IndexesToCache: arrayCore.InvertBitSet(bitarray.NewBitSet(uint(subtaskCount)), uint(subtaskCount)), // set all tasks to be cached
+			}
+
+			// execute
+			newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
+
+			// validate results
+			assert.Nil(t, err)
+			p, _ := newState.GetPhase()
+			assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+
+			executed := 0
+			for _, existingPhaseIdx := range newState.GetArrayStatus().Detailed.GetItems() {
+				if core.Phases[existingPhaseIdx] != core.PhaseUndefined {
+					executed++
+				}
+			}
+
+			assert.Equal(t, i, executed)
+		})
+	}
+
+	t.Run("LaunchResourcesExhausted", func(t *testing.T) {
+		// initialize metadata
+		kubeClient := mocks.KubeClient{}
+		kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
+		kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
+
+		resourceManager := mocks.ResourceManager{}
+		resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusExhausted, nil)
+
+		tCtx := getMockTaskExecutionContext(ctx, 0)
+		tCtx.OnResourceManager().Return(&resourceManager)
+
+		currentState := &arrayCore.State{
+			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
+			ExecutionArraySize:   subtaskCount,
+			OriginalArraySize:    int64(subtaskCount),
+			OriginalMinSuccesses: int64(subtaskCount),
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: arrayCore.NewPhasesCompactArray(uint(subtaskCount)), // set all tasks to core.PhaseUndefined
+			},
+			IndexesToCache: arrayCore.InvertBitSet(bitarray.NewBitSet(uint(subtaskCount)), uint(subtaskCount)), // set all tasks to be cached
+		}
+
+		// execute
+		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
+
+		// validate results
+		assert.Nil(t, err)
+		p, _ := newState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseWaitingForResources.String(), p.String())
+		resourceManager.AssertNumberOfCalls(t, "AllocateResource", subtaskCount)
+		for _, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
+			assert.Equal(t, core.PhaseWaitingForResources, core.Phases[subtaskPhaseIndex])
+		}
+		assert.Empty(t, subTaskIDs, "subtask ids are only populated when monitor is called for a successfully launched task")
+
+		// execute again - with resources available and validate results
+		nresourceManager := mocks.ResourceManager{}
+		nresourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)
+
+		ntCtx := getMockTaskExecutionContext(ctx, 0)
+		ntCtx.OnResourceManager().Return(&nresourceManager)
+
+		lastState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, ntCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", newState)
+		assert.Nil(t, err)
+		np, _ := lastState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), np.String())
+		resourceManager.AssertNumberOfCalls(t, "AllocateResource", subtaskCount)
+		for _, subtaskPhaseIndex := range lastState.GetArrayStatus().Detailed.GetItems() {
+			assert.Equal(t, core.PhaseRunning, core.Phases[subtaskPhaseIndex])
+		}
+	})
+
+	t.Run("LaunchRetryableFailures", func(t *testing.T) {
+		// initialize metadata
+		kubeClient := mocks.KubeClient{}
+		kubeClient.OnGetClient().Return(fakeKubeClient)
+		kubeClient.OnGetCache().Return(fakeKubeCache)
+
+		resourceManager := mocks.ResourceManager{}
+		resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)
+
+		tCtx := getMockTaskExecutionContext(ctx, 0)
+		tCtx.OnResourceManager().Return(&resourceManager)
+
+		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
+		for i:=0; i<subtaskCount; i++ {
+			detailed.SetItem(i, bitarray.Item(core.PhaseRetryableFailure)) // set all tasks to core.PhaseRetryableFailure
+		}
+
+		retryAttemptsArray, err := bitarray.NewCompactArray(uint(subtaskCount), bitarray.Item(1))
+		assert.NoError(t, err)
+
+		currentState := &arrayCore.State{
+			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
+			ExecutionArraySize:   subtaskCount,
+			OriginalArraySize:    int64(subtaskCount),
+			OriginalMinSuccesses: int64(subtaskCount),
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: detailed,
+			},
+			IndexesToCache: arrayCore.InvertBitSet(bitarray.NewBitSet(uint(subtaskCount)), uint(subtaskCount)), // set all tasks to be cached
+			RetryAttempts:  retryAttemptsArray,
+		}
+
+		// execute
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
+
+		// validate results
+		assert.Nil(t, err)
+		p, _ := newState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+		resourceManager.AssertNumberOfCalls(t, "AllocateResource", subtaskCount)
+		for i, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
+			assert.Equal(t, core.PhaseRunning, core.Phases[subtaskPhaseIndex])
+			assert.Equal(t, bitarray.Item(1), newState.RetryAttempts.GetItem(i))
+		}
+	})
+
+	t.Run("RunningLogLinksAndSubtaskIDs", func(t *testing.T) {
+		// initialize metadata
 		config := Config{
 			MaxArrayJobSize:      100,
 			MaxErrorStringLength: 200,
@@ -162,25 +353,47 @@ func TestCheckSubTasksState(t *testing.T) {
 					KubernetesTemplateURI: "k8s/log/{{.namespace}}/{{.podName}}/pod?namespace={{.namespace}}",
 				}},
 		}
-		cacheIndexes := bitarray.NewBitSet(5)
-		cacheIndexes.Set(0)
-		cacheIndexes.Set(1)
-		cacheIndexes.Set(2)
-		cacheIndexes.Set(3)
-		cacheIndexes.Set(4)
 
-		newState, logLinks, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		kubeClient := mocks.KubeClient{}
+		kubeClient.OnGetClient().Return(fakeKubeClient)
+		kubeClient.OnGetCache().Return(fakeKubeCache)
+
+		resourceManager := mocks.ResourceManager{}
+		resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusExhausted, nil)
+
+		tCtx := getMockTaskExecutionContext(ctx, 0)
+		tCtx.OnResourceManager().Return(&resourceManager)
+
+		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
+		for i:=0; i<subtaskCount; i++ {
+			detailed.SetItem(i, bitarray.Item(core.PhaseRunning)) // set all tasks to core.PhaseRunning
+		}
+
+		currentState := &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
-			ExecutionArraySize:   5,
-			OriginalArraySize:    10,
-			OriginalMinSuccesses: 5,
-			IndexesToCache:       cacheIndexes,
-		})
+			ExecutionArraySize:   subtaskCount,
+			OriginalArraySize:    int64(subtaskCount),
+			OriginalMinSuccesses: int64(subtaskCount),
+			ArrayStatus: arraystatus.ArrayStatus{
+				Detailed: detailed,
+			},
+			IndexesToCache: arrayCore.InvertBitSet(bitarray.NewBitSet(uint(subtaskCount)), uint(subtaskCount)), // set all tasks to be cached
+		}
 
+		// execute
+		newState, logLinks, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
+
+		// validate results
 		assert.Nil(t, err)
+		p, _ := newState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+
+		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 0)
+		resourceManager.AssertNumberOfCalls(t, "ReleaseResource", 0)
+
 		assert.NotEmpty(t, logLinks)
-		assert.Equal(t, 10, len(logLinks))
-		for i := 0; i < 10; i = i + 2 {
+		assert.Equal(t, subtaskCount * 2, len(logLinks))
+		for i := 0; i < subtaskCount * 2; i = i + 2 {
 			assert.Equal(t, fmt.Sprintf("Kubernetes Logs #0-%d (PhaseRunning)", i/2), logLinks[i].Name)
 			assert.Equal(t, fmt.Sprintf("k8s/log/a-n-b/notfound-%d/pod?namespace=a-n-b", i/2), logLinks[i].Uri)
 
@@ -188,251 +401,102 @@ func TestCheckSubTasksState(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.notfound-%d;streamFilter=typeLogStreamPrefix", i/2), logLinks[i+1].Uri)
 		}
 
-		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 0)
-		testSubTaskIDs(t, subTaskIDs)
+		for i := 0; i < subtaskCount; i++ {
+			assert.Equal(t, fmt.Sprintf("notfound-%d", i), *subTaskIDs[i])
+		}
 	})
 
-	t.Run("Resource exhausted", func(t *testing.T) {
-		config := Config{
-			MaxArrayJobSize: 100,
-			ResourceConfig: ResourceConfig{
-				PrimaryLabel: "p",
-				Limit:        10,
-			},
+	t.Run("RunningRetryableFailures", func(t *testing.T) {
+		// initialize metadata
+		kubeClient := mocks.KubeClient{}
+		kubeClient.OnGetClient().Return(failureFakeKubeClient)
+		kubeClient.OnGetCache().Return(failureFakeKubeCache)
+
+		resourceManager := mocks.ResourceManager{}
+		resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		tCtx := getMockTaskExecutionContext(ctx, 0)
+		tCtx.OnResourceManager().Return(&resourceManager)
+
+		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
+		for i:=0; i<subtaskCount; i++ {
+			detailed.SetItem(i, bitarray.Item(core.PhaseRunning)) // set all tasks to core.PhaseRunning
 		}
 
-		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(0))
+		retryAttemptsArray, err := bitarray.NewCompactArray(uint(subtaskCount), bitarray.Item(1))
 		assert.NoError(t, err)
 
-		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		currentState := &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
-			ExecutionArraySize:   5,
-			OriginalArraySize:    10,
-			OriginalMinSuccesses: 5,
+			ExecutionArraySize:   subtaskCount,
+			OriginalArraySize:    int64(subtaskCount),
+			OriginalMinSuccesses: int64(subtaskCount),
 			ArrayStatus: arraystatus.ArrayStatus{
-				Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
+				Detailed: detailed,
 			},
-			IndexesToCache: bitarray.NewBitSet(5),
+			IndexesToCache: arrayCore.InvertBitSet(bitarray.NewBitSet(uint(subtaskCount)), uint(subtaskCount)), // set all tasks to be cached
 			RetryAttempts:  retryAttemptsArray,
-		})
-
-		assert.Nil(t, err)
-		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseWaitingForResources.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 5)
-		assert.Empty(t, subTaskIDs, "subtask ids are only populated when monitor is called for a successfully launched task")
-	})
-
-	t.Run("RetryableSubtaskFailure", func(t *testing.T) {
-		failureIndex := 2
-
-		config := Config{
-			MaxArrayJobSize:      100,
-			MaxErrorStringLength: 200,
 		}
 
-		detailed := arrayCore.NewPhasesCompactArray(uint(5))
-		detailed.SetItem(failureIndex, bitarray.Item(core.PhaseRetryableFailure))
+		// execute
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
 
-		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(1))
+		// validate results
+		assert.Nil(t, err)
+		p, _ := newState.GetPhase()
+		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+		resourceManager.AssertNumberOfCalls(t, "ReleaseResource", subtaskCount)
+		for _, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
+			assert.Equal(t, core.PhaseRetryableFailure, core.Phases[subtaskPhaseIndex])
+		}
+	})
+
+	t.Run("RunningPermanentFailures", func(t *testing.T) {
+		// initialize metadata
+		kubeClient := mocks.KubeClient{}
+		kubeClient.OnGetClient().Return(failureFakeKubeClient)
+		kubeClient.OnGetCache().Return(failureFakeKubeCache)
+
+		resourceManager := mocks.ResourceManager{}
+		resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		tCtx := getMockTaskExecutionContext(ctx, 0)
+		tCtx.OnResourceManager().Return(&resourceManager)
+
+		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
+		for i:=0; i<subtaskCount; i++ {
+			detailed.SetItem(i, bitarray.Item(core.PhaseRunning)) // set all tasks to core.PhaseRunning
+		}
+
+		retryAttemptsArray, err := bitarray.NewCompactArray(uint(subtaskCount), bitarray.Item(1))
 		assert.NoError(t, err)
 
-		cacheIndexes := bitarray.NewBitSet(5)
-		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
+		for i:=0; i<subtaskCount; i++ {
+			retryAttemptsArray.SetItem(i, bitarray.Item(1))
+		}
+
+		currentState := &arrayCore.State{
 			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
-			ExecutionArraySize:   5,
-			OriginalArraySize:    10,
-			OriginalMinSuccesses: 5,
-			IndexesToCache:       cacheIndexes,
+			ExecutionArraySize:   subtaskCount,
+			OriginalArraySize:    int64(subtaskCount),
+			OriginalMinSuccesses: int64(subtaskCount),
 			ArrayStatus: arraystatus.ArrayStatus{
 				Detailed: detailed,
 			},
-			RetryAttempts: retryAttemptsArray,
-		})
-
-		assert.Nil(t, err)
-
-		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
-		assert.Equal(t, core.PhaseUndefined, core.Phases[newState.ArrayStatus.Detailed.GetItem(failureIndex)])
-		assert.Equal(t, uint64(1), newState.RetryAttempts.GetItem(failureIndex))
-	})
-
-	t.Run("PermanentSubtaskFailure", func(t *testing.T) {
-		failureIndex := 2
-
-		config := Config{
-			MaxArrayJobSize:      100,
-			MaxErrorStringLength: 200,
+			IndexesToCache: arrayCore.InvertBitSet(bitarray.NewBitSet(uint(subtaskCount)), uint(subtaskCount)), // set all tasks to be cached
+			RetryAttempts:  retryAttemptsArray,
 		}
 
-		detailed := arrayCore.NewPhasesCompactArray(uint(5))
-		detailed.SetItem(failureIndex, bitarray.Item(core.PhaseRetryableFailure))
+		// execute
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
 
-		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(1))
-		assert.NoError(t, err)
-		retryAttemptsArray.SetItem(failureIndex, bitarray.Item(1))
-
-		cacheIndexes := bitarray.NewBitSet(5)
-		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
-			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
-			ExecutionArraySize:   5,
-			OriginalArraySize:    10,
-			OriginalMinSuccesses: 5,
-			IndexesToCache:       cacheIndexes,
-			ArrayStatus: arraystatus.ArrayStatus{
-				Detailed: detailed,
-			},
-			RetryAttempts: retryAttemptsArray,
-		})
-
-		assert.Nil(t, err)
-
-		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
-		assert.Equal(t, core.PhasePermanentFailure, core.Phases[newState.ArrayStatus.Detailed.GetItem(failureIndex)])
-		assert.Equal(t, uint64(1), newState.RetryAttempts.GetItem(failureIndex))
-	})
-}
-
-func TestCheckSubTasksStateParallelism(t *testing.T) {
-	subtaskCount := 5
-
-	for i := 1; i <= subtaskCount; i++ {
-		t.Run(fmt.Sprintf("Parallelism-%d", i), func(t *testing.T) {
-			// construct task context
-			ctx := context.Background()
-
-			tCtx := getMockTaskExecutionContext(ctx, i)
-			kubeClient := mocks.KubeClient{}
-			kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
-			kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
-
-			resourceManager := mocks.ResourceManager{}
-			resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusExhausted, nil)
-			tCtx.OnResourceManager().Return(&resourceManager)
-
-			// evaluate one round of subtask launch and monitor
-			config := Config{
-				MaxArrayJobSize: 100,
-			}
-
-			retryAttemptsArray, err := bitarray.NewCompactArray(uint(subtaskCount), bitarray.Item(0))
-			assert.NoError(t, err)
-
-			cacheIndexes := bitarray.NewBitSet(uint(subtaskCount))
-			newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
-				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
-				ExecutionArraySize:   subtaskCount,
-				OriginalArraySize:    int64(subtaskCount * 2),
-				OriginalMinSuccesses: int64(subtaskCount * 2),
-				IndexesToCache:       cacheIndexes,
-				ArrayStatus: arraystatus.ArrayStatus{
-					Detailed: arrayCore.NewPhasesCompactArray(uint(subtaskCount)),
-				},
-				RetryAttempts: retryAttemptsArray,
-			})
-
-			assert.Nil(t, err)
-			p, _ := newState.GetPhase()
-			assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
-
-			// validate only i subtasks were processed
-			executed := 0
-			for _, existingPhaseIdx := range newState.GetArrayStatus().Detailed.GetItems() {
-				if core.Phases[existingPhaseIdx] != core.PhaseUndefined {
-					executed++
-				}
-			}
-
-			assert.Equal(t, i, executed)
-		})
-	}
-}
-
-func TestCheckSubTasksStateResourceGranted(t *testing.T) {
-	ctx := context.Background()
-
-	tCtx := getMockTaskExecutionContext(ctx, 0)
-	kubeClient := mocks.KubeClient{}
-	kubeClient.OnGetClient().Return(mocks.NewFakeKubeClient())
-	kubeClient.OnGetCache().Return(mocks.NewFakeKubeCache())
-
-	resourceManager := mocks.ResourceManager{}
-
-	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(core.AllocationStatusGranted, nil)
-	resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	tCtx.OnResourceManager().Return(&resourceManager)
-
-	t.Run("Resource granted", func(t *testing.T) {
-		config := Config{
-			MaxArrayJobSize: 100,
-			ResourceConfig: ResourceConfig{
-				PrimaryLabel: "p",
-				Limit:        10,
-			},
-		}
-
-		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(0))
-		assert.NoError(t, err)
-
-		cacheIndexes := bitarray.NewBitSet(5)
-		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
-			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
-			ExecutionArraySize:   5,
-			OriginalArraySize:    10,
-			OriginalMinSuccesses: 5,
-			IndexesToCache:       cacheIndexes,
-			ArrayStatus: arraystatus.ArrayStatus{
-				Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
-			},
-			RetryAttempts: retryAttemptsArray,
-		})
-
+		// validate results
 		assert.Nil(t, err)
 		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "AllocateResource", 5)
-		testSubTaskIDs(t, subTaskIDs)
-	})
-
-	t.Run("All tasks success", func(t *testing.T) {
-		config := Config{
-			MaxArrayJobSize: 100,
-			ResourceConfig: ResourceConfig{
-				PrimaryLabel: "p",
-				Limit:        10,
-			},
+		assert.Equal(t, arrayCore.PhaseWriteToDiscoveryThenFail.String(), p.String())
+		resourceManager.AssertNumberOfCalls(t, "ReleaseResource", subtaskCount)
+		for _, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
+			assert.Equal(t, core.PhasePermanentFailure, core.Phases[subtaskPhaseIndex])
 		}
-
-		arrayStatus := &arraystatus.ArrayStatus{
-			Summary:  arraystatus.ArraySummary{},
-			Detailed: arrayCore.NewPhasesCompactArray(uint(5)),
-		}
-		for childIdx := range arrayStatus.Detailed.GetItems() {
-			arrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseSuccess))
-
-		}
-		cacheIndexes := bitarray.NewBitSet(5)
-		retryAttemptsArray, err := bitarray.NewCompactArray(5, bitarray.Item(0))
-		assert.NoError(t, err)
-
-		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", &arrayCore.State{
-			CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
-			ExecutionArraySize:   5,
-			OriginalArraySize:    10,
-			OriginalMinSuccesses: 5,
-			ArrayStatus:          *arrayStatus,
-			IndexesToCache:       cacheIndexes,
-			RetryAttempts:        retryAttemptsArray,
-		})
-
-		assert.Nil(t, err)
-		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseWriteToDiscovery.String(), p.String())
-		resourceManager.AssertNumberOfCalls(t, "ReleaseResource", 5)
-		assert.Empty(t, subTaskIDs, "terminal phases don't need to collect subtask IDs")
 	})
 }

@@ -132,13 +132,13 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			retryAttempt++
 			newState.RetryAttempts.SetItem(childIdx, retryAttempt)
 		} else if existingPhase.IsTerminal() {
+			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(existingPhase))
 			continue
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
-		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, originalIdx, retryAttempt)
+		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
 		podName := stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-		logger.Infof(ctx, "PODNAME: %v", podName)
 
 		if existingPhase == core.PhaseUndefined || existingPhase == core.PhaseWaitingForResources || existingPhase == core.PhaseRetryableFailure {
 			// attempt to allocateResource
@@ -213,6 +213,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
 				return currentState, logLinks, subTaskIDs, err
 			}
+
+			// TODO - finalize and delete resource?
 		}
 
 		// validate parallelism

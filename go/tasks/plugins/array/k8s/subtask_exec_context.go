@@ -20,7 +20,6 @@ type SubTaskExecutionContext struct {
 	arrayInputReader io.InputReader
 	metadataOverride pluginsCore.TaskExecutionMetadata
 	originalIndex    int
-	retryAttempt     uint64
 	subtaskReader    SubTaskReader
 }
 
@@ -37,7 +36,7 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 	return s.subtaskReader
 }
 
-func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
+func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate, index, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
 	arrayInputReader := array.GetInputReader(tCtx, taskTemplate) 
 	//metadataOverride := tCtx.TaskExecutionMetadata()
 	taskExecutionMetadata := tCtx.TaskExecutionMetadata()
@@ -46,7 +45,7 @@ func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTempl
 		taskExecutionMetadata,
 		SubTaskExecutionID{
 			taskExecutionID,
-			originalIndex,
+			index,
 			taskExecutionID.GetGeneratedName(),
 			retryAttempt,
 		},
@@ -72,7 +71,6 @@ func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTempl
 		arrayInputReader:     arrayInputReader,
 		metadataOverride:     metadataOverride,
 		originalIndex:        originalIndex,
-		retryAttempt:         retryAttempt,
 		subtaskReader:        subtaskReader,
 	}
 }
@@ -88,13 +86,13 @@ func (s SubTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) {
 
 type SubTaskExecutionID struct {
 	pluginsCore.TaskExecutionID
-	originalIndex   int
+	index           int
 	parentName      string
 	retryAttempt    uint64
 }
 
 func (s SubTaskExecutionID) GetGeneratedName() string {
-	indexStr := strconv.Itoa(s.originalIndex)
+	indexStr := strconv.Itoa(s.index)
 
 	// If the retryAttempt is 0 we do not include it in the pod name. The gives us backwards
 	// compatibility in the ability to dynamically transition running map tasks to use subtask retries.
@@ -107,7 +105,7 @@ func (s SubTaskExecutionID) GetGeneratedName() string {
 }
 
 func (s SubTaskExecutionID) GetLogSuffix() string {
-	return fmt.Sprintf(" #%d-%d", s.retryAttempt, s.originalIndex)
+	return fmt.Sprintf(" #%d-%d", s.retryAttempt, s.index)
 
 	// TODO - I don't think this is correct - 
 	// should be originalIndex-retryAttempt [however](https://github.com/flyteorg/flyteplugins/pull/186#discussion_r666569825)

@@ -18,6 +18,8 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+
+	//"github.com/flyteorg/flytestdlib/logger" // TODO hamersaw - remove
 )
 
 const (
@@ -69,7 +71,7 @@ func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, pod *v1.Pod) {
 	if len(cfg.DefaultScheduler) > 0 {
 		pod.Spec.SchedulerName = cfg.DefaultScheduler
 	}
-	
+
 	// TODO - should these be appends? or left as overrides?
 	if len(cfg.NodeSelector) != 0 {
 		pod.Spec.NodeSelector = cfg.NodeSelector
@@ -130,7 +132,7 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 	addMetadata(stCtx, config, pod)
 
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
-	nsName := k8stypes.NamespacedName{Namespace: pod.GetNamespace(), Name: pod.GetName()}
+	nsName := k8stypes.NamespacedName{Name: pod.GetName(), Namespace: pod.GetNamespace()}
 	if err := kubeClient.GetClient().Get(ctx, nsName, pod); err != nil {
 		if isK8sObjectNotExists(err) {
 			// This happens sometimes because a node gets removed and K8s deletes the pod. This will result in a
@@ -141,7 +143,7 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 
 			// TODO - validate?
 			// return pluginsCore.PhaseInfoUndefined, err?
-			return pluginsCore.PhaseInfoSystemRetryableFailure("ResourceDeletedExternally", failureReason, nil), err
+			return pluginsCore.PhaseInfoSystemRetryableFailure("ResourceDeletedExternally", failureReason, nil), nil
 		}
 
 		//logger.Warningf(ctx, "Failed to retrieve Resource Details with name: %v. Error: %v", nsName, err)
@@ -161,7 +163,6 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 			log.Name += fmt.Sprintf(" (%s)", phaseInfo.Phase().String())
 		}
 	}
-
 
 	return phaseInfo, err
 }
