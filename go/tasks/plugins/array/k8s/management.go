@@ -22,6 +22,8 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
+// allocateResource attempts to allot resources for the specified parameter with the
+// TaskExecutionContexts ResourceManager.
 func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string) (core.AllocationStatus, error) {
 	if !IsResourceConfigSet(config.ResourceConfig) {
 		return core.AllocationStatusGranted, nil
@@ -41,6 +43,8 @@ func allocateResource(ctx context.Context, tCtx core.TaskExecutionContext, confi
 	return allocationStatus, nil
 }
 
+// deallocateResource attempts to release resources for the specified parameter with the
+// TaskExecutionContexts ResourceManager.
 func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, config *Config, podName string) error {
 	if !IsResourceConfigSet(config.ResourceConfig) {
 		return nil
@@ -56,6 +60,9 @@ func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, con
 	return nil
 }
 
+// LaunchAndCheckSubTasksState iterates over each subtask performing operations to transition them
+// to a terminal state. This may include creating new k8s resources, monitoring exising k8s
+// resources, retrying failed attempts, or declaring a permanent failure among others.
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference, currentState *arrayCore.State) (
 	newState *arrayCore.State, logLinks []*idlCore.TaskLog, subTaskIDs []*string, err error) {
@@ -158,6 +165,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			// create subtask
 			err = launchSubtask(ctx, stCtx, config, kubeClient)
 			if err != nil && !k8serrors.IsAlreadyExists(err) {
+				// TODO check this
 				if k8serrors.IsForbidden(err) {
 					if strings.Contains(err.Error(), "exceeded quota") {
 						// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
@@ -257,6 +265,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	return newState, logLinks, subTaskIDs, nil
 }
 
+// TerminateSubTasks performs operations to gracefully shutdown all subtasks. This may include
+// aborting and finalizing active k8s resources.
 func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, config *Config, currentState *arrayCore.State) error {
 	// TODO - fix
 	/*size := currentState.GetExecutionArraySize()
