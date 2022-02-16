@@ -7,8 +7,8 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
@@ -42,8 +42,9 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 
 // newSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
 func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
-		executionIndex, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
-	arrayInputReader := array.GetInputReader(tCtx, taskTemplate) 
+	executionIndex, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
+
+	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
 	taskExecutionMetadata := tCtx.TaskExecutionMetadata()
 	taskExecutionID := taskExecutionMetadata.GetTaskExecutionID()
 	metadataOverride := SubTaskExecutionMetadata{
@@ -93,9 +94,9 @@ func (s SubTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) {
 // SubTaskExecutionID wraps the core TaskExecutionID to customize the generated pod name
 type SubTaskExecutionID struct {
 	pluginsCore.TaskExecutionID
-	executionIndex  int
-	parentName      string
-	retryAttempt    uint64
+	executionIndex int
+	parentName     string
+	retryAttempt   uint64
 }
 
 // GetGeneratedName overrides the base TaskExecutionID to append the subtask index and retryAttempt

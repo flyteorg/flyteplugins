@@ -126,30 +126,30 @@ func TestCheckSubTasksState(t *testing.T) {
 	fakeKubeClient := mocks.NewFakeKubeClient()
 	fakeKubeCache := mocks.NewFakeKubeCache()
 
-    for i:=0; i<subtaskCount; i++ {
-        pod := flytek8s.BuildIdentityPod()
-        pod.SetName(fmt.Sprintf("notfound-%d", i))
-        pod.SetNamespace("a-n-b")
+	for i := 0; i < subtaskCount; i++ {
+		pod := flytek8s.BuildIdentityPod()
+		pod.SetName(fmt.Sprintf("notfound-%d", i))
+		pod.SetNamespace("a-n-b")
 		pod.Spec.Containers = append(pod.Spec.Containers, v1.Container{Name: "foo"})
 
-        pod.Status.Phase = v1.PodRunning
-        _ = fakeKubeClient.Create(ctx, pod)
+		pod.Status.Phase = v1.PodRunning
+		_ = fakeKubeClient.Create(ctx, pod)
 		_ = fakeKubeCache.Create(ctx, pod)
-    }
+	}
 
 	failureFakeKubeClient := mocks.NewFakeKubeClient()
 	failureFakeKubeCache := mocks.NewFakeKubeCache()
 
-    for i:=0; i<subtaskCount; i++ {
-        pod := flytek8s.BuildIdentityPod()
-        pod.SetName(fmt.Sprintf("notfound-%d", i))
-        pod.SetNamespace("a-n-b")
+	for i := 0; i < subtaskCount; i++ {
+		pod := flytek8s.BuildIdentityPod()
+		pod.SetName(fmt.Sprintf("notfound-%d", i))
+		pod.SetNamespace("a-n-b")
 		pod.Spec.Containers = append(pod.Spec.Containers, v1.Container{Name: "foo"})
 
-        pod.Status.Phase = v1.PodFailed
-        _ = failureFakeKubeClient.Create(ctx, pod)
+		pod.Status.Phase = v1.PodFailed
+		_ = failureFakeKubeClient.Create(ctx, pod)
 		_ = failureFakeKubeCache.Create(ctx, pod)
-    }
+	}
 
 	t.Run("Launch", func(t *testing.T) {
 		// initialize metadata
@@ -281,6 +281,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		for _, subtaskPhaseIndex := range lastState.GetArrayStatus().Detailed.GetItems() {
 			assert.Equal(t, core.PhaseRunning, core.Phases[subtaskPhaseIndex])
 		}
+		assert.Equal(t, subtaskCount, len(subTaskIDs))
 	})
 
 	t.Run("LaunchRetryableFailures", func(t *testing.T) {
@@ -296,7 +297,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		tCtx.OnResourceManager().Return(&resourceManager)
 
 		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
-		for i:=0; i<subtaskCount; i++ {
+		for i := 0; i < subtaskCount; i++ {
 			detailed.SetItem(i, bitarray.Item(core.PhaseRetryableFailure)) // set all tasks to core.PhaseRetryableFailure
 		}
 
@@ -365,7 +366,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		tCtx.OnResourceManager().Return(&resourceManager)
 
 		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
-		for i:=0; i<subtaskCount; i++ {
+		for i := 0; i < subtaskCount; i++ {
 			detailed.SetItem(i, bitarray.Item(core.PhaseRunning)) // set all tasks to core.PhaseRunning
 		}
 
@@ -392,8 +393,8 @@ func TestCheckSubTasksState(t *testing.T) {
 		resourceManager.AssertNumberOfCalls(t, "ReleaseResource", 0)
 
 		assert.NotEmpty(t, logLinks)
-		assert.Equal(t, subtaskCount * 2, len(logLinks))
-		for i := 0; i < subtaskCount * 2; i = i + 2 {
+		assert.Equal(t, subtaskCount*2, len(logLinks))
+		for i := 0; i < subtaskCount*2; i = i + 2 {
 			assert.Equal(t, fmt.Sprintf("Kubernetes Logs #0-%d (PhaseRunning)", i/2), logLinks[i].Name)
 			assert.Equal(t, fmt.Sprintf("k8s/log/a-n-b/notfound-%d/pod?namespace=a-n-b", i/2), logLinks[i].Uri)
 
@@ -419,7 +420,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		tCtx.OnResourceManager().Return(&resourceManager)
 
 		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
-		for i:=0; i<subtaskCount; i++ {
+		for i := 0; i < subtaskCount; i++ {
 			detailed.SetItem(i, bitarray.Item(core.PhaseRunning)) // set all tasks to core.PhaseRunning
 		}
 
@@ -464,14 +465,14 @@ func TestCheckSubTasksState(t *testing.T) {
 		tCtx.OnResourceManager().Return(&resourceManager)
 
 		detailed := arrayCore.NewPhasesCompactArray(uint(subtaskCount))
-		for i:=0; i<subtaskCount; i++ {
+		for i := 0; i < subtaskCount; i++ {
 			detailed.SetItem(i, bitarray.Item(core.PhaseRunning)) // set all tasks to core.PhaseRunning
 		}
 
 		retryAttemptsArray, err := bitarray.NewCompactArray(uint(subtaskCount), bitarray.Item(1))
 		assert.NoError(t, err)
 
-		for i:=0; i<subtaskCount; i++ {
+		for i := 0; i < subtaskCount; i++ {
 			retryAttemptsArray.SetItem(i, bitarray.Item(1))
 		}
 

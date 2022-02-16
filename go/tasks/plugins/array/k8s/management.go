@@ -94,7 +94,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		// Initialize subtask retryAttempts to 0 so that, in tandem with the podName logic, we
-		// maintain backwards compatability.
+		// maintain backwards compatibility.
 		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
 			retryAttemptsArray.SetItem(i, 0)
 		}
@@ -156,7 +156,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			}
 
 			// create subtask
-			launchSubtask(ctx, stCtx, config, kubeClient)
+			err = launchSubtask(ctx, stCtx, config, kubeClient)
 			if err != nil && !k8serrors.IsAlreadyExists(err) {
 				if k8serrors.IsForbidden(err) {
 					if strings.Contains(err.Error(), "exceeded quota") {

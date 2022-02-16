@@ -26,7 +26,7 @@ const (
 var (
 	DefaultPodPlugin = plugin{
 		defaultPodBuilder: containerPodBuilder{},
-		podBuilders:       map[string]podBuilder{
+		podBuilders: map[string]podBuilder{
 			SidecarTaskType: sidecarPodBuilder{},
 		},
 	}

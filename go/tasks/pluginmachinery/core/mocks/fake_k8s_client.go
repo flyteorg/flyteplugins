@@ -92,7 +92,7 @@ func (m *FakeKubeClient) Create(ctx context.Context, obj client.Object, opts ...
 	// if obj is a *v1.Pod then append a ContainerStatus for each Container
 	pod, ok := obj.(*v1.Pod)
 	if ok {
-		for i, _ := range pod.Spec.Containers {
+		for i := range pod.Spec.Containers {
 			if len(pod.Status.ContainerStatuses) > i {
 				continue
 			}

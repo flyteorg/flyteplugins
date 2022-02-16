@@ -18,8 +18,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-
-	//"github.com/flyteorg/flytestdlib/logger" // TODO hamersaw - remove
 )
 
 const (
@@ -81,10 +79,10 @@ func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, pod *v1.Pod) {
 	}
 }
 
-func abortSubtask() error {
+/*func abortSubtask() error {
 	// TODO
 	return nil
-}
+}*/
 
 func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient) error {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
@@ -117,10 +115,10 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *C
 	return kubeClient.GetClient().Create(ctx, pod)
 }
 
-func finalizeSubtask() error {
+/*func finalizeSubtask() error {
 	// TODO
 	return nil
-}
+}*/
 
 func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
