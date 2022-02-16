@@ -3,7 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"strings"
+	"time"
 
 	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
@@ -18,8 +18,6 @@ import (
 	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/storage"
-
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // allocateResource attempts to allot resources for the specified parameter with the
@@ -61,7 +59,7 @@ func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, con
 }
 
 // LaunchAndCheckSubTasksState iterates over each subtask performing operations to transition them
-// to a terminal state. This may include creating new k8s resources, monitoring exising k8s
+// to a terminal state. This may include creating new k8s resources, monitoring existing k8s
 // resources, retrying failed attempts, or declaring a permanent failure among others.
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference, currentState *arrayCore.State) (
@@ -147,6 +145,10 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
 		podName := stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
+		// depending on the existing subtask phase we either a launch new k8s resource or monitor
+		// an existing instance
+		var phaseInfo core.PhaseInfo
+		var perr error
 		if existingPhase == core.PhaseUndefined || existingPhase == core.PhaseWaitingForResources || existingPhase == core.PhaseRetryableFailure {
 			// attempt to allocateResource
 			allocationStatus, err := allocateResource(ctx, stCtx, config, podName)
@@ -158,35 +160,17 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 			logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
 			if allocationStatus != core.AllocationStatusGranted {
-				newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhaseWaitingForResources))
-				continue
+				phaseInfo = core.PhaseInfoWaitingForResourcesInfo(time.Now(), core.DefaultPhaseVersion, "Exceeded ResourceManager quota", nil)
+			} else {
+				phaseInfo, perr = launchSubtask(ctx, stCtx, config, kubeClient)
 			}
-
-			// create subtask
-			err = launchSubtask(ctx, stCtx, config, kubeClient)
-			if err != nil && !k8serrors.IsAlreadyExists(err) {
-				// TODO check this
-				if k8serrors.IsForbidden(err) {
-					if strings.Contains(err.Error(), "exceeded quota") {
-						// TODO: Quota errors are retried forever, it would be good to have support for backoff strategy.
-						logger.Infof(ctx, "Failed to launch  job, resource quota exceeded. Err: %v", err)
-						newState = newState.SetPhase(arrayCore.PhaseWaitingForResources, 0).SetReason("Not enough resources to launch job")
-					} else {
-						newState = newState.SetPhase(arrayCore.PhaseRetryableFailure, 0).SetReason("Failed to launch job.")
-					}
-
-					newState.SetReason(err.Error())
-					return newState, logLinks, subTaskIDs, nil
-				}
-
-				return currentState, logLinks, subTaskIDs, err
-			}
+		} else {
+			phaseInfo, perr = getSubtaskPhaseInfo(ctx, stCtx, config, kubeClient, logPlugin)
 		}
 
-		// monitor pod
-		phaseInfo, err := getSubtaskPhaseInfo(ctx, stCtx, config, kubeClient, logPlugin)
-		if err != nil {
-			return currentState, logLinks, subTaskIDs, err
+		// validate and process phaseInfo and perr
+		if perr != nil {
+			return currentState, logLinks, subTaskIDs, perr
 		}
 
 		if phaseInfo.Err() != nil {

@@ -183,7 +183,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", subtaskCount)
 		for _, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
-			assert.Equal(t, core.PhaseRunning, core.Phases[subtaskPhaseIndex])
+			assert.Equal(t, core.PhaseQueued, core.Phases[subtaskPhaseIndex])
 		}
 	})
 
@@ -254,7 +254,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		}
 
 		// execute
-		newState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
+		newState, _, _, err := LaunchAndCheckSubTasksState(ctx, tCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", currentState)
 
 		// validate results
 		assert.Nil(t, err)
@@ -264,7 +264,6 @@ func TestCheckSubTasksState(t *testing.T) {
 		for _, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
 			assert.Equal(t, core.PhaseWaitingForResources, core.Phases[subtaskPhaseIndex])
 		}
-		assert.Empty(t, subTaskIDs, "subtask ids are only populated when monitor is called for a successfully launched task")
 
 		// execute again - with resources available and validate results
 		nresourceManager := mocks.ResourceManager{}
@@ -273,15 +272,14 @@ func TestCheckSubTasksState(t *testing.T) {
 		ntCtx := getMockTaskExecutionContext(ctx, 0)
 		ntCtx.OnResourceManager().Return(&nresourceManager)
 
-		lastState, _, subTaskIDs, err := LaunchAndCheckSubTasksState(ctx, ntCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", newState)
+		lastState, _, _, err := LaunchAndCheckSubTasksState(ctx, ntCtx, &kubeClient, &config, nil, "/prefix/", "/prefix-sand/", newState)
 		assert.Nil(t, err)
 		np, _ := lastState.GetPhase()
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), np.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", subtaskCount)
 		for _, subtaskPhaseIndex := range lastState.GetArrayStatus().Detailed.GetItems() {
-			assert.Equal(t, core.PhaseRunning, core.Phases[subtaskPhaseIndex])
+			assert.Equal(t, core.PhaseQueued, core.Phases[subtaskPhaseIndex])
 		}
-		assert.Equal(t, subtaskCount, len(subTaskIDs))
 	})
 
 	t.Run("LaunchRetryableFailures", func(t *testing.T) {
@@ -325,7 +323,7 @@ func TestCheckSubTasksState(t *testing.T) {
 		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
 		resourceManager.AssertNumberOfCalls(t, "AllocateResource", subtaskCount)
 		for i, subtaskPhaseIndex := range newState.GetArrayStatus().Detailed.GetItems() {
-			assert.Equal(t, core.PhaseRunning, core.Phases[subtaskPhaseIndex])
+			assert.Equal(t, core.PhaseQueued, core.Phases[subtaskPhaseIndex])
 			assert.Equal(t, bitarray.Item(1), newState.RetryAttempts.GetItem(i))
 		}
 	})

@@ -5,14 +5,18 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
 
-	errors2 "github.com/flyteorg/flytestdlib/errors"
+	stdErrors "github.com/flyteorg/flytestdlib/errors"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,11 +25,11 @@ import (
 )
 
 const (
-	ErrBuildPodTemplate       errors2.ErrorCode = "POD_TEMPLATE_FAILED"
-	ErrReplaceCmdTemplate     errors2.ErrorCode = "CMD_TEMPLATE_FAILED"
-	FlyteK8sArrayIndexVarName string            = "FLYTE_K8S_ARRAY_INDEX"
-	finalizer                 string            = "flyte/array"
-	JobIndexVarName           string            = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
+	ErrBuildPodTemplate       stdErrors.ErrorCode = "POD_TEMPLATE_FAILED"
+	ErrReplaceCmdTemplate     stdErrors.ErrorCode = "CMD_TEMPLATE_FAILED"
+	FlyteK8sArrayIndexVarName string              = "FLYTE_K8S_ARRAY_INDEX"
+	finalizer                 string              = "flyte/array"
+	JobIndexVarName           string              = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 )
 
 var (
@@ -84,23 +88,23 @@ func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, pod *v1.Pod) {
 	return nil
 }*/
 
-func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient) error {
+func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
 	pod := o.(*v1.Pod)
 	if err != nil {
-		return err
+		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	addMetadata(stCtx, config, pod)
 
 	// inject maptask specific container environment variables
 	if len(pod.Spec.Containers) == 0 {
-		return errors2.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
+		return pluginsCore.PhaseInfoUndefined, stdErrors.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
 	}
 
 	containerIndex, err := getTaskContainerIndex(pod)
 	if err != nil {
-		return err
+		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, v1.EnvVar{
@@ -112,7 +116,28 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *C
 
 	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, arrayJobEnvVars...)
 
-	return kubeClient.GetClient().Create(ctx, pod)
+	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", pod.GetObjectKind().GroupVersionKind(), pod.GetNamespace(), pod.GetName())
+	err = kubeClient.GetClient().Create(ctx, pod)
+	if err != nil && !k8serrors.IsAlreadyExists(err) {
+		if k8serrors.IsForbidden(err) {
+			if strings.Contains(err.Error(), "exceeded quota") {
+				logger.Warnf(ctx, "Failed to launch job, resource quota exceeded and the operation is not guarded by back-off. err: %v", err)
+				return pluginsCore.PhaseInfoWaitingForResourcesInfo(time.Now(), pluginsCore.DefaultPhaseVersion, fmt.Sprintf("Exceeded resourcequota: %s", err.Error()), nil), nil
+			}
+			return pluginsCore.PhaseInfoRetryableFailure("RuntimeFailure", err.Error(), nil), nil
+		} else if k8serrors.IsBadRequest(err) || k8serrors.IsInvalid(err) {
+			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", executorName, err)
+			// return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("BadTaskFormat", err.Error(), nil)), nil
+		} else if k8serrors.IsRequestEntityTooLargeError(err) {
+			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", executorName, err)
+			return pluginsCore.PhaseInfoFailure("EntityTooLarge", err.Error(), nil), nil
+		}
+		reason := k8serrors.ReasonForError(err)
+		logger.Errorf(ctx, "Failed to launch job, system error. err: %v", err)
+		return pluginsCore.PhaseInfoUndefined, errors.Wrapf(stdErrors.ErrorCode(reason), err, "failed to create resource")
+	}
+
+	return pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "task submitted to K8s"), nil
 }
 
 /*func finalizeSubtask() error {
@@ -123,7 +148,8 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *C
 func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
 	if err != nil {
-		return pluginsCore.PhaseInfoUndefined, err
+		logger.Errorf(ctx, "Failed to build the Resource with name: %v. Error: %v", stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
+		return pluginsCore.PhaseInfoFailure("BadTaskDefinition", fmt.Sprintf("Failed to build resource, caused by: %s", err.Error()), nil), nil
 	}
 
 	pod := o.(*v1.Pod)
@@ -135,23 +161,19 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 		if isK8sObjectNotExists(err) {
 			// This happens sometimes because a node gets removed and K8s deletes the pod. This will result in a
 			// Pod does not exist error. This should be retried using the retry policy
-			//logger.Warningf(ctx, "Failed to find the Resource with name: %v. Error: %v", nsName, err)  // TODO - log
+			logger.Warnf(ctx, "Failed to find the Resource with name: %v. Error: %v", nsName, err)
 			failureReason := fmt.Sprintf("resource not found, name [%s]. reason: %s", nsName.String(), err.Error())
-			//return pluginsCore.DoTransition(pluginsCore.PhaseInfoSystemRetryableFailure("ResourceDeletedExternally", failureReason, nil)), nil
-
-			// TODO - validate?
-			// return pluginsCore.PhaseInfoUndefined, err?
 			return pluginsCore.PhaseInfoSystemRetryableFailure("ResourceDeletedExternally", failureReason, nil), nil
 		}
 
-		//logger.Warningf(ctx, "Failed to retrieve Resource Details with name: %v. Error: %v", nsName, err)
-		// TODO - validate?
+		logger.Warnf(ctx, "Failed to retrieve Resource Details with name: %v. Error: %v", nsName, err)
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	stID, _ := stCtx.TaskExecutionMetadata().GetTaskExecutionID().(SubTaskExecutionID)
 	phaseInfo, err := podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogs(ctx, stCtx, pod, logPlugin, stID.GetLogSuffix())
 	if err != nil {
+		logger.Warnf(ctx, "failed to check status of resource in plugin [%s], with error: %s", executorName, err.Error())
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
@@ -173,7 +195,7 @@ func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 			return 0, nil
 		}
 		// For tasks with a K8sPod task target, they may produce multiple containers but at least one must be the designated primary.
-		return -1, errors2.Errorf(ErrBuildPodTemplate, "Expected a specified primary container key when building an array job with a K8sPod spec target")
+		return -1, stdErrors.Errorf(ErrBuildPodTemplate, "Expected a specified primary container key when building an array job with a K8sPod spec target")
 
 	}
 
@@ -182,7 +204,7 @@ func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 			return idx, nil
 		}
 	}
-	return -1, errors2.Errorf(ErrBuildPodTemplate, "Couldn't find any container matching the primary container key when building an array job with a K8sPod spec target")
+	return -1, stdErrors.Errorf(ErrBuildPodTemplate, "Couldn't find any container matching the primary container key when building an array job with a K8sPod spec target")
 }
 
 func isK8sObjectNotExists(err error) bool {
