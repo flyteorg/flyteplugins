@@ -214,7 +214,7 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 // and Config. These may include removing finalizers and deleting the k8s resource.
 func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) error {
 	errs := stdErrors.ErrorCollection{}
-	var o client.Object
+	var pod *v1.Pod
 	var nsName k8stypes.NamespacedName
 	k8sPluginCfg := config.GetK8sPluginConfig()
 	if k8sPluginCfg.InjectFinalizer || k8sPluginCfg.DeleteResourceOnFinalize {
@@ -225,8 +225,10 @@ func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Co
 			return nil
 		}
 
-		addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), o.(*v1.Pod))
-		nsName = k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
+		pod = o.(*v1.Pod)
+
+		addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), pod)
+		nsName = k8stypes.NamespacedName{Namespace: pod.GetNamespace(), Name: pod.GetName()}
 	}
 
 	// In InjectFinalizer is on, it means we may have added the finalizers when we launched this resource. Attempt to
@@ -235,7 +237,7 @@ func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Co
 	// deleted at this point. Therefore, account for these cases and do not consider them errors.
 	if k8sPluginCfg.InjectFinalizer {
 		// Attempt to get resource from informer cache, if not found, retrieve it from API server.
-		if err := kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
+		if err := kubeClient.GetClient().Get(ctx, nsName, pod); err != nil {
 			if isK8sObjectNotExists(err) {
 				return nil
 			}
@@ -248,7 +250,7 @@ func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Co
 		// This must happen after sending admin event. It's safe against partial failures because if the event failed, we will
 		// simply retry in the next round. If the event succeeded but this failed, we will try again the next round to send
 		// the same event (idempotent) and then come here again...
-		err := clearFinalizers(ctx, o, kubeClient)
+		err := clearFinalizers(ctx, pod, kubeClient)
 		if err != nil {
 			errs.Append(err)
 		}
@@ -257,7 +259,7 @@ func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Co
 	// If we should delete the resource when finalize is called, do a best effort delete.
 	if k8sPluginCfg.DeleteResourceOnFinalize {
 		// Attempt to delete resource, if not found, return success.
-		if err := kubeClient.GetClient().Delete(ctx, o); err != nil {
+		if err := kubeClient.GetClient().Delete(ctx, pod); err != nil {
 			if isK8sObjectNotExists(err) {
 				return errs.ErrorOrDefault()
 			}
