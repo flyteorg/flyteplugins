@@ -22,6 +22,8 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -42,8 +44,9 @@ var (
 	namespaceRegex = regexp.MustCompile("(?i){{.namespace}}(?i)")
 )
 
-func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, pod *v1.Pod) {
-	k8sPluginCfg := config.GetK8sPluginConfig()
+// addMetadata sets k8s pod metadata that is either specifically required by the k8s array plugin
+// or defined in the plugin configuration.
+func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, k8sPluginCfg *config.K8sPluginConfig, pod *v1.Pod) {
 	taskExecutionMetadata := stCtx.TaskExecutionMetadata()
 
 	// Default to parent namespace
@@ -88,14 +91,30 @@ func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, pod *v1.Pod) {
 	return nil
 }*/
 
-func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
+// clearFinalizers removes finalizers (if they exist) from the k8s resource
+func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCore.KubeClient) error {
+	if len(o.GetFinalizers()) > 0 {
+		o.SetFinalizers([]string{})
+		err := kubeClient.GetClient().Update(ctx, o)
+		if err != nil && !isK8sObjectNotExists(err) {
+			logger.Warningf(ctx, "Failed to clear finalizers for Resource with name: %v/%v. Error: %v", o.GetNamespace(), o.GetName(), err)
+			return err
+		}
+	} else {
+		logger.Debugf(ctx, "Finalizers are already empty for Resource with name: %v/%v", o.GetNamespace(), o.GetName())
+	}
+	return nil
+}
+
+// launchSubtask creates a k8s pod defined by the SubTaskExecutionContext and Config.
+func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
 	pod := o.(*v1.Pod)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	addMetadata(stCtx, config, pod)
+	addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), pod)
 
 	// inject maptask specific container environment variables
 	if len(pod.Spec.Containers) == 0 {
@@ -140,12 +159,80 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, config *C
 	return pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "task submitted to K8s"), nil
 }
 
-/*func finalizeSubtask() error {
-	// TODO
-	return nil
-}*/
+// finalizeSubtask performs operations to complete the k8s pod defined by the SubTaskExecutionContext
+// and Config. These may include removing finalizers and deleting the k8s resource.
+func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) error {
+	errs := stdErrors.ErrorCollection{}
+	var o client.Object
+	var nsName k8stypes.NamespacedName
+	k8sPluginCfg := config.GetK8sPluginConfig()
+	if k8sPluginCfg.InjectFinalizer || k8sPluginCfg.DeleteResourceOnFinalize {
+		/*o, err = e.plugin.BuildIdentityResource(ctx, tCtx.TaskExecutionMetadata())
+		if err != nil {
+			// This will recurrent, so we will skip further finalize
+			logger.Errorf(ctx, "Failed to build the Resource with name: %v. Error: %v, when finalizing.", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
+			return nil
+		}
 
-func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, config *Config, kubeClient pluginsCore.KubeClient, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
+		e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())*/
+		o, err := podPlugin.DefaultPodPlugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
+		if err != nil {
+			// This will recurrent, so we will skip further finalize
+			logger.Errorf(ctx, "Failed to build the Resource with name: %v. Error: %v, when finalizing.", stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
+			return nil
+		}
+
+		addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), o.(*v1.Pod))
+		nsName = k8stypes.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
+	}
+
+	// In InjectFinalizer is on, it means we may have added the finalizers when we launched this resource. Attempt to
+	// clear them to allow the object to be deleted/garbage collected. If InjectFinalizer was turned on (through config)
+	// after the resource was created, we will not find any finalizers to clear and the object may have already been
+	// deleted at this point. Therefore, account for these cases and do not consider them errors.
+	if k8sPluginCfg.InjectFinalizer {
+		// Attempt to get resource from informer cache, if not found, retrieve it from API server.
+		if err := kubeClient.GetClient().Get(ctx, nsName, o); err != nil {
+			if isK8sObjectNotExists(err) {
+				return nil
+			}
+			// This happens sometimes because a node gets removed and K8s deletes the pod. This will result in a
+			// Pod does not exist error. This should be retried using the retry policy
+			logger.Warningf(ctx, "Failed in finalizing get Resource with name: %v. Error: %v", nsName, err)
+			return err
+		}
+
+		// This must happen after sending admin event. It's safe against partial failures because if the event failed, we will
+		// simply retry in the next round. If the event succeeded but this failed, we will try again the next round to send
+		// the same event (idempotent) and then come here again...
+		err := clearFinalizers(ctx, o, kubeClient)
+		if err != nil {
+			errs.Append(err)
+		}
+	}
+
+	// If we should delete the resource when finalize is called, do a best effort delete.
+	//if k8sPluginCfg.DeleteResourceOnFinalize && !e.plugin.GetProperties().DisableDeleteResourceOnFinalize {
+	if k8sPluginCfg.DeleteResourceOnFinalize {
+		// Attempt to delete resource, if not found, return success.
+		if err := kubeClient.GetClient().Delete(ctx, o); err != nil {
+			if isK8sObjectNotExists(err) {
+				return errs.ErrorOrDefault()
+			}
+
+			// This happens sometimes because a node gets removed and K8s deletes the pod. This will result in a
+			// Pod does not exist error. This should be retried using the retry policy
+			logger.Warningf(ctx, "Failed in finalizing. Failed to delete Resource with name: %v. Error: %v", nsName, err)
+			errs.Append(fmt.Errorf("finalize: failed to delete resource with name [%v]. Error: %w", nsName, err))
+		}
+	}
+
+	return errs.ErrorOrDefault()
+}
+
+// getSubtaskPhaseInfo returns the PhaseInfo describing an existing k8s resource which is defined
+// by the SubTaskExecutionContext and Config.
+func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient, logPlugin tasklog.Plugin) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
 	if err != nil {
 		logger.Errorf(ctx, "Failed to build the Resource with name: %v. Error: %v", stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
@@ -153,7 +240,7 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 	}
 
 	pod := o.(*v1.Pod)
-	addMetadata(stCtx, config, pod)
+	addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), pod)
 
 	// Attempt to get resource from informer cache, if not found, retrieve it from API server.
 	nsName := k8stypes.NamespacedName{Name: pod.GetName(), Namespace: pod.GetNamespace()}
@@ -187,6 +274,7 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, con
 	return phaseInfo, err
 }
 
+// getTaskContainerIndex returns the index of the primary container in a k8s pod.
 func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 	primaryContainerName, ok := pod.Annotations[podPlugin.PrimaryContainerKey]
 	// For tasks with a Container target, we only ever build one container as part of the pod
@@ -207,6 +295,7 @@ func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 	return -1, stdErrors.Errorf(ErrBuildPodTemplate, "Couldn't find any container matching the primary container key when building an array job with a K8sPod spec target")
 }
 
+// isK8sObjectNotExists returns true if the error is one which describes a non existant k8s object.
 func isK8sObjectNotExists(err error) bool {
 	return k8serrors.IsNotFound(err) || k8serrors.IsGone(err) || k8serrors.IsResourceExpired(err)
 }

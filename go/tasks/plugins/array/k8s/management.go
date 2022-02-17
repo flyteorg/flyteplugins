@@ -163,6 +163,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				phaseInfo = core.PhaseInfoWaitingForResourcesInfo(time.Now(), core.DefaultPhaseVersion, "Exceeded ResourceManager quota", nil)
 			} else {
 				phaseInfo, perr = launchSubtask(ctx, stCtx, config, kubeClient)
+				// TODO if this fails do we need to deallocate the resource to mitigate leaks?
 			}
 		} else {
 			phaseInfo, perr = getSubtaskPhaseInfo(ctx, stCtx, config, kubeClient, logPlugin)
@@ -206,7 +207,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				return currentState, logLinks, subTaskIDs, err
 			}
 
-			// TODO - finalize and delete resource?
+			// TODO - finalize resource?
 		}
 
 		// validate parallelism
@@ -252,6 +253,37 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 // TerminateSubTasks performs operations to gracefully shutdown all subtasks. This may include
 // aborting and finalizing active k8s resources.
 func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, config *Config, currentState *arrayCore.State) error {
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return err
+	} else if taskTemplate == nil {
+		return errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
+	}
+
+	messageCollector := errorcollector.NewErrorMessageCollector()
+	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
+		existingPhase := core.Phases[existingPhaseIdx]
+		retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
+
+		// return immediately if subtask has completed or not yet started
+		if existingPhase.IsTerminal() || existingPhase == core.PhaseUndefined {
+			continue
+		}
+
+		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
+		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
+
+		err := finalizeSubtask(ctx, stCtx, config, kubeClient)
+		if err != nil {
+			messageCollector.Collect(childIdx, err.Error())
+		}
+	}
+
+	if messageCollector.Length() > 0 {
+		return fmt.Errorf(messageCollector.Summary(config.MaxErrorStringLength))
+	}
+
+	return nil
 	// TODO - fix
 	/*size := currentState.GetExecutionArraySize()
 	messageCollector := errorcollector.NewErrorMessageCollector()
@@ -276,5 +308,5 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		return fmt.Errorf(errs.Summary(config.MaxErrorStringLength))
 	}*/
 
-	return nil
+	//return nil
 }
