@@ -163,7 +163,15 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				phaseInfo = core.PhaseInfoWaitingForResourcesInfo(time.Now(), core.DefaultPhaseVersion, "Exceeded ResourceManager quota", nil)
 			} else {
 				phaseInfo, perr = launchSubtask(ctx, stCtx, config, kubeClient)
-				// TODO if this fails do we need to deallocate the resource to mitigate leaks?
+
+				// if launchSubtask fails we attempt to deallocate the (previously allocated)
+				// resource to mitigate leaks
+				if perr != nil {
+					derr = deallocateResource(ctx, stCtx, config, podName)
+					if derr != nil {
+						logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
+					}
+				}
 			}
 		} else {
 			phaseInfo, perr = getSubtaskPhaseInfo(ctx, stCtx, config, kubeClient, logPlugin)
