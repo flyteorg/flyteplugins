@@ -92,9 +92,7 @@ func abortSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Confi
 	logger.Infof(ctx, "KillTask invoked. We will attempt to delete object [%v].",
 		stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
 
-	var plugin k8s.Plugin
-	plugin = podPlugin.DefaultPodPlugin
-
+	var plugin k8s.Plugin = podPlugin.DefaultPodPlugin
 	o, err := plugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
 	if err != nil {
 		// This will recurrent, so we will skip further finalize
@@ -340,7 +338,7 @@ func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 	return -1, stdErrors.Errorf(ErrBuildPodTemplate, "Couldn't find any container matching the primary container key when building an array job with a K8sPod spec target")
 }
 
-// isK8sObjectNotExists returns true if the error is one which describes a non existant k8s object.
+// isK8sObjectNotExists returns true if the error is one which describes a non existent k8s object.
 func isK8sObjectNotExists(err error) bool {
 	return k8serrors.IsNotFound(err) || k8serrors.IsGone(err) || k8serrors.IsResourceExpired(err)
 }
