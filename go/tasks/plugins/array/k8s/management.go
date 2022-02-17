@@ -250,9 +250,11 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	return newState, logLinks, subTaskIDs, nil
 }
 
-// TerminateSubTasks performs operations to gracefully shutdown all subtasks. This may include
+// TerminateSubTasks performs operations to gracefully terminate all subtasks. This may include
 // aborting and finalizing active k8s resources.
-func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, config *Config, currentState *arrayCore.State) error {
+func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient, config *Config,
+	terminateFunction func(context.Context, SubTaskExecutionContext, *Config, core.KubeClient) error, currentState *arrayCore.State) error {
+
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return err
@@ -273,7 +275,7 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
 		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
 
-		err := finalizeSubtask(ctx, stCtx, config, kubeClient)
+		err := terminateFunction(ctx, stCtx, config, kubeClient)
 		if err != nil {
 			messageCollector.Collect(childIdx, err.Error())
 		}
@@ -284,29 +286,4 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	}
 
 	return nil
-	// TODO - fix
-	/*size := currentState.GetExecutionArraySize()
-	messageCollector := errorcollector.NewErrorMessageCollector()
-	for childIdx := 0; childIdx < size; childIdx++ {
-		task := Task{
-			ChildIdx: childIdx,
-			Config:   config,
-			State:    currentState,
-		}
-
-		err := task.Abort(ctx, tCtx, kubeClient)
-		if err != nil {
-			messageCollector.Collect(childIdx, err.Error())
-		}
-		err = task.Finalize(ctx, tCtx, kubeClient)
-		if err != nil {
-			messageCollector.Collect(childIdx, err.Error())
-		}
-	}
-
-	if errs.Length() > 0 {
-		return fmt.Errorf(errs.Summary(config.MaxErrorStringLength))
-	}*/
-
-	//return nil
 }

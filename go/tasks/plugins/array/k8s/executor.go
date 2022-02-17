@@ -144,18 +144,21 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	return nil
-}
-
-func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	pluginConfig := GetConfig()
-
 	pluginState := &arrayCore.State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	return TerminateSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
+	return TerminateSubTasks(ctx, tCtx, e.kubeClient, GetConfig(), abortSubtask, pluginState)
+}
+
+func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
+	pluginState := &arrayCore.State{}
+	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
+	}
+
+	return TerminateSubTasks(ctx, tCtx, e.kubeClient, GetConfig(), finalizeSubtask, pluginState)
 }
 
 func (e Executor) Start(ctx context.Context) error {

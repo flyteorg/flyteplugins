@@ -11,6 +11,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
@@ -86,10 +87,62 @@ func addMetadata(stCtx SubTaskExecutionContext, cfg *Config, k8sPluginCfg *confi
 	}
 }
 
-/*func abortSubtask() error {
-	// TODO
+// abortSubtask attempts to interrupt the k8s pod defined by the SubTaskExecutionContext and Config
+func abortSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) error {
+	logger.Infof(ctx, "KillTask invoked. We will attempt to delete object [%v].",
+		stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName())
+
+	var plugin k8s.Plugin
+	plugin = podPlugin.DefaultPodPlugin
+
+	o, err := plugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
+	if err != nil {
+		// This will recurrent, so we will skip further finalize
+		logger.Errorf(ctx, "Failed to build the Resource with name: %v. Error: %v, when finalizing.", stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
+		return nil
+	}
+
+	addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), o.(*v1.Pod))
+
+	deleteResource := true
+	abortOverride, hasAbortOverride := plugin.(k8s.PluginAbortOverride)
+
+	resourceToFinalize := o
+	var behavior k8s.AbortBehavior
+
+	if hasAbortOverride {
+		behavior, err = abortOverride.OnAbort(ctx, stCtx, o)
+		deleteResource = err == nil && behavior.DeleteResource
+		if err == nil && behavior.Resource != nil {
+			resourceToFinalize = behavior.Resource
+		}
+	}
+
+	if err != nil {
+	} else if deleteResource {
+		err = kubeClient.GetClient().Delete(ctx, resourceToFinalize)
+	} else {
+		if behavior.Patch != nil && behavior.Update == nil {
+			err = kubeClient.GetClient().Patch(ctx, resourceToFinalize, behavior.Patch.Patch, behavior.Patch.Options...)
+		} else if behavior.Patch == nil && behavior.Update != nil {
+			err = kubeClient.GetClient().Update(ctx, resourceToFinalize, behavior.Update.Options...)
+		} else {
+			err = errors.Errorf(errors.RuntimeFailure, "AbortBehavior for resource %v must specify either a Patch and an Update operation if Delete is set to false. Only one can be supplied.", resourceToFinalize.GetName())
+		}
+		if behavior.DeleteOnErr && err != nil {
+			logger.Warningf(ctx, "Failed to apply AbortBehavior for resource %v with error %v. Will attempt to delete resource.", resourceToFinalize.GetName(), err)
+			err = kubeClient.GetClient().Delete(ctx, resourceToFinalize)
+		}
+	}
+
+	if err != nil && !isK8sObjectNotExists(err) {
+		logger.Warningf(ctx, "Failed to clear finalizers for Resource with name: %v/%v. Error: %v",
+			resourceToFinalize.GetNamespace(), resourceToFinalize.GetName(), err)
+		return err
+	}
+
 	return nil
-}*/
+}
 
 // clearFinalizers removes finalizers (if they exist) from the k8s resource
 func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCore.KubeClient) error {
@@ -167,14 +220,6 @@ func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Co
 	var nsName k8stypes.NamespacedName
 	k8sPluginCfg := config.GetK8sPluginConfig()
 	if k8sPluginCfg.InjectFinalizer || k8sPluginCfg.DeleteResourceOnFinalize {
-		/*o, err = e.plugin.BuildIdentityResource(ctx, tCtx.TaskExecutionMetadata())
-		if err != nil {
-			// This will recurrent, so we will skip further finalize
-			logger.Errorf(ctx, "Failed to build the Resource with name: %v. Error: %v, when finalizing.", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), err)
-			return nil
-		}
-
-		e.AddObjectMetadata(tCtx.TaskExecutionMetadata(), o, config.GetK8sPluginConfig())*/
 		o, err := podPlugin.DefaultPodPlugin.BuildIdentityResource(ctx, stCtx.TaskExecutionMetadata())
 		if err != nil {
 			// This will recurrent, so we will skip further finalize
