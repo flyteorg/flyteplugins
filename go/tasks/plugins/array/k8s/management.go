@@ -167,8 +167,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				// if launchSubtask fails we attempt to deallocate the (previously allocated)
 				// resource to mitigate leaks
 				if perr != nil {
-					derr = deallocateResource(ctx, stCtx, config, podName)
-					if derr != nil {
+					perr = deallocateResource(ctx, stCtx, config, podName)
+					if perr != nil {
 						logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
 					}
 				}
