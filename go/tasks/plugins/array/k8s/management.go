@@ -207,7 +207,11 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				return currentState, logLinks, subTaskIDs, err
 			}
 
-			// TODO - finalize resource?
+			err = finalizeSubtask(ctx, stCtx, config, kubeClient)
+			if err != nil {
+				logger.Errorf(ctx, "Error finalizing resource [%s] in Finalize [%s]", podName, err)
+				return currentState, logLinks, subTaskIDs, err
+			}
 		}
 
 		// validate parallelism
