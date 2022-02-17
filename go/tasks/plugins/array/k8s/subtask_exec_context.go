@@ -54,6 +54,7 @@ func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTempl
 			executionIndex,
 			taskExecutionID.GetGeneratedName(),
 			retryAttempt,
+			taskExecutionID.GetID().RetryAttempt,
 		},
 	}
 
@@ -94,9 +95,10 @@ func (s SubTaskReader) Read(ctx context.Context) (*core.TaskTemplate, error) {
 // SubTaskExecutionID wraps the core TaskExecutionID to customize the generated pod name
 type SubTaskExecutionID struct {
 	pluginsCore.TaskExecutionID
-	executionIndex int
-	parentName     string
-	retryAttempt   uint64
+	executionIndex      int
+	parentName          string
+	subtaskRetryAttempt uint64
+	taskRetryAttempt    uint32
 }
 
 // GetGeneratedName overrides the base TaskExecutionID to append the subtask index and retryAttempt
@@ -105,20 +107,24 @@ func (s SubTaskExecutionID) GetGeneratedName() string {
 
 	// If the retryAttempt is 0 we do not include it in the pod name. The gives us backwards
 	// compatibility in the ability to dynamically transition running map tasks to use subtask retries.
-	if s.retryAttempt == 0 {
+	if s.subtaskRetryAttempt == 0 {
 		return utils.ConvertToDNS1123SubdomainCompatibleString(fmt.Sprintf("%v-%v", s.parentName, indexStr))
 	}
 
-	retryAttemptStr := strconv.FormatUint(s.retryAttempt, 10)
+	retryAttemptStr := strconv.FormatUint(s.subtaskRetryAttempt, 10)
 	return utils.ConvertToDNS1123SubdomainCompatibleString(fmt.Sprintf("%v-%v-%v", s.parentName, indexStr, retryAttemptStr))
 }
 
 // GetLogSuffix returns the suffix which should be appended to subtask log names
 func (s SubTaskExecutionID) GetLogSuffix() string {
 	// Append the retry attempt and executionIndex so that log names coincide with pod names per
-	// https://github.com/flyteorg/flyteplugins/pull/186#discussion_r666569825. Prior to tracking
-	// subtask retryAttempts the pod name used the map task retry number. We may want to revisit.
-	return fmt.Sprintf(" #%d-%d", s.retryAttempt, s.executionIndex)
+	// https://github.com/flyteorg/flyteplugins/pull/186#discussion_r666569825. To maintain
+	// backwards compatibility we append the subtaskRetryAttempt if it is not 0.
+	if s.subtaskRetryAttempt == 0 {
+		return fmt.Sprintf(" #%d-%d", s.taskRetryAttempt, s.executionIndex)
+	}
+
+	return fmt.Sprintf(" #%d-%d-%d", s.taskRetryAttempt, s.executionIndex, s.subtaskRetryAttempt)
 }
 
 // SubTaskExecutionMetadata wraps the core TaskExecutionMetadata to customize the TaskExecutionID

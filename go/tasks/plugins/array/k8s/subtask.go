@@ -255,7 +255,6 @@ func finalizeSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Co
 	}
 
 	// If we should delete the resource when finalize is called, do a best effort delete.
-	//if k8sPluginCfg.DeleteResourceOnFinalize && !e.plugin.GetProperties().DisableDeleteResourceOnFinalize {
 	if k8sPluginCfg.DeleteResourceOnFinalize {
 		// Attempt to delete resource, if not found, return success.
 		if err := kubeClient.GetClient().Delete(ctx, o); err != nil {
