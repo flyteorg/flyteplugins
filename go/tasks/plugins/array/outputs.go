@@ -73,7 +73,7 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 		finalOutputs.Literals[varName] = &core.Literal{
 			Value: &core.Literal_Collection{
 				Collection: &core.LiteralCollection{
-					Literals: make([]*core.Literal, 0, 0),
+					Literals: make([]*core.Literal, 0),
 				},
 			},
 		}
