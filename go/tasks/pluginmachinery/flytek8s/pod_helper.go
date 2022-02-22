@@ -151,7 +151,7 @@ func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExe
 func BuildPodWithSpec(podSpec *v1.PodSpec) (*v1.Pod, error) {
 	// merge podSpec with the default podSpec
 	defaultPodSpec := GetDefaultPodSpec().DeepCopy()
-	err := mergo.Merge(&defaultPodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
+	err := mergo.Merge(defaultPodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 	if err != nil {
 		return nil, err
 	}

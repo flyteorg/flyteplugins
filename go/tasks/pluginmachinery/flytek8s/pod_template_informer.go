@@ -15,7 +15,8 @@ import (
 )
 
 var informer podTemplateInformer = podTemplateInformer{
-	podTemplateName: config.GetK8sPluginConfig().DefaultPodTemplateName,
+	//podTemplateName: config.GetK8sPluginConfig().DefaultPodTemplateName,
+	podTemplateName: "flyte-default-template",
 }
 
 type podTemplateInformer struct {
@@ -27,8 +28,9 @@ type podTemplateInformer struct {
 }
 
 func (p *podTemplateInformer) start(ctx context.Context) error {
+	logger.Infof(ctx, "podTemplateInformer %s %s", p.podTemplateName, p.podTemplateNamespace)
 	if p.stopChan == nil && p.kubeClient != nil && p.podTemplateName != "" && p.podTemplateNamespace != "" {
-		logger.Debugf(ctx, "starting podTemplateInformer for podTemplate '%s' in namespace '%s'", p.podTemplateName, p.podTemplateNamespace)
+		logger.Infof(ctx, "starting podTemplateInformer for podTemplate '%s' in namespace '%s'", p.podTemplateName, p.podTemplateNamespace)
 		// TODO hamersaw - parameterize defaultResync
 		informerFactory := informers.NewSharedInformerFactoryWithOptions(p.kubeClient, 30*time.Second, informers.WithNamespace(p.podTemplateNamespace))
 
@@ -38,21 +40,21 @@ func (p *podTemplateInformer) start(ctx context.Context) error {
 					podTemplate, ok := obj.(*v1.PodTemplate)
 					if ok && podTemplate.Name == p.podTemplateName {
 						p.podTemplate = podTemplate
-						logger.Debugf(context.TODO(), "added defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
+						logger.Infof(context.TODO(), "added defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
 					}
 				},
 				UpdateFunc: func(old, new interface{}) {
 					podTemplate, ok := new.(*v1.PodTemplate)
 					if ok && podTemplate.Name == p.podTemplateName {
 						p.podTemplate = podTemplate
-						logger.Debugf(context.TODO(), "updated defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
+						logger.Infof(context.TODO(), "updated defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
 					}
 				},
 				DeleteFunc: func(obj interface{}) {
 					podTemplate, ok := obj.(*v1.PodTemplate)
 					if ok && podTemplate.Name == p.podTemplateName {
 						p.podTemplate = nil
-						logger.Debugf(context.TODO(), "deleted defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
+						logger.Infof(context.TODO(), "deleted defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
 					}
 				},
 			})
