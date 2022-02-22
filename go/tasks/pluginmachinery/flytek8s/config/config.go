@@ -148,6 +148,9 @@ type K8sPluginConfig struct {
 	// DefaultPodDNSConfig provides a default pod DNS config that that should be applied for the primary container launched and created by FlytePropeller. This may not be applicable to all plugins. For
 	//	// downstream plugins - i.e. TensorflowOperators may not support setting this.
 	DefaultPodDNSConfig *v1.PodDNSConfig `json:"default-pod-dns-config" pflag:"-,Optionally specify a default DNS config that should be applied to every Pod launched by FlytePropeller."`
+
+	// TODO hamersaw - document
+	DefaultPodTemplateName string `json:"default-pod-template-name" pflag:","`
 }
 
 // FlyteCoPilotConfig specifies configuration for the Flyte CoPilot system. FlyteCoPilot, allows running flytekit-less containers
