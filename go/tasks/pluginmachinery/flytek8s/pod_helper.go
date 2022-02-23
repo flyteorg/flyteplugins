@@ -155,10 +155,10 @@ func BuildPodWithSpec(podSpec *v1.PodSpec) (*v1.Pod, error) {
 		},
 	}
 
-	defaultPodTemplateSpec := GetDefaultPodTemplateSpec()
-	if defaultPodTemplateSpec != nil {
+	defaultPodTemplate := GetDefaultPodTemplate()
+	if defaultPodTemplate != nil {
 		// merge podSpec with the default podSpec
-		defaultPodSpec := defaultPodTemplateSpec.Spec
+		defaultPodSpec := defaultPodTemplate.Template.Spec
 		err := mergo.Merge(&defaultPodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 		if err != nil {
 			return nil, err
@@ -166,7 +166,7 @@ func BuildPodWithSpec(podSpec *v1.PodSpec) (*v1.Pod, error) {
 
 		defaultPodSpec.Containers = podSpec.Containers
 
-		pod.ObjectMeta = defaultPodTemplateSpec.ObjectMeta
+		pod.ObjectMeta = defaultPodTemplate.Template.ObjectMeta
 		pod.Spec = defaultPodSpec
 	} else {
 		pod.Spec = *podSpec
