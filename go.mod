@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/athena v1.0.0
 	github.com/coocood/freecache v1.1.1
 	github.com/flyteorg/flyteidl v0.21.23
-	github.com/flyteorg/flytestdlib v0.4.7
+	github.com/flyteorg/flytestdlib v0.4.13
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-test/deep v1.0.7
 	github.com/golang/protobuf v1.4.3
@@ -50,5 +50,3 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-
-replace github.com/flyteorg/flytestdlib => github.com/flyteorg/flytestdlib v0.4.13-0.20220218201056-bf4a8c965614
