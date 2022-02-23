@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	core2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 )
 
@@ -26,7 +25,7 @@ const (
 
 var pTraceCapability = v1.Capability("SYS_PTRACE")
 
-func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) (v1.Container, error) {
+func FlyteCoPilotContainer(name string, cfg FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) (v1.Container, error) {
 	cpu, err := resource.ParseQuantity(cfg.CPU)
 	if err != nil {
 		return v1.Container{}, err
@@ -161,7 +160,7 @@ func CalculateStorageSize(requirements *v1.ResourceRequirements) *resource.Quant
 	return nil
 }
 
-func AddCoPilotToContainer(ctx context.Context, cfg config.FlyteCoPilotConfig, c *v1.Container, iFace *core.TypedInterface, pilot *core.DataLoadingConfig) error {
+func AddCoPilotToContainer(ctx context.Context, cfg FlyteCoPilotConfig, c *v1.Container, iFace *core.TypedInterface, pilot *core.DataLoadingConfig) error {
 	if pilot == nil || !pilot.Enabled {
 		return nil
 	}
@@ -201,7 +200,7 @@ func AddCoPilotToContainer(ctx context.Context, cfg config.FlyteCoPilotConfig, c
 	return nil
 }
 
-func AddCoPilotToPod(ctx context.Context, cfg config.FlyteCoPilotConfig, coPilotPod *v1.PodSpec, iFace *core.TypedInterface, taskExecMetadata core2.TaskExecutionMetadata, inputPaths io.InputFilePaths, outputPaths io.OutputFilePaths, pilot *core.DataLoadingConfig) error {
+func AddCoPilotToPod(ctx context.Context, cfg FlyteCoPilotConfig, coPilotPod *v1.PodSpec, iFace *core.TypedInterface, taskExecMetadata core2.TaskExecutionMetadata, inputPaths io.InputFilePaths, outputPaths io.OutputFilePaths, pilot *core.DataLoadingConfig) error {
 	if pilot == nil || !pilot.Enabled {
 		return nil
 	}

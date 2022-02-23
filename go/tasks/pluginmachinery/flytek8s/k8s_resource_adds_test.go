@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 )
 
 func TestGetExecutionEnvVars(t *testing.T) {
@@ -185,7 +184,7 @@ func TestGetTolerationsForResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{ResourceTolerations: tt.setVal, DefaultTolerations: tt.setDefaults}))
+			assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{ResourceTolerations: tt.setVal, DefaultTolerations: tt.setDefaults}))
 			if got := GetPodTolerations(true, tt.args.resources); len(got) != len(tt.want) {
 				t.Errorf("GetPodTolerations() = %v, want %v", got, tt.want)
 			} else {
@@ -275,7 +274,7 @@ func TestDecorateEnvVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+			assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 				DefaultEnvVars:        tt.additionEnvVar,
 				DefaultEnvVarsFromEnv: tt.additionEnvVarFromEnv,
 			}))

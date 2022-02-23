@@ -14,7 +14,6 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -259,7 +258,7 @@ func updatePod(t *testing.T) {
 
 func TestUpdatePodWithDefaultAffinityAndInterruptibleNodeSelectorRequirement(t *testing.T) {
 	taskExecutionMetadata := dummyTaskExecutionMetadata(&v1.ResourceRequirements{})
-	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+	assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 		DefaultAffinity: &v1.Affinity{
 			NodeAffinity: &v1.NodeAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
@@ -402,7 +401,7 @@ func TestToK8sPod(t *testing.T) {
 		Effect:   v1.TaintEffectNoSchedule,
 	}
 
-	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+	assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 		ResourceTolerations: map[v1.ResourceName][]v1.Toleration{
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
@@ -463,7 +462,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 			DefaultNodeSelector: map[string]string{
 				"nodeId": "123",
 			},
@@ -482,7 +481,7 @@ func TestToK8sPod(t *testing.T) {
 
 	t.Run("default-pod-sec-ctx", func(t *testing.T) {
 		v := int64(1000)
-		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 			DefaultPodSecurityContext: &v1.PodSecurityContext{
 				RunAsGroup: &v,
 			},
@@ -497,7 +496,7 @@ func TestToK8sPod(t *testing.T) {
 
 	t.Run("enableHostNetwork", func(t *testing.T) {
 		enabled := true
-		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 			EnableHostNetworkingPod: &enabled,
 		}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
@@ -508,7 +507,7 @@ func TestToK8sPod(t *testing.T) {
 
 	t.Run("explicitDisableHostNetwork", func(t *testing.T) {
 		enabled := false
-		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 			EnableHostNetworkingPod: &enabled,
 		}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
@@ -518,7 +517,7 @@ func TestToK8sPod(t *testing.T) {
 	})
 
 	t.Run("skipSettingHostNetwork", func(t *testing.T) {
-		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{}))
+		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
 		p, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
@@ -529,7 +528,7 @@ func TestToK8sPod(t *testing.T) {
 		val1 := "1"
 		val2 := "1"
 		val3 := "3"
-		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 			DefaultPodDNSConfig: &v1.PodDNSConfig{
 				Nameservers: []string{"8.8.8.8", "8.8.4.4"},
 				Options: []v1.PodDNSConfigOption{
@@ -570,7 +569,7 @@ func TestToK8sPod(t *testing.T) {
 }
 
 func TestDemystifyPending(t *testing.T) {
-	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+	assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
 		CreateContainerErrorGracePeriod: config1.Duration{
 			Duration: time.Minute * 3,
 		},
@@ -811,7 +810,7 @@ func TestDemystifyPending(t *testing.T) {
 
 	t.Run("CreateContainerErrorOutsideGracePeriod", func(t *testing.T) {
 		s2 := *s.DeepCopy()
-		s2.Conditions[0].LastTransitionTime.Time = metaV1.Now().Add(-config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)
+		s2.Conditions[0].LastTransitionTime.Time = metaV1.Now().Add(-GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)
 		s2.ContainerStatuses = []v1.ContainerStatus{
 			{
 				Ready: false,

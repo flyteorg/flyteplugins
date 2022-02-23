@@ -14,7 +14,6 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
@@ -80,8 +79,8 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		return nil, errors.Wrapf(errors.BadTaskSpecification, err, "invalid TaskSpecification [%v].", taskTemplate.GetCustom())
 	}
 
-	annotations := utils.UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetAnnotations()))
-	labels := utils.UnionMaps(config.GetK8sPluginConfig().DefaultLabels, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetLabels()))
+	annotations := utils.UnionMaps(flytek8s.GetK8sPluginConfig().DefaultAnnotations, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetAnnotations()))
+	labels := utils.UnionMaps(flytek8s.GetK8sPluginConfig().DefaultLabels, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetLabels()))
 	container := taskTemplate.GetContainer()
 
 	envVars := flytek8s.DecorateEnvVars(ctx, flytek8s.ToK8sEnvVar(container.GetEnv()), taskCtx.TaskExecutionMetadata().GetTaskExecutionID())
@@ -103,8 +102,8 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			Labels:           labels,
 			EnvVars:          sparkEnvVars,
 			Image:            &container.Image,
-			SecurityContenxt: config.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
-			DNSConfig:        config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
+			SecurityContenxt: flytek8s.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
+			DNSConfig:        flytek8s.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
 		},
 		ServiceAccount: &serviceAccountName,
 	}
@@ -115,8 +114,8 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			Labels:           labels,
 			Image:            &container.Image,
 			EnvVars:          sparkEnvVars,
-			SecurityContenxt: config.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
-			DNSConfig:        config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
+			SecurityContenxt: flytek8s.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
+			DNSConfig:        flytek8s.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
 		},
 	}
 
@@ -227,8 +226,8 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	// Add Tolerations/NodeSelector to only Executor pods.
 	if taskCtx.TaskExecutionMetadata().IsInterruptible() {
-		j.Spec.Executor.Tolerations = config.GetK8sPluginConfig().InterruptibleTolerations
-		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
+		j.Spec.Executor.Tolerations = flytek8s.GetK8sPluginConfig().InterruptibleTolerations
+		j.Spec.Executor.NodeSelector = flytek8s.GetK8sPluginConfig().InterruptibleNodeSelector
 	}
 	return j, nil
 }

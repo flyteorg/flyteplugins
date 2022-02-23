@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-
 	"github.com/flyteorg/flytestdlib/logger"
 
 	v1 "k8s.io/api/core/v1"
@@ -14,10 +12,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-var informer podTemplateInformer = podTemplateInformer{
-	//podTemplateName: config.GetK8sPluginConfig().DefaultPodTemplateName,
-	podTemplateName: "flyte-default-template",
-}
+var informer podTemplateInformer = podTemplateInformer{}
 
 type podTemplateInformer struct {
 	kubeClient           kubernetes.Interface
@@ -40,21 +35,21 @@ func (p *podTemplateInformer) start(ctx context.Context) error {
 					podTemplate, ok := obj.(*v1.PodTemplate)
 					if ok && podTemplate.Name == p.podTemplateName {
 						p.podTemplate = podTemplate
-						logger.Infof(context.TODO(), "added defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
+						logger.Infof(context.TODO(), "added default PodTemplate '%s' for namespace '%s'", podTemplate.Name, podTemplate.Namespace)
 					}
 				},
 				UpdateFunc: func(old, new interface{}) {
 					podTemplate, ok := new.(*v1.PodTemplate)
 					if ok && podTemplate.Name == p.podTemplateName {
 						p.podTemplate = podTemplate
-						logger.Infof(context.TODO(), "updated defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
+						logger.Infof(context.TODO(), "updated default PodTemplate '%s' for namespace '%s'", podTemplate.Name, podTemplate.Namespace)
 					}
 				},
 				DeleteFunc: func(obj interface{}) {
 					podTemplate, ok := obj.(*v1.PodTemplate)
 					if ok && podTemplate.Name == p.podTemplateName {
 						p.podTemplate = nil
-						logger.Infof(context.TODO(), "deleted defaultPodTemplate '%s' from namespace '%s'", podTemplate.Name, podTemplate.Namespace)
+						logger.Infof(context.TODO(), "deleted default PodTemplate '%s' for namespace '%s'", podTemplate.Name, podTemplate.Namespace)
 					}
 				},
 			})
@@ -88,23 +83,26 @@ func InitDefaultPodTemplateInformer(ctx context.Context, kubeclient kubernetes.I
 	return informer.start(ctx)
 }
 
-func GetDefaultPodSpec() *v1.PodSpec {
+func GetDefaultPodTemplateSpec() *v1.PodTemplateSpec {
 	if informer.podTemplate != nil {
-		return &informer.podTemplate.Template.Spec
+		return &informer.podTemplate.Template
 	}
 
-	return &v1.PodSpec{}
+	return nil
 }
 
-// TODO - link up OnConfigUpdate
-func OnConfigUpdate(cfg config.K8sPluginConfig) {
+func onConfigUpdated(ctx context.Context, cfg K8sPluginConfig) {
 	if cfg.DefaultPodTemplateName != informer.podTemplateName {
-		ctx := context.Background()
+		if err := informer.stop(ctx); err != nil {
+			logger.Warnf(ctx, "TODO foo")
+			return
+		}
 
-		// TODO hamersaw - catch errors
-		informer.stop(ctx)
 		informer.podTemplate = nil
 		informer.podTemplateName = cfg.DefaultPodTemplateName
-		informer.start(ctx)
+
+		if err := informer.start(ctx); err != nil {
+			logger.Warnf(ctx, "TODO var")
+		}
 	}
 }

@@ -3,9 +3,10 @@
 // All K8s based plugins can optionally use the flytek8s module and this configuration allows controlling the defaults
 // For example if for every container execution if some default Environment Variables or Annotations should be used, then they can be configured here
 // An important configuration is ResourceTolerations that are applied to every container execution that needs some resource on the cluster
-package config
+package flytek8s
 
 import (
+	"context"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -55,7 +56,9 @@ var (
 
 	// K8sPluginConfigSection provides a singular top level config section for all plugins.
 	// If you are a plugin developer writing a k8s plugin, register your config section as a subsection to this.
-	K8sPluginConfigSection = config.MustRegisterSubSection(k8sPluginConfigSectionKey, &defaultK8sConfig)
+	K8sPluginConfigSection = config.MustRegisterSubSectionWithUpdates(k8sPluginConfigSectionKey, &defaultK8sConfig, func(ctx context.Context, newValue config2.Config) {
+		onConfigUpdated(ctx, *newValue.(*K8sPluginConfig))
+	})
 )
 
 // K8sPluginConfig should be used to configure per-pod defaults for the entire platform. This allows adding global defaults
