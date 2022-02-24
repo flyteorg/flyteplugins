@@ -34,7 +34,3 @@ func GetConfig() *Config {
 func MustRegisterSubSection(subSectionKey string, section config.Config) config.Section {
 	return rootSection.MustRegisterSection(subSectionKey, section)
 }
-
-func MustRegisterSubSectionWithUpdates(subSectionKey string, section config.Config, updatesFn config.SectionUpdated) config.Section {
-	return rootSection.MustRegisterSectionWithUpdates(subSectionKey, section, updatesFn)
-}

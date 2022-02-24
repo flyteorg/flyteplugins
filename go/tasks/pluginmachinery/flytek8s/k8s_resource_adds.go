@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+
 	"github.com/flyteorg/flytestdlib/contextutils"
 	v1 "k8s.io/api/core/v1"
 
@@ -117,10 +119,10 @@ func DecorateEnvVars(ctx context.Context, envVars []v1.EnvVar, id pluginsCore.Ta
 	envVars = append(envVars, GetContextEnvVars(ctx)...)
 	envVars = append(envVars, GetExecutionEnvVars(id)...)
 
-	for k, v := range GetK8sPluginConfig().DefaultEnvVars {
+	for k, v := range config.GetK8sPluginConfig().DefaultEnvVars {
 		envVars = append(envVars, v1.EnvVar{Name: k, Value: v})
 	}
-	for k, envVarName := range GetK8sPluginConfig().DefaultEnvVarsFromEnv {
+	for k, envVarName := range config.GetK8sPluginConfig().DefaultEnvVarsFromEnv {
 		value := os.Getenv(envVarName)
 		envVars = append(envVars, v1.EnvVar{Name: k, Value: value})
 	}
@@ -141,7 +143,7 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 		}
 	}
 
-	resourceTols := GetK8sPluginConfig().ResourceTolerations
+	resourceTols := config.GetK8sPluginConfig().ResourceTolerations
 	for _, r := range resourceNames.UnsortedList() {
 		if v, ok := resourceTols[v1.ResourceName(r)]; ok {
 			tolerations = append(tolerations, v...)
@@ -150,11 +152,11 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 
 	// 2. Get the tolerations for interruptible pods
 	if interruptible {
-		tolerations = append(tolerations, GetK8sPluginConfig().InterruptibleTolerations...)
+		tolerations = append(tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
 	}
 
 	// 3. Add default tolerations
-	tolerations = append(tolerations, GetK8sPluginConfig().DefaultTolerations...)
+	tolerations = append(tolerations, config.GetK8sPluginConfig().DefaultTolerations...)
 
 	return tolerations
 }

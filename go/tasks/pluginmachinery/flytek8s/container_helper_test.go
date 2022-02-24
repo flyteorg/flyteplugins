@@ -7,6 +7,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -370,12 +371,12 @@ func TestToK8sContainer(t *testing.T) {
 		TaskExecMetadata: &mockTaskExecMetadata,
 	}
 
-	cfg := GetK8sPluginConfig()
+	cfg := config.GetK8sPluginConfig()
 	allow := false
 	cfg.DefaultSecurityContext = &v1.SecurityContext{
 		AllowPrivilegeEscalation: &allow,
 	}
-	assert.NoError(t, SetK8sPluginConfig(cfg))
+	assert.NoError(t, config.SetK8sPluginConfig(cfg))
 
 	container, err := ToK8sContainer(context.TODO(), taskContainer, nil, templateParameters)
 	assert.NoError(t, err)

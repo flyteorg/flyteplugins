@@ -8,6 +8,7 @@ import (
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"github.com/flyteorg/flytestdlib/logger"
@@ -28,15 +29,15 @@ func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
 	// Determine node selector terms to add to node affinity
 	var nodeSelectorRequirement v1.NodeSelectorRequirement
 	if interruptible {
-		if GetK8sPluginConfig().InterruptibleNodeSelectorRequirement == nil {
+		if config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement == nil {
 			return
 		}
-		nodeSelectorRequirement = *GetK8sPluginConfig().InterruptibleNodeSelectorRequirement
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement
 	} else {
-		if GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement == nil {
+		if config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement == nil {
 			return
 		}
-		nodeSelectorRequirement = *GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().NonInterruptibleNodeSelectorRequirement
 	}
 
 	if podSpec.Affinity == nil {
@@ -79,23 +80,23 @@ func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecut
 		podSpec.ServiceAccountName = taskExecutionMetadata.GetK8sServiceAccount()
 	}
 	if len(podSpec.SchedulerName) == 0 {
-		podSpec.SchedulerName = GetK8sPluginConfig().SchedulerName
+		podSpec.SchedulerName = config.GetK8sPluginConfig().SchedulerName
 	}
-	podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, GetK8sPluginConfig().DefaultNodeSelector)
+	podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().DefaultNodeSelector)
 	if isInterruptible {
-		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, GetK8sPluginConfig().InterruptibleNodeSelector)
+		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
-	if podSpec.Affinity == nil && GetK8sPluginConfig().DefaultAffinity != nil {
-		podSpec.Affinity = GetK8sPluginConfig().DefaultAffinity.DeepCopy()
+	if podSpec.Affinity == nil && config.GetK8sPluginConfig().DefaultAffinity != nil {
+		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity.DeepCopy()
 	}
-	if podSpec.SecurityContext == nil && GetK8sPluginConfig().DefaultPodSecurityContext != nil {
-		podSpec.SecurityContext = GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy()
+	if podSpec.SecurityContext == nil && config.GetK8sPluginConfig().DefaultPodSecurityContext != nil {
+		podSpec.SecurityContext = config.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy()
 	}
-	if GetK8sPluginConfig().EnableHostNetworkingPod != nil {
-		podSpec.HostNetwork = *GetK8sPluginConfig().EnableHostNetworkingPod
+	if config.GetK8sPluginConfig().EnableHostNetworkingPod != nil {
+		podSpec.HostNetwork = *config.GetK8sPluginConfig().EnableHostNetworkingPod
 	}
-	if podSpec.DNSConfig == nil && GetK8sPluginConfig().DefaultPodDNSConfig != nil {
-		podSpec.DNSConfig = GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy()
+	if podSpec.DNSConfig == nil && config.GetK8sPluginConfig().DefaultPodDNSConfig != nil {
+		podSpec.DNSConfig = config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy()
 	}
 	ApplyInterruptibleNodeAffinity(isInterruptible, podSpec)
 }
@@ -139,15 +140,14 @@ func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExe
 	}
 	UpdatePodWithInterruptibleFlag(tCtx.TaskExecutionMetadata(), []v1.ResourceRequirements{c.Resources}, pod, omitInterruptible)
 
-	if err := AddCoPilotToPod(ctx, GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), task.GetContainer().GetDataConfig()); err != nil {
+	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), task.GetContainer().GetDataConfig()); err != nil {
 		return nil, err
 	}
 
 	return pod, nil
 }
 
-// TODO hamersaw - unit test
-func BuildPodWithSpec(podSpec *v1.PodSpec) (*v1.Pod, error) {
+func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec) (*v1.Pod, error) {
 	pod := v1.Pod{
 		TypeMeta: v12.TypeMeta{
 			Kind:       PodKind,
@@ -155,19 +155,17 @@ func BuildPodWithSpec(podSpec *v1.PodSpec) (*v1.Pod, error) {
 		},
 	}
 
-	defaultPodTemplate := GetDefaultPodTemplate()
-	if defaultPodTemplate != nil {
-		// merge podSpec with the default podSpec
-		defaultPodSpec := defaultPodTemplate.Template.Spec
-		err := mergo.Merge(&defaultPodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
+	if podTemplate != nil {
+		basePodSpec := podTemplate.Template.Spec.DeepCopy()
+		err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 		if err != nil {
 			return nil, err
 		}
 
-		defaultPodSpec.Containers = podSpec.Containers
+		basePodSpec.Containers = podSpec.Containers
 
-		pod.ObjectMeta = defaultPodTemplate.Template.ObjectMeta
-		pod.Spec = defaultPodSpec
+		pod.ObjectMeta = podTemplate.Template.ObjectMeta
+		pod.Spec = *basePodSpec
 	} else {
 		pod.Spec = *podSpec
 	}
@@ -286,7 +284,7 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 								// approximation of the elapsed time since the last
 								// transition.
 								t := c.LastTransitionTime.Time
-								if time.Since(t) >= GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration {
+								if time.Since(t) >= config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration {
 									return pluginsCore.PhaseInfoFailure(finalReason, finalMessage, &pluginsCore.TaskInfo{
 										OccurredAt: &t,
 									}), nil

@@ -17,6 +17,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	core2 "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,8 +125,8 @@ func FlyteArrayJobToK8sPodTemplate(ctx context.Context, tCtx core.TaskExecutionC
 		}
 	}
 
-	annotations := utils.UnionMaps(flytek8s.GetK8sPluginConfig().DefaultAnnotations, tCtx.TaskExecutionMetadata().GetAnnotations())
-	labels := utils.UnionMaps(flytek8s.GetK8sPluginConfig().DefaultLabels, tCtx.TaskExecutionMetadata().GetLabels())
+	annotations := utils.UnionMaps(config.GetK8sPluginConfig().DefaultAnnotations, tCtx.TaskExecutionMetadata().GetAnnotations())
+	labels := utils.UnionMaps(config.GetK8sPluginConfig().DefaultLabels, tCtx.TaskExecutionMetadata().GetLabels())
 
 	var pod = v1.Pod{
 		TypeMeta: metav1.TypeMeta{

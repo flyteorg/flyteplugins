@@ -14,9 +14,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 )
 
 const resourceGPU = "gpu"
+
+// ResourceNvidiaGPU is the name of the Nvidia GPU resource.
+// Copied from: k8s.io/autoscaler/cluster-autoscaler/utils/gpu/gpu.go
+const ResourceNvidiaGPU v1.ResourceName = "nvidia.com/gpu"
 
 // Specifies whether resource resolution should assign unset resource requests or limits from platform defaults
 // or existing container values.
@@ -142,8 +147,8 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 
 	// As a fallback, in the case the Flyte workflow object does not have platformResource defaults set, the defaults
 	// come from the plugin config.
-	platformResources = resolvePlatformDefaults(platformResources, GetK8sPluginConfig().DefaultCPURequest,
-		GetK8sPluginConfig().DefaultMemoryRequest)
+	platformResources = resolvePlatformDefaults(platformResources, config.GetK8sPluginConfig().DefaultCPURequest,
+		config.GetK8sPluginConfig().DefaultMemoryRequest)
 
 	adjustResourceRequirement(v1.ResourceCPU, resources, platformResources, assignIfUnset)
 	adjustResourceRequirement(v1.ResourceMemory, resources, platformResources, assignIfUnset)
@@ -160,7 +165,7 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	delete(resources.Requests, v1.ResourceStorage)
 	delete(resources.Limits, v1.ResourceStorage)
 
-	gpuResourceName := GetK8sPluginConfig().GpuResourceName
+	gpuResourceName := config.GetK8sPluginConfig().GpuResourceName
 	shouldAdjustGPU := false
 	_, gpuRequested := resources.Requests[gpuResourceName]
 	_, gpuLimited := resources.Limits[gpuResourceName]
@@ -212,11 +217,11 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 		Env:                      ToK8sEnvVar(taskContainer.GetEnv()),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
-	if err := AddCoPilotToContainer(ctx, GetK8sPluginConfig().CoPilot, container, iFace, taskContainer.DataConfig); err != nil {
+	if err := AddCoPilotToContainer(ctx, config.GetK8sPluginConfig().CoPilot, container, iFace, taskContainer.DataConfig); err != nil {
 		return nil, err
 	}
-	if container.SecurityContext == nil && GetK8sPluginConfig().DefaultSecurityContext != nil {
-		container.SecurityContext = GetK8sPluginConfig().DefaultSecurityContext.DeepCopy()
+	if container.SecurityContext == nil && config.GetK8sPluginConfig().DefaultSecurityContext != nil {
+		container.SecurityContext = config.GetK8sPluginConfig().DefaultSecurityContext.DeepCopy()
 	}
 	return container, nil
 }

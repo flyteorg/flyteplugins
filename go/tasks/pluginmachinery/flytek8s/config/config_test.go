@@ -1,4 +1,4 @@
-package flytek8s
+package config
 
 import (
 	"testing"

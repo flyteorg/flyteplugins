@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -258,7 +260,7 @@ func updatePod(t *testing.T) {
 
 func TestUpdatePodWithDefaultAffinityAndInterruptibleNodeSelectorRequirement(t *testing.T) {
 	taskExecutionMetadata := dummyTaskExecutionMetadata(&v1.ResourceRequirements{})
-	assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		DefaultAffinity: &v1.Affinity{
 			NodeAffinity: &v1.NodeAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
@@ -401,7 +403,7 @@ func TestToK8sPod(t *testing.T) {
 		Effect:   v1.TaintEffectNoSchedule,
 	}
 
-	assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		ResourceTolerations: map[v1.ResourceName][]v1.Toleration{
 			v1.ResourceStorage: {tolStorage},
 			ResourceNvidiaGPU:  {tolGPU},
@@ -462,7 +464,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 			DefaultNodeSelector: map[string]string{
 				"nodeId": "123",
 			},
@@ -481,7 +483,7 @@ func TestToK8sPod(t *testing.T) {
 
 	t.Run("default-pod-sec-ctx", func(t *testing.T) {
 		v := int64(1000)
-		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 			DefaultPodSecurityContext: &v1.PodSecurityContext{
 				RunAsGroup: &v,
 			},
@@ -496,7 +498,7 @@ func TestToK8sPod(t *testing.T) {
 
 	t.Run("enableHostNetwork", func(t *testing.T) {
 		enabled := true
-		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 			EnableHostNetworkingPod: &enabled,
 		}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
@@ -507,7 +509,7 @@ func TestToK8sPod(t *testing.T) {
 
 	t.Run("explicitDisableHostNetwork", func(t *testing.T) {
 		enabled := false
-		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 			EnableHostNetworkingPod: &enabled,
 		}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
@@ -517,7 +519,7 @@ func TestToK8sPod(t *testing.T) {
 	})
 
 	t.Run("skipSettingHostNetwork", func(t *testing.T) {
-		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{}))
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
 		p, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
@@ -528,7 +530,7 @@ func TestToK8sPod(t *testing.T) {
 		val1 := "1"
 		val2 := "1"
 		val3 := "3"
-		assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 			DefaultPodDNSConfig: &v1.PodDNSConfig{
 				Nameservers: []string{"8.8.8.8", "8.8.4.4"},
 				Options: []v1.PodDNSConfigOption{
@@ -569,7 +571,7 @@ func TestToK8sPod(t *testing.T) {
 }
 
 func TestDemystifyPending(t *testing.T) {
-	assert.NoError(t, SetK8sPluginConfig(&K8sPluginConfig{
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		CreateContainerErrorGracePeriod: config1.Duration{
 			Duration: time.Minute * 3,
 		},
@@ -810,7 +812,7 @@ func TestDemystifyPending(t *testing.T) {
 
 	t.Run("CreateContainerErrorOutsideGracePeriod", func(t *testing.T) {
 		s2 := *s.DeepCopy()
-		s2.Conditions[0].LastTransitionTime.Time = metaV1.Now().Add(-GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)
+		s2.Conditions[0].LastTransitionTime.Time = metaV1.Now().Add(-config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)
 		s2.ContainerStatuses = []v1.ContainerStatus{
 			{
 				Ready: false,
@@ -1047,4 +1049,54 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhasePermanentFailure, phaseInfo.Phase())
 		assert.Equal(t, "Primary container [primary] not found in pod's container statuses", phaseInfo.Err().Message)
 	})
+}
+
+func TestBuildPodWithSpec(t *testing.T) {
+	var priority int32 = 1
+	podSpec := v1.PodSpec{
+		NodeSelector: map[string]string{
+			"baz": "bar",
+		},
+		Priority: &priority,
+		SchedulerName: "overrideScheduler",
+		Tolerations: []v1.Toleration{
+			v1.Toleration{
+				Key: "bar",
+			},
+			v1.Toleration{
+				Key: "baz",
+			},
+		},
+	}
+
+
+	pod, err := BuildPodWithSpec(nil, &podSpec)
+	assert.Nil(t, err)
+	assert.True(t, reflect.DeepEqual(pod.Spec, podSpec))
+
+	podTemplate := v1.PodTemplate{
+		Template: v1.PodTemplateSpec{
+			Spec: v1.PodSpec{
+				HostNetwork: true,
+				NodeSelector: map[string]string{
+					"foo": "bar",
+				},
+				SchedulerName: "defaultScheduler",
+				Tolerations: []v1.Toleration{
+					v1.Toleration{
+						Key: "foo",
+					},
+				},
+			},
+		},
+	}
+
+	pod, err = BuildPodWithSpec(&podTemplate, &podSpec)
+	assert.Nil(t, err)
+
+	assert.Equal(t, podTemplate.Template.Spec.HostNetwork, pod.Spec.HostNetwork) // PodTemplate field
+	assert.Equal(t, podSpec.Priority, pod.Spec.Priority) // PodSpec field
+	assert.Equal(t, podSpec.SchedulerName, pod.Spec.SchedulerName) // overwritten PodTemplate field
+	assert.Equal(t, len(podTemplate.Template.Spec.NodeSelector) + len(podSpec.NodeSelector), len(pod.Spec.NodeSelector)) // merged map
+	assert.Equal(t, len(podTemplate.Template.Spec.Tolerations) + len(podSpec.Tolerations), len(pod.Spec.Tolerations)) // merged array
 }

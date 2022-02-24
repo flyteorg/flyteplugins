@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 )
 
@@ -29,7 +30,7 @@ var resourceRequirements = &v1.ResourceRequirements{
 }
 
 func TestFlyteCoPilotContainer(t *testing.T) {
-	cfg := FlyteCoPilotConfig{
+	cfg := config.FlyteCoPilotConfig{
 		NamePrefix:           "test-",
 		Image:                "test",
 		DefaultInputDataPath: "/in",
@@ -177,7 +178,7 @@ func TestDataVolume(t *testing.T) {
 	assert.Equal(t, q, *v.EmptyDir.SizeLimit)
 }
 
-func assertContainerHasVolumeMounts(t *testing.T, cfg FlyteCoPilotConfig, pilot *core.DataLoadingConfig, iFace *core.TypedInterface, c *v1.Container) {
+func assertContainerHasVolumeMounts(t *testing.T, cfg config.FlyteCoPilotConfig, pilot *core.DataLoadingConfig, iFace *core.TypedInterface, c *v1.Container) {
 	if iFace != nil {
 		vmap := map[string]v1.VolumeMount{}
 		for _, v := range c.VolumeMounts {
@@ -235,7 +236,7 @@ func assertPodHasSNPS(t *testing.T, pod *v1.PodSpec) {
 	assert.False(t, found, "user container absent?")
 }
 
-func assertPodHasCoPilot(t *testing.T, cfg FlyteCoPilotConfig, pilot *core.DataLoadingConfig, iFace *core.TypedInterface, pod *v1.PodSpec) {
+func assertPodHasCoPilot(t *testing.T, cfg config.FlyteCoPilotConfig, pilot *core.DataLoadingConfig, iFace *core.TypedInterface, pod *v1.PodSpec) {
 	for _, c := range pod.Containers {
 		if c.Name == "test" {
 			cntr := c
@@ -321,7 +322,7 @@ func TestCalculateStorageSize(t *testing.T) {
 
 func TestAddCoPilotToContainer(t *testing.T) {
 	ctx := context.TODO()
-	cfg := FlyteCoPilotConfig{
+	cfg := config.FlyteCoPilotConfig{
 		NamePrefix:           "test-",
 		Image:                "test",
 		DefaultInputDataPath: "/in",
@@ -442,7 +443,7 @@ func TestAddCoPilotToContainer(t *testing.T) {
 
 func TestAddCoPilotToPod(t *testing.T) {
 	ctx := context.TODO()
-	cfg := FlyteCoPilotConfig{
+	cfg := config.FlyteCoPilotConfig{
 		NamePrefix:           "test-",
 		Image:                "test",
 		DefaultInputDataPath: "/in",
