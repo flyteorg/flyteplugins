@@ -19,7 +19,7 @@ func TestPodTemplateStore(t *testing.T) {
 
 	podTemplate := &v1.PodTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "defaultPodTemplate",
+			Name:      "defaultPodTemplate",
 			Namespace: "defaultNamespace",
 		},
 		Template: v1.PodTemplateSpec{
@@ -55,6 +55,7 @@ func TestPodTemplateStore(t *testing.T) {
 	updatedPodTemplate := podTemplate.DeepCopy()
 	updatedPodTemplate.Template.Spec.RestartPolicy = v1.RestartPolicyNever
 	_, err = kubeClient.CoreV1().PodTemplates(podTemplate.Namespace).Update(ctx, updatedPodTemplate, metav1.UpdateOptions{})
+	assert.NoError(t, err)
 
 	time.Sleep(5 * time.Millisecond)
 	assert.NotNil(t, store.Get())

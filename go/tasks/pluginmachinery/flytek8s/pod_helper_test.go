@@ -1057,7 +1057,7 @@ func TestBuildPodWithSpec(t *testing.T) {
 		NodeSelector: map[string]string{
 			"baz": "bar",
 		},
-		Priority: &priority,
+		Priority:      &priority,
 		SchedulerName: "overrideScheduler",
 		Tolerations: []v1.Toleration{
 			v1.Toleration{
