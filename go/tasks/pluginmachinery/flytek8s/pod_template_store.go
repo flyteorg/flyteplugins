@@ -9,12 +9,15 @@ import (
 
 var DefaultPodTemplateStore PodTemplateStore = NewPodTemplateStore()
 
+// PodTemplateStore maintains a thread-safe mapping of active PodTemplates with their associated
+// namespaces.
 type PodTemplateStore struct {
 	defaultNamespace      string
 	mutex                 sync.Mutex
 	namespacePodTemplates map[string]*v1.PodTemplate
 }
 
+// NewPodTemplateStore initializes a new PodTemplateStore
 func NewPodTemplateStore() PodTemplateStore {
 	return PodTemplateStore{
 		mutex:                 sync.Mutex{},
@@ -22,6 +25,8 @@ func NewPodTemplateStore() PodTemplateStore {
 	}
 }
 
+// Get returns the PodTemplate associated with the given namespace. If one does not exist, it
+// attempts to retrieve the one associated with the defaultNamespace parameter.
 func (p *PodTemplateStore) Get(namespace string) *v1.PodTemplate {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -33,22 +38,28 @@ func (p *PodTemplateStore) Get(namespace string) *v1.PodTemplate {
 	return p.namespacePodTemplates[p.defaultNamespace]
 }
 
+// Set stores the provided PodTemplate, overwritting a previously stored instance for the specified
+// namespace.
 func (p *PodTemplateStore) Set(podTemplate *v1.PodTemplate) {
 	p.mutex.Lock()
 	p.namespacePodTemplates[podTemplate.Namespace] = podTemplate
 	p.mutex.Unlock()
 }
 
+// SetDefaultNamespace sets the default namespace for the PodTemplateStore.
 func (p *PodTemplateStore) SetDefaultNamespace(namespace string) {
 	p.defaultNamespace = namespace
 }
 
+// Remove deletes the PodTemplate from the PodTemplateStore.
 func (p *PodTemplateStore) Remove(podTemplate *v1.PodTemplate) {
 	p.mutex.Lock()
 	delete(p.namespacePodTemplates, podTemplate.Namespace)
 	p.mutex.Unlock()
 }
 
+// GetPodTemplateUpdatesHandler returns a new ResourceEventHandler which adds / removes
+// PodTemplates with the associated podTemplateName to / from the provided PodTemplateStore.
 func GetPodTemplateUpdatesHandler(store *PodTemplateStore, podTemplateName string) cache.ResourceEventHandler {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
