@@ -35,9 +35,10 @@ func TestPodTemplateStore(t *testing.T) {
 	}
 
 	store := NewPodTemplateStore()
+	store.SetDefaultNamespace(podTemplate.Namespace)
 
 	kubeClient := fake.NewSimpleClientset()
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, 30*time.Second, informers.WithNamespace(podTemplate.Namespace))
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, 30*time.Second)
 
 	updateHandler := GetPodTemplateUpdatesHandler(&store, podTemplate.Name)
 	informerFactory.Core().V1().PodTemplates().Informer().AddEventHandler(updateHandler)
@@ -48,8 +49,26 @@ func TestPodTemplateStore(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(5 * time.Millisecond)
-	assert.NotNil(t, store.Get())
-	assert.True(t, reflect.DeepEqual(podTemplate, store.Get()))
+	createPodTemplate := store.Get(podTemplate.Namespace)
+	assert.NotNil(t, createPodTemplate)
+	assert.True(t, reflect.DeepEqual(podTemplate, createPodTemplate))
+
+	// non-default namespace podTemplate does not exists
+	newNamespacePodTemplate := podTemplate.DeepCopy()
+	newNamespacePodTemplate.Namespace = "foo"
+
+	nonDefaultPodTemplate := store.Get(newNamespacePodTemplate.Namespace)
+	assert.NotNil(t, nonDefaultPodTemplate)
+	assert.True(t, reflect.DeepEqual(podTemplate, nonDefaultPodTemplate))
+
+	// non-default namespace podTemplate exists
+	_, err = kubeClient.CoreV1().PodTemplates(newNamespacePodTemplate.Namespace).Create(ctx, newNamespacePodTemplate, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	time.Sleep(5 * time.Millisecond)
+	createNewNamespacePodTemplate := store.Get(newNamespacePodTemplate.Namespace)
+	assert.NotNil(t, createNewNamespacePodTemplate)
+	assert.True(t, reflect.DeepEqual(newNamespacePodTemplate, createNewNamespacePodTemplate))
 
 	// update the podTemplate
 	updatedPodTemplate := podTemplate.DeepCopy()
@@ -58,13 +77,15 @@ func TestPodTemplateStore(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(5 * time.Millisecond)
-	assert.NotNil(t, store.Get())
-	assert.True(t, reflect.DeepEqual(updatedPodTemplate, store.Get()))
+	updatePodTemplate := store.Get(podTemplate.Namespace)
+	assert.NotNil(t, updatePodTemplate)
+	assert.True(t, reflect.DeepEqual(updatedPodTemplate, updatePodTemplate))
 
 	// delete the podTemplate in the namespace
 	err = kubeClient.CoreV1().PodTemplates(podTemplate.Namespace).Delete(ctx, podTemplate.Name, metav1.DeleteOptions{})
 	assert.NoError(t, err)
 
 	time.Sleep(5 * time.Millisecond)
-	assert.Nil(t, store.Get())
+	deletePodTemplate := store.Get(podTemplate.Namespace)
+	assert.Nil(t, deletePodTemplate)
 }

@@ -9,27 +9,43 @@ import (
 
 var DefaultPodTemplateStore PodTemplateStore = NewPodTemplateStore()
 
-// TODO designed as standalone to extend to support tracking namespace specific default PodTemplates
 type PodTemplateStore struct {
-	mutex       sync.Mutex
-	podTemplate *v1.PodTemplate
+	defaultNamespace      string
+	mutex                 sync.Mutex
+	namespacePodTemplates map[string]*v1.PodTemplate
 }
 
 func NewPodTemplateStore() PodTemplateStore {
 	return PodTemplateStore{
-		mutex: sync.Mutex{},
+		mutex:                 sync.Mutex{},
+		namespacePodTemplates: make(map[string]*v1.PodTemplate),
 	}
 }
 
-func (p *PodTemplateStore) Get() *v1.PodTemplate {
+func (p *PodTemplateStore) Get(namespace string) *v1.PodTemplate {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	return p.podTemplate
+
+	if podTemplate, ok := p.namespacePodTemplates[namespace]; ok {
+		return podTemplate
+	}
+
+	return p.namespacePodTemplates[p.defaultNamespace]
 }
 
 func (p *PodTemplateStore) Set(podTemplate *v1.PodTemplate) {
 	p.mutex.Lock()
-	p.podTemplate = podTemplate
+	p.namespacePodTemplates[podTemplate.Namespace] = podTemplate
+	p.mutex.Unlock()
+}
+
+func (p *PodTemplateStore) SetDefaultNamespace(namespace string) {
+	p.defaultNamespace = namespace
+}
+
+func (p *PodTemplateStore) Remove(podTemplate *v1.PodTemplate) {
+	p.mutex.Lock()
+	delete(p.namespacePodTemplates, podTemplate.Namespace)
 	p.mutex.Unlock()
 }
 
@@ -50,7 +66,7 @@ func GetPodTemplateUpdatesHandler(store *PodTemplateStore, podTemplateName strin
 		DeleteFunc: func(obj interface{}) {
 			podTemplate, ok := obj.(*v1.PodTemplate)
 			if ok && podTemplate.Name == podTemplateName {
-				store.Set(nil)
+				store.Remove(podTemplate)
 			}
 		},
 	}

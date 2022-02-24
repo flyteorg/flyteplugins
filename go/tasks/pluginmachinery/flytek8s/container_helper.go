@@ -21,7 +21,7 @@ const resourceGPU = "gpu"
 
 // ResourceNvidiaGPU is the name of the Nvidia GPU resource.
 // Copied from: k8s.io/autoscaler/cluster-autoscaler/utils/gpu/gpu.go
-const ResourceNvidiaGPU v1.ResourceName = "nvidia.com/gpu"
+const ResourceNvidiaGPU = "nvidia.com/gpu"
 
 // Specifies whether resource resolution should assign unset resource requests or limits from platform defaults
 // or existing container values.
