@@ -1069,7 +1069,6 @@ func TestBuildPodWithSpec(t *testing.T) {
 		},
 	}
 
-
 	pod, err := BuildPodWithSpec(nil, &podSpec)
 	assert.Nil(t, err)
 	assert.True(t, reflect.DeepEqual(pod.Spec, podSpec))
@@ -1094,9 +1093,14 @@ func TestBuildPodWithSpec(t *testing.T) {
 	pod, err = BuildPodWithSpec(&podTemplate, &podSpec)
 	assert.Nil(t, err)
 
-	assert.Equal(t, podTemplate.Template.Spec.HostNetwork, pod.Spec.HostNetwork) // PodTemplate field
-	assert.Equal(t, podSpec.Priority, pod.Spec.Priority) // PodSpec field
-	assert.Equal(t, podSpec.SchedulerName, pod.Spec.SchedulerName) // overwritten PodTemplate field
-	assert.Equal(t, len(podTemplate.Template.Spec.NodeSelector) + len(podSpec.NodeSelector), len(pod.Spec.NodeSelector)) // merged map
-	assert.Equal(t, len(podTemplate.Template.Spec.Tolerations) + len(podSpec.Tolerations), len(pod.Spec.Tolerations)) // merged array
+	// validate a PodTemplate-only field
+	assert.Equal(t, podTemplate.Template.Spec.HostNetwork, pod.Spec.HostNetwork)
+	// validate a PodSpec-only field
+	assert.Equal(t, podSpec.Priority, pod.Spec.Priority)
+	// validate an overwritten PodTemplate field
+	assert.Equal(t, podSpec.SchedulerName, pod.Spec.SchedulerName)
+	// validate a merged map
+	assert.Equal(t, len(podTemplate.Template.Spec.NodeSelector)+len(podSpec.NodeSelector), len(pod.Spec.NodeSelector))
+	// validate an appended array
+	assert.Equal(t, len(podTemplate.Template.Spec.Tolerations)+len(podSpec.Tolerations), len(pod.Spec.Tolerations))
 }
