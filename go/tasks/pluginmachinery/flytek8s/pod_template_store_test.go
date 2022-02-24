@@ -48,7 +48,7 @@ func TestPodTemplateStore(t *testing.T) {
 	_, err := kubeClient.CoreV1().PodTemplates(podTemplate.Namespace).Create(ctx, podTemplate, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	createPodTemplate := store.Get(podTemplate.Namespace)
 	assert.NotNil(t, createPodTemplate)
 	assert.True(t, reflect.DeepEqual(podTemplate, createPodTemplate))
@@ -65,7 +65,7 @@ func TestPodTemplateStore(t *testing.T) {
 	_, err = kubeClient.CoreV1().PodTemplates(newNamespacePodTemplate.Namespace).Create(ctx, newNamespacePodTemplate, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	createNewNamespacePodTemplate := store.Get(newNamespacePodTemplate.Namespace)
 	assert.NotNil(t, createNewNamespacePodTemplate)
 	assert.True(t, reflect.DeepEqual(newNamespacePodTemplate, createNewNamespacePodTemplate))
@@ -76,7 +76,7 @@ func TestPodTemplateStore(t *testing.T) {
 	_, err = kubeClient.CoreV1().PodTemplates(podTemplate.Namespace).Update(ctx, updatedPodTemplate, metav1.UpdateOptions{})
 	assert.NoError(t, err)
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	updatePodTemplate := store.Get(podTemplate.Namespace)
 	assert.NotNil(t, updatePodTemplate)
 	assert.True(t, reflect.DeepEqual(updatedPodTemplate, updatePodTemplate))
@@ -85,7 +85,7 @@ func TestPodTemplateStore(t *testing.T) {
 	err = kubeClient.CoreV1().PodTemplates(podTemplate.Namespace).Delete(ctx, podTemplate.Name, metav1.DeleteOptions{})
 	assert.NoError(t, err)
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	deletePodTemplate := store.Get(podTemplate.Namespace)
 	assert.Nil(t, deletePodTemplate)
 }
