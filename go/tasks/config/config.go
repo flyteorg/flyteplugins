@@ -4,7 +4,7 @@ import (
 	"github.com/flyteorg/flytestdlib/config"
 )
 
-//go:generate pflags Config
+//go:generate pflags Config --default-var=defaultConfig
 
 const configSectionKey = "plugins"
 

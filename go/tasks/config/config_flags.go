@@ -50,6 +50,6 @@ func (Config) mustMarshalJSON(v json.Marshaler) string {
 // flags is json-name.json-sub-name... etc.
 func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags := pflag.NewFlagSet("Config", pflag.ExitOnError)
-	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "enabled-plugins"), []string{"*"}, "List of enabled plugins,  default value is to enable all plugins.")
+	cmdFlags.StringSlice(fmt.Sprintf("%v%v", prefix, "enabled-plugins"), []string{}, "Deprecated - List of enabled plugins,  default value is to enable all plugins.")
 	return cmdFlags
 }
