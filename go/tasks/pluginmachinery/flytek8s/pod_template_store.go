@@ -13,37 +13,34 @@ var DefaultPodTemplateStore PodTemplateStore = NewPodTemplateStore()
 // namespaces.
 type PodTemplateStore struct {
 	defaultNamespace      string
-	mutex                 sync.Mutex
-	namespacePodTemplates map[string]*v1.PodTemplate
+	namespacePodTemplates sync.Map
 }
 
 // NewPodTemplateStore initializes a new PodTemplateStore
 func NewPodTemplateStore() PodTemplateStore {
 	return PodTemplateStore{
-		mutex:                 sync.Mutex{},
-		namespacePodTemplates: make(map[string]*v1.PodTemplate),
+		namespacePodTemplates: sync.Map{},
 	}
 }
 
 // Get returns the PodTemplate associated with the given namespace. If one does not exist, it
 // attempts to retrieve the one associated with the defaultNamespace parameter.
 func (p *PodTemplateStore) Get(namespace string) *v1.PodTemplate {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	if podTemplate, ok := p.namespacePodTemplates[namespace]; ok {
-		return podTemplate
+	if podTemplate, ok := p.namespacePodTemplates.Load(namespace); ok {
+		return podTemplate.(*v1.PodTemplate)
 	}
 
-	return p.namespacePodTemplates[p.defaultNamespace]
+	if podTemplate, ok := p.namespacePodTemplates.Load(p.defaultNamespace); ok {
+		return podTemplate.(*v1.PodTemplate)
+	}
+
+	return nil
 }
 
 // Set stores the provided PodTemplate, overwritting a previously stored instance for the specified
 // namespace.
 func (p *PodTemplateStore) Set(podTemplate *v1.PodTemplate) {
-	p.mutex.Lock()
-	p.namespacePodTemplates[podTemplate.Namespace] = podTemplate
-	p.mutex.Unlock()
+	p.namespacePodTemplates.Store(podTemplate.Namespace, podTemplate)
 }
 
 // SetDefaultNamespace sets the default namespace for the PodTemplateStore.
@@ -53,9 +50,7 @@ func (p *PodTemplateStore) SetDefaultNamespace(namespace string) {
 
 // Remove deletes the PodTemplate from the PodTemplateStore.
 func (p *PodTemplateStore) Remove(podTemplate *v1.PodTemplate) {
-	p.mutex.Lock()
-	delete(p.namespacePodTemplates, podTemplate.Namespace)
-	p.mutex.Unlock()
+	p.namespacePodTemplates.Delete(podTemplate.Namespace)
 }
 
 // GetPodTemplateUpdatesHandler returns a new ResourceEventHandler which adds / removes
