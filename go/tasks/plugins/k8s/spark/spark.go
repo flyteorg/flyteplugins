@@ -99,24 +99,24 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 	driverSpec := sparkOp.DriverSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
-			Annotations:      annotations,
-			Labels:           labels,
-			EnvVars:          sparkEnvVars,
-			Image:            &container.Image,
-			SecurityContenxt: config.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
-			DNSConfig:        config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
+			Annotations:        annotations,
+			Labels:             labels,
+			EnvVars:            sparkEnvVars,
+			Image:              &container.Image,
+			PodSecurityContext: config.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
+			ServiceAccount:     &serviceAccountName,
+			DNSConfig:          config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
 		},
-		ServiceAccount: &serviceAccountName,
 	}
 
 	executorSpec := sparkOp.ExecutorSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
-			Annotations:      annotations,
-			Labels:           labels,
-			Image:            &container.Image,
-			EnvVars:          sparkEnvVars,
-			SecurityContenxt: config.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
-			DNSConfig:        config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
+			Annotations:        annotations,
+			Labels:             labels,
+			Image:              &container.Image,
+			EnvVars:            sparkEnvVars,
+			PodSecurityContext: config.GetK8sPluginConfig().DefaultPodSecurityContext.DeepCopy(),
+			DNSConfig:          config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy(),
 		},
 	}
 
@@ -198,14 +198,13 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			APIVersion: sparkOp.SchemeGroupVersion.String(),
 		},
 		Spec: sparkOp.SparkApplicationSpec{
-			ServiceAccount: &serviceAccountName,
-			Type:           getApplicationType(sparkJob.GetApplicationType()),
-			Image:          &container.Image,
-			Arguments:      modifiedArgs,
-			Driver:         driverSpec,
-			Executor:       executorSpec,
-			SparkConf:      sparkConfig,
-			HadoopConf:     sparkJob.GetHadoopConf(),
+			Type:       getApplicationType(sparkJob.GetApplicationType()),
+			Image:      &container.Image,
+			Arguments:  modifiedArgs,
+			Driver:     driverSpec,
+			Executor:   executorSpec,
+			SparkConf:  sparkConfig,
+			HadoopConf: sparkJob.GetHadoopConf(),
 			// SubmissionFailures handled here. Task Failures handled at Propeller/Job level.
 			RestartPolicy: sparkOp.RestartPolicy{
 				Type:                       sparkOp.OnFailure,
@@ -286,7 +285,7 @@ func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx p
 func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
 	state := sj.Status.AppState.State
 	isQueued := state == sparkOp.NewState ||
-		state == sparkOp.PendingSubmissionState ||
+		state == sparkOp.PendingRerunState ||
 		state == sparkOp.SubmittedState
 
 	sparkConfig := GetSparkConfig()
@@ -419,7 +418,7 @@ func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.
 	switch app.Status.AppState.State {
 	case sparkOp.NewState:
 		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job queued"), nil
-	case sparkOp.SubmittedState, sparkOp.PendingSubmissionState:
+	case sparkOp.SubmittedState, sparkOp.PendingRerunState:
 		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "job submitted", info), nil
 	case sparkOp.FailedSubmissionState:
 		reason := fmt.Sprintf("Spark Job  Submission Failed with Error: %s", app.Status.AppState.ErrorMessage)
