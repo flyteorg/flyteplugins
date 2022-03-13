@@ -24,8 +24,6 @@ const (
 	flyteInitContainerName    = "downloader"
 )
 
-var pTraceCapability = v1.Capability("SYS_PTRACE")
-
 func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) (v1.Container, error) {
 	cpu, err := resource.ParseQuantity(cfg.CPU)
 	if err != nil {
@@ -88,7 +86,8 @@ func CopilotCommandArgs(storageConfig *storage.Config) []string {
 	}...)
 }
 
-func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, iface *core.TypedInterface) ([]string, error) {
+func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference,
+	startTimeout time.Duration, finishTimeout time.Duration, iface *core.TypedInterface) ([]string, error) {
 	if iface == nil {
 		return nil, fmt.Errorf("interface is required for CoPilot Sidecar")
 	}
@@ -100,6 +99,8 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 		"sidecar",
 		"--start-timeout",
 		startTimeout.String(),
+		"--finish-timeout",
+		finishTimeout.String(),
 		"--to-raw-output",
 		rawOutputPath.String(),
 		"--to-output-prefix",
@@ -166,13 +167,6 @@ func AddCoPilotToContainer(ctx context.Context, cfg config.FlyteCoPilotConfig, c
 		return nil
 	}
 	logger.Infof(ctx, "Enabling CoPilot on main container [%s]", c.Name)
-	if c.SecurityContext == nil {
-		c.SecurityContext = &v1.SecurityContext{}
-	}
-	if c.SecurityContext.Capabilities == nil {
-		c.SecurityContext.Capabilities = &v1.Capabilities{}
-	}
-	c.SecurityContext.Capabilities.Add = append(c.SecurityContext.Capabilities.Add, pTraceCapability)
 
 	if iFace != nil {
 		if iFace.Inputs != nil {
@@ -258,7 +252,7 @@ func AddCoPilotToPod(ctx context.Context, cfg config.FlyteCoPilotConfig, coPilot
 			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, size))
 
 			// Lets add the Inputs init container
-			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, iFace)
+			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, cfg.FinishTimeout.Duration, iFace)
 			if err != nil {
 				return err
 			}
