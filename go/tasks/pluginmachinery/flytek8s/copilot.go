@@ -72,13 +72,12 @@ func CopilotCommandArgs(storageConfig *storage.Config) []string {
 	}
 	commands = append(commands, fmt.Sprintf("--storage.type=%s", storageConfig.Type))
 
-	if storageConfig.Type == storage.TypeStow {
-		for key, val := range storageConfig.Stow.Config {
-			commands = append(commands, fmt.Sprintf("--storage.stow.config %s=%s,", key, val))
+	if len(storageConfig.Stow.Config) > 0 && len(storageConfig.Stow.Kind) > 0 {
+	for key, val := range storageConfig.Stow.Config {
+			commands = append(commands, fmt.Sprintf("--storage.stow.config=%s=%q", key, val))
 		}
 		return append(commands, fmt.Sprintf("--storage.stow.kind=%s", storageConfig.Stow.Kind))
 	}
-
 	return append(commands, []string{
 		fmt.Sprintf("--storage.connection.secret-key=%s", storageConfig.Connection.SecretKey),
 		fmt.Sprintf("--storage.connection.access-key=%s", storageConfig.Connection.AccessKey),
