@@ -52,6 +52,38 @@ func (_m *TaskExecutionMetadata) GetAnnotations() map[string]string {
 	return r0
 }
 
+type TaskExecutionMetadata_GetArchitecture struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionMetadata_GetArchitecture) Return(_a0 flyteidlcore.Container_Architecture) *TaskExecutionMetadata_GetArchitecture {
+	return &TaskExecutionMetadata_GetArchitecture{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionMetadata) OnGetArchitecture() *TaskExecutionMetadata_GetArchitecture {
+	c := _m.On("GetArchitecture")
+	return &TaskExecutionMetadata_GetArchitecture{Call: c}
+}
+
+func (_m *TaskExecutionMetadata) OnGetArchitectureMatch(matchers ...interface{}) *TaskExecutionMetadata_GetArchitecture {
+	c := _m.On("GetArchitecture", matchers...)
+	return &TaskExecutionMetadata_GetArchitecture{Call: c}
+}
+
+// GetArchitecture provides a mock function with given fields:
+func (_m *TaskExecutionMetadata) GetArchitecture() flyteidlcore.Container_Architecture {
+	ret := _m.Called()
+
+	var r0 flyteidlcore.Container_Architecture
+	if rf, ok := ret.Get(0).(func() flyteidlcore.Container_Architecture); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(flyteidlcore.Container_Architecture)
+	}
+
+	return r0
+}
+
 type TaskExecutionMetadata_GetK8sServiceAccount struct {
 	*mock.Call
 }

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -58,7 +60,38 @@ func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
 	}
 }
 
-// Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
+// ApplyArchitectureNodeAffinity configures the node-affinity for the pod using the configuration specified.
+func ApplyArchitectureNodeAffinity(architecture core.Container_Architecture, podSpec *v1.PodSpec) {
+	// Determine node selector terms to add to node affinity
+	var nodeSelectorRequirement v1.NodeSelectorRequirement
+	if architecture != 0 {
+		if config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[architecture.String()] == nil {
+			return
+		}
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[architecture.String()]
+
+		if podSpec.Affinity == nil {
+			podSpec.Affinity = &v1.Affinity{}
+		}
+		if podSpec.Affinity.NodeAffinity == nil {
+			podSpec.Affinity.NodeAffinity = &v1.NodeAffinity{}
+		}
+		if podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{}
+		}
+		if len(podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
+			nodeSelectorTerms := podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
+			for i := range nodeSelectorTerms {
+				nst := &nodeSelectorTerms[i]
+				nst.MatchExpressions = append(nst.MatchExpressions, nodeSelectorRequirement)
+			}
+		} else {
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []v1.NodeSelectorTerm{v1.NodeSelectorTerm{MatchExpressions: []v1.NodeSelectorRequirement{nodeSelectorRequirement}}}
+		}
+	}
+}
+
+// UpdatePod updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
 func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
 	UpdatePodWithInterruptibleFlag(taskExecutionMetadata, resourceRequirements, podSpec, false)
@@ -68,11 +101,12 @@ func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec, omitInterruptible bool) {
 	isInterruptible := !omitInterruptible && taskExecutionMetadata.IsInterruptible()
+	architecture := taskExecutionMetadata.GetArchitecture()
 	if len(podSpec.RestartPolicy) == 0 {
 		podSpec.RestartPolicy = v1.RestartPolicyNever
 	}
 	podSpec.Tolerations = append(
-		GetPodTolerations(isInterruptible, resourceRequirements...), podSpec.Tolerations...)
+		GetPodTolerations(isInterruptible, architecture, resourceRequirements...), podSpec.Tolerations...)
 
 	if len(podSpec.ServiceAccountName) == 0 {
 		podSpec.ServiceAccountName = taskExecutionMetadata.GetK8sServiceAccount()
@@ -84,10 +118,14 @@ func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecut
 	if isInterruptible {
 		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
+	if architecture != 0 {
+		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().ArchitectureNodeSelector[architecture.String()])
+	}
 	if podSpec.Affinity == nil && config.GetK8sPluginConfig().DefaultAffinity != nil {
 		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity.DeepCopy()
 	}
 	ApplyInterruptibleNodeAffinity(isInterruptible, podSpec)
+	ApplyArchitectureNodeAffinity(architecture, podSpec)
 }
 
 func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {

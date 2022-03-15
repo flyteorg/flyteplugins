@@ -85,7 +85,7 @@ type K8sPluginConfig struct {
 	SchedulerName string `json:"scheduler-name" pflag:",Defines scheduler name."`
 
 	// -----------------------------------------------------------------
-	// Special tolerations and node selector for Interruptible tasks. This allows scheduling interruptible tasks onto specific hardward
+	// Special tolerations and node selector for Interruptible tasks. This allows scheduling interruptible tasks onto specific hardware
 
 	// Tolerations for interruptible k8s pods: These tolerations are added to the pods that can tolerate getting evicted from a node. We
 	// can leverage this for better bin-packing and using low-reliability cheaper machines.
@@ -98,6 +98,19 @@ type K8sPluginConfig struct {
 	// pods respectively
 	InterruptibleNodeSelectorRequirement    *v1.NodeSelectorRequirement `json:"interruptible-node-selector-requirement" pflag:"-,Node selector requirement to add to interruptible pods"`
 	NonInterruptibleNodeSelectorRequirement *v1.NodeSelectorRequirement `json:"non-interruptible-node-selector-requirement" pflag:"-,Node selector requirement to add to non-interruptible pods"`
+
+	// -----------------------------------------------------------------
+	// Special tolerations and node selector for different architecture. This allows scheduling tasks onto specific hardware
+
+	// Tolerations for the architecture of k8s pods: These tolerations are added to the pods that specify a specific architecture.
+	ArchitectureTolerations map[string][]v1.Toleration `json:"architecture-tolerations"  pflag:"-,Tolerations to be applied for a specific architecture"`
+	// Node Selector Labels for interruptible pods: Similar to ArchitectureTolerations, these node selector labels are added for pods that need a specific
+	// architecture.
+	// Deprecated: Please use InterruptibleNodeSelectorRequirement/NonInterruptibleNodeSelectorRequirement
+	ArchitectureNodeSelector map[string]map[string]string `json:"architecture-node-selector" pflag:"-,Defines a set of node selector labels to add to the interruptible pods."`
+	// Node Selector Requirements to be added for specific architecture
+	// pods respectively
+	ArchitectureNodeSelectorRequirement map[string]*v1.NodeSelectorRequirement `json:"architecture-node-selector-requirement" pflag:"-,Node selector requirement to add for specific architecture"`
 
 	// ----------------------------------------------------------------------
 	// Specific tolerations that are added for certain resources. Useful for maintaining gpu resources separate in the cluster

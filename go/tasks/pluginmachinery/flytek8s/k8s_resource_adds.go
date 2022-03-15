@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	"github.com/flyteorg/flytestdlib/contextutils"
@@ -130,7 +131,7 @@ func DecorateEnvVars(ctx context.Context, envVars []v1.EnvVar, id pluginsCore.Ta
 	return envVars
 }
 
-func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRequirements) []v1.Toleration {
+func GetPodTolerations(interruptible bool, architecture core.Container_Architecture, resourceRequirements ...v1.ResourceRequirements) []v1.Toleration {
 	// 1. Get the tolerations for the resources requested
 	var tolerations []v1.Toleration
 	resourceNames := sets.NewString()
@@ -155,7 +156,12 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 		tolerations = append(tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
 	}
 
-	// 3. Add default tolerations
+	// 3. Get the tolerations for the specific architecture
+	if architecture != 0 {
+		tolerations = append(tolerations, config.GetK8sPluginConfig().ArchitectureTolerations[architecture.String()]...)
+	}
+
+	// 4. Add default tolerations
 	tolerations = append(tolerations, config.GetK8sPluginConfig().DefaultTolerations...)
 
 	return tolerations

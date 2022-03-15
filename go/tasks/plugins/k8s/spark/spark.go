@@ -222,6 +222,11 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.Executor.Tolerations = config.GetK8sPluginConfig().InterruptibleTolerations
 		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
 	}
+
+	if taskCtx.TaskExecutionMetadata().GetArchitecture() != 0 {
+		j.Spec.Executor.Tolerations = append(j.Spec.Executor.Tolerations, config.GetK8sPluginConfig().ArchitectureTolerations[taskCtx.TaskExecutionMetadata().GetArchitecture().String()]...)
+		utils.UnionMaps(j.Spec.Executor.NodeSelector, config.GetK8sPluginConfig().ArchitectureNodeSelector[taskCtx.TaskExecutionMetadata().GetArchitecture().String()])
+	}
 	return j, nil
 }
 
