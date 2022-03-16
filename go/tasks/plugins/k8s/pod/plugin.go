@@ -68,7 +68,12 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	}
 
 	podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
-	pod := flytek8s.BuildPodWithSpec(podSpec)
+
+	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
+	pod, err := flytek8s.BuildPodWithSpec(podTemplate, podSpec)
+	if err != nil {
+		return nil, err
+	}
 
 	// update pod metadata
 	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
@@ -151,7 +156,6 @@ func init() {
 			ResourceToWatch:     &v1.Pod{},
 			Plugin:              DefaultPodPlugin,
 			IsDefault:           true,
-			DefaultForTaskTypes: []pluginsCore.TaskType{ContainerTaskType},
 		})
 
 	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
@@ -161,7 +165,6 @@ func init() {
 			ResourceToWatch:     &v1.Pod{},
 			Plugin:              DefaultPodPlugin,
 			IsDefault:           false,
-			DefaultForTaskTypes: []pluginsCore.TaskType{SidecarTaskType},
 		})
 
 	// register podTaskType plugin entry
@@ -172,6 +175,5 @@ func init() {
 			ResourceToWatch:     &v1.Pod{},
 			Plugin:              DefaultPodPlugin,
 			IsDefault:           true,
-			DefaultForTaskTypes: []pluginsCore.TaskType{ContainerTaskType, SidecarTaskType},
 		})
 }
