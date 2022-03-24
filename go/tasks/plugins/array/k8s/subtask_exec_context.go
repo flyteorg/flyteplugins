@@ -42,13 +42,15 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 
 // newSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
 func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
-	executionIndex, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
+	executionIndex, originalIndex int, retryAttempt uint64, systemFailures uint64) SubTaskExecutionContext {
 
 	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
 	taskExecutionMetadata := tCtx.TaskExecutionMetadata()
 	taskExecutionID := taskExecutionMetadata.GetTaskExecutionID()
+	interruptible := taskExecutionMetadata.IsInterruptible() && uint32(systemFailures) < taskExecutionMetadata.GetInterruptibleFailureThreshold()
 	metadataOverride := SubTaskExecutionMetadata{
 		taskExecutionMetadata,
+		interruptible,
 		SubTaskExecutionID{
 			taskExecutionID,
 			executionIndex,
@@ -130,10 +132,16 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 // SubTaskExecutionMetadata wraps the core TaskExecutionMetadata to customize the TaskExecutionID
 type SubTaskExecutionMetadata struct {
 	pluginsCore.TaskExecutionMetadata
+	interruptible      bool
 	subtaskExecutionID SubTaskExecutionID
 }
 
 // GetTaskExecutionID overrides the base TaskExecutionMetadata to return a custom TaskExecutionID
 func (s SubTaskExecutionMetadata) GetTaskExecutionID() pluginsCore.TaskExecutionID {
 	return s.subtaskExecutionID
+}
+
+// TODO hamersaw - document
+func (s SubTaskExecutionMetadata) IsInterruptible() bool {
+	return s.interruptible
 }

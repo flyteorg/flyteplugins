@@ -107,6 +107,24 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		currentState.RetryAttempts = retryAttemptsArray
 	}
 
+	// TODO hamersaw - document
+	if len(currentState.SystemFailures.GetItems()) == 0 {
+		count := uint(currentState.GetExecutionArraySize())
+		maxValue := bitarray.Item(tCtx.TaskExecutionMetadata().GetInterruptibleFailureThreshold())
+
+		systemFailuresArray, err := bitarray.NewCompactArray(count, maxValue)
+		if err != nil {
+			logger.Errorf(context.Background(), "Failed to create system failures array with [count: %v, maxValue: %v]", count, maxValue)
+			return currentState, logLinks, subTaskIDs, nil
+		}
+
+		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
+			systemFailuresArray.SetItem(i, 0)
+		}
+
+		currentState.SystemFailures = systemFailuresArray
+	}
+
 	// initialize log plugin
 	logPlugin, err := logs.InitializeLogPlugins(&config.LogConfig.Config)
 	if err != nil {
@@ -142,7 +160,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
-		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
+		systemFailures := currentState.SystemFailures.GetItem(childIdx)
+		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, systemFailures)
 		podName := stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 		// depending on the existing subtask phase we either a launch new k8s resource or monitor
@@ -184,6 +203,12 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		if phaseInfo.Err() != nil {
 			messageCollector.Collect(childIdx, phaseInfo.Err().String())
+		}
+
+		if phaseInfo.Err() != nil && phaseInfo.Err().GetKind() == idlCore.ExecutionError_SYSTEM {
+			newState.SystemFailures.SetItem(childIdx, systemFailures + 1)
+		} else {
+			newState.SystemFailures.SetItem(childIdx, systemFailures)
 		}
 
 		subTaskIDs = append(subTaskIDs, &podName)
@@ -278,6 +303,7 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
 		retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
+		systemFailures := currentState.SystemFailures.GetItem(childIdx)
 
 		// return immediately if subtask has completed or not yet started
 		if existingPhase.IsTerminal() || existingPhase == core.PhaseUndefined {
@@ -285,7 +311,7 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
+		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, systemFailures)
 
 		err := terminateFunction(ctx, stCtx, config, kubeClient)
 		if err != nil {
