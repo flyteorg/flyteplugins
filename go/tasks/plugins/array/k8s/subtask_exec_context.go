@@ -41,22 +41,8 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 }
 
 // newSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
-func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
+func NewSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
 	executionIndex, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
-
-	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
-	taskExecutionMetadata := tCtx.TaskExecutionMetadata()
-	taskExecutionID := taskExecutionMetadata.GetTaskExecutionID()
-	metadataOverride := SubTaskExecutionMetadata{
-		taskExecutionMetadata,
-		SubTaskExecutionID{
-			taskExecutionID,
-			executionIndex,
-			taskExecutionID.GetGeneratedName(),
-			retryAttempt,
-			taskExecutionID.GetID().RetryAttempt,
-		},
-	}
 
 	subtaskTemplate := &core.TaskTemplate{}
 	*subtaskTemplate = *taskTemplate
@@ -72,10 +58,12 @@ func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTempl
 
 	subtaskReader := SubTaskReader{tCtx.TaskReader(), subtaskTemplate}
 
+	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
+	subTaskExecutionMetadata := NewSubTaskExecutionMetadata(tCtx.TaskExecutionMetadata(), executionIndex, retryAttempt)
 	return SubTaskExecutionContext{
 		TaskExecutionContext: tCtx,
 		arrayInputReader:     arrayInputReader,
-		metadataOverride:     metadataOverride,
+		metadataOverride:     subTaskExecutionMetadata,
 		originalIndex:        originalIndex,
 		subtaskReader:        subtaskReader,
 	}
@@ -127,6 +115,17 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 	return fmt.Sprintf(" #%d-%d-%d", s.taskRetryAttempt, s.executionIndex, s.subtaskRetryAttempt)
 }
 
+// TODO hamersaw - document
+func NewSubTaskExecutionID(taskExecutionID pluginsCore.TaskExecutionID, executionIndex int, retryAttempt uint64) SubTaskExecutionID {
+	return SubTaskExecutionID{
+		taskExecutionID,
+		executionIndex,
+		taskExecutionID.GetGeneratedName(),
+		retryAttempt,
+		taskExecutionID.GetID().RetryAttempt,
+	}
+}
+
 // SubTaskExecutionMetadata wraps the core TaskExecutionMetadata to customize the TaskExecutionID
 type SubTaskExecutionMetadata struct {
 	pluginsCore.TaskExecutionMetadata
@@ -136,4 +135,13 @@ type SubTaskExecutionMetadata struct {
 // GetTaskExecutionID overrides the base TaskExecutionMetadata to return a custom TaskExecutionID
 func (s SubTaskExecutionMetadata) GetTaskExecutionID() pluginsCore.TaskExecutionID {
 	return s.subtaskExecutionID
+}
+
+// TODO hamersaw - document
+func NewSubTaskExecutionMetadata(taskExecutionMetadata pluginsCore.TaskExecutionMetadata, executionIndex int, retryAttempt uint64) SubTaskExecutionMetadata {
+	subTaskExecutionID := NewSubTaskExecutionID(taskExecutionMetadata.GetTaskExecutionID(), executionIndex, retryAttempt)
+	return SubTaskExecutionMetadata{
+		taskExecutionMetadata,
+		subTaskExecutionID,
+	}
 }

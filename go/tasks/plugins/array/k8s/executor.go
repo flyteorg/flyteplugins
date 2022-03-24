@@ -3,8 +3,6 @@ package k8s
 import (
 	"context"
 
-	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -84,8 +82,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	var nextState *arrayCore.State
 	var err error
-	var logLinks []*idlCore.TaskLog
-	var subTaskIDs []*string
+	var subTaskMetadata []*arrayCore.SubTaskMetadata
 
 	switch p, _ := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
@@ -93,7 +90,12 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	case arrayCore.PhasePreLaunch:
 		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
-		err = nil
+		subTaskMetadata, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState,
+			func(tCtx core.TaskExecutionContext, childIndex int) string {
+				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
+				return subTaskExecutionID.GetGeneratedName()
+			},
+		)
 
 	case arrayCore.PhaseWaitingForResources:
 		fallthrough
@@ -107,7 +109,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
 
-		nextState, logLinks, subTaskIDs, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
+		nextState, subTaskMetadata, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
@@ -135,7 +137,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks, subTaskIDs)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, nil, subTaskMetadata)
 	if err != nil {
 		return core.UnknownTransition, err
 	}
