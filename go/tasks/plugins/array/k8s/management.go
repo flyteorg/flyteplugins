@@ -302,8 +302,11 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	messageCollector := errorcollector.NewErrorMessageCollector()
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
-		retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
-		systemFailures := currentState.SystemFailures.GetItem(childIdx)
+		retryAttempt := 0
+		if childIdx >= len(currentState.RetryAttempts.GetItems()) {
+			// we can use RetryAttempts if it has been initialized, otherwise stay with default 0
+			currentState.RetryAttempts.GetItem(childIdx)
+		}
 
 		// return immediately if subtask has completed or not yet started
 		if existingPhase.IsTerminal() || existingPhase == core.PhaseUndefined {
@@ -311,7 +314,7 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, systemFailures)
+		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, 0)
 
 		err := terminateFunction(ctx, stCtx, config, kubeClient)
 		if err != nil {
