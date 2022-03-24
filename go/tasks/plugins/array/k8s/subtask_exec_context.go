@@ -141,7 +141,7 @@ func (s SubTaskExecutionMetadata) GetTaskExecutionID() pluginsCore.TaskExecution
 	return s.subtaskExecutionID
 }
 
-// TODO hamersaw - document
+// IsInterruptbile overrides the base NodeExecutionMetadata to return a subtask specific identifier
 func (s SubTaskExecutionMetadata) IsInterruptible() bool {
 	return s.interruptible
 }

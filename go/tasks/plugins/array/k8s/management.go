@@ -107,7 +107,9 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		currentState.RetryAttempts = retryAttemptsArray
 	}
 
-	// TODO hamersaw - document
+	// If the current State is newly minted then we must initialize SystemFailures to track how many
+	// times the subtask failed due to system issues, this is necessary to correctly evaluate
+	// interruptible subtasks.
 	if len(currentState.SystemFailures.GetItems()) == 0 {
 		count := uint(currentState.GetExecutionArraySize())
 		maxValue := bitarray.Item(tCtx.TaskExecutionMetadata().GetInterruptibleFailureThreshold())
