@@ -206,7 +206,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		if phaseInfo.Err() != nil && phaseInfo.Err().GetKind() == idlCore.ExecutionError_SYSTEM {
-			newState.SystemFailures.SetItem(childIdx, systemFailures + 1)
+			newState.SystemFailures.SetItem(childIdx, systemFailures+1)
 		} else {
 			newState.SystemFailures.SetItem(childIdx, systemFailures)
 		}
