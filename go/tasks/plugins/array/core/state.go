@@ -186,13 +186,13 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	}
 
 	for i, subTask := range subTaskMetadata {
-		//var cacheStatus idlCore.CatalogCacheStatus
+		var cacheStatus idlCore.CatalogCacheStatus
 		phase := core.PhaseUndefined
 		retryAttempt := uint32(0)
 
 		if state.GetIndexesToCache().IsSet(uint(subTask.OriginalIndex)) {
 			// task has been cached
-			//cacheStatus = idlCore.CatalogCacheStatus_CACHE_HIT
+			cacheStatus = idlCore.CatalogCacheStatus_CACHE_HIT
 			phase = core.PhaseSuccess
 		} else {
 			if subTask.ChildIndex < 0 || subTask.ChildIndex >= state.GetExecutionArraySize() {
@@ -213,9 +213,9 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 
 		nowTaskInfo.ExternalResources[i] = &core.ExternalResource{
 			ExternalID:   *subTask.SubTaskID,
-			//CacheStatus:  cacheStatus,
+			CacheStatus:  cacheStatus,
 			Index:        uint32(subTask.OriginalIndex),
-			//Logs:         subTask.Logs,
+			Logs:         subTask.Logs,
 			RetryAttempt: uint32(retryAttempt),
 			Phase:        phase,
 		}

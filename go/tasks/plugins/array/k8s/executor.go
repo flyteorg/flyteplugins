@@ -87,15 +87,20 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	switch p, _ := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
+		if err != nil {
+			return core.UnknownTransition, err
+		}
 
-	case arrayCore.PhasePreLaunch:
-		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
 		subTaskMetadata, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState,
 			func(tCtx core.TaskExecutionContext, childIndex int) string {
 				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
 				return subTaskExecutionID.GetGeneratedName()
 			},
 		)
+
+	case arrayCore.PhasePreLaunch:
+		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
+		err = nil
 
 	case arrayCore.PhaseWaitingForResources:
 		fallthrough

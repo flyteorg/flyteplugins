@@ -70,10 +70,14 @@ func (p Phase) IsWaitingForResources() bool {
 type ExternalResource struct {
 	// A unique identifier for the external resource
 	ExternalID string
+	// TODO hamersaw - document
+	CacheStatus core.CatalogCacheStatus
 	// A unique index for the external resource. Although the ID may change, this will remain the same
 	// throughout task event reports and retries.
 	Index uint32
-	// The nubmer of times this external resource has been attempted
+	// TODO hamersaw - document
+	Logs []*core.TaskLog
+	// The number of times this external resource has been attempted
 	RetryAttempt uint32
 	// Phase (if exists) associated with the external resource
 	Phase Phase
