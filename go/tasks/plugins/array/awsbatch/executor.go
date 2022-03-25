@@ -20,6 +20,8 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+
+	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 const (
@@ -104,7 +106,19 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Always attempt to augment phase with task logs.
-	subTaskDetails, err := GetTaskLinks(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginState)
+	var logLinks []*idlCore.TaskLog
+	var subTaskMetadata []*arrayCore.SubTaskMetadata
+	switch p {
+	case arrayCore.PhaseStart:
+		subTaskMetadata, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState.State,
+			func(tCtx core.TaskExecutionContext, childIndex int) string {
+				return "" // TODO hamersaw - generate temporary subTaskID for aws_batch plugin
+			},
+		)
+	default:
+		logLinks, subTaskMetadata, err = GetTaskLinks(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginState)
+	}
+
 	if err != nil {
 		return core.UnknownTransition, err
 	}
@@ -112,7 +126,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	logger.Infof(ctx, "Exiting handle with phase [%v]", pluginState.State.CurrentPhase)
 
 	// Determine transition information from the state
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, subTaskDetails.LogLinks, subTaskDetails.SubTaskIDs)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, logLinks, subTaskMetadata)
 	if err != nil {
 		return core.UnknownTransition, err
 	}
