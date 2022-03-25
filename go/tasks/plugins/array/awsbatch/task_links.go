@@ -37,13 +37,13 @@ func GetJobTaskLog(jobSize int, accountID, region, queue, jobID string) *idlCore
 }
 
 func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata, jobStore *JobStore, state *State) (
-	[]*idlCore.TaskLog, []*core.SubTaskMetadata, error) {
+	[]*idlCore.TaskLog, []*pluginCore.ExternalResource, error) {
 
 	logLinks := make([]*idlCore.TaskLog, 0, 4)
-	subTaskMetadata := make([]*core.SubTaskMetadata, 0)
+	externalResources := make([]*pluginCore.ExternalResource, 0)
 
 	if state.GetExternalJobID() == nil {
-		return logLinks, subTaskMetadata, nil
+		return logLinks, externalResources, nil
 	}
 
 	// TODO: Add tasktemplate container config to job config
@@ -59,14 +59,14 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 	})
 
 	if err != nil {
-		return logLinks, subTaskMetadata, errors.Wrapf(errors2.DownstreamSystemError, err, "Failed to retrieve a job from job store.")
+		return logLinks, externalResources, errors.Wrapf(errors2.DownstreamSystemError, err, "Failed to retrieve a job from job store.")
 	}
 
 	if job == nil {
 		logger.Debugf(ctx, "Job [%v] not found in jobs store. It might have been evicted. If reasonable, bump the max "+
 			"size of the LRU cache.", *state.GetExternalJobID())
 
-		return logLinks, subTaskMetadata, nil
+		return logLinks, externalResources, nil
 	}
 
 	detailedArrayStatus := state.GetArrayStatus().Detailed
@@ -77,6 +77,7 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 
 		// The caveat here is that we will mark all attempts with the final phase we are tracking in the state.
 		subTaskLogLinks := make([]*idlCore.TaskLog, 0)
+		retryAttempt := 0
 		for attemptIdx, attempt := range subJob.Attempts {
 			if len(attempt.LogStream) > 0 {
 				subTaskLogLinks = append(subTaskLogLinks, &idlCore.TaskLog{
@@ -84,15 +85,18 @@ func GetTaskLinks(ctx context.Context, taskMeta pluginCore.TaskExecutionMetadata
 					Uri:  fmt.Sprintf(LogStreamFormatter, jobStore.GetRegion(), attempt.LogStream),
 				})
 			}
+
+			retryAttempt = attemptIdx
 		}
 
-		subTaskMetadata = append(subTaskMetadata, &core.SubTaskMetadata{
-			ChildIndex:    childIdx,
-			Logs:          subTaskLogLinks,
-			OriginalIndex: originalIndex,
-			SubTaskID:     &subJob.ID,
+		externalResources = append(externalResources, &pluginCore.ExternalResource{
+			ExternalID:   subJob.ID,
+			Index:        uint32(originalIndex),
+			Logs:         subTaskLogLinks,
+			RetryAttempt: uint32(retryAttempt),
+			Phase:        finalPhase,
 		})
 	}
 
-	return logLinks, subTaskMetadata, nil
+	return logLinks, externalResources, nil
 }

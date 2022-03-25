@@ -82,7 +82,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	var nextState *arrayCore.State
 	var err error
-	var subTaskMetadata []*arrayCore.SubTaskMetadata
+	var externalResources []*core.ExternalResource
 
 	switch p, _ := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
@@ -91,7 +91,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			return core.UnknownTransition, err
 		}
 
-		subTaskMetadata, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState,
+		externalResources, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState,
 			func(tCtx core.TaskExecutionContext, childIndex int) string {
 				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
 				return subTaskExecutionID.GetGeneratedName()
@@ -114,7 +114,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
 
-		nextState, subTaskMetadata, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
+		nextState, externalResources, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
@@ -142,7 +142,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, nil, subTaskMetadata)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, nil, externalResources)
 	if err != nil {
 		return core.UnknownTransition, err
 	}

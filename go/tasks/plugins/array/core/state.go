@@ -175,55 +175,19 @@ func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskMetadata []*SubTaskMetadata) (core.PhaseInfo, error) {
+func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, externalResources []*core.ExternalResource) (core.PhaseInfo, error) {
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
 
 	nowTaskInfo := &core.TaskInfo{
 		OccurredAt:        &t,
 		Logs:              logLinks,
-		ExternalResources: make([]*core.ExternalResource, len(subTaskMetadata)),
-	}
-
-	for i, subTask := range subTaskMetadata {
-		var cacheStatus idlCore.CatalogCacheStatus
-		phase := core.PhaseUndefined
-		retryAttempt := uint32(0)
-
-		if state.GetIndexesToCache().IsSet(uint(subTask.OriginalIndex)) {
-			// task has been cached
-			cacheStatus = idlCore.CatalogCacheStatus_CACHE_HIT
-			phase = core.PhaseSuccess
-		} else {
-			if subTask.ChildIndex < 0 || subTask.ChildIndex >= state.GetExecutionArraySize() {
-				// TODO hamersaw - error warn!
-				continue
-			}
-
-			// use default values if state has not been initialized yet
-			if subTask.ChildIndex <= len(state.RetryAttempts.GetItems()) {
-				retryAttempt = uint32(state.RetryAttempts.GetItem(subTask.ChildIndex))
-			}
-			if subTask.ChildIndex <= len(state.ArrayStatus.Detailed.GetItems()) {
-				phase = core.Phases[state.ArrayStatus.Detailed.GetItem(subTask.ChildIndex)]
-			}
-
-			// TODO hamersaw - do we need to set CachePopulated if the task was cachable and a success?
-		}
-
-		nowTaskInfo.ExternalResources[i] = &core.ExternalResource{
-			ExternalID:   *subTask.SubTaskID,
-			CacheStatus:  cacheStatus,
-			Index:        uint32(subTask.OriginalIndex),
-			Logs:         subTask.Logs,
-			RetryAttempt: uint32(retryAttempt),
-			Phase:        phase,
-		}
+		ExternalResources: externalResources,
 	}
 
 	switch p, version := state.GetPhase(); p {
 	case PhaseStart:
-		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason(), &core.TaskInfo{OccurredAt: &t})
+		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason(), nowTaskInfo)
 
 	case PhasePreLaunch:
 		version := GetPhaseVersionOffset(p, 1) + version
