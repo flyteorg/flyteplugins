@@ -21,7 +21,7 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/imdario/mergo v0.3.11
 	github.com/kubeflow/common v0.4.0
 	github.com/kubeflow/mpi-operator/v2 v2.0.0-20210920181600-c5c0c3ef99ec
 	github.com/kubeflow/pytorch-operator v0.6.0

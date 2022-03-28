@@ -128,6 +128,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	currentParallelism := 0
 	maxParallelism := int(arrayJob.Parallelism)
 
+	// TODO hamersaw - compute hash of detailed array (to determine any changes in arrayStatus)
+
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
 		retryAttempt := currentState.RetryAttempts.GetItem(childIdx)
@@ -252,6 +254,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		newState = newState.SetReason(errorMsg)
 	}
 
+	// TODO hamersaw - check if new arraystatus has a changed state (if so - increment the phase version)
+	// does this handle the top-level phase changes?
 	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
 		newPhaseVersion := uint32(0)
 

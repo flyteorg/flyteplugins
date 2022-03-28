@@ -31,9 +31,9 @@ func InitializeSubTaskMetadata(ctx context.Context, tCtx core.TaskExecutionConte
 			// if not cached set to PhaseUndefined and set cacheStatus according to Discoverable
 			phase = core.PhaseUndefined
 			if taskTemplate.Metadata == nil || !taskTemplate.Metadata.Discoverable {
-				cacheStatus = idlCore.CatalogCacheStatus_CACHE_MISS
-			} else {
 				cacheStatus = idlCore.CatalogCacheStatus_CACHE_DISABLED
+			} else {
+				cacheStatus = idlCore.CatalogCacheStatus_CACHE_MISS
 			}
 
 			childIndex = executeSubTaskCount
