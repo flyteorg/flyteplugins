@@ -219,8 +219,8 @@ func MapArrayStateToPluginPhase(ctx context.Context, state *State, logLinks []*i
 	case PhaseWriteToDiscovery:
 		// The state version is only incremented in PhaseCheckingSubTaskExecutions when subtask
 		// phases are updated. Therefore by adding the phase to the state version we ensure that
-		// all state changes will have a different phase version and are captured in task events.
-
+		// (1) all phase changes will have a new phase version and (2) all subtask phase updates
+		// result in monotonically increasing phase version.
 		phaseInfo = core.PhaseInfoRunning(version + uint32(p), nowTaskInfo)
 
 	case PhaseSuccess:
