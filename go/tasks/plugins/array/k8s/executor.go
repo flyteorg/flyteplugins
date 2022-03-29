@@ -87,7 +87,6 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var logLinks []*idlCore.TaskLog
 	var subTaskIDs []*string
 
-	
 	switch p, version := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)

@@ -44,6 +44,7 @@ func TestArrayStatus_HashCode(t *testing.T) {
 			Detailed: actualDetailed,
 		}
 		actualHashCode, err := actual.HashCode()
+		assert.Nil(t, err)
 
 		assert.Equal(t, expectedHashCode, actualHashCode)
 	})
@@ -64,6 +65,7 @@ func TestArrayStatus_HashCode(t *testing.T) {
 			Detailed: actualDetailed,
 		}
 		actualHashCode, err := actual.HashCode()
+		assert.Nil(t, err)
 
 		assert.NotEqual(t, expectedHashCode, actualHashCode)
 	})
@@ -85,6 +87,7 @@ func TestArrayStatus_HashCode(t *testing.T) {
 			Detailed: actualDetailed,
 		}
 		actualHashCode, err := actual.HashCode()
+		assert.Nil(t, err)
 
 		assert.Equal(t, expectedHashCode, actualHashCode)
 	})
