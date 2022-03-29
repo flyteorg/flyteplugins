@@ -133,6 +133,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 		parentState = parentState.SetReason(errorMsg)
 	}
 	if phase == arrayCore.PhaseCheckingSubTaskExecutions {
+		// TODO hamersaw - use HashDetails to update version number
 		newPhaseVersion := uint32(0)
 		// For now, the only changes to PhaseVersion and PreviousSummary occur for running array jobs.
 		for phase, count := range parentState.GetArrayStatus().Summary {

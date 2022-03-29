@@ -87,12 +87,13 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var logLinks []*idlCore.TaskLog
 	var subTaskIDs []*string
 
-	switch p, _ := pluginState.GetPhase(); p {
+	
+	switch p, version := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 
 	case arrayCore.PhasePreLaunch:
-		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
+		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, version).SetReason("Nothing to do in PreLaunch phase.")
 		err = nil
 
 	case arrayCore.PhaseWaitingForResources:
@@ -102,7 +103,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		// In order to maintain backwards compatibility with the state transitions
 		// in the aws batch plugin. Forward to PhaseCheckingSubTasksExecutions where the launching
 		// is actually occurring.
-		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, core.DefaultPhaseVersion).SetReason("Nothing to do in Launch phase.")
+		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, version).SetReason("Nothing to do in Launch phase.")
 		err = nil
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
@@ -111,16 +112,16 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, version, pluginState)
 
 	case arrayCore.PhaseWriteToDiscoveryThenFail:
-		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalError)
+		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalError, version)
 
 	case arrayCore.PhaseWriteToDiscovery:
-		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalOutput)
+		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalOutput, version)
 
 	case arrayCore.PhaseAssembleFinalError:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhasePermanentFailure, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhasePermanentFailure, version, pluginState)
 
 	default:
 		nextState = pluginState

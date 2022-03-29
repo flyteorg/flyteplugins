@@ -61,7 +61,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	var err error
 
-	p, _ := pluginState.GetPhase()
+	p, version := pluginState.GetPhase()
 	logger.Infof(ctx, "Entering handle with phase [%v]", p)
 
 	switch p {
@@ -69,12 +69,14 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState.State, err = array.DetermineDiscoverability(ctx, tCtx, pluginState.State)
 
 	case arrayCore.PhasePreLaunch:
+		// TODO hamersaw - need to fix phaseVersion
 		pluginState, err = EnsureJobDefinition(ctx, tCtx, pluginConfig, e.jobStore.Client, e.jobDefinitionCache, pluginState)
 
 	case arrayCore.PhaseWaitingForResources:
 		fallthrough
 
 	case arrayCore.PhaseLaunch:
+		// TODO hamersaw - need to fix phaseVersion
 		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState, e.metrics)
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
@@ -83,16 +85,16 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			e.jobStore, tCtx.DataStore(), pluginConfig, pluginState, e.metrics)
 
 	case arrayCore.PhaseAssembleFinalOutput:
-		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, arrayCore.PhaseSuccess, pluginState.State)
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, arrayCore.PhaseSuccess, version, pluginState.State)
 
 	case arrayCore.PhaseWriteToDiscoveryThenFail:
-		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalError)
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalError, version)
 
 	case arrayCore.PhaseWriteToDiscovery:
-		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalOutput)
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalOutput, version)
 
 	case arrayCore.PhaseAssembleFinalError:
-		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhaseRetryableFailure, pluginState.State)
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhaseRetryableFailure, version, pluginState.State)
 	}
 
 	if err != nil {
