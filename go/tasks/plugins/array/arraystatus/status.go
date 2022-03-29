@@ -23,6 +23,8 @@ type ArrayStatus struct {
 	Detailed bitarray.CompactArray `json:"details"`
 }
 
+// HashCode computes a hash of the phase indicies stored in the Detailed array to uniquely represent
+// a collection of subtask phases.
 func (a ArrayStatus) HashCode() (uint64, error) {
 	hash := fnv.New64()
 	bytes := make([]byte, 8)
