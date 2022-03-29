@@ -170,7 +170,7 @@ func ToArrayJob(structObj *structpb.Struct, taskTypeVersion int32) (*idlPlugins.
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(ctx context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskIDs []*string) (core.PhaseInfo, error) {
+func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskIDs []*string) (core.PhaseInfo, error) {
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
 
@@ -243,8 +243,6 @@ func MapArrayStateToPluginPhase(ctx context.Context, state *State, logLinks []*i
 		return phaseInfo, fmt.Errorf("failed to map custom state phase to core phase. State Phase [%v]", p)
 	}
 
-	p, version := state.GetPhase()
-	logger.Infof(ctx, "HAMERSAW - %s %d %s %d", p, version, phaseInfo.Phase(), phaseInfo.Version())
 	return phaseInfo, nil
 }
 
