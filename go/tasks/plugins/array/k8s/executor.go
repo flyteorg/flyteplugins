@@ -91,7 +91,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			return core.UnknownTransition, err
 		}
 
-		externalResources, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState,
+		externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
 			func(tCtx core.TaskExecutionContext, childIndex int) string {
 				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
 				return subTaskExecutionID.GetGeneratedName()

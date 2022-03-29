@@ -9,10 +9,10 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
-// InitializeSubTaskMetadata constructs an ExternalResource array where each element describes the
+// InitializeExternalResources constructs an ExternalResource array where each element describes the
 // initial state of the subtask. This involves labeling all cached subtasks as successful with a
 // cache hit and initializing others to undefined state.
-func InitializeSubTaskMetadata(ctx context.Context, tCtx core.TaskExecutionContext, state *State,
+func InitializeExternalResources(ctx context.Context, tCtx core.TaskExecutionContext, state *State,
 	generateSubTaskID func(core.TaskExecutionContext, int) string) ([]*core.ExternalResource, error) {
 	externalResources := make([]*core.ExternalResource, state.GetOriginalArraySize())
 

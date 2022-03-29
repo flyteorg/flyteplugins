@@ -110,7 +110,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var externalResources []*core.ExternalResource
 	switch p {
 	case arrayCore.PhaseStart:
-		externalResources, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState.State,
+		externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState.State,
 			func(tCtx core.TaskExecutionContext, childIndex int) string {
 				// subTaskIDs for the the aws_batch are generated based on the job ID, therefore
 				// to initialize we default to an empty string which will be updated later.
