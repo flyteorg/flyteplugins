@@ -69,14 +69,12 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState.State, err = array.DetermineDiscoverability(ctx, tCtx, pluginState.State)
 
 	case arrayCore.PhasePreLaunch:
-		// TODO hamersaw - need to fix phaseVersion
 		pluginState, err = EnsureJobDefinition(ctx, tCtx, pluginConfig, e.jobStore.Client, e.jobDefinitionCache, pluginState)
 
 	case arrayCore.PhaseWaitingForResources:
 		fallthrough
 
 	case arrayCore.PhaseLaunch:
-		// TODO hamersaw - need to fix phaseVersion
 		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState, e.metrics)
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
