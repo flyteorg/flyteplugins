@@ -40,7 +40,7 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 	return s.subtaskReader
 }
 
-// newSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
+// NewSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
 func NewSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
 	executionIndex, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
 
@@ -115,7 +115,7 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 	return fmt.Sprintf(" #%d-%d-%d", s.taskRetryAttempt, s.executionIndex, s.subtaskRetryAttempt)
 }
 
-// TODO hamersaw - document
+// NewSubtaskExecutionID constructs a SubTaskExecutionID using the provided parameters
 func NewSubTaskExecutionID(taskExecutionID pluginsCore.TaskExecutionID, executionIndex int, retryAttempt uint64) SubTaskExecutionID {
 	return SubTaskExecutionID{
 		taskExecutionID,
@@ -137,7 +137,7 @@ func (s SubTaskExecutionMetadata) GetTaskExecutionID() pluginsCore.TaskExecution
 	return s.subtaskExecutionID
 }
 
-// TODO hamersaw - document
+// NewSubtaskExecutionMetadata constructs a SubTaskExecutionMetadata using the provided parameters
 func NewSubTaskExecutionMetadata(taskExecutionMetadata pluginsCore.TaskExecutionMetadata, executionIndex int, retryAttempt uint64) SubTaskExecutionMetadata {
 	subTaskExecutionID := NewSubTaskExecutionID(taskExecutionMetadata.GetTaskExecutionID(), executionIndex, retryAttempt)
 	return SubTaskExecutionMetadata{

@@ -112,7 +112,9 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case arrayCore.PhaseStart:
 		externalResources, err = arrayCore.InitializeSubTaskMetadata(ctx, tCtx, pluginState.State,
 			func(tCtx core.TaskExecutionContext, childIndex int) string {
-				return "" // TODO hamersaw - generate temporary subTaskID for aws_batch plugin
+				// subTaskIDs for the the aws_batch are generated based on the job ID, therefore
+				// to initialize we default to an empty string which will be updated later.
+				return ""
 			},
 		)
 	default:
