@@ -46,7 +46,7 @@ func InitializeExternalResources(ctx context.Context, tCtx core.TaskExecutionCon
 			phase = core.PhaseSuccess
 			cacheStatus = idlCore.CatalogCacheStatus_CACHE_HIT
 
-			// child index is computed as a pseudo-value to ensure non-overlaping subTaskIDs
+			// child index is computed as a pseudo-value to ensure non-overlapping subTaskIDs
 			childIndex = state.GetExecutionArraySize() + cachedSubTaskCount
 			cachedSubTaskCount++
 		}
