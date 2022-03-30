@@ -84,7 +84,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	var err error
 	var externalResources []*core.ExternalResource
 
-	switch p, _ := pluginState.GetPhase(); p {
+	switch p, version := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
 		if err != nil {
@@ -109,11 +109,10 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		// In order to maintain backwards compatibility with the state transitions
 		// in the aws batch plugin. Forward to PhaseCheckingSubTasksExecutions where the launching
 		// is actually occurring.
-		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, core.DefaultPhaseVersion).SetReason("Nothing to do in Launch phase.")
+		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, version).SetReason("Nothing to do in Launch phase.")
 		err = nil
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
-
 		nextState, externalResources, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), pluginState)
 
