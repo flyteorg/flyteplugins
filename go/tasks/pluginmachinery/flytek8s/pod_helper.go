@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
