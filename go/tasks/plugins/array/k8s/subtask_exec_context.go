@@ -147,8 +147,8 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 // SubTaskExecutionMetadata wraps the core TaskExecutionMetadata to customize the TaskExecutionID
 type SubTaskExecutionMetadata struct {
 	pluginsCore.TaskExecutionMetadata
-	annotations map[string]string
-	labels      map[string]string
+	annotations        map[string]string
+	labels             map[string]string
 	subtaskExecutionID SubTaskExecutionID
 }
 
