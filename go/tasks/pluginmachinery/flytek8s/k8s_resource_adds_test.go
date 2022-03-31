@@ -186,7 +186,7 @@ func TestGetTolerationsForResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{ResourceTolerations: tt.setVal, DefaultTolerations: tt.setDefaults}))
-			if got := GetPodTolerations(true, tt.args.resources); len(got) != len(tt.want) {
+			if got := GetPodTolerations(true, 0, tt.args.resources); len(got) != len(tt.want) {
 				t.Errorf("GetPodTolerations() = %v, want %v", got, tt.want)
 			} else {
 				for _, tol := range tt.want {

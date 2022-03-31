@@ -157,7 +157,7 @@ func GetPodTolerations(interruptible bool, architecture core.Container_Architect
 	}
 
 	// 3. Get the tolerations for the specific architecture
-	if architecture != 0 {
+	if architecture != core.Container_UNKNOWN {
 		tolerations = append(tolerations, config.GetK8sPluginConfig().ArchitectureTolerations[architecture.String()]...)
 	}
 
