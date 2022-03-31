@@ -63,11 +63,11 @@ func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
 func ApplyArchitectureNodeAffinity(architecture core.Container_Architecture, podSpec *v1.PodSpec) {
 	// Determine node selector terms to add to node affinity
 	var nodeSelectorRequirement v1.NodeSelectorRequirement
-	if architecture != 0 {
-		if config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[architecture.String()] == nil {
+	if architecture != core.Container_UNKNOWN {
+		if config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[strings.ToLower(architecture.String())] == nil {
 			return
 		}
-		nodeSelectorRequirement = *config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[architecture.String()]
+		nodeSelectorRequirement = *config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[strings.ToLower(architecture.String())]
 
 		if podSpec.Affinity == nil {
 			podSpec.Affinity = &v1.Affinity{}

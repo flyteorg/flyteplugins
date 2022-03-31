@@ -55,6 +55,7 @@ func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	to.On("GetResources").Return(resources)
 	taskExecutionMetadata.On("GetOverrides").Return(to)
 	taskExecutionMetadata.On("IsInterruptible").Return(true)
+	taskExecutionMetadata.On("GetArchitecture").Return(core.Container_UNKNOWN)
 	return taskExecutionMetadata
 }
 
@@ -192,6 +193,79 @@ func TestApplyInterruptibleNodeAffinity(t *testing.T) {
 	})
 }
 
+func TestApplyArchitectureNodeAffinity(t *testing.T) {
+	t.Run("WithArchitectureNodeSelectorRequirement", func(t *testing.T) {
+		podSpec := v1.PodSpec{}
+		ApplyArchitectureNodeAffinity(core.Container_ARM64, &podSpec)
+		assert.EqualValues(
+			t,
+			[]v1.NodeSelectorTerm{
+				v1.NodeSelectorTerm{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						v1.NodeSelectorRequirement{
+							Key:      "x/architecture",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"arm64"},
+						},
+					},
+				},
+			},
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+		)
+	})
+
+	t.Run("WithUnknownArchitectureNodeSelectorRequirement", func(t *testing.T) {
+		podSpec := v1.PodSpec{}
+		ApplyArchitectureNodeAffinity(core.Container_UNKNOWN, &podSpec)
+		assert.Empty(
+			t,
+			podSpec.Affinity,
+		)
+	})
+
+	t.Run("WithExistingAffinityWithArchitectureNodeSelectorRequirement", func(t *testing.T) {
+		podSpec := v1.PodSpec{
+			Affinity: &v1.Affinity{
+				NodeAffinity: &v1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+						NodeSelectorTerms: []v1.NodeSelectorTerm{
+							v1.NodeSelectorTerm{
+								MatchExpressions: []v1.NodeSelectorRequirement{
+									v1.NodeSelectorRequirement{
+										Key:      "node selector requirement",
+										Operator: v1.NodeSelectorOpIn,
+										Values:   []string{"exists"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		ApplyArchitectureNodeAffinity(core.Container_ARM64, &podSpec)
+		assert.EqualValues(
+			t,
+			[]v1.NodeSelectorTerm{
+				v1.NodeSelectorTerm{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						v1.NodeSelectorRequirement{
+							Key:      "node selector requirement",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"exists"},
+						},
+						v1.NodeSelectorRequirement{
+							Key:      "x/architecture",
+							Operator: v1.NodeSelectorOpIn,
+							Values:   []string{"arm64"},
+						},
+					},
+				},
+			},
+			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+		)
+	})
+}
 func updatePod(t *testing.T) {
 	taskExecutionMetadata := dummyTaskExecutionMetadata(&v1.ResourceRequirements{
 		Limits: v1.ResourceList{
