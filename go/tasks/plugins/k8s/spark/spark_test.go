@@ -278,7 +278,7 @@ func dummySparkTaskTemplate(id string, sparkConf map[string]string) *core.TaskTe
 	}
 }
 
-func dummySparkTaskContext(taskTemplate *core.TaskTemplate, interruptible bool) pluginsCore.TaskExecutionContext {
+func dummySparkTaskContext(taskTemplate *core.TaskTemplate, interruptible bool, architecture core.Container_Architecture) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
 	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("/input/prefix"))
@@ -322,6 +322,7 @@ func dummySparkTaskContext(taskTemplate *core.TaskTemplate, interruptible bool) 
 		RunAs: &core.Identity{K8SServiceAccount: "new-val"},
 	})
 	taskExecutionMetadata.On("IsInterruptible").Return(interruptible)
+	taskExecutionMetadata.On("GetArchitecture").Return(architecture)
 	taskExecutionMetadata.On("GetMaxAttempts").Return(uint32(1))
 	taskCtx.On("TaskExecutionMetadata").Return(taskExecutionMetadata)
 	return taskCtx
@@ -361,7 +362,7 @@ func TestBuildResourceSpark(t *testing.T) {
 			},
 		}}),
 	)
-	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true))
+	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true, core.Container_ARM64))
 	assert.Nil(t, err)
 
 	assert.NotNil(t, resource)
@@ -443,7 +444,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	dummyConfWithRequest["spark.kubernetes.executor.request.cores"] = "4"
 
 	taskTemplate = dummySparkTaskTemplate("blah-1", dummyConfWithRequest)
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
+	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false, core.Container_UNKNOWN))
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
 	sparkApp, ok = resource.(*sj.SparkApplication)
@@ -453,7 +454,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummyConfWithRequest["spark.kubernetes.executor.request.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.executor.limit.cores"])
 
 	// Case 3: Interruptible False
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
+	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false, core.Container_UNKNOWN))
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
 	sparkApp, ok = resource.(*sj.SparkApplication)
@@ -467,7 +468,7 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	// Case 4: Invalid Spark Task-Template
 	taskTemplate.Custom = nil
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
+	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false, core.Container_UNKNOWN))
 	assert.NotNil(t, err)
 	assert.Nil(t, resource)
 }
