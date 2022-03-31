@@ -36,5 +36,4 @@ type TaskExecutionMetadata interface {
 	GetSecurityContext() core.SecurityContext
 	IsInterruptible() bool
 	GetArchitecture() core.Container_Architecture
-	GetPlatformResources() *v1.ResourceRequirements
 }
