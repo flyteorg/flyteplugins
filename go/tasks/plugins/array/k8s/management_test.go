@@ -397,9 +397,9 @@ func TestCheckSubTasksState(t *testing.T) {
 
 			logLinks := externalResource.Logs
 			assert.Equal(t, 2, len(logLinks))
-			assert.Equal(t, fmt.Sprintf("Kubernetes Logs #0-%d (PhaseRunning)", i), logLinks[0].Name)
+			assert.Equal(t, fmt.Sprintf("Kubernetes Logs #0-%d", i), logLinks[0].Name)
 			assert.Equal(t, fmt.Sprintf("k8s/log/a-n-b/notfound-%d/pod?namespace=a-n-b", i), logLinks[0].Uri)
-			assert.Equal(t, fmt.Sprintf("Cloudwatch Logs #0-%d (PhaseRunning)", i), logLinks[1].Name)
+			assert.Equal(t, fmt.Sprintf("Cloudwatch Logs #0-%d", i), logLinks[1].Name)
 			assert.Equal(t, fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/kubernetes/flyte;prefix=var.log.containers.notfound-%d;streamFilter=typeLogStreamPrefix", i), logLinks[1].Uri)
 		}
 	})
