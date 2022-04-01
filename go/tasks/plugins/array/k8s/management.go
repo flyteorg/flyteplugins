@@ -94,8 +94,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		retryAttemptsArray, err := bitarray.NewCompactArray(count, maxValue)
 		if err != nil {
-			logger.Errorf(context.Background(), "Failed to create attempts compact array with [count: %v, maxValue: %v]", count, maxValue)
-			return currentState, logLinks, subTaskIDs, nil
+			logger.Errorf(ctx, "Failed to create attempts compact array with [count: %v, maxValue: %v]", count, maxValue)
+			return currentState, logLinks, subTaskIDs, err
 		}
 
 		// Initialize subtask retryAttempts to 0 so that, in tandem with the podName logic, we
@@ -116,8 +116,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		systemFailuresArray, err := bitarray.NewCompactArray(count, maxValue)
 		if err != nil {
-			logger.Errorf(context.Background(), "Failed to create system failures array with [count: %v, maxValue: %v]", count, maxValue)
-			return currentState, logLinks, subTaskIDs, nil
+			logger.Errorf(ctx, "Failed to create system failures array with [count: %v, maxValue: %v]", count, maxValue)
+			return currentState, logLinks, subTaskIDs, err
 		}
 
 		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
