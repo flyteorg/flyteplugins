@@ -163,7 +163,10 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
 		systemFailures := currentState.SystemFailures.GetItem(childIdx)
-		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, systemFailures)
+		stCtx, err := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, systemFailures)
+		if err != nil {
+			return currentState, logLinks, subTaskIDs, err
+		}
 		podName := stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 		// depending on the existing subtask phase we either a launch new k8s resource or monitor
@@ -316,9 +319,12 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, 0)
+		stCtx, err := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, 0)
+		if err != nil {
+			return err
+		}
 
-		err := terminateFunction(ctx, stCtx, config, kubeClient)
+		err = terminateFunction(ctx, stCtx, config, kubeClient)
 		if err != nil {
 			messageCollector.Collect(childIdx, err.Error())
 		}

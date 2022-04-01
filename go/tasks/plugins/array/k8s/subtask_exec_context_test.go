@@ -22,7 +22,8 @@ func TestSubTaskExecutionContext(t *testing.T) {
 	retryAttempt := uint64(1)
 	systemFailures := uint64(0)
 
-	stCtx := newSubTaskExecutionContext(tCtx, taskTemplate, executionIndex, originalIndex, retryAttempt, systemFailures)
+	stCtx, err := newSubTaskExecutionContext(tCtx, taskTemplate, executionIndex, originalIndex, retryAttempt, systemFailures)
+	assert.Nil(t, err)
 
 	assert.Equal(t, stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName(), fmt.Sprintf("notfound-%d-%d", executionIndex, retryAttempt))
 
