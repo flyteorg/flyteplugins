@@ -116,7 +116,7 @@ func newSubTaskExecutionContext(ctx context.Context, tCtx pluginsCore.TaskExecut
 	if retryAttempt == 0 {
 		prevCheckpoint = ""
 	} else {
-		prevCheckpoint, err = dataStore.ConstructReference(ctx, checkpointPrefix, strconv.FormatUint(retryAttempt - 1, 10))
+		prevCheckpoint, err = dataStore.ConstructReference(ctx, checkpointPrefix, strconv.FormatUint(retryAttempt-1, 10))
 		if err != nil {
 			return SubTaskExecutionContext{}, err
 		}

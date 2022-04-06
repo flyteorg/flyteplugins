@@ -106,8 +106,8 @@ func getMockTaskExecutionContext(ctx context.Context, parallelism int) *mocks.Ta
 	ir.OnGetMatch(mock.Anything).Return(&core2.LiteralMap{}, nil)
 
 	dataStore := &storage.DataStore{
-		&stdmocks.ComposedProtobufStore{},
-		&storage.URLPathConstructor{},
+		ComposedProtobufStore: &stdmocks.ComposedProtobufStore{},
+		ReferenceConstructor:  &storage.URLPathConstructor{},
 	}
 
 	tCtx := &mocks.TaskExecutionContext{}
