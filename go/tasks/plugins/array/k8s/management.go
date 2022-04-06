@@ -142,7 +142,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
-		stCtx, err := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
+		stCtx, err := newSubTaskExecutionContext(ctx, tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
 		if err != nil {
 			return currentState, logLinks, subTaskIDs, err
 		}
@@ -288,7 +288,7 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		stCtx, err := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
+		stCtx, err := newSubTaskExecutionContext(ctx, tCtx, taskTemplate, childIdx, originalIdx, retryAttempt)
 		if err != nil {
 			return err
 		}
