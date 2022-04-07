@@ -10,6 +10,7 @@ import (
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils/secrets"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
 )
@@ -40,22 +41,13 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 	return s.subtaskReader
 }
 
-// newSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
-func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
-	executionIndex, originalIndex int, retryAttempt uint64) SubTaskExecutionContext {
+// NewSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
+func NewSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
+	executionIndex, originalIndex int, retryAttempt uint64) (SubTaskExecutionContext, error) {
 
-	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
-	taskExecutionMetadata := tCtx.TaskExecutionMetadata()
-	taskExecutionID := taskExecutionMetadata.GetTaskExecutionID()
-	metadataOverride := SubTaskExecutionMetadata{
-		taskExecutionMetadata,
-		SubTaskExecutionID{
-			taskExecutionID,
-			executionIndex,
-			taskExecutionID.GetGeneratedName(),
-			retryAttempt,
-			taskExecutionID.GetID().RetryAttempt,
-		},
+	subTaskExecutionMetadata, err := NewSubTaskExecutionMetadata(tCtx.TaskExecutionMetadata(), taskTemplate, executionIndex, retryAttempt)
+	if err != nil {
+		return SubTaskExecutionContext{}, err
 	}
 
 	subtaskTemplate := &core.TaskTemplate{}
@@ -70,15 +62,15 @@ func newSubTaskExecutionContext(tCtx pluginsCore.TaskExecutionContext, taskTempl
 		}
 	}
 
+	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
 	subtaskReader := SubTaskReader{tCtx.TaskReader(), subtaskTemplate}
-
 	return SubTaskExecutionContext{
 		TaskExecutionContext: tCtx,
 		arrayInputReader:     arrayInputReader,
-		metadataOverride:     metadataOverride,
+		metadataOverride:     subTaskExecutionMetadata,
 		originalIndex:        originalIndex,
 		subtaskReader:        subtaskReader,
-	}
+	}, nil
 }
 
 // SubTaskReader wraps the core TaskReader to customize the task template task type and version
@@ -127,13 +119,62 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 	return fmt.Sprintf(" #%d-%d-%d", s.taskRetryAttempt, s.executionIndex, s.subtaskRetryAttempt)
 }
 
+// NewSubtaskExecutionID constructs a SubTaskExecutionID using the provided parameters
+func NewSubTaskExecutionID(taskExecutionID pluginsCore.TaskExecutionID, executionIndex int, retryAttempt uint64) SubTaskExecutionID {
+	return SubTaskExecutionID{
+		taskExecutionID,
+		executionIndex,
+		taskExecutionID.GetGeneratedName(),
+		retryAttempt,
+		taskExecutionID.GetID().RetryAttempt,
+	}
+}
+
 // SubTaskExecutionMetadata wraps the core TaskExecutionMetadata to customize the TaskExecutionID
 type SubTaskExecutionMetadata struct {
 	pluginsCore.TaskExecutionMetadata
+	annotations        map[string]string
+	labels             map[string]string
 	subtaskExecutionID SubTaskExecutionID
+}
+
+// GetAnnotations overrides the base TaskExecutionMetadata to return a custom map
+func (s SubTaskExecutionMetadata) GetAnnotations() map[string]string {
+	return s.annotations
+}
+
+// GetLabels overrides the base TaskExecutionMetadata to return a custom map
+func (s SubTaskExecutionMetadata) GetLabels() map[string]string {
+	return s.labels
 }
 
 // GetTaskExecutionID overrides the base TaskExecutionMetadata to return a custom TaskExecutionID
 func (s SubTaskExecutionMetadata) GetTaskExecutionID() pluginsCore.TaskExecutionID {
 	return s.subtaskExecutionID
+}
+
+// NewSubtaskExecutionMetadata constructs a SubTaskExecutionMetadata using the provided parameters
+func NewSubTaskExecutionMetadata(taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskTemplate *core.TaskTemplate, executionIndex int, retryAttempt uint64) (SubTaskExecutionMetadata, error) {
+
+	var err error
+	secretsMap := make(map[string]string)
+	injectSecretsLabel := make(map[string]string)
+	if taskTemplate.SecurityContext != nil && len(taskTemplate.SecurityContext.Secrets) > 0 {
+		secretsMap, err = secrets.MarshalSecretsToMapStrings(taskTemplate.SecurityContext.Secrets)
+		if err != nil {
+			return SubTaskExecutionMetadata{}, err
+		}
+
+		injectSecretsLabel = map[string]string{
+			secrets.PodLabel: secrets.PodLabelValue,
+		}
+	}
+
+	subTaskExecutionID := NewSubTaskExecutionID(taskExecutionMetadata.GetTaskExecutionID(), executionIndex, retryAttempt)
+	return SubTaskExecutionMetadata{
+		taskExecutionMetadata,
+		utils.UnionMaps(taskExecutionMetadata.GetAnnotations(), secretsMap),
+		utils.UnionMaps(taskExecutionMetadata.GetLabels(), injectSecretsLabel),
+		subTaskExecutionID,
+	}, nil
 }
