@@ -63,22 +63,21 @@ func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, con
 // resources, retrying failed attempts, or declaring a permanent failure among others.
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference, currentState *arrayCore.State) (
-	newState *arrayCore.State, logLinks []*idlCore.TaskLog, subTaskIDs []*string, err error) {
+	newState *arrayCore.State, externalResources []*core.ExternalResource, err error) {
 	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
 		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
 		logger.Info(ctx, ee)
 		currentState = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
-		return currentState, logLinks, subTaskIDs, nil
+		return currentState, externalResources, nil
 	}
 
-	logLinks = make([]*idlCore.TaskLog, 0, 4)
 	newState = currentState
 	messageCollector := errorcollector.NewErrorMessageCollector()
 	newArrayStatus := &arraystatus.ArrayStatus{
 		Summary:  arraystatus.ArraySummary{},
 		Detailed: arrayCore.NewPhasesCompactArray(uint(currentState.GetExecutionArraySize())),
 	}
-	subTaskIDs = make([]*string, 0, len(currentState.GetArrayStatus().Detailed.GetItems()))
+	externalResources = make([]*core.ExternalResource, 0, len(currentState.GetArrayStatus().Detailed.GetItems()))
 
 	// If we have arrived at this state for the first time then currentState has not been
 	// initialized with number of sub tasks.
@@ -95,7 +94,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		retryAttemptsArray, err := bitarray.NewCompactArray(count, maxValue)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to create attempts compact array with [count: %v, maxValue: %v]", count, maxValue)
-			return currentState, logLinks, subTaskIDs, err
+			return currentState, externalResources, nil
 		}
 
 		// Initialize subtask retryAttempts to 0 so that, in tandem with the podName logic, we
@@ -117,7 +116,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		systemFailuresArray, err := bitarray.NewCompactArray(count, maxValue)
 		if err != nil {
 			logger.Errorf(ctx, "Failed to create system failures array with [count: %v, maxValue: %v]", count, maxValue)
-			return currentState, logLinks, subTaskIDs, err
+			return currentState, externalResources, err
 		}
 
 		for i := 0; i < currentState.GetExecutionArraySize(); i++ {
@@ -130,20 +129,20 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	// initialize log plugin
 	logPlugin, err := logs.InitializeLogPlugins(&config.LogConfig.Config)
 	if err != nil {
-		return currentState, logLinks, subTaskIDs, err
+		return currentState, externalResources, err
 	}
 
 	// identify max parallelism
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return currentState, logLinks, subTaskIDs, err
+		return currentState, externalResources, err
 	} else if taskTemplate == nil {
-		return currentState, logLinks, subTaskIDs, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
+		return currentState, externalResources, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
 	}
 
 	arrayJob, err := arrayCore.ToArrayJob(taskTemplate.GetCustom(), taskTemplate.TaskTypeVersion)
 	if err != nil {
-		return currentState, logLinks, subTaskIDs, err
+		return currentState, externalResources, err
 	}
 
 	currentParallelism := 0
@@ -163,9 +162,9 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, newState.GetIndexesToCache())
 		systemFailures := currentState.SystemFailures.GetItem(childIdx)
-		stCtx, err := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, systemFailures)
+		stCtx, err := NewSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, systemFailures)
 		if err != nil {
-			return currentState, logLinks, subTaskIDs, err
+			return currentState, externalResources, err
 		}
 		podName := stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
@@ -179,7 +178,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			if err != nil {
 				logger.Errorf(ctx, "Resource manager failed for TaskExecId [%s] token [%s]. error %s",
 					stCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), podName, err)
-				return currentState, logLinks, subTaskIDs, err
+				return currentState, externalResources, err
 			}
 
 			logger.Infof(ctx, "Allocation result for [%s] is [%s]", podName, allocationStatus)
@@ -201,9 +200,8 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			phaseInfo, perr = getSubtaskPhaseInfo(ctx, stCtx, config, kubeClient, logPlugin)
 		}
 
-		// validate and process phaseInfo and perr
 		if perr != nil {
-			return currentState, logLinks, subTaskIDs, perr
+			return currentState, externalResources, perr
 		}
 
 		if phaseInfo.Err() != nil {
@@ -216,41 +214,53 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 			newState.SystemFailures.SetItem(childIdx, systemFailures)
 		}
 
-		subTaskIDs = append(subTaskIDs, &podName)
-		if phaseInfo.Info() != nil {
-			logLinks = append(logLinks, phaseInfo.Info().Logs...)
-		}
-
 		// process subtask phase
 		actualPhase := phaseInfo.Phase()
 		if actualPhase.IsSuccess() {
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputDataSandbox, childIdx, originalIdx)
 			if err != nil {
-				return currentState, logLinks, subTaskIDs, err
+				return currentState, externalResources, err
 			}
 		}
 
 		if actualPhase == core.PhaseRetryableFailure && uint32(retryAttempt+1) >= stCtx.TaskExecutionMetadata().GetMaxAttempts() {
 			// If we see a retryable failure we must check if the number of retries exceeds the maximum
 			// attempts. If so, transition to a permanent failure so that is not attempted again.
-			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(core.PhasePermanentFailure))
-		} else {
-			newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(actualPhase))
+			actualPhase = core.PhasePermanentFailure
 		}
+		newArrayStatus.Detailed.SetItem(childIdx, bitarray.Item(actualPhase))
 
 		if actualPhase.IsTerminal() {
 			err = deallocateResource(ctx, stCtx, config, podName)
 			if err != nil {
 				logger.Errorf(ctx, "Error releasing allocation token [%s] in Finalize [%s]", podName, err)
-				return currentState, logLinks, subTaskIDs, err
+				return currentState, externalResources, err
 			}
 
 			err = finalizeSubtask(ctx, stCtx, config, kubeClient)
 			if err != nil {
 				logger.Errorf(ctx, "Error finalizing resource [%s] in Finalize [%s]", podName, err)
-				return currentState, logLinks, subTaskIDs, err
+				return currentState, externalResources, err
 			}
 		}
+
+		// process phaseInfo
+		if phaseInfo.Err() != nil {
+			messageCollector.Collect(childIdx, phaseInfo.Err().String())
+		}
+
+		var logLinks []*idlCore.TaskLog
+		if phaseInfo.Info() != nil {
+			logLinks = phaseInfo.Info().Logs
+		}
+
+		externalResources = append(externalResources, &core.ExternalResource{
+			ExternalID:   podName,
+			Index:        uint32(originalIdx),
+			Logs:         logLinks,
+			RetryAttempt: uint32(retryAttempt),
+			Phase:        actualPhase,
+		})
 
 		// validate parallelism
 		if !actualPhase.IsTerminal() || actualPhase == core.PhaseRetryableFailure {
@@ -289,7 +299,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 		newState = newState.SetPhase(phase, core.DefaultPhaseVersion)
 	}
 
-	return newState, logLinks, subTaskIDs, nil
+	return newState, externalResources, nil
 }
 
 // TerminateSubTasks performs operations to gracefully terminate all subtasks. This may include
@@ -319,7 +329,7 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 		}
 
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
-		stCtx, err := newSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, 0)
+		stCtx, err := NewSubTaskExecutionContext(tCtx, taskTemplate, childIdx, originalIdx, retryAttempt, 0)
 		if err != nil {
 			return err
 		}
