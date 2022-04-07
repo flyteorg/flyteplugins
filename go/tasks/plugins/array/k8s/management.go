@@ -308,9 +308,9 @@ func TerminateSubTasks(ctx context.Context, tCtx core.TaskExecutionContext, kube
 	for childIdx, existingPhaseIdx := range currentState.GetArrayStatus().Detailed.GetItems() {
 		existingPhase := core.Phases[existingPhaseIdx]
 		retryAttempt := uint64(0)
-		if childIdx >= len(currentState.RetryAttempts.GetItems()) {
+		if childIdx < len(currentState.RetryAttempts.GetItems()) {
 			// we can use RetryAttempts if it has been initialized, otherwise stay with default 0
-			currentState.RetryAttempts.GetItem(childIdx)
+			retryAttempt = currentState.RetryAttempts.GetItem(childIdx)
 		}
 
 		// return immediately if subtask has completed or not yet started
