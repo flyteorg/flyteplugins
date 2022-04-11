@@ -50,38 +50,13 @@ func (s SubTaskExecutionContext) TaskReader() pluginsCore.TaskReader {
 	return s.subtaskReader
 }
 
-// newSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
-func newSubTaskExecutionContext(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
-	executionIndex, originalIndex int, retryAttempt uint64) (SubTaskExecutionContext, error) {
+// NewSubtaskExecutionContext constructs a SubTaskExecutionContext using the provided parameters
+func NewSubTaskExecutionContext(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, taskTemplate *core.TaskTemplate,
+	executionIndex, originalIndex int, retryAttempt uint64, systemFailures uint64) (SubTaskExecutionContext, error) {
 
-	var err error
-	secretsMap := make(map[string]string)
-	injectSecretsLabel := make(map[string]string)
-	if taskTemplate.SecurityContext != nil && len(taskTemplate.SecurityContext.Secrets) > 0 {
-		secretsMap, err = secrets.MarshalSecretsToMapStrings(taskTemplate.SecurityContext.Secrets)
-		if err != nil {
-			return SubTaskExecutionContext{}, err
-		}
-
-		injectSecretsLabel = map[string]string{
-			secrets.PodLabel: secrets.PodLabelValue,
-		}
-	}
-
-	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
-	taskExecutionMetadata := tCtx.TaskExecutionMetadata()
-	taskExecutionID := taskExecutionMetadata.GetTaskExecutionID()
-	metadataOverride := SubTaskExecutionMetadata{
-		taskExecutionMetadata,
-		utils.UnionMaps(taskExecutionMetadata.GetAnnotations(), secretsMap),
-		utils.UnionMaps(taskExecutionMetadata.GetLabels(), injectSecretsLabel),
-		SubTaskExecutionID{
-			taskExecutionID,
-			executionIndex,
-			taskExecutionID.GetGeneratedName(),
-			retryAttempt,
-			taskExecutionID.GetID().RetryAttempt,
-		},
+	subTaskExecutionMetadata, err := NewSubTaskExecutionMetadata(tCtx.TaskExecutionMetadata(), taskTemplate, executionIndex, retryAttempt, systemFailures)
+	if err != nil {
+		return SubTaskExecutionContext{}, err
 	}
 
 	// construct TaskTemplate
@@ -97,6 +72,7 @@ func newSubTaskExecutionContext(ctx context.Context, tCtx pluginsCore.TaskExecut
 		}
 	}
 
+	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
 	subtaskReader := SubTaskReader{tCtx.TaskReader(), subtaskTemplate}
 
 	// construct OutputWriter
@@ -131,7 +107,7 @@ func newSubTaskExecutionContext(ctx context.Context, tCtx pluginsCore.TaskExecut
 	return SubTaskExecutionContext{
 		TaskExecutionContext: tCtx,
 		arrayInputReader:     arrayInputReader,
-		metadataOverride:     metadataOverride,
+		metadataOverride:     subTaskExecutionMetadata,
 		originalIndex:        originalIndex,
 		outputWriter:         outputWriter,
 		subtaskReader:        subtaskReader,
@@ -184,11 +160,23 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 	return fmt.Sprintf(" #%d-%d-%d", s.taskRetryAttempt, s.executionIndex, s.subtaskRetryAttempt)
 }
 
+// NewSubtaskExecutionID constructs a SubTaskExecutionID using the provided parameters
+func NewSubTaskExecutionID(taskExecutionID pluginsCore.TaskExecutionID, executionIndex int, retryAttempt uint64) SubTaskExecutionID {
+	return SubTaskExecutionID{
+		taskExecutionID,
+		executionIndex,
+		taskExecutionID.GetGeneratedName(),
+		retryAttempt,
+		taskExecutionID.GetID().RetryAttempt,
+	}
+}
+
 // SubTaskExecutionMetadata wraps the core TaskExecutionMetadata to customize the TaskExecutionID
 type SubTaskExecutionMetadata struct {
 	pluginsCore.TaskExecutionMetadata
 	annotations        map[string]string
 	labels             map[string]string
+	interruptible      bool
 	subtaskExecutionID SubTaskExecutionID
 }
 
@@ -205,4 +193,38 @@ func (s SubTaskExecutionMetadata) GetLabels() map[string]string {
 // GetTaskExecutionID overrides the base TaskExecutionMetadata to return a custom TaskExecutionID
 func (s SubTaskExecutionMetadata) GetTaskExecutionID() pluginsCore.TaskExecutionID {
 	return s.subtaskExecutionID
+}
+
+// IsInterruptbile overrides the base NodeExecutionMetadata to return a subtask specific identifier
+func (s SubTaskExecutionMetadata) IsInterruptible() bool {
+	return s.interruptible
+}
+
+// NewSubtaskExecutionMetadata constructs a SubTaskExecutionMetadata using the provided parameters
+func NewSubTaskExecutionMetadata(taskExecutionMetadata pluginsCore.TaskExecutionMetadata, taskTemplate *core.TaskTemplate,
+	executionIndex int, retryAttempt uint64, systemFailures uint64) (SubTaskExecutionMetadata, error) {
+
+	var err error
+	secretsMap := make(map[string]string)
+	injectSecretsLabel := make(map[string]string)
+	if taskTemplate.SecurityContext != nil && len(taskTemplate.SecurityContext.Secrets) > 0 {
+		secretsMap, err = secrets.MarshalSecretsToMapStrings(taskTemplate.SecurityContext.Secrets)
+		if err != nil {
+			return SubTaskExecutionMetadata{}, err
+		}
+
+		injectSecretsLabel = map[string]string{
+			secrets.PodLabel: secrets.PodLabelValue,
+		}
+	}
+
+	subTaskExecutionID := NewSubTaskExecutionID(taskExecutionMetadata.GetTaskExecutionID(), executionIndex, retryAttempt)
+	interruptible := taskExecutionMetadata.IsInterruptible() && uint32(systemFailures) < taskExecutionMetadata.GetInterruptibleFailureThreshold()
+	return SubTaskExecutionMetadata{
+		taskExecutionMetadata,
+		utils.UnionMaps(taskExecutionMetadata.GetAnnotations(), secretsMap),
+		utils.UnionMaps(taskExecutionMetadata.GetLabels(), injectSecretsLabel),
+		interruptible,
+		subTaskExecutionID,
+	}, nil
 }
