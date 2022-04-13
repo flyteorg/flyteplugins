@@ -232,7 +232,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 
 				if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, &io.ExecutionError{
 					ExecutionError: phaseInfo.Err(),
-					IsRecoverable: phaseInfo.Phase() != core.PhasePermanentFailure,
+					IsRecoverable:  phaseInfo.Phase() != core.PhasePermanentFailure,
 				})); err != nil {
 					return currentState, externalResources, err
 				}
