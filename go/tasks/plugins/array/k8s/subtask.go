@@ -189,6 +189,7 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", pod.GetObjectKind().GroupVersionKind(), pod.GetNamespace(), pod.GetName())
 	err = kubeClient.GetClient().Create(ctx, pod)
+	//logger.Infof(ctx, "HAMERSAW - %v", err)
 	if err != nil && !k8serrors.IsAlreadyExists(err) {
 		if k8serrors.IsForbidden(err) {
 			if strings.Contains(err.Error(), "exceeded quota") {
@@ -198,7 +199,7 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 			return pluginsCore.PhaseInfoRetryableFailure("RuntimeFailure", err.Error(), nil), nil
 		} else if k8serrors.IsBadRequest(err) || k8serrors.IsInvalid(err) {
 			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", executorName, err)
-			// return pluginsCore.DoTransition(pluginsCore.PhaseInfoFailure("BadTaskFormat", err.Error(), nil)), nil
+			return pluginsCore.PhaseInfoFailure("BadTaskFormat", err.Error(), nil), nil
 		} else if k8serrors.IsRequestEntityTooLargeError(err) {
 			logger.Errorf(ctx, "Badly formatted resource for plugin [%s], err %s", executorName, err)
 			return pluginsCore.PhaseInfoFailure("EntityTooLarge", err.Error(), nil), nil
