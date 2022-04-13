@@ -189,7 +189,6 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", pod.GetObjectKind().GroupVersionKind(), pod.GetNamespace(), pod.GetName())
 	err = kubeClient.GetClient().Create(ctx, pod)
-	//logger.Infof(ctx, "HAMERSAW - %v", err)
 	if err != nil && !k8serrors.IsAlreadyExists(err) {
 		if k8serrors.IsForbidden(err) {
 			if strings.Contains(err.Error(), "exceeded quota") {
