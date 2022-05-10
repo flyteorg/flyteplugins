@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -108,7 +109,6 @@ func TestPodSetup(t *testing.T) {
 	t.Run("ApplyInterruptibleNodeAffinity", TestApplyInterruptibleNodeAffinity)
 	t.Run("UpdatePod", updatePod)
 	t.Run("ToK8sPodInterruptible", toK8sPodInterruptible)
-	t.Run("toK8sPodInterruptibleFalse", toK8sPodInterruptibleFalse)
 }
 
 func TestApplyInterruptibleNodeAffinity(t *testing.T) {
@@ -332,43 +332,6 @@ func toK8sPodInterruptible(t *testing.T) {
 	assert.Equal(t, 1, len(p.NodeSelector))
 	assert.Equal(t, "true", p.NodeSelector["x/interruptible"])
 	assert.EqualValues(
-		t,
-		[]v1.NodeSelectorTerm{
-			v1.NodeSelectorTerm{
-				MatchExpressions: []v1.NodeSelectorRequirement{
-					v1.NodeSelectorRequirement{
-						Key:      "x/interruptible",
-						Operator: v1.NodeSelectorOpIn,
-						Values:   []string{"true"},
-					},
-				},
-			},
-		},
-		p.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
-	)
-}
-
-func toK8sPodInterruptibleFalse(t *testing.T) {
-	ctx := context.TODO()
-
-	x := dummyExecContext(&v1.ResourceRequirements{
-		Limits: v1.ResourceList{
-			v1.ResourceCPU:     resource.MustParse("1024m"),
-			v1.ResourceStorage: resource.MustParse("100M"),
-			ResourceNvidiaGPU:  resource.MustParse("1"),
-		},
-		Requests: v1.ResourceList{
-			v1.ResourceCPU:     resource.MustParse("1024m"),
-			v1.ResourceStorage: resource.MustParse("100M"),
-		},
-	})
-
-	p, err := ToK8sPodSpecWithInterruptible(ctx, x, true)
-	assert.NoError(t, err)
-	assert.Len(t, p.Tolerations, 1)
-	assert.Equal(t, 0, len(p.NodeSelector))
-	assert.Equal(t, "", p.NodeSelector["x/interruptible"])
-	assert.NotEqualValues(
 		t,
 		[]v1.NodeSelectorTerm{
 			v1.NodeSelectorTerm{
@@ -1048,4 +1011,58 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhasePermanentFailure, phaseInfo.Phase())
 		assert.Equal(t, "Primary container [primary] not found in pod's container statuses", phaseInfo.Err().Message)
 	})
+}
+
+func TestBuildPodWithSpec(t *testing.T) {
+	var priority int32 = 1
+	podSpec := v1.PodSpec{
+		NodeSelector: map[string]string{
+			"baz": "bar",
+		},
+		Priority:      &priority,
+		SchedulerName: "overrideScheduler",
+		Tolerations: []v1.Toleration{
+			v1.Toleration{
+				Key: "bar",
+			},
+			v1.Toleration{
+				Key: "baz",
+			},
+		},
+	}
+
+	pod, err := BuildPodWithSpec(nil, &podSpec)
+	assert.Nil(t, err)
+	assert.True(t, reflect.DeepEqual(pod.Spec, podSpec))
+
+	podTemplate := v1.PodTemplate{
+		Template: v1.PodTemplateSpec{
+			Spec: v1.PodSpec{
+				HostNetwork: true,
+				NodeSelector: map[string]string{
+					"foo": "bar",
+				},
+				SchedulerName: "defaultScheduler",
+				Tolerations: []v1.Toleration{
+					v1.Toleration{
+						Key: "foo",
+					},
+				},
+			},
+		},
+	}
+
+	pod, err = BuildPodWithSpec(&podTemplate, &podSpec)
+	assert.Nil(t, err)
+
+	// validate a PodTemplate-only field
+	assert.Equal(t, podTemplate.Template.Spec.HostNetwork, pod.Spec.HostNetwork)
+	// validate a PodSpec-only field
+	assert.Equal(t, podSpec.Priority, pod.Spec.Priority)
+	// validate an overwritten PodTemplate field
+	assert.Equal(t, podSpec.SchedulerName, pod.Spec.SchedulerName)
+	// validate a merged map
+	assert.Equal(t, len(podTemplate.Template.Spec.NodeSelector)+len(podSpec.NodeSelector), len(pod.Spec.NodeSelector))
+	// validate an appended array
+	assert.Equal(t, len(podTemplate.Template.Spec.Tolerations)+len(podSpec.Tolerations), len(pod.Spec.Tolerations))
 }

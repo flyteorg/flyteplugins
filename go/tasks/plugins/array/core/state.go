@@ -53,6 +53,9 @@ type State struct {
 
 	// Tracks the number of subtask retries using the execution index
 	RetryAttempts bitarray.CompactArray `json:"retryAttempts"`
+
+	// Tracks the number of system failures for each subtask using the execution index
+	SystemFailures bitarray.CompactArray `json:"systemFailures"`
 }
 
 func (s State) GetReason() string {
@@ -164,56 +167,36 @@ func ToArrayJob(structObj *structpb.Struct, taskTypeVersion int32) (*idlPlugins.
 	return arrayJob, err
 }
 
-func GetPhaseVersionOffset(currentPhase Phase, length int64) uint32 {
-	// NB: Make sure this is the last/highest value of the Phase!
-	return uint32(length * (int64(core.PhasePermanentFailure) + 1) * int64(currentPhase))
-}
-
 // Any state of the plugin needs to map to a core.PhaseInfo (which in turn will map to Admin events) so that the rest
 // of the Flyte platform can understand what's happening. That is, each possible state that our plugin state
 // machine returns should map to a unique (core.Phase, core.PhaseInfo.version).
 // Info fields will always be nil, because we're going to send log links individually. This simplifies our state
 // handling as we don't have to keep an ever growing list of log links (our batch jobs can be 5000 sub-tasks, keeping
 // all the log links takes up a lot of space).
-func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, subTaskIDs []*string) (core.PhaseInfo, error) {
+func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idlCore.TaskLog, externalResources []*core.ExternalResource) (core.PhaseInfo, error) {
 	phaseInfo := core.PhaseInfoUndefined
 	t := time.Now()
 
 	nowTaskInfo := &core.TaskInfo{
 		OccurredAt:        &t,
 		Logs:              logLinks,
-		ExternalResources: make([]*core.ExternalResource, len(subTaskIDs)),
-	}
-
-	for childIndex, subTaskID := range subTaskIDs {
-		originalIndex := CalculateOriginalIndex(childIndex, state.GetIndexesToCache())
-
-		nowTaskInfo.ExternalResources[childIndex] = &core.ExternalResource{
-			ExternalID:   *subTaskID,
-			Index:        uint32(originalIndex),
-			RetryAttempt: uint32(state.RetryAttempts.GetItem(childIndex)),
-			Phase:        core.Phases[state.ArrayStatus.Detailed.GetItem(childIndex)],
-		}
+		ExternalResources: externalResources,
 	}
 
 	switch p, version := state.GetPhase(); p {
 	case PhaseStart:
-		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason(), &core.TaskInfo{OccurredAt: &t})
-
-	case PhasePreLaunch:
-		version := GetPhaseVersionOffset(p, 1) + version
-		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
-
-	case PhaseLaunch:
-		// The first time we return a Running core.Phase, we can just use the version inside the state object itself.
-		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+		phaseInfo = core.PhaseInfoInitializing(t, core.DefaultPhaseVersion, state.GetReason(), nowTaskInfo)
 
 	case PhaseWaitingForResources:
 		phaseInfo = core.PhaseInfoWaitingForResourcesInfo(t, version, state.GetReason(), nowTaskInfo)
 
+	case PhasePreLaunch:
+		fallthrough
+
+	case PhaseLaunch:
+		fallthrough
+
 	case PhaseCheckingSubTaskExecutions:
-		// For future Running core.Phases, we have to make sure we don't use an earlier Admin version number,
-		// which means we need to offset things.
 		fallthrough
 
 	case PhaseAssembleFinalOutput:
@@ -226,8 +209,11 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 		fallthrough
 
 	case PhaseWriteToDiscovery:
-		version := GetPhaseVersionOffset(p, state.GetOriginalArraySize()) + version
-		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
+		// The state version is only incremented in PhaseCheckingSubTaskExecutions when subtask
+		// phases are updated. Therefore by adding the phase to the state version we ensure that
+		// (1) all phase changes will have a new phase version and (2) all subtask phase updates
+		// result in monotonically increasing phase version.
+		phaseInfo = core.PhaseInfoRunning(version+uint32(p), nowTaskInfo)
 
 	case PhaseSuccess:
 		phaseInfo = core.PhaseInfoSuccess(nowTaskInfo)

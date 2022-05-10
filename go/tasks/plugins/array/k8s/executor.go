@@ -3,20 +3,17 @@ package k8s
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	arrayCore "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/core"
+
 	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/errors"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const executorName = "k8s-array"
@@ -85,12 +82,21 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	var nextState *arrayCore.State
 	var err error
-	var logLinks []*idlCore.TaskLog
-	var subTaskIDs []*string
+	var externalResources []*core.ExternalResource
 
-	switch p, _ := pluginState.GetPhase(); p {
+	switch p, version := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
+		if err != nil {
+			return core.UnknownTransition, err
+		}
+
+		externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
+			func(tCtx core.TaskExecutionContext, childIndex int) string {
+				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
+				return subTaskExecutionID.GetGeneratedName()
+			},
+		)
 
 	case arrayCore.PhasePreLaunch:
 		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
@@ -103,25 +109,24 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		// In order to maintain backwards compatibility with the state transitions
 		// in the aws batch plugin. Forward to PhaseCheckingSubTasksExecutions where the launching
 		// is actually occurring.
-		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, core.DefaultPhaseVersion).SetReason("Nothing to do in Launch phase.")
+		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, version).SetReason("Nothing to do in Launch phase.")
 		err = nil
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
-
-		nextState, logLinks, subTaskIDs, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
+		nextState, externalResources, err = LaunchAndCheckSubTasksState(ctx, tCtx, e.kubeClient, pluginConfig,
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, version, pluginState)
 
 	case arrayCore.PhaseWriteToDiscoveryThenFail:
-		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalError)
+		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalError, version)
 
 	case arrayCore.PhaseWriteToDiscovery:
-		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalOutput)
+		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalOutput, version)
 
 	case arrayCore.PhaseAssembleFinalError:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhasePermanentFailure, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhasePermanentFailure, version, pluginState)
 
 	default:
 		nextState = pluginState
@@ -136,7 +141,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Determine transition information from the state
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, logLinks, subTaskIDs)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, nextState, nil, externalResources)
 	if err != nil {
 		return core.UnknownTransition, err
 	}
@@ -145,18 +150,21 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 }
 
 func (e Executor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	return nil
-}
-
-func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
-	pluginConfig := GetConfig()
-
 	pluginState := &arrayCore.State{}
 	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
 		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
 	}
 
-	return TerminateSubTasks(ctx, tCtx, e.kubeClient, pluginConfig, pluginState)
+	return TerminateSubTasks(ctx, tCtx, e.kubeClient, GetConfig(), abortSubtask, pluginState)
+}
+
+func (e Executor) Finalize(ctx context.Context, tCtx core.TaskExecutionContext) error {
+	pluginState := &arrayCore.State{}
+	if _, err := tCtx.PluginStateReader().Get(pluginState); err != nil {
+		return errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read unmarshal custom state")
+	}
+
+	return TerminateSubTasks(ctx, tCtx, e.kubeClient, GetConfig(), finalizeSubtask, pluginState)
 }
 
 func (e Executor) Start(ctx context.Context) error {

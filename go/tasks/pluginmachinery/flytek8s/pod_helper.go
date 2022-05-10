@@ -6,16 +6,17 @@ import (
 	"strings"
 	"time"
 
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
-
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	"github.com/flyteorg/flytestdlib/logger"
+
+	"github.com/imdario/mergo"
+
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 )
 
 const PodKind = "pod"
@@ -62,18 +63,11 @@ func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
 // UpdatePod updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
 func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
-	UpdatePodWithInterruptibleFlag(taskExecutionMetadata, resourceRequirements, podSpec, false)
-}
-
-// UpdatePodWithInterruptibleFlag updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
-func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
-	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec, omitInterruptible bool) {
-	isInterruptible := !omitInterruptible && taskExecutionMetadata.IsInterruptible()
 	if len(podSpec.RestartPolicy) == 0 {
 		podSpec.RestartPolicy = v1.RestartPolicyNever
 	}
 	podSpec.Tolerations = append(
-		GetPodTolerations(isInterruptible, resourceRequirements...), podSpec.Tolerations...)
+		GetPodTolerations(taskExecutionMetadata.IsInterruptible(), resourceRequirements...), podSpec.Tolerations...)
 
 	if len(podSpec.ServiceAccountName) == 0 {
 		podSpec.ServiceAccountName = taskExecutionMetadata.GetK8sServiceAccount()
@@ -82,7 +76,7 @@ func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecut
 		podSpec.SchedulerName = config.GetK8sPluginConfig().SchedulerName
 	}
 	podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().DefaultNodeSelector)
-	if isInterruptible {
+	if taskExecutionMetadata.IsInterruptible() {
 		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
 	if podSpec.Affinity == nil && config.GetK8sPluginConfig().DefaultAffinity != nil {
@@ -97,16 +91,11 @@ func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecut
 	if podSpec.DNSConfig == nil && config.GetK8sPluginConfig().DefaultPodDNSConfig != nil {
 		podSpec.DNSConfig = config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy()
 	}
-	ApplyInterruptibleNodeAffinity(isInterruptible, podSpec)
+	ApplyInterruptibleNodeAffinity(taskExecutionMetadata.IsInterruptible(), podSpec)
 }
 
 // ToK8sPodSpec constructs a pod spec from the given TaskTemplate
 func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
-	return ToK8sPodSpecWithInterruptible(ctx, tCtx, false)
-}
-
-// ToK8sPodSpecWithInterruptible constructs a pod spec from the gien TaskTemplate and optionally add (interruptible instance) support.
-func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, omitInterruptible bool) (*v1.PodSpec, error) {
 	task, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
@@ -137,7 +126,7 @@ func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExe
 	pod := &v1.PodSpec{
 		Containers: containers,
 	}
-	UpdatePodWithInterruptibleFlag(tCtx.TaskExecutionMetadata(), []v1.ResourceRequirements{c.Resources}, pod, omitInterruptible)
+	UpdatePod(tCtx.TaskExecutionMetadata(), []v1.ResourceRequirements{c.Resources}, pod)
 
 	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), task.GetContainer().GetDataConfig()); err != nil {
 		return nil, err
@@ -146,16 +135,30 @@ func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExe
 	return pod, nil
 }
 
-func BuildPodWithSpec(podSpec *v1.PodSpec) *v1.Pod {
+func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec) (*v1.Pod, error) {
 	pod := v1.Pod{
 		TypeMeta: v12.TypeMeta{
 			Kind:       PodKind,
 			APIVersion: v1.SchemeGroupVersion.String(),
 		},
-		Spec: *podSpec,
 	}
 
-	return &pod
+	if podTemplate != nil {
+		basePodSpec := podTemplate.Template.Spec.DeepCopy()
+		err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
+		if err != nil {
+			return nil, err
+		}
+
+		basePodSpec.Containers = podSpec.Containers
+
+		pod.ObjectMeta = podTemplate.Template.ObjectMeta
+		pod.Spec = *basePodSpec
+	} else {
+		pod.Spec = *podSpec
+	}
+
+	return &pod, nil
 }
 
 func BuildIdentityPod() *v1.Pod {
