@@ -209,8 +209,6 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 	if errs := validation.IsDNS1123Label(containerName); len(errs) > 0 {
 		containerName = rand.String(4)
 	}
-	preStopHook := v1.Handler{Exec: &v1.ExecAction{Command: []string{"/bin/sh", "-c", "touch /var/outputs/_SUCCESS"}}}
-
 	container := &v1.Container{
 		Name:                     containerName,
 		Image:                    taskContainer.GetImage(),
@@ -218,7 +216,6 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 		Command:                  taskContainer.GetCommand(),
 		Env:                      ToK8sEnvVar(taskContainer.GetEnv()),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		Lifecycle:                &v1.Lifecycle{PreStop: &preStopHook},
 	}
 	if err := AddCoPilotToContainer(ctx, config.GetK8sPluginConfig().CoPilot, container, iFace, taskContainer.DataConfig); err != nil {
 		return nil, err

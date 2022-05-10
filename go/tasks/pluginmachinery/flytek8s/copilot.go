@@ -201,8 +201,6 @@ func AddCoPilotToPod(ctx context.Context, cfg config.FlyteCoPilotConfig, coPilot
 	}
 
 	logger.Infof(ctx, "CoPilot Enabled for task [%s]", taskExecMetadata.GetTaskExecutionID().GetID().TaskId.Name)
-	shareProcessNamespaceEnabled := true
-	coPilotPod.ShareProcessNamespace = &shareProcessNamespaceEnabled
 	if iFace != nil {
 		if iFace.Inputs != nil {
 			inPath := cfg.DefaultInputDataPath
