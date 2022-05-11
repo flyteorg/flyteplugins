@@ -220,19 +220,6 @@ func assertContainerHasVolumeMounts(t *testing.T, cfg config.FlyteCoPilotConfig,
 	}
 }
 
-func assertPodHasSNPS(t *testing.T, pod *v1.PodSpec) {
-	assert.NotNil(t, pod.ShareProcessNamespace)
-	assert.True(t, *pod.ShareProcessNamespace)
-
-	found := false
-	for _, c := range pod.Containers {
-		if c.Name == "test" {
-			found = true
-		}
-	}
-	assert.False(t, found, "user container absent?")
-}
-
 func assertPodHasCoPilot(t *testing.T, cfg config.FlyteCoPilotConfig, pilot *core.DataLoadingConfig, iFace *core.TypedInterface, pod *v1.PodSpec) {
 	for _, c := range pod.Containers {
 		if c.Name == "test" {
@@ -514,7 +501,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, iface, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, iface, &pod)
 	})
 
@@ -526,7 +512,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, nil, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, nil, &pod)
 	})
 
@@ -546,7 +531,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, iface, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, iface, &pod)
 	})
 
@@ -565,7 +549,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, iface, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, iface, &pod)
 	})
 
