@@ -24,13 +24,13 @@ func (_m TaskTemplatePath_Path) Return(_a0 storage.DataReference, _a1 error) *Ta
 }
 
 func (_m *TaskTemplatePath) OnPath(ctx context.Context) *TaskTemplatePath_Path {
-	c_call := _m.On("Path", ctx)
-	return &TaskTemplatePath_Path{Call: c_call}
+	c := _m.On("Path", ctx)
+	return &TaskTemplatePath_Path{Call: c}
 }
 
 func (_m *TaskTemplatePath) OnPathMatch(matchers ...interface{}) *TaskTemplatePath_Path {
-	c_call := _m.On("Path", matchers...)
-	return &TaskTemplatePath_Path{Call: c_call}
+	c := _m.On("Path", matchers...)
+	return &TaskTemplatePath_Path{Call: c}
 }
 
 // Path provides a mock function with given fields: ctx

@@ -18,13 +18,13 @@ func (_m GetContext_ResourceMeta) Return(_a0 interface{}) *GetContext_ResourceMe
 }
 
 func (_m *GetContext) OnResourceMeta() *GetContext_ResourceMeta {
-	c_call := _m.On("ResourceMeta")
-	return &GetContext_ResourceMeta{Call: c_call}
+	c := _m.On("ResourceMeta")
+	return &GetContext_ResourceMeta{Call: c}
 }
 
 func (_m *GetContext) OnResourceMetaMatch(matchers ...interface{}) *GetContext_ResourceMeta {
-	c_call := _m.On("ResourceMeta", matchers...)
-	return &GetContext_ResourceMeta{Call: c_call}
+	c := _m.On("ResourceMeta", matchers...)
+	return &GetContext_ResourceMeta{Call: c}
 }
 
 // ResourceMeta provides a mock function with given fields:

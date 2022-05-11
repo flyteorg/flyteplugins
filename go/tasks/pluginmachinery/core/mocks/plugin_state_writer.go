@@ -18,13 +18,13 @@ func (_m PluginStateWriter_Put) Return(_a0 error) *PluginStateWriter_Put {
 }
 
 func (_m *PluginStateWriter) OnPut(stateVersion uint8, v interface{}) *PluginStateWriter_Put {
-	c_call := _m.On("Put", stateVersion, v)
-	return &PluginStateWriter_Put{Call: c_call}
+	c := _m.On("Put", stateVersion, v)
+	return &PluginStateWriter_Put{Call: c}
 }
 
 func (_m *PluginStateWriter) OnPutMatch(matchers ...interface{}) *PluginStateWriter_Put {
-	c_call := _m.On("Put", matchers...)
-	return &PluginStateWriter_Put{Call: c_call}
+	c := _m.On("Put", matchers...)
+	return &PluginStateWriter_Put{Call: c}
 }
 
 // Put provides a mock function with given fields: stateVersion, v
@@ -50,13 +50,13 @@ func (_m PluginStateWriter_Reset) Return(_a0 error) *PluginStateWriter_Reset {
 }
 
 func (_m *PluginStateWriter) OnReset() *PluginStateWriter_Reset {
-	c_call := _m.On("Reset")
-	return &PluginStateWriter_Reset{Call: c_call}
+	c := _m.On("Reset")
+	return &PluginStateWriter_Reset{Call: c}
 }
 
 func (_m *PluginStateWriter) OnResetMatch(matchers ...interface{}) *PluginStateWriter_Reset {
-	c_call := _m.On("Reset", matchers...)
-	return &PluginStateWriter_Reset{Call: c_call}
+	c := _m.On("Reset", matchers...)
+	return &PluginStateWriter_Reset{Call: c}
 }
 
 // Reset provides a mock function with given fields:

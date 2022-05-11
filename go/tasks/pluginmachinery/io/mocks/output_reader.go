@@ -25,13 +25,13 @@ func (_m OutputReader_Exists) Return(_a0 bool, _a1 error) *OutputReader_Exists {
 }
 
 func (_m *OutputReader) OnExists(ctx context.Context) *OutputReader_Exists {
-	c_call := _m.On("Exists", ctx)
-	return &OutputReader_Exists{Call: c_call}
+	c := _m.On("Exists", ctx)
+	return &OutputReader_Exists{Call: c}
 }
 
 func (_m *OutputReader) OnExistsMatch(matchers ...interface{}) *OutputReader_Exists {
-	c_call := _m.On("Exists", matchers...)
-	return &OutputReader_Exists{Call: c_call}
+	c := _m.On("Exists", matchers...)
+	return &OutputReader_Exists{Call: c}
 }
 
 // Exists provides a mock function with given fields: ctx
@@ -64,13 +64,13 @@ func (_m OutputReader_IsError) Return(_a0 bool, _a1 error) *OutputReader_IsError
 }
 
 func (_m *OutputReader) OnIsError(ctx context.Context) *OutputReader_IsError {
-	c_call := _m.On("IsError", ctx)
-	return &OutputReader_IsError{Call: c_call}
+	c := _m.On("IsError", ctx)
+	return &OutputReader_IsError{Call: c}
 }
 
 func (_m *OutputReader) OnIsErrorMatch(matchers ...interface{}) *OutputReader_IsError {
-	c_call := _m.On("IsError", matchers...)
-	return &OutputReader_IsError{Call: c_call}
+	c := _m.On("IsError", matchers...)
+	return &OutputReader_IsError{Call: c}
 }
 
 // IsError provides a mock function with given fields: ctx
@@ -103,13 +103,13 @@ func (_m OutputReader_IsFile) Return(_a0 bool) *OutputReader_IsFile {
 }
 
 func (_m *OutputReader) OnIsFile(ctx context.Context) *OutputReader_IsFile {
-	c_call := _m.On("IsFile", ctx)
-	return &OutputReader_IsFile{Call: c_call}
+	c := _m.On("IsFile", ctx)
+	return &OutputReader_IsFile{Call: c}
 }
 
 func (_m *OutputReader) OnIsFileMatch(matchers ...interface{}) *OutputReader_IsFile {
-	c_call := _m.On("IsFile", matchers...)
-	return &OutputReader_IsFile{Call: c_call}
+	c := _m.On("IsFile", matchers...)
+	return &OutputReader_IsFile{Call: c}
 }
 
 // IsFile provides a mock function with given fields: ctx
@@ -135,13 +135,13 @@ func (_m OutputReader_Read) Return(_a0 *core.LiteralMap, _a1 *io.ExecutionError,
 }
 
 func (_m *OutputReader) OnRead(ctx context.Context) *OutputReader_Read {
-	c_call := _m.On("Read", ctx)
-	return &OutputReader_Read{Call: c_call}
+	c := _m.On("Read", ctx)
+	return &OutputReader_Read{Call: c}
 }
 
 func (_m *OutputReader) OnReadMatch(matchers ...interface{}) *OutputReader_Read {
-	c_call := _m.On("Read", matchers...)
-	return &OutputReader_Read{Call: c_call}
+	c := _m.On("Read", matchers...)
+	return &OutputReader_Read{Call: c}
 }
 
 // Read provides a mock function with given fields: ctx
@@ -185,13 +185,13 @@ func (_m OutputReader_ReadError) Return(_a0 io.ExecutionError, _a1 error) *Outpu
 }
 
 func (_m *OutputReader) OnReadError(ctx context.Context) *OutputReader_ReadError {
-	c_call := _m.On("ReadError", ctx)
-	return &OutputReader_ReadError{Call: c_call}
+	c := _m.On("ReadError", ctx)
+	return &OutputReader_ReadError{Call: c}
 }
 
 func (_m *OutputReader) OnReadErrorMatch(matchers ...interface{}) *OutputReader_ReadError {
-	c_call := _m.On("ReadError", matchers...)
-	return &OutputReader_ReadError{Call: c_call}
+	c := _m.On("ReadError", matchers...)
+	return &OutputReader_ReadError{Call: c}
 }
 
 // ReadError provides a mock function with given fields: ctx

@@ -26,13 +26,13 @@ func (_m BatchServiceClient_DescribeJobsWithContext) Return(_a0 *batch.DescribeJ
 }
 
 func (_m *BatchServiceClient) OnDescribeJobsWithContext(ctx context.Context, input *batch.DescribeJobsInput, opts ...request.Option) *BatchServiceClient_DescribeJobsWithContext {
-	c_call := _m.On("DescribeJobsWithContext", ctx, input, opts)
-	return &BatchServiceClient_DescribeJobsWithContext{Call: c_call}
+	c := _m.On("DescribeJobsWithContext", ctx, input, opts)
+	return &BatchServiceClient_DescribeJobsWithContext{Call: c}
 }
 
 func (_m *BatchServiceClient) OnDescribeJobsWithContextMatch(matchers ...interface{}) *BatchServiceClient_DescribeJobsWithContext {
-	c_call := _m.On("DescribeJobsWithContext", matchers...)
-	return &BatchServiceClient_DescribeJobsWithContext{Call: c_call}
+	c := _m.On("DescribeJobsWithContext", matchers...)
+	return &BatchServiceClient_DescribeJobsWithContext{Call: c}
 }
 
 // DescribeJobsWithContext provides a mock function with given fields: ctx, input, opts
@@ -74,13 +74,13 @@ func (_m BatchServiceClient_RegisterJobDefinitionWithContext) Return(_a0 *batch.
 }
 
 func (_m *BatchServiceClient) OnRegisterJobDefinitionWithContext(ctx context.Context, input *batch.RegisterJobDefinitionInput, opts ...request.Option) *BatchServiceClient_RegisterJobDefinitionWithContext {
-	c_call := _m.On("RegisterJobDefinitionWithContext", ctx, input, opts)
-	return &BatchServiceClient_RegisterJobDefinitionWithContext{Call: c_call}
+	c := _m.On("RegisterJobDefinitionWithContext", ctx, input, opts)
+	return &BatchServiceClient_RegisterJobDefinitionWithContext{Call: c}
 }
 
 func (_m *BatchServiceClient) OnRegisterJobDefinitionWithContextMatch(matchers ...interface{}) *BatchServiceClient_RegisterJobDefinitionWithContext {
-	c_call := _m.On("RegisterJobDefinitionWithContext", matchers...)
-	return &BatchServiceClient_RegisterJobDefinitionWithContext{Call: c_call}
+	c := _m.On("RegisterJobDefinitionWithContext", matchers...)
+	return &BatchServiceClient_RegisterJobDefinitionWithContext{Call: c}
 }
 
 // RegisterJobDefinitionWithContext provides a mock function with given fields: ctx, input, opts
@@ -122,13 +122,13 @@ func (_m BatchServiceClient_SubmitJobWithContext) Return(_a0 *batch.SubmitJobOut
 }
 
 func (_m *BatchServiceClient) OnSubmitJobWithContext(ctx context.Context, input *batch.SubmitJobInput, opts ...request.Option) *BatchServiceClient_SubmitJobWithContext {
-	c_call := _m.On("SubmitJobWithContext", ctx, input, opts)
-	return &BatchServiceClient_SubmitJobWithContext{Call: c_call}
+	c := _m.On("SubmitJobWithContext", ctx, input, opts)
+	return &BatchServiceClient_SubmitJobWithContext{Call: c}
 }
 
 func (_m *BatchServiceClient) OnSubmitJobWithContextMatch(matchers ...interface{}) *BatchServiceClient_SubmitJobWithContext {
-	c_call := _m.On("SubmitJobWithContext", matchers...)
-	return &BatchServiceClient_SubmitJobWithContext{Call: c_call}
+	c := _m.On("SubmitJobWithContext", matchers...)
+	return &BatchServiceClient_SubmitJobWithContext{Call: c}
 }
 
 // SubmitJobWithContext provides a mock function with given fields: ctx, input, opts
@@ -170,13 +170,13 @@ func (_m BatchServiceClient_TerminateJobWithContext) Return(_a0 *batch.Terminate
 }
 
 func (_m *BatchServiceClient) OnTerminateJobWithContext(ctx context.Context, input *batch.TerminateJobInput, opts ...request.Option) *BatchServiceClient_TerminateJobWithContext {
-	c_call := _m.On("TerminateJobWithContext", ctx, input, opts)
-	return &BatchServiceClient_TerminateJobWithContext{Call: c_call}
+	c := _m.On("TerminateJobWithContext", ctx, input, opts)
+	return &BatchServiceClient_TerminateJobWithContext{Call: c}
 }
 
 func (_m *BatchServiceClient) OnTerminateJobWithContextMatch(matchers ...interface{}) *BatchServiceClient_TerminateJobWithContext {
-	c_call := _m.On("TerminateJobWithContext", matchers...)
-	return &BatchServiceClient_TerminateJobWithContext{Call: c_call}
+	c := _m.On("TerminateJobWithContext", matchers...)
+	return &BatchServiceClient_TerminateJobWithContext{Call: c}
 }
 
 // TerminateJobWithContext provides a mock function with given fields: ctx, input, opts

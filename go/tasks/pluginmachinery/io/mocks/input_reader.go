@@ -26,13 +26,13 @@ func (_m InputReader_Get) Return(_a0 *core.LiteralMap, _a1 error) *InputReader_G
 }
 
 func (_m *InputReader) OnGet(ctx context.Context) *InputReader_Get {
-	c_call := _m.On("Get", ctx)
-	return &InputReader_Get{Call: c_call}
+	c := _m.On("Get", ctx)
+	return &InputReader_Get{Call: c}
 }
 
 func (_m *InputReader) OnGetMatch(matchers ...interface{}) *InputReader_Get {
-	c_call := _m.On("Get", matchers...)
-	return &InputReader_Get{Call: c_call}
+	c := _m.On("Get", matchers...)
+	return &InputReader_Get{Call: c}
 }
 
 // Get provides a mock function with given fields: ctx
@@ -67,13 +67,13 @@ func (_m InputReader_GetInputPath) Return(_a0 storage.DataReference) *InputReade
 }
 
 func (_m *InputReader) OnGetInputPath() *InputReader_GetInputPath {
-	c_call := _m.On("GetInputPath")
-	return &InputReader_GetInputPath{Call: c_call}
+	c := _m.On("GetInputPath")
+	return &InputReader_GetInputPath{Call: c}
 }
 
 func (_m *InputReader) OnGetInputPathMatch(matchers ...interface{}) *InputReader_GetInputPath {
-	c_call := _m.On("GetInputPath", matchers...)
-	return &InputReader_GetInputPath{Call: c_call}
+	c := _m.On("GetInputPath", matchers...)
+	return &InputReader_GetInputPath{Call: c}
 }
 
 // GetInputPath provides a mock function with given fields:
@@ -99,13 +99,13 @@ func (_m InputReader_GetInputPrefixPath) Return(_a0 storage.DataReference) *Inpu
 }
 
 func (_m *InputReader) OnGetInputPrefixPath() *InputReader_GetInputPrefixPath {
-	c_call := _m.On("GetInputPrefixPath")
-	return &InputReader_GetInputPrefixPath{Call: c_call}
+	c := _m.On("GetInputPrefixPath")
+	return &InputReader_GetInputPrefixPath{Call: c}
 }
 
 func (_m *InputReader) OnGetInputPrefixPathMatch(matchers ...interface{}) *InputReader_GetInputPrefixPath {
-	c_call := _m.On("GetInputPrefixPath", matchers...)
-	return &InputReader_GetInputPrefixPath{Call: c_call}
+	c := _m.On("GetInputPrefixPath", matchers...)
+	return &InputReader_GetInputPrefixPath{Call: c}
 }
 
 // GetInputPrefixPath provides a mock function with given fields:

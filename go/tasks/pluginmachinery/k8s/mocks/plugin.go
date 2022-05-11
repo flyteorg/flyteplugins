@@ -28,13 +28,13 @@ func (_m Plugin_BuildIdentityResource) Return(_a0 client.Object, _a1 error) *Plu
 }
 
 func (_m *Plugin) OnBuildIdentityResource(ctx context.Context, taskCtx core.TaskExecutionMetadata) *Plugin_BuildIdentityResource {
-	c_call := _m.On("BuildIdentityResource", ctx, taskCtx)
-	return &Plugin_BuildIdentityResource{Call: c_call}
+	c := _m.On("BuildIdentityResource", ctx, taskCtx)
+	return &Plugin_BuildIdentityResource{Call: c}
 }
 
 func (_m *Plugin) OnBuildIdentityResourceMatch(matchers ...interface{}) *Plugin_BuildIdentityResource {
-	c_call := _m.On("BuildIdentityResource", matchers...)
-	return &Plugin_BuildIdentityResource{Call: c_call}
+	c := _m.On("BuildIdentityResource", matchers...)
+	return &Plugin_BuildIdentityResource{Call: c}
 }
 
 // BuildIdentityResource provides a mock function with given fields: ctx, taskCtx
@@ -69,13 +69,13 @@ func (_m Plugin_BuildResource) Return(_a0 client.Object, _a1 error) *Plugin_Buil
 }
 
 func (_m *Plugin) OnBuildResource(ctx context.Context, taskCtx core.TaskExecutionContext) *Plugin_BuildResource {
-	c_call := _m.On("BuildResource", ctx, taskCtx)
-	return &Plugin_BuildResource{Call: c_call}
+	c := _m.On("BuildResource", ctx, taskCtx)
+	return &Plugin_BuildResource{Call: c}
 }
 
 func (_m *Plugin) OnBuildResourceMatch(matchers ...interface{}) *Plugin_BuildResource {
-	c_call := _m.On("BuildResource", matchers...)
-	return &Plugin_BuildResource{Call: c_call}
+	c := _m.On("BuildResource", matchers...)
+	return &Plugin_BuildResource{Call: c}
 }
 
 // BuildResource provides a mock function with given fields: ctx, taskCtx
@@ -110,13 +110,13 @@ func (_m Plugin_GetProperties) Return(_a0 k8s.PluginProperties) *Plugin_GetPrope
 }
 
 func (_m *Plugin) OnGetProperties() *Plugin_GetProperties {
-	c_call := _m.On("GetProperties")
-	return &Plugin_GetProperties{Call: c_call}
+	c := _m.On("GetProperties")
+	return &Plugin_GetProperties{Call: c}
 }
 
 func (_m *Plugin) OnGetPropertiesMatch(matchers ...interface{}) *Plugin_GetProperties {
-	c_call := _m.On("GetProperties", matchers...)
-	return &Plugin_GetProperties{Call: c_call}
+	c := _m.On("GetProperties", matchers...)
+	return &Plugin_GetProperties{Call: c}
 }
 
 // GetProperties provides a mock function with given fields:
@@ -142,13 +142,13 @@ func (_m Plugin_GetTaskPhase) Return(_a0 core.PhaseInfo, _a1 error) *Plugin_GetT
 }
 
 func (_m *Plugin) OnGetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) *Plugin_GetTaskPhase {
-	c_call := _m.On("GetTaskPhase", ctx, pluginContext, resource)
-	return &Plugin_GetTaskPhase{Call: c_call}
+	c := _m.On("GetTaskPhase", ctx, pluginContext, resource)
+	return &Plugin_GetTaskPhase{Call: c}
 }
 
 func (_m *Plugin) OnGetTaskPhaseMatch(matchers ...interface{}) *Plugin_GetTaskPhase {
-	c_call := _m.On("GetTaskPhase", matchers...)
-	return &Plugin_GetTaskPhase{Call: c_call}
+	c := _m.On("GetTaskPhase", matchers...)
+	return &Plugin_GetTaskPhase{Call: c}
 }
 
 // GetTaskPhase provides a mock function with given fields: ctx, pluginContext, resource

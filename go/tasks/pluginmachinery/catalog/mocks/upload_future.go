@@ -21,13 +21,13 @@ func (_m UploadFuture_GetResponseError) Return(_a0 error) *UploadFuture_GetRespo
 }
 
 func (_m *UploadFuture) OnGetResponseError() *UploadFuture_GetResponseError {
-	c_call := _m.On("GetResponseError")
-	return &UploadFuture_GetResponseError{Call: c_call}
+	c := _m.On("GetResponseError")
+	return &UploadFuture_GetResponseError{Call: c}
 }
 
 func (_m *UploadFuture) OnGetResponseErrorMatch(matchers ...interface{}) *UploadFuture_GetResponseError {
-	c_call := _m.On("GetResponseError", matchers...)
-	return &UploadFuture_GetResponseError{Call: c_call}
+	c := _m.On("GetResponseError", matchers...)
+	return &UploadFuture_GetResponseError{Call: c}
 }
 
 // GetResponseError provides a mock function with given fields:
@@ -53,13 +53,13 @@ func (_m UploadFuture_GetResponseStatus) Return(_a0 catalog.ResponseStatus) *Upl
 }
 
 func (_m *UploadFuture) OnGetResponseStatus() *UploadFuture_GetResponseStatus {
-	c_call := _m.On("GetResponseStatus")
-	return &UploadFuture_GetResponseStatus{Call: c_call}
+	c := _m.On("GetResponseStatus")
+	return &UploadFuture_GetResponseStatus{Call: c}
 }
 
 func (_m *UploadFuture) OnGetResponseStatusMatch(matchers ...interface{}) *UploadFuture_GetResponseStatus {
-	c_call := _m.On("GetResponseStatus", matchers...)
-	return &UploadFuture_GetResponseStatus{Call: c_call}
+	c := _m.On("GetResponseStatus", matchers...)
+	return &UploadFuture_GetResponseStatus{Call: c}
 }
 
 // GetResponseStatus provides a mock function with given fields:

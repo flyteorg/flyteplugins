@@ -23,13 +23,13 @@ func (_m TaskExecutionContextReader_InputReader) Return(_a0 io.InputReader) *Tas
 }
 
 func (_m *TaskExecutionContextReader) OnInputReader() *TaskExecutionContextReader_InputReader {
-	c_call := _m.On("InputReader")
-	return &TaskExecutionContextReader_InputReader{Call: c_call}
+	c := _m.On("InputReader")
+	return &TaskExecutionContextReader_InputReader{Call: c}
 }
 
 func (_m *TaskExecutionContextReader) OnInputReaderMatch(matchers ...interface{}) *TaskExecutionContextReader_InputReader {
-	c_call := _m.On("InputReader", matchers...)
-	return &TaskExecutionContextReader_InputReader{Call: c_call}
+	c := _m.On("InputReader", matchers...)
+	return &TaskExecutionContextReader_InputReader{Call: c}
 }
 
 // InputReader provides a mock function with given fields:
@@ -57,13 +57,13 @@ func (_m TaskExecutionContextReader_OutputWriter) Return(_a0 io.OutputWriter) *T
 }
 
 func (_m *TaskExecutionContextReader) OnOutputWriter() *TaskExecutionContextReader_OutputWriter {
-	c_call := _m.On("OutputWriter")
-	return &TaskExecutionContextReader_OutputWriter{Call: c_call}
+	c := _m.On("OutputWriter")
+	return &TaskExecutionContextReader_OutputWriter{Call: c}
 }
 
 func (_m *TaskExecutionContextReader) OnOutputWriterMatch(matchers ...interface{}) *TaskExecutionContextReader_OutputWriter {
-	c_call := _m.On("OutputWriter", matchers...)
-	return &TaskExecutionContextReader_OutputWriter{Call: c_call}
+	c := _m.On("OutputWriter", matchers...)
+	return &TaskExecutionContextReader_OutputWriter{Call: c}
 }
 
 // OutputWriter provides a mock function with given fields:
@@ -91,13 +91,13 @@ func (_m TaskExecutionContextReader_SecretManager) Return(_a0 core.SecretManager
 }
 
 func (_m *TaskExecutionContextReader) OnSecretManager() *TaskExecutionContextReader_SecretManager {
-	c_call := _m.On("SecretManager")
-	return &TaskExecutionContextReader_SecretManager{Call: c_call}
+	c := _m.On("SecretManager")
+	return &TaskExecutionContextReader_SecretManager{Call: c}
 }
 
 func (_m *TaskExecutionContextReader) OnSecretManagerMatch(matchers ...interface{}) *TaskExecutionContextReader_SecretManager {
-	c_call := _m.On("SecretManager", matchers...)
-	return &TaskExecutionContextReader_SecretManager{Call: c_call}
+	c := _m.On("SecretManager", matchers...)
+	return &TaskExecutionContextReader_SecretManager{Call: c}
 }
 
 // SecretManager provides a mock function with given fields:
@@ -125,13 +125,13 @@ func (_m TaskExecutionContextReader_TaskExecutionMetadata) Return(_a0 core.TaskE
 }
 
 func (_m *TaskExecutionContextReader) OnTaskExecutionMetadata() *TaskExecutionContextReader_TaskExecutionMetadata {
-	c_call := _m.On("TaskExecutionMetadata")
-	return &TaskExecutionContextReader_TaskExecutionMetadata{Call: c_call}
+	c := _m.On("TaskExecutionMetadata")
+	return &TaskExecutionContextReader_TaskExecutionMetadata{Call: c}
 }
 
 func (_m *TaskExecutionContextReader) OnTaskExecutionMetadataMatch(matchers ...interface{}) *TaskExecutionContextReader_TaskExecutionMetadata {
-	c_call := _m.On("TaskExecutionMetadata", matchers...)
-	return &TaskExecutionContextReader_TaskExecutionMetadata{Call: c_call}
+	c := _m.On("TaskExecutionMetadata", matchers...)
+	return &TaskExecutionContextReader_TaskExecutionMetadata{Call: c}
 }
 
 // TaskExecutionMetadata provides a mock function with given fields:
@@ -159,13 +159,13 @@ func (_m TaskExecutionContextReader_TaskReader) Return(_a0 core.TaskReader) *Tas
 }
 
 func (_m *TaskExecutionContextReader) OnTaskReader() *TaskExecutionContextReader_TaskReader {
-	c_call := _m.On("TaskReader")
-	return &TaskExecutionContextReader_TaskReader{Call: c_call}
+	c := _m.On("TaskReader")
+	return &TaskExecutionContextReader_TaskReader{Call: c}
 }
 
 func (_m *TaskExecutionContextReader) OnTaskReaderMatch(matchers ...interface{}) *TaskExecutionContextReader_TaskReader {
-	c_call := _m.On("TaskReader", matchers...)
-	return &TaskExecutionContextReader_TaskReader{Call: c_call}
+	c := _m.On("TaskReader", matchers...)
+	return &TaskExecutionContextReader_TaskReader{Call: c}
 }
 
 // TaskReader provides a mock function with given fields:

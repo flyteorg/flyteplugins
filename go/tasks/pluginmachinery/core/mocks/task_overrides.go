@@ -21,13 +21,13 @@ func (_m TaskOverrides_GetConfig) Return(_a0 *v1.ConfigMap) *TaskOverrides_GetCo
 }
 
 func (_m *TaskOverrides) OnGetConfig() *TaskOverrides_GetConfig {
-	c_call := _m.On("GetConfig")
-	return &TaskOverrides_GetConfig{Call: c_call}
+	c := _m.On("GetConfig")
+	return &TaskOverrides_GetConfig{Call: c}
 }
 
 func (_m *TaskOverrides) OnGetConfigMatch(matchers ...interface{}) *TaskOverrides_GetConfig {
-	c_call := _m.On("GetConfig", matchers...)
-	return &TaskOverrides_GetConfig{Call: c_call}
+	c := _m.On("GetConfig", matchers...)
+	return &TaskOverrides_GetConfig{Call: c}
 }
 
 // GetConfig provides a mock function with given fields:
@@ -55,13 +55,13 @@ func (_m TaskOverrides_GetResources) Return(_a0 *v1.ResourceRequirements) *TaskO
 }
 
 func (_m *TaskOverrides) OnGetResources() *TaskOverrides_GetResources {
-	c_call := _m.On("GetResources")
-	return &TaskOverrides_GetResources{Call: c_call}
+	c := _m.On("GetResources")
+	return &TaskOverrides_GetResources{Call: c}
 }
 
 func (_m *TaskOverrides) OnGetResourcesMatch(matchers ...interface{}) *TaskOverrides_GetResources {
-	c_call := _m.On("GetResources", matchers...)
-	return &TaskOverrides_GetResources{Call: c_call}
+	c := _m.On("GetResources", matchers...)
+	return &TaskOverrides_GetResources{Call: c}
 }
 
 // GetResources provides a mock function with given fields:

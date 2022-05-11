@@ -23,13 +23,13 @@ func (_m Processor_Process) Return(_a0 workqueue.WorkStatus, _a1 error) *Process
 }
 
 func (_m *Processor) OnProcess(ctx context.Context, workItem workqueue.WorkItem) *Processor_Process {
-	c_call := _m.On("Process", ctx, workItem)
-	return &Processor_Process{Call: c_call}
+	c := _m.On("Process", ctx, workItem)
+	return &Processor_Process{Call: c}
 }
 
 func (_m *Processor) OnProcessMatch(matchers ...interface{}) *Processor_Process {
-	c_call := _m.On("Process", matchers...)
-	return &Processor_Process{Call: c_call}
+	c := _m.On("Process", matchers...)
+	return &Processor_Process{Call: c}
 }
 
 // Process provides a mock function with given fields: ctx, workItem

@@ -21,13 +21,13 @@ func (_m InputFilePaths_GetInputPath) Return(_a0 storage.DataReference) *InputFi
 }
 
 func (_m *InputFilePaths) OnGetInputPath() *InputFilePaths_GetInputPath {
-	c_call := _m.On("GetInputPath")
-	return &InputFilePaths_GetInputPath{Call: c_call}
+	c := _m.On("GetInputPath")
+	return &InputFilePaths_GetInputPath{Call: c}
 }
 
 func (_m *InputFilePaths) OnGetInputPathMatch(matchers ...interface{}) *InputFilePaths_GetInputPath {
-	c_call := _m.On("GetInputPath", matchers...)
-	return &InputFilePaths_GetInputPath{Call: c_call}
+	c := _m.On("GetInputPath", matchers...)
+	return &InputFilePaths_GetInputPath{Call: c}
 }
 
 // GetInputPath provides a mock function with given fields:
@@ -53,13 +53,13 @@ func (_m InputFilePaths_GetInputPrefixPath) Return(_a0 storage.DataReference) *I
 }
 
 func (_m *InputFilePaths) OnGetInputPrefixPath() *InputFilePaths_GetInputPrefixPath {
-	c_call := _m.On("GetInputPrefixPath")
-	return &InputFilePaths_GetInputPrefixPath{Call: c_call}
+	c := _m.On("GetInputPrefixPath")
+	return &InputFilePaths_GetInputPrefixPath{Call: c}
 }
 
 func (_m *InputFilePaths) OnGetInputPrefixPathMatch(matchers ...interface{}) *InputFilePaths_GetInputPrefixPath {
-	c_call := _m.On("GetInputPrefixPath", matchers...)
-	return &InputFilePaths_GetInputPrefixPath{Call: c_call}
+	c := _m.On("GetInputPrefixPath", matchers...)
+	return &InputFilePaths_GetInputPrefixPath{Call: c}
 }
 
 // GetInputPrefixPath provides a mock function with given fields:

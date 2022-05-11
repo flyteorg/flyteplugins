@@ -27,13 +27,13 @@ func (_m TaskExecutionContext_Catalog) Return(_a0 catalog.AsyncClient) *TaskExec
 }
 
 func (_m *TaskExecutionContext) OnCatalog() *TaskExecutionContext_Catalog {
-	c_call := _m.On("Catalog")
-	return &TaskExecutionContext_Catalog{Call: c_call}
+	c := _m.On("Catalog")
+	return &TaskExecutionContext_Catalog{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnCatalogMatch(matchers ...interface{}) *TaskExecutionContext_Catalog {
-	c_call := _m.On("Catalog", matchers...)
-	return &TaskExecutionContext_Catalog{Call: c_call}
+	c := _m.On("Catalog", matchers...)
+	return &TaskExecutionContext_Catalog{Call: c}
 }
 
 // Catalog provides a mock function with given fields:
@@ -61,13 +61,13 @@ func (_m TaskExecutionContext_DataStore) Return(_a0 *storage.DataStore) *TaskExe
 }
 
 func (_m *TaskExecutionContext) OnDataStore() *TaskExecutionContext_DataStore {
-	c_call := _m.On("DataStore")
-	return &TaskExecutionContext_DataStore{Call: c_call}
+	c := _m.On("DataStore")
+	return &TaskExecutionContext_DataStore{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnDataStoreMatch(matchers ...interface{}) *TaskExecutionContext_DataStore {
-	c_call := _m.On("DataStore", matchers...)
-	return &TaskExecutionContext_DataStore{Call: c_call}
+	c := _m.On("DataStore", matchers...)
+	return &TaskExecutionContext_DataStore{Call: c}
 }
 
 // DataStore provides a mock function with given fields:
@@ -95,13 +95,13 @@ func (_m TaskExecutionContext_EventsRecorder) Return(_a0 core.EventsRecorder) *T
 }
 
 func (_m *TaskExecutionContext) OnEventsRecorder() *TaskExecutionContext_EventsRecorder {
-	c_call := _m.On("EventsRecorder")
-	return &TaskExecutionContext_EventsRecorder{Call: c_call}
+	c := _m.On("EventsRecorder")
+	return &TaskExecutionContext_EventsRecorder{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnEventsRecorderMatch(matchers ...interface{}) *TaskExecutionContext_EventsRecorder {
-	c_call := _m.On("EventsRecorder", matchers...)
-	return &TaskExecutionContext_EventsRecorder{Call: c_call}
+	c := _m.On("EventsRecorder", matchers...)
+	return &TaskExecutionContext_EventsRecorder{Call: c}
 }
 
 // EventsRecorder provides a mock function with given fields:
@@ -129,13 +129,13 @@ func (_m TaskExecutionContext_InputReader) Return(_a0 io.InputReader) *TaskExecu
 }
 
 func (_m *TaskExecutionContext) OnInputReader() *TaskExecutionContext_InputReader {
-	c_call := _m.On("InputReader")
-	return &TaskExecutionContext_InputReader{Call: c_call}
+	c := _m.On("InputReader")
+	return &TaskExecutionContext_InputReader{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnInputReaderMatch(matchers ...interface{}) *TaskExecutionContext_InputReader {
-	c_call := _m.On("InputReader", matchers...)
-	return &TaskExecutionContext_InputReader{Call: c_call}
+	c := _m.On("InputReader", matchers...)
+	return &TaskExecutionContext_InputReader{Call: c}
 }
 
 // InputReader provides a mock function with given fields:
@@ -163,13 +163,13 @@ func (_m TaskExecutionContext_MaxDatasetSizeBytes) Return(_a0 int64) *TaskExecut
 }
 
 func (_m *TaskExecutionContext) OnMaxDatasetSizeBytes() *TaskExecutionContext_MaxDatasetSizeBytes {
-	c_call := _m.On("MaxDatasetSizeBytes")
-	return &TaskExecutionContext_MaxDatasetSizeBytes{Call: c_call}
+	c := _m.On("MaxDatasetSizeBytes")
+	return &TaskExecutionContext_MaxDatasetSizeBytes{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnMaxDatasetSizeBytesMatch(matchers ...interface{}) *TaskExecutionContext_MaxDatasetSizeBytes {
-	c_call := _m.On("MaxDatasetSizeBytes", matchers...)
-	return &TaskExecutionContext_MaxDatasetSizeBytes{Call: c_call}
+	c := _m.On("MaxDatasetSizeBytes", matchers...)
+	return &TaskExecutionContext_MaxDatasetSizeBytes{Call: c}
 }
 
 // MaxDatasetSizeBytes provides a mock function with given fields:
@@ -195,13 +195,13 @@ func (_m TaskExecutionContext_OutputWriter) Return(_a0 io.OutputWriter) *TaskExe
 }
 
 func (_m *TaskExecutionContext) OnOutputWriter() *TaskExecutionContext_OutputWriter {
-	c_call := _m.On("OutputWriter")
-	return &TaskExecutionContext_OutputWriter{Call: c_call}
+	c := _m.On("OutputWriter")
+	return &TaskExecutionContext_OutputWriter{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnOutputWriterMatch(matchers ...interface{}) *TaskExecutionContext_OutputWriter {
-	c_call := _m.On("OutputWriter", matchers...)
-	return &TaskExecutionContext_OutputWriter{Call: c_call}
+	c := _m.On("OutputWriter", matchers...)
+	return &TaskExecutionContext_OutputWriter{Call: c}
 }
 
 // OutputWriter provides a mock function with given fields:
@@ -229,13 +229,13 @@ func (_m TaskExecutionContext_PluginStateReader) Return(_a0 core.PluginStateRead
 }
 
 func (_m *TaskExecutionContext) OnPluginStateReader() *TaskExecutionContext_PluginStateReader {
-	c_call := _m.On("PluginStateReader")
-	return &TaskExecutionContext_PluginStateReader{Call: c_call}
+	c := _m.On("PluginStateReader")
+	return &TaskExecutionContext_PluginStateReader{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnPluginStateReaderMatch(matchers ...interface{}) *TaskExecutionContext_PluginStateReader {
-	c_call := _m.On("PluginStateReader", matchers...)
-	return &TaskExecutionContext_PluginStateReader{Call: c_call}
+	c := _m.On("PluginStateReader", matchers...)
+	return &TaskExecutionContext_PluginStateReader{Call: c}
 }
 
 // PluginStateReader provides a mock function with given fields:
@@ -263,13 +263,13 @@ func (_m TaskExecutionContext_PluginStateWriter) Return(_a0 core.PluginStateWrit
 }
 
 func (_m *TaskExecutionContext) OnPluginStateWriter() *TaskExecutionContext_PluginStateWriter {
-	c_call := _m.On("PluginStateWriter")
-	return &TaskExecutionContext_PluginStateWriter{Call: c_call}
+	c := _m.On("PluginStateWriter")
+	return &TaskExecutionContext_PluginStateWriter{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnPluginStateWriterMatch(matchers ...interface{}) *TaskExecutionContext_PluginStateWriter {
-	c_call := _m.On("PluginStateWriter", matchers...)
-	return &TaskExecutionContext_PluginStateWriter{Call: c_call}
+	c := _m.On("PluginStateWriter", matchers...)
+	return &TaskExecutionContext_PluginStateWriter{Call: c}
 }
 
 // PluginStateWriter provides a mock function with given fields:
@@ -297,13 +297,13 @@ func (_m TaskExecutionContext_ResourceManager) Return(_a0 core.ResourceManager) 
 }
 
 func (_m *TaskExecutionContext) OnResourceManager() *TaskExecutionContext_ResourceManager {
-	c_call := _m.On("ResourceManager")
-	return &TaskExecutionContext_ResourceManager{Call: c_call}
+	c := _m.On("ResourceManager")
+	return &TaskExecutionContext_ResourceManager{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnResourceManagerMatch(matchers ...interface{}) *TaskExecutionContext_ResourceManager {
-	c_call := _m.On("ResourceManager", matchers...)
-	return &TaskExecutionContext_ResourceManager{Call: c_call}
+	c := _m.On("ResourceManager", matchers...)
+	return &TaskExecutionContext_ResourceManager{Call: c}
 }
 
 // ResourceManager provides a mock function with given fields:
@@ -331,13 +331,13 @@ func (_m TaskExecutionContext_SecretManager) Return(_a0 core.SecretManager) *Tas
 }
 
 func (_m *TaskExecutionContext) OnSecretManager() *TaskExecutionContext_SecretManager {
-	c_call := _m.On("SecretManager")
-	return &TaskExecutionContext_SecretManager{Call: c_call}
+	c := _m.On("SecretManager")
+	return &TaskExecutionContext_SecretManager{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnSecretManagerMatch(matchers ...interface{}) *TaskExecutionContext_SecretManager {
-	c_call := _m.On("SecretManager", matchers...)
-	return &TaskExecutionContext_SecretManager{Call: c_call}
+	c := _m.On("SecretManager", matchers...)
+	return &TaskExecutionContext_SecretManager{Call: c}
 }
 
 // SecretManager provides a mock function with given fields:
@@ -365,13 +365,13 @@ func (_m TaskExecutionContext_TaskExecutionMetadata) Return(_a0 core.TaskExecuti
 }
 
 func (_m *TaskExecutionContext) OnTaskExecutionMetadata() *TaskExecutionContext_TaskExecutionMetadata {
-	c_call := _m.On("TaskExecutionMetadata")
-	return &TaskExecutionContext_TaskExecutionMetadata{Call: c_call}
+	c := _m.On("TaskExecutionMetadata")
+	return &TaskExecutionContext_TaskExecutionMetadata{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnTaskExecutionMetadataMatch(matchers ...interface{}) *TaskExecutionContext_TaskExecutionMetadata {
-	c_call := _m.On("TaskExecutionMetadata", matchers...)
-	return &TaskExecutionContext_TaskExecutionMetadata{Call: c_call}
+	c := _m.On("TaskExecutionMetadata", matchers...)
+	return &TaskExecutionContext_TaskExecutionMetadata{Call: c}
 }
 
 // TaskExecutionMetadata provides a mock function with given fields:
@@ -399,13 +399,13 @@ func (_m TaskExecutionContext_TaskReader) Return(_a0 core.TaskReader) *TaskExecu
 }
 
 func (_m *TaskExecutionContext) OnTaskReader() *TaskExecutionContext_TaskReader {
-	c_call := _m.On("TaskReader")
-	return &TaskExecutionContext_TaskReader{Call: c_call}
+	c := _m.On("TaskReader")
+	return &TaskExecutionContext_TaskReader{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnTaskReaderMatch(matchers ...interface{}) *TaskExecutionContext_TaskReader {
-	c_call := _m.On("TaskReader", matchers...)
-	return &TaskExecutionContext_TaskReader{Call: c_call}
+	c := _m.On("TaskReader", matchers...)
+	return &TaskExecutionContext_TaskReader{Call: c}
 }
 
 // TaskReader provides a mock function with given fields:
@@ -433,13 +433,13 @@ func (_m TaskExecutionContext_TaskRefreshIndicator) Return(_a0 core.SignalAsync)
 }
 
 func (_m *TaskExecutionContext) OnTaskRefreshIndicator() *TaskExecutionContext_TaskRefreshIndicator {
-	c_call := _m.On("TaskRefreshIndicator")
-	return &TaskExecutionContext_TaskRefreshIndicator{Call: c_call}
+	c := _m.On("TaskRefreshIndicator")
+	return &TaskExecutionContext_TaskRefreshIndicator{Call: c}
 }
 
 func (_m *TaskExecutionContext) OnTaskRefreshIndicatorMatch(matchers ...interface{}) *TaskExecutionContext_TaskRefreshIndicator {
-	c_call := _m.On("TaskRefreshIndicator", matchers...)
-	return &TaskExecutionContext_TaskRefreshIndicator{Call: c_call}
+	c := _m.On("TaskRefreshIndicator", matchers...)
+	return &TaskExecutionContext_TaskRefreshIndicator{Call: c}
 }
 
 // TaskRefreshIndicator provides a mock function with given fields:

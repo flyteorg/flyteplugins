@@ -22,13 +22,13 @@ func (_m DownloadResponse_GetCachedCount) Return(_a0 int) *DownloadResponse_GetC
 }
 
 func (_m *DownloadResponse) OnGetCachedCount() *DownloadResponse_GetCachedCount {
-	c_call := _m.On("GetCachedCount")
-	return &DownloadResponse_GetCachedCount{Call: c_call}
+	c := _m.On("GetCachedCount")
+	return &DownloadResponse_GetCachedCount{Call: c}
 }
 
 func (_m *DownloadResponse) OnGetCachedCountMatch(matchers ...interface{}) *DownloadResponse_GetCachedCount {
-	c_call := _m.On("GetCachedCount", matchers...)
-	return &DownloadResponse_GetCachedCount{Call: c_call}
+	c := _m.On("GetCachedCount", matchers...)
+	return &DownloadResponse_GetCachedCount{Call: c}
 }
 
 // GetCachedCount provides a mock function with given fields:
@@ -54,13 +54,13 @@ func (_m DownloadResponse_GetCachedResults) Return(_a0 *bitarray.BitSet) *Downlo
 }
 
 func (_m *DownloadResponse) OnGetCachedResults() *DownloadResponse_GetCachedResults {
-	c_call := _m.On("GetCachedResults")
-	return &DownloadResponse_GetCachedResults{Call: c_call}
+	c := _m.On("GetCachedResults")
+	return &DownloadResponse_GetCachedResults{Call: c}
 }
 
 func (_m *DownloadResponse) OnGetCachedResultsMatch(matchers ...interface{}) *DownloadResponse_GetCachedResults {
-	c_call := _m.On("GetCachedResults", matchers...)
-	return &DownloadResponse_GetCachedResults{Call: c_call}
+	c := _m.On("GetCachedResults", matchers...)
+	return &DownloadResponse_GetCachedResults{Call: c}
 }
 
 // GetCachedResults provides a mock function with given fields:
@@ -88,13 +88,13 @@ func (_m DownloadResponse_GetResultsSize) Return(_a0 int) *DownloadResponse_GetR
 }
 
 func (_m *DownloadResponse) OnGetResultsSize() *DownloadResponse_GetResultsSize {
-	c_call := _m.On("GetResultsSize")
-	return &DownloadResponse_GetResultsSize{Call: c_call}
+	c := _m.On("GetResultsSize")
+	return &DownloadResponse_GetResultsSize{Call: c}
 }
 
 func (_m *DownloadResponse) OnGetResultsSizeMatch(matchers ...interface{}) *DownloadResponse_GetResultsSize {
-	c_call := _m.On("GetResultsSize", matchers...)
-	return &DownloadResponse_GetResultsSize{Call: c_call}
+	c := _m.On("GetResultsSize", matchers...)
+	return &DownloadResponse_GetResultsSize{Call: c}
 }
 
 // GetResultsSize provides a mock function with given fields:

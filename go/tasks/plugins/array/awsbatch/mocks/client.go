@@ -24,13 +24,13 @@ func (_m Client_GetAccountID) Return(_a0 string) *Client_GetAccountID {
 }
 
 func (_m *Client) OnGetAccountID() *Client_GetAccountID {
-	c_call := _m.On("GetAccountID")
-	return &Client_GetAccountID{Call: c_call}
+	c := _m.On("GetAccountID")
+	return &Client_GetAccountID{Call: c}
 }
 
 func (_m *Client) OnGetAccountIDMatch(matchers ...interface{}) *Client_GetAccountID {
-	c_call := _m.On("GetAccountID", matchers...)
-	return &Client_GetAccountID{Call: c_call}
+	c := _m.On("GetAccountID", matchers...)
+	return &Client_GetAccountID{Call: c}
 }
 
 // GetAccountID provides a mock function with given fields:
@@ -56,13 +56,13 @@ func (_m Client_GetJobDetailsBatch) Return(_a0 []*batch.JobDetail, _a1 error) *C
 }
 
 func (_m *Client) OnGetJobDetailsBatch(ctx context.Context, ids []string) *Client_GetJobDetailsBatch {
-	c_call := _m.On("GetJobDetailsBatch", ctx, ids)
-	return &Client_GetJobDetailsBatch{Call: c_call}
+	c := _m.On("GetJobDetailsBatch", ctx, ids)
+	return &Client_GetJobDetailsBatch{Call: c}
 }
 
 func (_m *Client) OnGetJobDetailsBatchMatch(matchers ...interface{}) *Client_GetJobDetailsBatch {
-	c_call := _m.On("GetJobDetailsBatch", matchers...)
-	return &Client_GetJobDetailsBatch{Call: c_call}
+	c := _m.On("GetJobDetailsBatch", matchers...)
+	return &Client_GetJobDetailsBatch{Call: c}
 }
 
 // GetJobDetailsBatch provides a mock function with given fields: ctx, ids
@@ -97,13 +97,13 @@ func (_m Client_GetRegion) Return(_a0 string) *Client_GetRegion {
 }
 
 func (_m *Client) OnGetRegion() *Client_GetRegion {
-	c_call := _m.On("GetRegion")
-	return &Client_GetRegion{Call: c_call}
+	c := _m.On("GetRegion")
+	return &Client_GetRegion{Call: c}
 }
 
 func (_m *Client) OnGetRegionMatch(matchers ...interface{}) *Client_GetRegion {
-	c_call := _m.On("GetRegion", matchers...)
-	return &Client_GetRegion{Call: c_call}
+	c := _m.On("GetRegion", matchers...)
+	return &Client_GetRegion{Call: c}
 }
 
 // GetRegion provides a mock function with given fields:
@@ -129,13 +129,13 @@ func (_m Client_RegisterJobDefinition) Return(arn string, err error) *Client_Reg
 }
 
 func (_m *Client) OnRegisterJobDefinition(ctx context.Context, name string, image string, role string, platformCapabilities string) *Client_RegisterJobDefinition {
-	c_call := _m.On("RegisterJobDefinition", ctx, name, image, role, platformCapabilities)
-	return &Client_RegisterJobDefinition{Call: c_call}
+	c := _m.On("RegisterJobDefinition", ctx, name, image, role, platformCapabilities)
+	return &Client_RegisterJobDefinition{Call: c}
 }
 
 func (_m *Client) OnRegisterJobDefinitionMatch(matchers ...interface{}) *Client_RegisterJobDefinition {
-	c_call := _m.On("RegisterJobDefinition", matchers...)
-	return &Client_RegisterJobDefinition{Call: c_call}
+	c := _m.On("RegisterJobDefinition", matchers...)
+	return &Client_RegisterJobDefinition{Call: c}
 }
 
 // RegisterJobDefinition provides a mock function with given fields: ctx, name, image, role, platformCapabilities
@@ -168,13 +168,13 @@ func (_m Client_SubmitJob) Return(jobID string, err error) *Client_SubmitJob {
 }
 
 func (_m *Client) OnSubmitJob(ctx context.Context, input *batch.SubmitJobInput) *Client_SubmitJob {
-	c_call := _m.On("SubmitJob", ctx, input)
-	return &Client_SubmitJob{Call: c_call}
+	c := _m.On("SubmitJob", ctx, input)
+	return &Client_SubmitJob{Call: c}
 }
 
 func (_m *Client) OnSubmitJobMatch(matchers ...interface{}) *Client_SubmitJob {
-	c_call := _m.On("SubmitJob", matchers...)
-	return &Client_SubmitJob{Call: c_call}
+	c := _m.On("SubmitJob", matchers...)
+	return &Client_SubmitJob{Call: c}
 }
 
 // SubmitJob provides a mock function with given fields: ctx, input
@@ -207,13 +207,13 @@ func (_m Client_TerminateJob) Return(_a0 error) *Client_TerminateJob {
 }
 
 func (_m *Client) OnTerminateJob(ctx context.Context, jobID string, reason string) *Client_TerminateJob {
-	c_call := _m.On("TerminateJob", ctx, jobID, reason)
-	return &Client_TerminateJob{Call: c_call}
+	c := _m.On("TerminateJob", ctx, jobID, reason)
+	return &Client_TerminateJob{Call: c}
 }
 
 func (_m *Client) OnTerminateJobMatch(matchers ...interface{}) *Client_TerminateJob {
-	c_call := _m.On("TerminateJob", matchers...)
-	return &Client_TerminateJob{Call: c_call}
+	c := _m.On("TerminateJob", matchers...)
+	return &Client_TerminateJob{Call: c}
 }
 
 // TerminateJob provides a mock function with given fields: ctx, jobID, reason

@@ -26,13 +26,13 @@ func (_m TaskReader_Path) Return(_a0 storage.DataReference, _a1 error) *TaskRead
 }
 
 func (_m *TaskReader) OnPath(ctx context.Context) *TaskReader_Path {
-	c_call := _m.On("Path", ctx)
-	return &TaskReader_Path{Call: c_call}
+	c := _m.On("Path", ctx)
+	return &TaskReader_Path{Call: c}
 }
 
 func (_m *TaskReader) OnPathMatch(matchers ...interface{}) *TaskReader_Path {
-	c_call := _m.On("Path", matchers...)
-	return &TaskReader_Path{Call: c_call}
+	c := _m.On("Path", matchers...)
+	return &TaskReader_Path{Call: c}
 }
 
 // Path provides a mock function with given fields: ctx
@@ -65,13 +65,13 @@ func (_m TaskReader_Read) Return(_a0 *flyteidlcore.TaskTemplate, _a1 error) *Tas
 }
 
 func (_m *TaskReader) OnRead(ctx context.Context) *TaskReader_Read {
-	c_call := _m.On("Read", ctx)
-	return &TaskReader_Read{Call: c_call}
+	c := _m.On("Read", ctx)
+	return &TaskReader_Read{Call: c}
 }
 
 func (_m *TaskReader) OnReadMatch(matchers ...interface{}) *TaskReader_Read {
-	c_call := _m.On("Read", matchers...)
-	return &TaskReader_Read{Call: c_call}
+	c := _m.On("Read", matchers...)
+	return &TaskReader_Read{Call: c}
 }
 
 // Read provides a mock function with given fields: ctx

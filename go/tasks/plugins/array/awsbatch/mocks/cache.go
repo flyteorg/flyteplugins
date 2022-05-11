@@ -21,13 +21,13 @@ func (_m Cache_Get) Return(jobDefinition string, found bool) *Cache_Get {
 }
 
 func (_m *Cache) OnGet(key definition.CacheKey) *Cache_Get {
-	c_call := _m.On("Get", key)
-	return &Cache_Get{Call: c_call}
+	c := _m.On("Get", key)
+	return &Cache_Get{Call: c}
 }
 
 func (_m *Cache) OnGetMatch(matchers ...interface{}) *Cache_Get {
-	c_call := _m.On("Get", matchers...)
-	return &Cache_Get{Call: c_call}
+	c := _m.On("Get", matchers...)
+	return &Cache_Get{Call: c}
 }
 
 // Get provides a mock function with given fields: key
@@ -60,13 +60,13 @@ func (_m Cache_Put) Return(_a0 error) *Cache_Put {
 }
 
 func (_m *Cache) OnPut(key definition.CacheKey, _a1 string) *Cache_Put {
-	c_call := _m.On("Put", key, _a1)
-	return &Cache_Put{Call: c_call}
+	c := _m.On("Put", key, _a1)
+	return &Cache_Put{Call: c}
 }
 
 func (_m *Cache) OnPutMatch(matchers ...interface{}) *Cache_Put {
-	c_call := _m.On("Put", matchers...)
-	return &Cache_Put{Call: c_call}
+	c := _m.On("Put", matchers...)
+	return &Cache_Put{Call: c}
 }
 
 // Put provides a mock function with given fields: key, _a1

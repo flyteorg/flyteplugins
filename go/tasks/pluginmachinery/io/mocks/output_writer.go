@@ -25,13 +25,13 @@ func (_m OutputWriter_GetCheckpointPrefix) Return(_a0 storage.DataReference) *Ou
 }
 
 func (_m *OutputWriter) OnGetCheckpointPrefix() *OutputWriter_GetCheckpointPrefix {
-	c_call := _m.On("GetCheckpointPrefix")
-	return &OutputWriter_GetCheckpointPrefix{Call: c_call}
+	c := _m.On("GetCheckpointPrefix")
+	return &OutputWriter_GetCheckpointPrefix{Call: c}
 }
 
 func (_m *OutputWriter) OnGetCheckpointPrefixMatch(matchers ...interface{}) *OutputWriter_GetCheckpointPrefix {
-	c_call := _m.On("GetCheckpointPrefix", matchers...)
-	return &OutputWriter_GetCheckpointPrefix{Call: c_call}
+	c := _m.On("GetCheckpointPrefix", matchers...)
+	return &OutputWriter_GetCheckpointPrefix{Call: c}
 }
 
 // GetCheckpointPrefix provides a mock function with given fields:
@@ -57,13 +57,13 @@ func (_m OutputWriter_GetErrorPath) Return(_a0 storage.DataReference) *OutputWri
 }
 
 func (_m *OutputWriter) OnGetErrorPath() *OutputWriter_GetErrorPath {
-	c_call := _m.On("GetErrorPath")
-	return &OutputWriter_GetErrorPath{Call: c_call}
+	c := _m.On("GetErrorPath")
+	return &OutputWriter_GetErrorPath{Call: c}
 }
 
 func (_m *OutputWriter) OnGetErrorPathMatch(matchers ...interface{}) *OutputWriter_GetErrorPath {
-	c_call := _m.On("GetErrorPath", matchers...)
-	return &OutputWriter_GetErrorPath{Call: c_call}
+	c := _m.On("GetErrorPath", matchers...)
+	return &OutputWriter_GetErrorPath{Call: c}
 }
 
 // GetErrorPath provides a mock function with given fields:
@@ -89,13 +89,13 @@ func (_m OutputWriter_GetOutputPath) Return(_a0 storage.DataReference) *OutputWr
 }
 
 func (_m *OutputWriter) OnGetOutputPath() *OutputWriter_GetOutputPath {
-	c_call := _m.On("GetOutputPath")
-	return &OutputWriter_GetOutputPath{Call: c_call}
+	c := _m.On("GetOutputPath")
+	return &OutputWriter_GetOutputPath{Call: c}
 }
 
 func (_m *OutputWriter) OnGetOutputPathMatch(matchers ...interface{}) *OutputWriter_GetOutputPath {
-	c_call := _m.On("GetOutputPath", matchers...)
-	return &OutputWriter_GetOutputPath{Call: c_call}
+	c := _m.On("GetOutputPath", matchers...)
+	return &OutputWriter_GetOutputPath{Call: c}
 }
 
 // GetOutputPath provides a mock function with given fields:
@@ -121,13 +121,13 @@ func (_m OutputWriter_GetOutputPrefixPath) Return(_a0 storage.DataReference) *Ou
 }
 
 func (_m *OutputWriter) OnGetOutputPrefixPath() *OutputWriter_GetOutputPrefixPath {
-	c_call := _m.On("GetOutputPrefixPath")
-	return &OutputWriter_GetOutputPrefixPath{Call: c_call}
+	c := _m.On("GetOutputPrefixPath")
+	return &OutputWriter_GetOutputPrefixPath{Call: c}
 }
 
 func (_m *OutputWriter) OnGetOutputPrefixPathMatch(matchers ...interface{}) *OutputWriter_GetOutputPrefixPath {
-	c_call := _m.On("GetOutputPrefixPath", matchers...)
-	return &OutputWriter_GetOutputPrefixPath{Call: c_call}
+	c := _m.On("GetOutputPrefixPath", matchers...)
+	return &OutputWriter_GetOutputPrefixPath{Call: c}
 }
 
 // GetOutputPrefixPath provides a mock function with given fields:
@@ -153,13 +153,13 @@ func (_m OutputWriter_GetPreviousCheckpointsPrefix) Return(_a0 storage.DataRefer
 }
 
 func (_m *OutputWriter) OnGetPreviousCheckpointsPrefix() *OutputWriter_GetPreviousCheckpointsPrefix {
-	c_call := _m.On("GetPreviousCheckpointsPrefix")
-	return &OutputWriter_GetPreviousCheckpointsPrefix{Call: c_call}
+	c := _m.On("GetPreviousCheckpointsPrefix")
+	return &OutputWriter_GetPreviousCheckpointsPrefix{Call: c}
 }
 
 func (_m *OutputWriter) OnGetPreviousCheckpointsPrefixMatch(matchers ...interface{}) *OutputWriter_GetPreviousCheckpointsPrefix {
-	c_call := _m.On("GetPreviousCheckpointsPrefix", matchers...)
-	return &OutputWriter_GetPreviousCheckpointsPrefix{Call: c_call}
+	c := _m.On("GetPreviousCheckpointsPrefix", matchers...)
+	return &OutputWriter_GetPreviousCheckpointsPrefix{Call: c}
 }
 
 // GetPreviousCheckpointsPrefix provides a mock function with given fields:
@@ -185,13 +185,13 @@ func (_m OutputWriter_GetRawOutputPrefix) Return(_a0 storage.DataReference) *Out
 }
 
 func (_m *OutputWriter) OnGetRawOutputPrefix() *OutputWriter_GetRawOutputPrefix {
-	c_call := _m.On("GetRawOutputPrefix")
-	return &OutputWriter_GetRawOutputPrefix{Call: c_call}
+	c := _m.On("GetRawOutputPrefix")
+	return &OutputWriter_GetRawOutputPrefix{Call: c}
 }
 
 func (_m *OutputWriter) OnGetRawOutputPrefixMatch(matchers ...interface{}) *OutputWriter_GetRawOutputPrefix {
-	c_call := _m.On("GetRawOutputPrefix", matchers...)
-	return &OutputWriter_GetRawOutputPrefix{Call: c_call}
+	c := _m.On("GetRawOutputPrefix", matchers...)
+	return &OutputWriter_GetRawOutputPrefix{Call: c}
 }
 
 // GetRawOutputPrefix provides a mock function with given fields:
@@ -217,13 +217,13 @@ func (_m OutputWriter_Put) Return(_a0 error) *OutputWriter_Put {
 }
 
 func (_m *OutputWriter) OnPut(ctx context.Context, reader io.OutputReader) *OutputWriter_Put {
-	c_call := _m.On("Put", ctx, reader)
-	return &OutputWriter_Put{Call: c_call}
+	c := _m.On("Put", ctx, reader)
+	return &OutputWriter_Put{Call: c}
 }
 
 func (_m *OutputWriter) OnPutMatch(matchers ...interface{}) *OutputWriter_Put {
-	c_call := _m.On("Put", matchers...)
-	return &OutputWriter_Put{Call: c_call}
+	c := _m.On("Put", matchers...)
+	return &OutputWriter_Put{Call: c}
 }
 
 // Put provides a mock function with given fields: ctx, reader
