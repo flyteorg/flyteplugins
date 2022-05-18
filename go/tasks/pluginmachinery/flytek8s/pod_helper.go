@@ -93,7 +93,7 @@ func ApplyArchitectureNodeAffinity(architecture core.Container_Architecture, pod
 // UpdatePod updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
 func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
-	UpdatePodWithInterruptibleFlag(taskExecutionMetadata, resourceRequirements, podSpec, false)
+	UpdatePodWithInterruptibleFlag(taskExecutionMetadata, resourceRequirements, podSpec, false, taskExecutionMetadata.GetArchitecture())
 }
 
 // Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
@@ -160,7 +160,7 @@ func ToK8sPodSpecWithInterruptible(ctx context.Context, tCtx pluginsCore.TaskExe
 	pod := &v1.PodSpec{
 		Containers: containers,
 	}
-	UpdatePodWithInterruptibleFlag(tCtx.TaskExecutionMetadata(), []v1.ResourceRequirements{c.Resources}, pod, omitInterruptible, architecture)
+	UpdatePodWithInterruptibleFlag(tCtx.TaskExecutionMetadata(), []v1.ResourceRequirements{c.Resources}, pod, omitInterruptible, task.GetContainer().GetArchitecture())
 
 	if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, pod, task.GetInterface(), tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), task.GetContainer().GetDataConfig()); err != nil {
 		return nil, err
