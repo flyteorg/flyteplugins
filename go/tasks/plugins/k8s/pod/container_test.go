@@ -51,6 +51,7 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 
 	tID := &pluginsCoreMock.TaskExecutionID{}
 	tID.On("GetID").Return(core.TaskExecutionIdentifier{
+		TaskId: &core.Identifier{Name: "flyte"},
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
 				Name:    "my_name",
@@ -74,10 +75,12 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, command []str
 		Type: "test",
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
-				Command: command,
-				Args:    args,
+				Command:    command,
+				Args:       args,
+				DataConfig: &core.DataLoadingConfig{Enabled: true},
 			},
 		},
+		Interface: &core.TypedInterface{Outputs: &core.VariableMap{}},
 	}
 
 	dummyTaskMetadata := dummyContainerTaskMetadata(resources)
@@ -137,6 +140,7 @@ func TestContainerTaskExecutor_BuildResource(t *testing.T) {
 	assert.Equal(t, []string{"test-data-reference"}, j.Spec.Containers[0].Args)
 
 	assert.Equal(t, "service-account", j.Spec.ServiceAccountName)
+	assert.NotNil(t, j.Annotations[RawContainerName])
 }
 
 func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
