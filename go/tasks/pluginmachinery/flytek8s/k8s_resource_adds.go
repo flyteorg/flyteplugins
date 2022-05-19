@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
@@ -158,7 +159,7 @@ func GetPodTolerations(interruptible bool, architecture core.Container_Architect
 
 	// 3. Get the tolerations for the specific architecture
 	if architecture != core.Container_UNKNOWN {
-		tolerations = append(tolerations, config.GetK8sPluginConfig().ArchitectureTolerations[architecture.String()]...)
+		tolerations = append(tolerations, config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(architecture.String())]...)
 	}
 
 	// 4. Add default tolerations
