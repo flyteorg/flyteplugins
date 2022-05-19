@@ -40,6 +40,12 @@ func validateAndFinalizePod(
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 			resourceMode = flytek8s.MergeExistingResources
+
+			task, err := taskCtx.TaskReader().Read(ctx)
+			if err != nil {
+				return nil, err
+			}
+			architecture = task.GetContainer().GetArchitecture()
 		}
 		templateParameters := template.Parameters{
 			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
@@ -47,12 +53,8 @@ func validateAndFinalizePod(
 			OutputPath:       taskCtx.OutputWriter(),
 			Task:             taskCtx.TaskReader(),
 		}
-		task, err := taskCtx.TaskReader().Read(ctx)
-		if err != nil {
-			return nil, err
-		}
-		architecture = task.GetContainer().GetArchitecture()
-		err = flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &pod.Spec.Containers[index])
+
+		err := flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &pod.Spec.Containers[index])
 		if err != nil {
 			return nil, err
 		}
