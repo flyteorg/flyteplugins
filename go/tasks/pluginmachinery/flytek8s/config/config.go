@@ -107,7 +107,7 @@ type K8sPluginConfig struct {
 	// Node Selector Labels for interruptible pods: Similar to ArchitectureTolerations, these node selector labels are added for pods that need a specific
 	// architecture.
 	// Deprecated: Please use InterruptibleNodeSelectorRequirement/NonInterruptibleNodeSelectorRequirement
-	ArchitectureNodeSelector map[string]map[string]string `json:"architecture-node-selector" pflag:"-,Defines a set of node selector labels to add to the interruptible pods."`
+	ArchitectureNodeSelector map[string]map[string]string `json:"architecture-node-selector" pflag:"-,Defines a set of node selector labels to select architecture."`
 	// Node Selector Requirements to be added for specific architecture
 	// pods respectively
 	ArchitectureNodeSelectorRequirement map[string]*v1.NodeSelectorRequirement `json:"architecture-node-selector-requirement" pflag:"-,Node selector requirement to add for specific architecture"`

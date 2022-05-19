@@ -122,7 +122,8 @@ func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecut
 	}
 	if architecture != core.Container_UNKNOWN {
 		logger.Infof(context.TODO(), "Setting architecture Node Selector")
-		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().ArchitectureNodeSelector[architecture.String()])
+		logger.Infof(context.TODO(), "Node Selector Is %v", config.GetK8sPluginConfig().ArchitectureNodeSelector)
+		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(architecture.String())])
 	}
 	if podSpec.Affinity == nil && config.GetK8sPluginConfig().DefaultAffinity != nil {
 		podSpec.Affinity = config.GetK8sPluginConfig().DefaultAffinity.DeepCopy()
