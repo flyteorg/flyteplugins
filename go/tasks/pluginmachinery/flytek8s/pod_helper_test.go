@@ -291,7 +291,7 @@ func updatePod(t *testing.T) {
 			},
 		},
 	}
-	UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{}, &pod.Spec)
+	UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{}, &pod.Spec, core.Container_UNKNOWN)
 	assert.Equal(t, v1.RestartPolicyNever, pod.Spec.RestartPolicy)
 	for _, tol := range pod.Spec.Tolerations {
 		if tol.Key == "x/flyte" {
@@ -356,7 +356,7 @@ func TestUpdatePodWithDefaultAffinityAndInterruptibleNodeSelectorRequirement(t *
 	}))
 	for i := 0; i < 3; i++ {
 		podSpec := v1.PodSpec{}
-		UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{}, &podSpec)
+		UpdatePod(taskExecutionMetadata, []v1.ResourceRequirements{}, &podSpec, core.Container_UNKNOWN)
 		assert.EqualValues(
 			t,
 			[]v1.NodeSelectorTerm{

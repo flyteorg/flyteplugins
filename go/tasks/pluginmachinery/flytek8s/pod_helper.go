@@ -92,8 +92,8 @@ func ApplyArchitectureNodeAffinity(architecture core.Container_Architecture, pod
 
 // UpdatePod updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
 func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
-	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec) {
-	UpdatePodWithInterruptibleFlag(taskExecutionMetadata, resourceRequirements, podSpec, false, taskExecutionMetadata.GetArchitecture())
+	resourceRequirements []v1.ResourceRequirements, podSpec *v1.PodSpec, architecture core.Container_Architecture) {
+	UpdatePodWithInterruptibleFlag(taskExecutionMetadata, resourceRequirements, podSpec, false, architecture)
 }
 
 // Updates the base pod spec used to execute tasks. This is configured with plugins and task metadata-specific options
