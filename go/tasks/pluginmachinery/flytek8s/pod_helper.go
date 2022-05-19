@@ -64,11 +64,13 @@ func ApplyArchitectureNodeAffinity(architecture core.Container_Architecture, pod
 	// Determine node selector terms to add to node affinity
 	var nodeSelectorRequirement v1.NodeSelectorRequirement
 	if architecture != core.Container_UNKNOWN {
+		logger.Info(context.TODO(), "Setting Node affinity")
 		if config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[strings.ToLower(architecture.String())] == nil {
+			logger.Info(context.TODO(), "Config not set")
 			return
 		}
 		nodeSelectorRequirement = *config.GetK8sPluginConfig().ArchitectureNodeSelectorRequirement[strings.ToLower(architecture.String())]
-
+		logger.Infof(context.TODO(), "NodeSelectorReq is %s", nodeSelectorRequirement)
 		if podSpec.Affinity == nil {
 			podSpec.Affinity = &v1.Affinity{}
 		}
@@ -79,12 +81,14 @@ func ApplyArchitectureNodeAffinity(architecture core.Container_Architecture, pod
 			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{}
 		}
 		if len(podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
+			logger.Info(context.TODO(), "Setting multiple")
 			nodeSelectorTerms := podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
 			for i := range nodeSelectorTerms {
 				nst := &nodeSelectorTerms[i]
 				nst.MatchExpressions = append(nst.MatchExpressions, nodeSelectorRequirement)
 			}
 		} else {
+			logger.Info(context.TODO(), "Setting One")
 			podSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []v1.NodeSelectorTerm{v1.NodeSelectorTerm{MatchExpressions: []v1.NodeSelectorRequirement{nodeSelectorRequirement}}}
 		}
 	}
@@ -117,6 +121,7 @@ func UpdatePodWithInterruptibleFlag(taskExecutionMetadata pluginsCore.TaskExecut
 		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
 	if architecture != core.Container_UNKNOWN {
+		logger.Infof(context.TODO(), "Setting architecture Node Selector")
 		podSpec.NodeSelector = utils.UnionMaps(podSpec.NodeSelector, config.GetK8sPluginConfig().ArchitectureNodeSelector[architecture.String()])
 	}
 	if podSpec.Affinity == nil && config.GetK8sPluginConfig().DefaultAffinity != nil {
