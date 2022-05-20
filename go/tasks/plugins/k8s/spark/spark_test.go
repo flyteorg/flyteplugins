@@ -249,7 +249,7 @@ func dummySparkCustomObj(sparkConf map[string]string) *plugins.SparkJob {
 	return &sparkJob
 }
 
-func dummySparkTaskTemplate(id string, sparkConf map[string]string) *core.TaskTemplate {
+func dummySparkTaskTemplate(id string, sparkConf map[string]string, architecture core.Container_Architecture) *core.TaskTemplate {
 
 	sparkJob := dummySparkCustomObj(sparkConf)
 	sparkJobJSON, err := utils.MarshalToString(sparkJob)
@@ -269,16 +269,17 @@ func dummySparkTaskTemplate(id string, sparkConf map[string]string) *core.TaskTe
 		Type: "container",
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
-				Image: testImage,
-				Args:  testArgs,
-				Env:   dummyEnvVars,
+				Image:        testImage,
+				Args:         testArgs,
+				Env:          dummyEnvVars,
+				Architecture: architecture,
 			},
 		},
 		Custom: &structObj,
 	}
 }
 
-func dummySparkTaskContext(taskTemplate *core.TaskTemplate, interruptible bool, architecture core.Container_Architecture) pluginsCore.TaskExecutionContext {
+func dummySparkTaskContext(taskTemplate *core.TaskTemplate, interruptible bool) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
 	inputReader.OnGetInputPrefixPath().Return(storage.DataReference("/input/prefix"))
@@ -331,7 +332,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	sparkResourceHandler := sparkResourceHandler{}
 
 	// Case1: Valid Spark Task-Template
-	taskTemplate := dummySparkTaskTemplate("blah-1", dummySparkConf)
+	taskTemplate := dummySparkTaskTemplate("blah-1", dummySparkConf, core.Container_ARM64)
 
 	// Set spark custom feature config.
 	assert.NoError(t, setSparkConfig(&Config{
@@ -361,7 +362,7 @@ func TestBuildResourceSpark(t *testing.T) {
 			},
 		}}),
 	)
-	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true, core.Container_ARM64))
+	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true))
 	assert.Nil(t, err)
 
 	assert.NotNil(t, resource)
@@ -442,8 +443,8 @@ func TestBuildResourceSpark(t *testing.T) {
 	dummyConfWithRequest["spark.kubernetes.driver.request.cores"] = "3"
 	dummyConfWithRequest["spark.kubernetes.executor.request.cores"] = "4"
 
-	taskTemplate = dummySparkTaskTemplate("blah-1", dummyConfWithRequest)
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false, core.Container_UNKNOWN))
+	taskTemplate = dummySparkTaskTemplate("blah-1", dummyConfWithRequest, core.Container_UNKNOWN)
+	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
 	sparkApp, ok = resource.(*sj.SparkApplication)
@@ -453,7 +454,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummyConfWithRequest["spark.kubernetes.executor.request.cores"], sparkApp.Spec.SparkConf["spark.kubernetes.executor.limit.cores"])
 
 	// Case 3: Interruptible False
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false, core.Container_UNKNOWN))
+	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
 	sparkApp, ok = resource.(*sj.SparkApplication)
@@ -467,7 +468,7 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	// Case 4: Invalid Spark Task-Template
 	taskTemplate.Custom = nil
-	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false, core.Container_UNKNOWN))
+	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
 	assert.NotNil(t, err)
 	assert.Nil(t, resource)
 }

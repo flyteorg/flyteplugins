@@ -223,7 +223,10 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
 	}
 
+	// Add Architecture Tolerations/NodeSelector to all pods
 	if taskTemplate.GetContainer().GetArchitecture() != core.Container_UNKNOWN {
+		j.Spec.Driver.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		j.Spec.Driver.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
 		j.Spec.Executor.Tolerations = append(j.Spec.Executor.Tolerations, config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]...)
 		j.Spec.Executor.NodeSelector = utils.UnionMaps(j.Spec.Executor.NodeSelector, config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())])
 	}
