@@ -322,7 +322,6 @@ func dummySparkTaskContext(taskTemplate *core.TaskTemplate, interruptible bool, 
 		RunAs: &core.Identity{K8SServiceAccount: "new-val"},
 	})
 	taskExecutionMetadata.On("IsInterruptible").Return(interruptible)
-	taskExecutionMetadata.On("GetArchitecture").Return(architecture)
 	taskExecutionMetadata.On("GetMaxAttempts").Return(uint32(1))
 	taskCtx.On("TaskExecutionMetadata").Return(taskExecutionMetadata)
 	return taskCtx

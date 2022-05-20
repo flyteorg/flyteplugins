@@ -55,7 +55,6 @@ func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	to.On("GetResources").Return(resources)
 	taskExecutionMetadata.On("GetOverrides").Return(to)
 	taskExecutionMetadata.On("IsInterruptible").Return(true)
-	taskExecutionMetadata.On("GetArchitecture").Return(core.Container_UNKNOWN)
 	return taskExecutionMetadata
 }
 

@@ -35,5 +35,4 @@ type TaskExecutionMetadata interface {
 	GetK8sServiceAccount() string
 	GetSecurityContext() core.SecurityContext
 	IsInterruptible() bool
-	GetArchitecture() core.Container_Architecture
 }
