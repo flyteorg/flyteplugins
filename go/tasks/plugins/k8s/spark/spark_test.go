@@ -407,7 +407,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, 2, len(sparkApp.Spec.Executor.Tolerations))
 	assert.Equal(t, 2, len(sparkApp.Spec.Executor.NodeSelector))
 
-	tol := sparkApp.Spec.Executor.Tolerations[0]
+	tol := sparkApp.Spec.Executor.Tolerations[1]
 	assert.Equal(t, tol.Key, "x/flyte")
 	assert.Equal(t, tol.Value, "interruptible")
 	assert.Equal(t, tol.Operator, corev1.TolerationOperator("Equal"))
