@@ -353,12 +353,26 @@ func TestBuildResourceSpark(t *testing.T) {
 		InterruptibleNodeSelector: map[string]string{
 			"x/interruptible": "true",
 		},
+		ArchitectureNodeSelector: map[string]map[string]string{
+			"arm64": {
+				"x/architecture": "arm64",
+			},
+		},
 		InterruptibleTolerations: []corev1.Toleration{
 			{
 				Key:      "x/flyte",
 				Value:    "interruptible",
 				Operator: "Equal",
 				Effect:   "NoSchedule",
+			},
+		},
+		ArchitectureTolerations: map[string][]corev1.Toleration{
+			"arm64": []corev1.Toleration{
+				{
+					Key:      "x/arch",
+					Value:    "arm64",
+					Operator: "Equal",
+					Effect:   "NoSchedule"},
 			},
 		}}),
 	)
@@ -387,11 +401,11 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummySparkConf["spark.executor.memory"], *sparkApp.Spec.Executor.Memory)
 
 	// Validate Interruptible Toleration and NodeSelector set for Executor but not Driver.
-	assert.Equal(t, 0, len(sparkApp.Spec.Driver.Tolerations))
-	assert.Equal(t, 0, len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
+	assert.Equal(t, 1, len(sparkApp.Spec.Driver.NodeSelector))
 
-	assert.Equal(t, 1, len(sparkApp.Spec.Executor.Tolerations))
-	assert.Equal(t, 1, len(sparkApp.Spec.Executor.NodeSelector))
+	assert.Equal(t, 2, len(sparkApp.Spec.Executor.Tolerations))
+	assert.Equal(t, 2, len(sparkApp.Spec.Executor.NodeSelector))
 
 	tol := sparkApp.Spec.Executor.Tolerations[0]
 	assert.Equal(t, tol.Key, "x/flyte")
