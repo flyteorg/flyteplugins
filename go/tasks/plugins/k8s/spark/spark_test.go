@@ -367,7 +367,7 @@ func TestBuildResourceSpark(t *testing.T) {
 			},
 		},
 		ArchitectureTolerations: map[string][]corev1.Toleration{
-			"arm64": []corev1.Toleration{
+			"arm64": {
 				{
 					Key:      "x/arch",
 					Value:    "arm64",

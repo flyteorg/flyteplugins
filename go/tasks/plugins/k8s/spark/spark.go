@@ -190,10 +190,10 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	// Add Architecture Tolerations/NodeSelector to all pods
 	if taskTemplate.GetContainer().GetArchitecture() != core.Container_UNKNOWN {
-		driverSpec.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-		driverSpec.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-		executorSpec.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-		executorSpec.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		driverSpec.SparkPodSpec.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		driverSpec.SparkPodSpec.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		executorSpec.SparkPodSpec.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		executorSpec.SparkPodSpec.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
 	}
 
 	j := &sparkOp.SparkApplication{
@@ -227,8 +227,8 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	// Add Tolerations/NodeSelector to only Executor pods.
 	if taskCtx.TaskExecutionMetadata().IsInterruptible() {
-		j.Spec.Executor.Tolerations = append(j.Spec.Executor.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
-		j.Spec.Executor.NodeSelector = utils.UnionMaps(j.Spec.Executor.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
+		j.Spec.Executor.SparkPodSpec.Tolerations = append(j.Spec.Executor.SparkPodSpec.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
+		j.Spec.Executor.SparkPodSpec.NodeSelector = utils.UnionMaps(j.Spec.Executor.SparkPodSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
 
 	return j, nil
