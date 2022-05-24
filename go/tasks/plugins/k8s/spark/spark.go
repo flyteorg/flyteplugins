@@ -188,14 +188,6 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 	executorSpec.Memory = strPtr(sparkConfig["spark.executor.memory"])
 
-	// Add Architecture Tolerations/NodeSelector to all pods
-	if taskTemplate.GetContainer().GetArchitecture() != core.Container_UNKNOWN {
-		driverSpec.SparkPodSpec.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-		driverSpec.SparkPodSpec.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-		executorSpec.SparkPodSpec.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-		executorSpec.SparkPodSpec.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-	}
-
 	j := &sparkOp.SparkApplication{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       KindSparkApplication,
@@ -225,10 +217,19 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.MainClass = &sparkJob.MainClass
 	}
 
+	// Add Architecture Tolerations/NodeSelector to all pods
+	if taskTemplate.GetContainer().GetArchitecture() != core.Container_UNKNOWN {
+		j.Spec.Driver.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		j.Spec.Driver.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		j.Spec.Executor.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
+		j.Spec.SparkConf["spark.kubernetes.node.selector.beta.kubernetes.io/arch"] = "arm64"
+	}
+
 	// Add Tolerations/NodeSelector to only Executor pods.
 	if taskCtx.TaskExecutionMetadata().IsInterruptible() {
-		j.Spec.Executor.SparkPodSpec.Tolerations = append(j.Spec.Executor.SparkPodSpec.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
-		j.Spec.Executor.SparkPodSpec.NodeSelector = utils.UnionMaps(j.Spec.Executor.SparkPodSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
+		j.Spec.Executor.Tolerations = append(j.Spec.Executor.SparkPodSpec.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
+		j.Spec.Executor.NodeSelector = utils.UnionMaps(j.Spec.Executor.SparkPodSpec.NodeSelector, config.GetK8sPluginConfig().InterruptibleNodeSelector)
 	}
 
 	return j, nil
