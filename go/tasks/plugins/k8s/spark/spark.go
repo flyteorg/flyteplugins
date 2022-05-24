@@ -223,7 +223,9 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.Driver.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
 		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().ArchitectureNodeSelector[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
 		j.Spec.Executor.Tolerations = config.GetK8sPluginConfig().ArchitectureTolerations[strings.ToLower(taskTemplate.GetContainer().GetArchitecture().String())]
-		j.Spec.SparkConf["spark.kubernetes.node.selector.beta.kubernetes.io/arch"] = "arm64"
+		if taskTemplate.GetContainer().GetArchitecture() == core.Container_ARM64 {
+			j.Spec.SparkConf["spark.kubernetes.node.selector.beta.kubernetes.io/arch"] = "arm64"
+		}
 	}
 
 	// Add Tolerations/NodeSelector to only Executor pods.
