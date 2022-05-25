@@ -73,6 +73,11 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, map[string]string{"x/interruptible": "true"}, k8sConfig.InterruptibleNodeSelector)
 		assert.Equal(t, "x/flyte", k8sConfig.InterruptibleTolerations[0].Key)
 		assert.Equal(t, "interruptible", k8sConfig.InterruptibleTolerations[0].Value)
+		assert.Contains(t, k8sConfig.ArchitectureNodeSelector, "amd64")
+		assert.Equal(t, map[string]string{"x/architecture": "amd64"}, k8sConfig.ArchitectureNodeSelector["amd64"])
+		assert.Contains(t, k8sConfig.ArchitectureTolerations, "amd64")
+		assert.Equal(t, "x/flyte", k8sConfig.ArchitectureTolerations["amd64"][0].Key)
+		assert.Equal(t, "amd64", k8sConfig.ArchitectureTolerations["amd64"][0].Value)
 	})
 
 	t.Run("logs-config-test", func(t *testing.T) {

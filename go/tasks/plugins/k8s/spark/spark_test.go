@@ -249,7 +249,7 @@ func dummySparkCustomObj(sparkConf map[string]string) *plugins.SparkJob {
 	return &sparkJob
 }
 
-func dummySparkTaskTemplate(id string, sparkConf map[string]string) *core.TaskTemplate {
+func dummySparkTaskTemplate(id string, sparkConf map[string]string, architecture core.Container_Architecture) *core.TaskTemplate {
 
 	sparkJob := dummySparkCustomObj(sparkConf)
 	sparkJobJSON, err := utils.MarshalToString(sparkJob)
@@ -269,9 +269,10 @@ func dummySparkTaskTemplate(id string, sparkConf map[string]string) *core.TaskTe
 		Type: "container",
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
-				Image: testImage,
-				Args:  testArgs,
-				Env:   dummyEnvVars,
+				Image:        testImage,
+				Args:         testArgs,
+				Env:          dummyEnvVars,
+				Architecture: architecture,
 			},
 		},
 		Custom: &structObj,
@@ -331,7 +332,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	sparkResourceHandler := sparkResourceHandler{}
 
 	// Case1: Valid Spark Task-Template
-	taskTemplate := dummySparkTaskTemplate("blah-1", dummySparkConf)
+	taskTemplate := dummySparkTaskTemplate("blah-1", dummySparkConf, core.Container_ARM64)
 
 	// Set spark custom feature config.
 	assert.NoError(t, setSparkConfig(&Config{
@@ -352,12 +353,26 @@ func TestBuildResourceSpark(t *testing.T) {
 		InterruptibleNodeSelector: map[string]string{
 			"x/interruptible": "true",
 		},
+		ArchitectureNodeSelector: map[string]map[string]string{
+			"arm64": {
+				"x/architecture": "arm64",
+			},
+		},
 		InterruptibleTolerations: []corev1.Toleration{
 			{
 				Key:      "x/flyte",
 				Value:    "interruptible",
 				Operator: "Equal",
 				Effect:   "NoSchedule",
+			},
+		},
+		ArchitectureTolerations: map[string][]corev1.Toleration{
+			"arm64": {
+				{
+					Key:      "x/arch",
+					Value:    "arm64",
+					Operator: "Equal",
+					Effect:   "NoSchedule"},
 			},
 		}}),
 	)
@@ -386,13 +401,13 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummySparkConf["spark.executor.memory"], *sparkApp.Spec.Executor.Memory)
 
 	// Validate Interruptible Toleration and NodeSelector set for Executor but not Driver.
-	assert.Equal(t, 0, len(sparkApp.Spec.Driver.Tolerations))
-	assert.Equal(t, 0, len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
+	assert.Equal(t, 1, len(sparkApp.Spec.Driver.NodeSelector))
 
-	assert.Equal(t, 1, len(sparkApp.Spec.Executor.Tolerations))
-	assert.Equal(t, 1, len(sparkApp.Spec.Executor.NodeSelector))
+	assert.Equal(t, 2, len(sparkApp.Spec.Executor.Tolerations))
+	assert.Equal(t, 2, len(sparkApp.Spec.Executor.NodeSelector))
 
-	tol := sparkApp.Spec.Executor.Tolerations[0]
+	tol := sparkApp.Spec.Executor.Tolerations[1]
 	assert.Equal(t, tol.Key, "x/flyte")
 	assert.Equal(t, tol.Value, "interruptible")
 	assert.Equal(t, tol.Operator, corev1.TolerationOperator("Equal"))
@@ -442,7 +457,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	dummyConfWithRequest["spark.kubernetes.driver.request.cores"] = "3"
 	dummyConfWithRequest["spark.kubernetes.executor.request.cores"] = "4"
 
-	taskTemplate = dummySparkTaskTemplate("blah-1", dummyConfWithRequest)
+	taskTemplate = dummySparkTaskTemplate("blah-1", dummyConfWithRequest, core.Container_UNKNOWN)
 	resource, err = sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, false))
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)

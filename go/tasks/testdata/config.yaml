@@ -44,6 +44,36 @@ plugins:
         value: interruptible
         operator: Equal
         effect: NoSchedule
+    architecture-node-selector:
+      amd64:
+        - x/architecture: "amd64"
+      arm64:
+        - x/architecture: "arm64"
+      armv6:
+        - x/architecture: "armv6"
+      armv7:
+        - x/architecture: "armv7"
+    architecture-tolerations:
+      amd64:
+        - key: x/flyte
+          value: amd64
+          operator: Equal
+          effect: NoSchedule
+      arm64:
+        - key: x/flyte
+          value: arm64
+          operator: Equal
+          effect: NoSchedule
+      armv6:
+        - key: x/flyte
+          value: armv6
+          operator: Equal
+          effect: NoSchedule
+      armv7:
+        - key: x/flyte
+          value: armv7
+          operator: Equal
+          effect: NoSchedule
     default-env-vars:
       - AWS_METADATA_SERVICE_TIMEOUT: 5
       - AWS_METADATA_SERVICE_NUM_ATTEMPTS: 20

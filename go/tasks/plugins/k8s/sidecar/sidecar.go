@@ -32,6 +32,7 @@ type sidecarResourceHandler struct{}
 func validateAndFinalizePod(
 	ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, pod k8sv1.Pod) (*k8sv1.Pod, error) {
 	var hasPrimaryContainer bool
+	var architecture core.Container_Architecture
 
 	resReqs := make([]k8sv1.ResourceRequirements, 0, len(pod.Spec.Containers))
 	for index, container := range pod.Spec.Containers {
@@ -39,6 +40,12 @@ func validateAndFinalizePod(
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 			resourceMode = flytek8s.MergeExistingResources
+
+			task, err := taskCtx.TaskReader().Read(ctx)
+			if err != nil {
+				return nil, err
+			}
+			architecture = task.GetContainer().GetArchitecture()
 		}
 		templateParameters := template.Parameters{
 			TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
@@ -46,6 +53,7 @@ func validateAndFinalizePod(
 			OutputPath:       taskCtx.OutputWriter(),
 			Task:             taskCtx.TaskReader(),
 		}
+
 		err := flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &pod.Spec.Containers[index])
 		if err != nil {
 			return nil, err
@@ -57,7 +65,7 @@ func validateAndFinalizePod(
 			"invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
 
 	}
-	flytek8s.UpdatePod(taskCtx.TaskExecutionMetadata(), resReqs, &pod.Spec)
+	flytek8s.UpdatePod(taskCtx.TaskExecutionMetadata(), resReqs, &pod.Spec, architecture)
 	return &pod, nil
 }
 
