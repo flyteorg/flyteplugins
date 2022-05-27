@@ -21,7 +21,7 @@ import (
 func TestGetExecutionEnvVars(t *testing.T) {
 	mock := mockTaskExecutionIdentifier{}
 	envVars := GetExecutionEnvVars(mock)
-	assert.Len(t, envVars, 12)
+	assert.Len(t, envVars, 13)
 }
 
 func TestGetTolerationsForResources(t *testing.T) {
