@@ -10,4 +10,3 @@ update_boilerplate:
 generate: download_tooling
 	@go generate ./...
 
-
