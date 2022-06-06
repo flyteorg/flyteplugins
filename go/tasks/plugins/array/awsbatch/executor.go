@@ -20,6 +20,8 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+
+	idlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 const (
@@ -61,7 +63,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	var err error
 
-	p, _ := pluginState.GetPhase()
+	p, version := pluginState.GetPhase()
 	logger.Infof(ctx, "Entering handle with phase [%v]", p)
 
 	switch p {
@@ -83,16 +85,16 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			e.jobStore, tCtx.DataStore(), pluginConfig, pluginState, e.metrics)
 
 	case arrayCore.PhaseAssembleFinalOutput:
-		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, arrayCore.PhaseSuccess, pluginState.State)
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, arrayCore.PhaseSuccess, version, pluginState.State)
 
 	case arrayCore.PhaseWriteToDiscoveryThenFail:
-		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalError)
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalError, version)
 
 	case arrayCore.PhaseWriteToDiscovery:
-		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalOutput)
+		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalOutput, version)
 
 	case arrayCore.PhaseAssembleFinalError:
-		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhaseRetryableFailure, pluginState.State)
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhaseRetryableFailure, version, pluginState.State)
 	}
 
 	if err != nil {
@@ -104,7 +106,21 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	}
 
 	// Always attempt to augment phase with task logs.
-	subTaskDetails, err := GetTaskLinks(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginState)
+	var logLinks []*idlCore.TaskLog
+	var externalResources []*core.ExternalResource
+	switch p {
+	case arrayCore.PhaseStart:
+		externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState.State,
+			func(tCtx core.TaskExecutionContext, childIndex int) string {
+				// subTaskIDs for the the aws_batch are generated based on the job ID, therefore
+				// to initialize we default to an empty string which will be updated later.
+				return ""
+			},
+		)
+	default:
+		logLinks, externalResources, err = GetTaskLinks(ctx, tCtx.TaskExecutionMetadata(), e.jobStore, pluginState)
+	}
+
 	if err != nil {
 		return core.UnknownTransition, err
 	}
@@ -112,7 +128,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	logger.Infof(ctx, "Exiting handle with phase [%v]", pluginState.State.CurrentPhase)
 
 	// Determine transition information from the state
-	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, subTaskDetails.LogLinks, subTaskDetails.SubTaskIDs)
+	phaseInfo, err := arrayCore.MapArrayStateToPluginPhase(ctx, pluginState.State, logLinks, externalResources)
 	if err != nil {
 		return core.UnknownTransition, err
 	}
