@@ -3,6 +3,7 @@ package ioutils
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flytestdlib/storage"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
@@ -10,6 +11,7 @@ import (
 
 type InMemoryOutputReader struct {
 	literals *core.LiteralMap
+	DeckPath *storage.DataReference
 	err      *io.ExecutionError
 }
 
@@ -40,9 +42,14 @@ func (r InMemoryOutputReader) Read(ctx context.Context) (*core.LiteralMap, *io.E
 	return r.literals, r.err, nil
 }
 
-func NewInMemoryOutputReader(literals *core.LiteralMap, err *io.ExecutionError) InMemoryOutputReader {
+func (r InMemoryOutputReader) GetDeckPath() *storage.DataReference {
+	return r.DeckPath
+}
+
+func NewInMemoryOutputReader(literals *core.LiteralMap, DeckPath *storage.DataReference, err *io.ExecutionError) InMemoryOutputReader {
 	return InMemoryOutputReader{
 		literals: literals,
+		DeckPath: DeckPath,
 		err:      err,
 	}
 }

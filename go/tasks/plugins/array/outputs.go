@@ -94,7 +94,7 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 	}
 
 	ow := ioutils.NewRemoteFileOutputWriter(ctx, i.dataStore, i.outputPaths)
-	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(finalOutputs, nil)); err != nil {
+	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(finalOutputs, nil, nil)); err != nil {
 		return workqueue.WorkStatusNotDone, err
 	}
 
