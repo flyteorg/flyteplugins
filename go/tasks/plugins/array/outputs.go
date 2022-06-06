@@ -313,7 +313,7 @@ func (a assembleErrorsWorker) Process(ctx context.Context, workItem workqueue.Wo
 	}
 
 	ow := ioutils.NewRemoteFileOutputWriter(ctx, w.dataStore, w.outputPaths)
-	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, &io.ExecutionError{
+	if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, nil, &io.ExecutionError{
 		ExecutionError: &core.ExecutionError{
 			Code:     "",
 			Message:  msg,
