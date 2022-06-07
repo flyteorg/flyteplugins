@@ -11,9 +11,7 @@ import (
 
 func TestRemoteFileOutputWriter(t *testing.T) {
 	ctx := context.TODO()
-	memStore, err := storage.NewDataStore(&storage.Config{
-		Type: storage.TypeMemory,
-	}, promutils.NewTestScope())
+	memStore, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
 	assert.Nil(t, err)
 
 	outputPrefix := storage.DataReference("output")
@@ -25,7 +23,8 @@ func TestRemoteFileOutputWriter(t *testing.T) {
 		memStore,
 		outputPrefix,
 		NewRawOutputPaths(ctx, rawOutputPrefix),
-		previousCheckpointPath)
+		previousCheckpointPath,
+	)
 
 	t.Run("Test NewCheckpointRemoteFilePaths", func(t *testing.T) {
 		assert.Equal(t, previousCheckpointPath, checkpointPath.GetPreviousCheckpointsPrefix())
