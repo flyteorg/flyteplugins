@@ -222,9 +222,12 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 	})
 
 	t.Run("raw container failed", func(t *testing.T) {
-		j.Annotations = map[string]string{RawContainerName: "raw-container"}
-		j.Status.ContainerStatuses = []v1.ContainerStatus{{Name: j.Annotations[RawContainerName], State: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{ExitCode: 1}}}}
-		phaseInfo, err := DefaultPodPlugin.GetTaskPhase(ctx, nil, j)
+		pod := &v1.Pod{
+			Status: v1.PodStatus{},
+		}
+		pod.Annotations = map[string]string{RawContainerName: "raw-container"}
+		pod.Status.ContainerStatuses = []v1.ContainerStatus{{Name: pod.Annotations[RawContainerName], State: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{ExitCode: 1}}}}
+		phaseInfo, err := DefaultPodPlugin.GetTaskPhase(ctx, nil, pod)
 		assert.NoError(t, err)
 		assert.NotNil(t, phaseInfo)
 		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
