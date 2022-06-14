@@ -124,7 +124,7 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 
 	RawContainerName, exists := r.GetAnnotations()[RawContainerName]
 	if exists {
-		// we'll declare the task as "failure" If raw container fail, but the rawContainer
+		// we declare the task as "failure" If raw container fail, but the rawContainer
 		// task requires all containers (raw container and sidecar) to succeed to declare success
 		for _, s := range pod.Status.ContainerStatuses {
 			if s.Name == RawContainerName {

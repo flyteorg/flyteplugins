@@ -44,9 +44,6 @@ var (
 			StartTimeout: config2.Duration{
 				Duration: time.Second * 100,
 			},
-			FinishTimeout: config2.Duration{
-				Duration: time.Hour * 24,
-			},
 		},
 		DefaultCPURequest:    defaultCPURequest,
 		DefaultMemoryRequest: defaultMemoryRequest,

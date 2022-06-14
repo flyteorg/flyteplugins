@@ -95,12 +95,10 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal given core.TypedInterface")
 	}
-	return []string{
+	command := []string{
 		"sidecar",
 		"--start-timeout",
 		startTimeout.String(),
-		"--finish-timeout",
-		finishTimeout.String(),
 		"--to-raw-output",
 		rawOutputPath.String(),
 		"--to-output-prefix",
@@ -109,7 +107,12 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 		fromLocalPath,
 		"--interface",
 		base64.StdEncoding.EncodeToString(b),
-	}, nil
+	}
+	// Keep Backward compatibility here since older version of copilot doesn't have this flag.
+	if finishTimeout.String() != time.Duration(0).String() {
+		command = append(command, "--finish-timeout", finishTimeout.String())
+	}
+	return command, nil
 }
 
 func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format core.DataLoadingConfig_LiteralMapFormat, inputInterface *core.VariableMap) ([]string, error) {
