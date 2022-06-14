@@ -62,13 +62,11 @@ func NewSubTaskExecutionContext(ctx context.Context, tCtx pluginsCore.TaskExecut
 	// construct TaskTemplate
 	subtaskTemplate := taskTemplate
 
-	if subtaskTemplate != nil {
-		subtaskTemplate.TaskTypeVersion = 2
-		if subtaskTemplate.GetContainer() != nil {
-			subtaskTemplate.Type = podPlugin.ContainerTaskType
-		} else if taskTemplate.GetK8SPod() != nil {
-			subtaskTemplate.Type = podPlugin.SidecarTaskType
-		}
+	subtaskTemplate.TaskTypeVersion = 2
+	if subtaskTemplate.GetContainer() != nil {
+		subtaskTemplate.Type = podPlugin.ContainerTaskType
+	} else if taskTemplate.GetK8SPod() != nil {
+		subtaskTemplate.Type = podPlugin.SidecarTaskType
 	}
 
 	arrayInputReader := array.GetInputReader(tCtx, taskTemplate)
