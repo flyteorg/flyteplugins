@@ -143,7 +143,7 @@ func TestDownloadCommandArgs(t *testing.T) {
 }
 
 func TestSidecarCommandArgs(t *testing.T) {
-	_, err := SidecarCommandArgs("", "", "", time.Second*10, time.Second*10, nil)
+	_, err := SidecarCommandArgs("", "", "", time.Second*10, time.Duration(0), nil)
 	assert.Error(t, err)
 
 	iFace := &core.TypedInterface{
@@ -154,15 +154,18 @@ func TestSidecarCommandArgs(t *testing.T) {
 			},
 		},
 	}
-	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, time.Duration(0), iFace)
+	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, time.Second*10, iFace)
 	assert.NoError(t, err)
-	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "<interface>"}
+	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "<interface>", "--finish-timeout", "10s"}
 	if assert.Len(t, d, len(expected)) {
-		for i := 0; i < len(expected)-1; i++ {
+		for i := 0; i < len(expected)-3; i++ {
+			assert.Equal(t, expected[i], d[i])
+		}
+		for i := len(expected) - 2; i < len(expected); i++ {
 			assert.Equal(t, expected[i], d[i])
 		}
 		// We cannot compare the last one, as the interface is a map the order is not guaranteed.
-		ifaceB64 := d[len(expected)-1]
+		ifaceB64 := d[len(expected)-3]
 		serIFaceBytes, err := base64.StdEncoding.DecodeString(ifaceB64)
 		if assert.NoError(t, err) {
 			if2 := &core.TypedInterface{}
