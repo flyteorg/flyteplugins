@@ -108,7 +108,7 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 		"--interface",
 		base64.StdEncoding.EncodeToString(b),
 	}
-	// Keep Backward compatibility here since older version of copilot doesn't have this flag.
+	// Keep backward compatibility here since older version of copilot doesn't have this flag.
 	if finishTimeout.String() != time.Duration(0).String() {
 		command = append(command, "--finish-timeout", finishTimeout.String())
 	}
