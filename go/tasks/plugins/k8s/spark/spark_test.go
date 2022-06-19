@@ -357,6 +357,14 @@ func TestBuildResourceSpark(t *testing.T) {
 	// Set scheduler
 	schedulerName := "custom-scheduler"
 
+	// Node selectors
+	defaultNodeSelector := map[string]string{
+		"x/default": "true",
+	}
+	interruptibleNodeSelector := map[string]string{
+		"x/interruptible": "true",
+	}
+
 	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		DefaultPodSecurityContext: &corev1.PodSecurityContext{
 			RunAsUser: &runAsUser,
@@ -390,9 +398,8 @@ func TestBuildResourceSpark(t *testing.T) {
 				Effect:   "NoSchedule",
 			},
 		},
-		InterruptibleNodeSelector: map[string]string{
-			"x/interruptible": "true",
-		},
+		DefaultNodeSelector:       defaultNodeSelector,
+		InterruptibleNodeSelector: interruptibleNodeSelector,
 		InterruptibleTolerations: []corev1.Toleration{
 			{
 				Key:      "x/flyte",
@@ -457,7 +464,8 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	// Validate Interruptible Toleration and NodeSelector set for Executor but not Driver.
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
-	assert.Equal(t, 0, len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, 1, len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, defaultNodeSelector, sparkApp.Spec.Driver.NodeSelector)
 	tolDriverDefault := sparkApp.Spec.Driver.Tolerations[0]
 	assert.Equal(t, tolDriverDefault.Key, "x/flyte")
 	assert.Equal(t, tolDriverDefault.Value, "default")
@@ -466,6 +474,7 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	assert.Equal(t, 2, len(sparkApp.Spec.Executor.Tolerations))
 	assert.Equal(t, 1, len(sparkApp.Spec.Executor.NodeSelector))
+	assert.Equal(t, interruptibleNodeSelector, sparkApp.Spec.Executor.NodeSelector)
 
 	tolExecDefault := sparkApp.Spec.Executor.Tolerations[0]
 	assert.Equal(t, tolExecDefault.Key, "x/flyte")
@@ -542,9 +551,11 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	// Validate Interruptible Toleration and NodeSelector not set  for both Driver and Executors.
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
-	assert.Equal(t, 0, len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, 1, len(sparkApp.Spec.Driver.NodeSelector))
+	assert.Equal(t, defaultNodeSelector, sparkApp.Spec.Driver.NodeSelector)
 	assert.Equal(t, 1, len(sparkApp.Spec.Executor.Tolerations))
-	assert.Equal(t, 0, len(sparkApp.Spec.Executor.NodeSelector))
+	assert.Equal(t, 1, len(sparkApp.Spec.Executor.NodeSelector))
+	assert.Equal(t, defaultNodeSelector, sparkApp.Spec.Executor.NodeSelector)
 	assert.Equal(t, sparkApp.Spec.Executor.Tolerations[0].Key, "x/flyte")
 	assert.Equal(t, sparkApp.Spec.Executor.Tolerations[0].Value, "default")
 	assert.Equal(t, sparkApp.Spec.Driver.Tolerations[0].Key, "x/flyte")
