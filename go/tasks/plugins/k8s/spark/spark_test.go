@@ -353,6 +353,10 @@ func TestBuildResourceSpark(t *testing.T) {
 	dnsOptVal1 := "1"
 	dnsOptVal2 := "1"
 	dnsOptVal3 := "3"
+
+	// Set scheduler
+	schedulerName := "custom-scheduler"
+
 	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		DefaultPodSecurityContext: &corev1.PodSecurityContext{
 			RunAsUser: &runAsUser,
@@ -396,7 +400,9 @@ func TestBuildResourceSpark(t *testing.T) {
 				Operator: "Equal",
 				Effect:   "NoSchedule",
 			},
-		}}),
+		},
+		SchedulerName: schedulerName,
+	}),
 	)
 	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true))
 	assert.Nil(t, err)
@@ -446,6 +452,8 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummySparkConf["spark.driver.memory"], *sparkApp.Spec.Driver.Memory)
 	assert.Equal(t, dummySparkConf["spark.executor.memory"], *sparkApp.Spec.Executor.Memory)
 	assert.Equal(t, dummySparkConf["spark.batchScheduler"], *sparkApp.Spec.BatchScheduler)
+	assert.Equal(t, schedulerName, *sparkApp.Spec.Executor.SchedulerName)
+	assert.Equal(t, schedulerName, *sparkApp.Spec.Driver.SchedulerName)
 
 	// Validate Interruptible Toleration and NodeSelector set for Executor but not Driver.
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
