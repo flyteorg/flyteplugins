@@ -18,7 +18,7 @@ jobs:
           fetch-depth: "0"
       - name: Bump version and push tag
         id: bump-version
-        uses: anothrNick/github-tag-action@1.17.2
+        uses: anothrNick/github-tag-action@1.36.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
@@ -34,7 +34,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14
+          go-version: '1.18'
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
@@ -49,12 +49,12 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: "0"
-      - name: Unit Tests
-        uses: cedrickring/golang-action@1.5.2
-        env:
-          GO111MODULE: "on"
+      - name: Set up Go
+        uses: actions/setup-go@v2
         with:
-          args: make install && make test_unit_codecov
+          go-version: '1.18'
+      - name: Unit Tests
+        run: make install && make test_unit_codecov
       - name: Push CodeCov
         uses: codecov/codecov-action@v1
         with:
@@ -62,8 +62,4 @@ jobs:
           flags: unittests
           fail_ci_if_error: true
       - name: Lint
-        uses: cedrickring/golang-action@1.5.2
-        env:
-          GO111MODULE: "on"
-        with:
-          args: make install && make lint
+        run: make install && make lint

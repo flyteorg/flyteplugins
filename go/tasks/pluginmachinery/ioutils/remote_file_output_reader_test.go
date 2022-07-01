@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flytestdlib/storage"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	storageMocks "github.com/flyteorg/flytestdlib/storage/mocks"
@@ -11,11 +13,26 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+type MemoryMetadata struct {
+	exists bool
+	size   int64
+}
+
+func (m MemoryMetadata) Size() int64 {
+	return m.size
+}
+
+func (m MemoryMetadata) Exists() bool {
+	return m.exists
+}
+
 func TestReadOrigin(t *testing.T) {
 	ctx := context.TODO()
 
 	opath := &pluginsIOMock.OutputFilePaths{}
 	opath.OnGetErrorPath().Return("")
+	deckPath := "deck.html"
+	opath.OnGetDeckPath().Return(storage.DataReference(deckPath))
 
 	t.Run("user", func(t *testing.T) {
 		errorDoc := &core.ErrorDocument{
@@ -34,6 +51,10 @@ func TestReadOrigin(t *testing.T) {
 			casted.Error = errorDoc.Error
 		}).Return(nil)
 
+		store.OnHead(ctx, storage.DataReference("deck.html")).Return(MemoryMetadata{
+			exists: true,
+		}, nil)
+
 		r := RemoteFileOutputReader{
 			outPath:        opath,
 			store:          store,
@@ -44,6 +65,9 @@ func TestReadOrigin(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, core.ExecutionError_USER, ee.Kind)
 		assert.False(t, ee.IsRecoverable)
+		exists, err := r.DeckExists(ctx)
+		assert.NoError(t, err)
+		assert.True(t, exists)
 	})
 
 	t.Run("system", func(t *testing.T) {

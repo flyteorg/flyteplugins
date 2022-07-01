@@ -193,7 +193,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	return state, nil
 }
 
-func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state *arrayCore.State, phaseOnSuccess arrayCore.Phase) (*arrayCore.State, error) {
+func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state *arrayCore.State, phaseOnSuccess arrayCore.Phase, versionOnSuccess uint32) (*arrayCore.State, error) {
 
 	// Check that the taskTemplate is valid
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
@@ -205,7 +205,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 
 	if tMeta := taskTemplate.Metadata; tMeta == nil || !tMeta.Discoverable {
 		logger.Debugf(ctx, "Task is not marked as discoverable. Moving to [%v] phase.", phaseOnSuccess)
-		return state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("Task is not discoverable."), nil
+		return state.SetPhase(phaseOnSuccess, versionOnSuccess).SetReason("Task is not discoverable."), nil
 	}
 
 	var inputReaders []io.InputReader
@@ -263,7 +263,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	if len(catalogWriterItems) == 0 {
-		state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("No outputs need to be cached.")
+		state.SetPhase(phaseOnSuccess, versionOnSuccess).SetReason("No outputs need to be cached.")
 		return state, nil
 	}
 
@@ -273,7 +273,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	}
 
 	if allWritten {
-		state.SetPhase(phaseOnSuccess, core.DefaultPhaseVersion).SetReason("Finished writing catalog cache.")
+		state.SetPhase(phaseOnSuccess, versionOnSuccess).SetReason("Finished writing catalog cache.")
 	}
 
 	return state, nil
@@ -488,7 +488,8 @@ func ConstructOutputWriter(ctx context.Context, dataStore *storage.DataStore, ou
 		return nil, err
 	}
 
-	// TODO when we fix https://github.com/flyteorg/flyte/issues/1276 we should make sure that the checkpoint paths are computed correctly
+	// checkpoint paths are not computed here because this function is only called when writing
+	// existing cached outputs. if this functionality changes this will need to be revisited.
 	p := ioutils.NewCheckpointRemoteFilePaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPaths(ctx, outputSandbox), "")
 	return ioutils.NewRemoteFileOutputWriter(ctx, dataStore, p), nil
 }
@@ -523,7 +524,8 @@ func ConstructOutputReader(ctx context.Context, dataStore *storage.DataStore, ou
 		return nil, err
 	}
 
-	// TODO when we fix https://github.com/flyteorg/flyte/issues/1276 we should make so that the checkpoint paths are computed correctly
+	// checkpoint paths are not computed here because this function is only called when writing
+	// existing cached outputs. if this functionality changes this will need to be revisited.
 	outputPath := ioutils.NewCheckpointRemoteFilePaths(ctx, dataStore, dataReference, ioutils.NewRawOutputPaths(ctx, outputSandbox), "")
 	return ioutils.NewRemoteFileOutputReader(ctx, dataStore, outputPath, int64(999999999)), nil
 }
