@@ -11,7 +11,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
-	commonOp "github.com/kubeflow/tf-operator/pkg/apis/common/v1"
+	commonOp "github.com/kubeflow/common/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -31,7 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	tfOp "github.com/kubeflow/tf-operator/pkg/apis/tensorflow/v1"
+	tfOp "github.com/kubeflow/training-operator/pkg/controller.v1/tensorflow"
 )
 
 const testImage = "image://"

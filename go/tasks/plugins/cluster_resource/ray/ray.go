@@ -37,7 +37,7 @@ func validateRayCluster(rayCluster *api.Cluster) error {
 		return fmt.Errorf("empty rayCluster")
 	}
 
-	if rayCluster.ClusterSpec.HeadGroupSpec == nil && rayCluster.ClusterSpec.WorkerGroupSepc == nil {
+	if rayCluster.ClusterSpec.HeadGroupSpec == nil && rayCluster.ClusterSpec.WorkerGroupSpec == nil {
 		return fmt.Errorf("both HeadGroupSpeca and WorkerGroupSpecs must be set")
 	}
 
@@ -80,7 +80,7 @@ func (rayClusterResourceHandler) BuildResource(ctx context.Context, taskCtx plug
 				ServiceType:     headGroupSpec.ServiceType,
 				RayStartParams:  headGroupSpec.RayStartParams,
 			},
-			WorkerGroupSepc: workerGroupSpec,
+			WorkerGroupSpec: workerGroupSpec,
 		},
 	}
 
