@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
 	github.com/aws/aws-sdk-go-v2/service/athena v1.0.0
 	github.com/coocood/freecache v1.1.1
-	github.com/flyteorg/flyteidl v1.0.0
+	github.com/flyteorg/flyteidl v1.1.9-0.20220704184335-8790f3e1e59e
 	github.com/flyteorg/flytestdlib v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/golang/protobuf v1.5.2
@@ -150,7 +150,7 @@ require (
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
 
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.9-0.20220704184335-8790f3e1e59e
+// replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.9-0.20220704184335-8790f3e1e59e
 
 //replace github.com/ray-project/kuberay/apiserver => /Users/kevin/git/kuberay/apiserver
 //
