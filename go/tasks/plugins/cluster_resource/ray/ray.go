@@ -3,10 +3,9 @@ package ray
 import (
 	"context"
 	"fmt"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
-	"github.com/ray-project/kuberay/apiserver/pkg/util"
-	api "github.com/ray-project/kuberay/proto/go_client"
+	v1 "k8s.io/api/core/v1"
+	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -32,18 +31,6 @@ const (
 type rayClusterResourceHandler struct {
 }
 
-func validateRayCluster(rayCluster *api.Cluster) error {
-	if rayCluster == nil {
-		return fmt.Errorf("empty rayCluster")
-	}
-
-	if rayCluster.ClusterSpec.HeadGroupSpec == nil && rayCluster.ClusterSpec.WorkerGroupSpec == nil {
-		return fmt.Errorf("both HeadGroupSpeca and WorkerGroupSpecs must be set")
-	}
-
-	return nil
-}
-
 func (rayClusterResourceHandler) GetProperties() k8s.PluginProperties {
 	return k8s.PluginProperties{}
 }
@@ -58,46 +45,222 @@ func (rayClusterResourceHandler) BuildResource(ctx context.Context, taskCtx plug
 	}
 
 	ray := taskTemplate.Resources[taskTemplate.Id.Name].GetRay()
-	headGroupSpec := ray.ClusterSpec.HeadGroupSpec
-	var workerGroupSpec []*api.WorkerGroupSpec
-	for _, val := range ray.ClusterSpec.WorkerGroupSpec {
-		workerGroupSpec = append(workerGroupSpec, &api.WorkerGroupSpec{
-			GroupName:       val.GroupName,
-			ComputeTemplate: val.ComputeTemplate,
-			Image:           val.Image,
-			Replicas:        val.Replicas,
-			MaxReplicas:     val.MaxReplicas,
-			MinReplicas:     val.MinReplicas,
-			RayStartParams:  val.RayStartParams,
-		})
+	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
+	if err != nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
 
-	rayCluster := &api.Cluster{
-		ClusterSpec: &api.ClusterSpec{
-			HeadGroupSpec: &api.HeadGroupSpec{
-				ComputeTemplate: headGroupSpec.ComputeTemplate,
-				Image:           headGroupSpec.Image,
-				ServiceType:     headGroupSpec.ServiceType,
-				RayStartParams:  headGroupSpec.RayStartParams,
+	headReplicas := int32(1)
+	if ray.ClusterSpec.HeadGroupSpec.RayStartParams == nil {
+		ray.ClusterSpec.HeadGroupSpec.RayStartParams = make(map[string]string)
+	}
+	ray.ClusterSpec.HeadGroupSpec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
+
+	rayCluster := &rayv1alpha1.RayCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ray.Name,
+		},
+		Spec: rayv1alpha1.RayClusterSpec{
+			HeadGroupSpec: rayv1alpha1.HeadGroupSpec{
+				ServiceType:    v1.ServiceType(ray.ClusterSpec.HeadGroupSpec.ServiceType),
+				Template:       buildHeadPodTemplate(podSpec, *ray.ClusterSpec.HeadGroupSpec, ray.Name),
+				Replicas:       &headReplicas,
+				RayStartParams: ray.ClusterSpec.HeadGroupSpec.RayStartParams,
 			},
-			WorkerGroupSpec: workerGroupSpec,
+			WorkerGroupSpecs: []rayv1alpha1.WorkerGroupSpec{},
 		},
 	}
 
-	if err = validateRayCluster(rayCluster); err != nil {
-		return nil, errors.Wrapf(errors.BadTaskSpecification, err, "invalid TaskSpecification [%v].", taskTemplate.Resources)
+	for index, spec := range ray.ClusterSpec.WorkerGroupSpec {
+		workerPodTemplate := buildWorkerPodTemplate(podSpec, ray.ClusterSpec.WorkerGroupSpec[index], ray.Name)
+
+		minReplicas := spec.Replicas
+		maxReplicas := spec.Replicas
+		if spec.MinReplicas != 0 {
+			minReplicas = spec.MinReplicas
+		}
+		if spec.MaxReplicas != 0 {
+			maxReplicas = spec.MaxReplicas
+		}
+
+		if spec.RayStartParams == nil {
+			spec.RayStartParams = make(map[string]string)
+		}
+		spec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
+
+		workerNodeSpec := rayv1alpha1.WorkerGroupSpec{
+			GroupName:      spec.GroupName,
+			MinReplicas:    &minReplicas,
+			MaxReplicas:    &maxReplicas,
+			Replicas:       &spec.Replicas,
+			RayStartParams: spec.RayStartParams,
+			Template:       workerPodTemplate,
+		}
+
+		rayCluster.Spec.WorkerGroupSpecs = append(rayCluster.Spec.WorkerGroupSpecs, workerNodeSpec)
 	}
 
-	// convert *api.Cluster to v1alpha1.RayCluster
-	rayClusterObject := util.NewRayCluster(rayCluster, map[string]*api.ComputeTemplate{})
-
 	serviceAccountName := flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
-	rayClusterObject.Spec.HeadGroupSpec.Template.Spec.ServiceAccountName = serviceAccountName
-	for _, worker := range rayClusterObject.Spec.WorkerGroupSpecs {
+	rayCluster.Spec.HeadGroupSpec.Template.Spec.ServiceAccountName = serviceAccountName
+	for _, worker := range rayCluster.Spec.WorkerGroupSpecs {
 		worker.Template.Spec.ServiceAccountName = serviceAccountName
 	}
 
-	return rayClusterObject, nil
+	return rayCluster, nil
+}
+
+func buildHeadPodTemplate(podSpec *v1.PodSpec, headSpec core.HeadGroupSpec, rayName string) v1.PodTemplateSpec {
+	primaryContainer := &v1.Container{Name: "ray-head", Image: headSpec.Image}
+	primaryContainer.Resources = podSpec.Containers[0].Resources
+	primaryContainer.Env = []v1.EnvVar{
+		{
+			Name: "MY_POD_IP",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		},
+	}
+	primaryContainer.Ports = []v1.ContainerPort{
+		{
+			Name:          "redis",
+			ContainerPort: 6379,
+		},
+		{
+			Name:          "head",
+			ContainerPort: 10001,
+		},
+		{
+			Name:          "dashboard",
+			ContainerPort: 8265,
+		},
+	}
+
+	podTemplateSpec := v1.PodTemplateSpec{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{*primaryContainer},
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{"rayCluster": rayName},
+		},
+	}
+	return podTemplateSpec
+}
+
+func buildWorkerPodTemplate(podSpec *v1.PodSpec, workerSpec *core.WorkerGroupSpec, rayName string) v1.PodTemplateSpec {
+	initContainers := []v1.Container{
+		{
+			Name:  "init-myservice",
+			Image: "busybox:1.28",
+			Command: []string{
+				"sh",
+				"-c",
+				"until nslookup $RAY_IP.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done",
+			},
+			Resources: podSpec.Containers[0].Resources,
+		},
+	}
+
+	primaryContainer := &v1.Container{Name: "ray-worker", Image: workerSpec.Image}
+	primaryContainer.Resources = podSpec.Containers[0].Resources
+	primaryContainer.Env = []v1.EnvVar{
+		{
+			Name:  "RAY_DISABLE_DOCKER_CPU_WRARNING",
+			Value: "1",
+		},
+		{
+			Name:  "TYPE",
+			Value: "worker",
+		},
+		{
+			Name: "CPU_REQUEST",
+			ValueFrom: &v1.EnvVarSource{
+				ResourceFieldRef: &v1.ResourceFieldSelector{
+					ContainerName: "ray-worker",
+					Resource:      "requests.cpu",
+				},
+			},
+		},
+		{
+			Name: "CPU_LIMITS",
+			ValueFrom: &v1.EnvVarSource{
+				ResourceFieldRef: &v1.ResourceFieldSelector{
+					ContainerName: "ray-worker",
+					Resource:      "limits.cpu",
+				},
+			},
+		},
+		{
+			Name: "MEMORY_REQUESTS",
+			ValueFrom: &v1.EnvVarSource{
+				ResourceFieldRef: &v1.ResourceFieldSelector{
+					ContainerName: "ray-worker",
+					Resource:      "requests.cpu",
+				},
+			},
+		},
+		{
+			Name: "MEMORY_LIMITS",
+			ValueFrom: &v1.EnvVarSource{
+				ResourceFieldRef: &v1.ResourceFieldSelector{
+					ContainerName: "ray-worker",
+					Resource:      "limits.cpu",
+				},
+			},
+		},
+		{
+			Name: "MY_POD_NAME",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+		{
+			Name: "MY_POD_IP",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		},
+	}
+	primaryContainer.Lifecycle = &v1.Lifecycle{
+		PreStop: &v1.LifecycleHandler{
+			Exec: &v1.ExecAction{
+				Command: []string{
+					"/bin/sh", "-c", "ray stop",
+				},
+			},
+		},
+	}
+
+	primaryContainer.Ports = []v1.ContainerPort{
+		{
+			Name:          "redis",
+			ContainerPort: 6379,
+		},
+		{
+			Name:          "head",
+			ContainerPort: 10001,
+		},
+		{
+			Name:          "dashboard",
+			ContainerPort: 8265,
+		},
+	}
+
+	podTemplateSpec := v1.PodTemplateSpec{
+		Spec: v1.PodSpec{
+			Containers:     []v1.Container{*primaryContainer},
+			InitContainers: initContainers,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{"rayCluster": rayName},
+		},
+	}
+	return podTemplateSpec
 }
 
 func (rayClusterResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionMetadata) (client.Object, error) {
@@ -152,9 +315,9 @@ func (rayClusterResourceHandler) GetTaskPhase(ctx context.Context, pluginContext
 		reason := fmt.Sprintf("Failed to create Ray cluster: %s", rayCluster.Name)
 		return pluginsCore.PhaseInfoFailure(errors.DownstreamSystemError, reason, info), nil
 	case rayv1alpha1.Ready:
-		return pluginsCore.PhaseInfoSuccess(info), nil
+		return pluginsCore.PhaseInfoClusterRunning(pluginsCore.DefaultPhaseVersion, info), nil
 	}
-	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
+	return pluginsCore.PhaseInfoNotReady(time.Now(), pluginsCore.DefaultPhaseVersion, "job submitted"), nil
 }
 
 func init() {
@@ -162,7 +325,7 @@ func init() {
 		panic(err)
 	}
 
-	pluginmachinery.PluginRegistry().RegisterK8sPlugin(
+	pluginmachinery.PluginRegistry().RegisterClusterResourcePlugin(
 		k8s.PluginEntry{
 			ID:                  rayTaskType,
 			RegisteredTaskTypes: []pluginsCore.TaskType{rayTaskType},
