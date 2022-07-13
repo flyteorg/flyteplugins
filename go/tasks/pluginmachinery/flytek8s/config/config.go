@@ -94,6 +94,11 @@ type K8sPluginConfig struct {
 	// Default Affinity that is applied to every pod that Flyte launches
 	DefaultAffinity *v1.Affinity `json:"default-affinity,omitempty" pflag:"-,Defines default Affinity to be added for every Pod launched by Flyte. Useful in non dedicated Flyte clusters"`
 
+	// Default Volumes that are applied to every pod that Flyte launches
+	DefaultVolumes *[]v1.Volume `json:"default-volumes,omitempty" pflag:"-,Defines default Volumes to be added for every Pod launched by Flyte. Useful in non dedicated Flyte clusters"`
+	// Default VolumeMounts that are applied to every container that Flyte launches
+	DefaultVolumeMounts []v1.VolumeMount `json:"default-volume-mounts,omitempty" pflag:"-,Defines default VolumeMounts to be added for every Container launched by Flyte. Useful in non dedicated Flyte clusters"`
+
 	// Default scheduler that should be used for all pods or CRD that accept Scheduler name.
 	SchedulerName string `json:"scheduler-name" pflag:",Defines scheduler name."`
 

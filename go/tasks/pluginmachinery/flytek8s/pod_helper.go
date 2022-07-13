@@ -91,6 +91,9 @@ func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 	if podSpec.DNSConfig == nil && config.GetK8sPluginConfig().DefaultPodDNSConfig != nil {
 		podSpec.DNSConfig = config.GetK8sPluginConfig().DefaultPodDNSConfig.DeepCopy()
 	}
+	if podSpec.Volumes == nil && config.GetK8sPluginConfig().DefaultVolumes != nil {
+		podSpec.Volumes = *config.GetK8sPluginConfig().DefaultVolumes
+	}
 	ApplyInterruptibleNodeAffinity(taskExecutionMetadata.IsInterruptible(), podSpec)
 }
 

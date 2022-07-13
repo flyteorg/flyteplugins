@@ -223,6 +223,9 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 	if container.SecurityContext == nil && config.GetK8sPluginConfig().DefaultSecurityContext != nil {
 		container.SecurityContext = config.GetK8sPluginConfig().DefaultSecurityContext.DeepCopy()
 	}
+	if container.VolumeMounts == nil && config.GetK8sPluginConfig().DefaultVolumeMounts != nil {
+		container.VolumeMounts = config.GetK8sPluginConfig().DefaultVolumeMounts
+	}
 	return container, nil
 }
 
