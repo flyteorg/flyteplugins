@@ -1,40 +1,27 @@
-package tensorflow
+package ray
 
 import (
 	"context"
-	"fmt"
-	"testing"
-	"time"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/logs"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
-	commonOp "github.com/kubeflow/common/pkg/apis/common/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-
-	"github.com/stretchr/testify/mock"
-
-	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
-
-	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
+	commonOp "github.com/kubeflow/common/pkg/apis/common/v1"
 	kubeflowv1 "github.com/kubeflow/training-operator/pkg/apis/kubeflow.org/v1"
-	"github.com/stretchr/testify/assert"
+	rayv1alpha1 "github.com/ray-project/kuberay/ray-operator/apis/ray/v1alpha1"
+	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
 
 const testImage = "image://"
-const serviceAccount = "tensorflow_sa"
+const serviceAccount = "ray_sa"
 
 var (
 	dummyEnvVars = []*core.KeyValuePair{
@@ -57,29 +44,28 @@ var (
 			flytek8s.ResourceNvidiaGPU: resource.MustParse("1"),
 		},
 	}
-
-	jobName      = "the-job"
-	jobNamespace = "tensorflow-namespace"
 )
 
-func dummyTensorFlowCustomObj(workers int32, psReplicas int32, chiefReplicas int32) *plugins.DistributedTensorflowTrainingTask {
-	return &plugins.DistributedTensorflowTrainingTask{
-		Workers:       workers,
-		PsReplicas:    psReplicas,
-		ChiefReplicas: chiefReplicas,
+func dummyRayCustomObj() *core.RayCluster {
+	return &core.RayCluster{
+		Name: "testRayCluster",
+		ClusterSpec: &core.ClusterSpec{
+			HeadGroupSpec:   &core.HeadGroupSpec{Image: "rayproject/ray:1.8.0", ServiceType: "NodePort"},
+			WorkerGroupSpec: []*core.WorkerGroupSpec{{GroupName: "test-group", Replicas: 3}},
+		},
 	}
 }
 
-func dummySparkTaskTemplate(id string, tensorflowCustomObj *plugins.DistributedTensorflowTrainingTask) *core.TaskTemplate {
+func dummyTaskTemplate(id string, rayCustomObj *core.RayCluster) *core.TaskTemplate {
 
-	tfObjJSON, err := utils.MarshalToString(tensorflowCustomObj)
+	rayObjJSON, err := utils.MarshalToString(rayCustomObj)
 	if err != nil {
 		panic(err)
 	}
 
 	structObj := structpb.Struct{}
 
-	err = jsonpb.UnmarshalString(tfObjJSON, &structObj)
+	err = jsonpb.UnmarshalString(rayObjJSON, &structObj)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +84,7 @@ func dummySparkTaskTemplate(id string, tensorflowCustomObj *plugins.DistributedT
 	}
 }
 
-func dummyTensorFlowTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecutionContext {
+func dummyRayTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 	inputReader := &pluginIOMocks.InputReader{}
 	inputReader.OnGetInputPrefixPath().Return("/input/prefix")
@@ -150,8 +136,8 @@ func dummyTensorFlowTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.Tas
 	return taskCtx
 }
 
-func dummyTensorFlowJobResource(tensorflowResourceHandler tensorflowOperatorResourceHandler,
-	workers int32, psReplicas int32, chiefReplicas int32, conditionType commonOp.JobConditionType) *kubeflowv1.TFJob {
+func dummyRayJobResource(rayResourceHandler rayClusterResourceHandler,
+	workers int32, psReplicas int32, chiefReplicas int32, conditionType commonOp.JobConditionType) *rayv1alpha1.RayCluster {
 	var jobConditions []commonOp.JobCondition
 
 	now := time.Now()
@@ -250,9 +236,9 @@ func dummyTensorFlowJobResource(tensorflowResourceHandler tensorflowOperatorReso
 		}
 	}
 
-	tfObj := dummyTensorFlowCustomObj(workers, psReplicas, chiefReplicas)
-	taskTemplate := dummySparkTaskTemplate("the job", tfObj)
-	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
+	rayObj := dummyRayCustomObj()
+	taskTemplate := dummyTaskTemplate("the job", rayObj)
+	rayResource, err := rayResourceHandler.BuildResource(context.TODO(), dummyRayTaskContext(taskTemplate))
 	if err != nil {
 		panic(err)
 	}
@@ -271,103 +257,4 @@ func dummyTensorFlowJobResource(tensorflowResourceHandler tensorflowOperatorReso
 			LastReconcileTime: nil,
 		},
 	}
-}
-
-func TestBuildResourceTensorFlow(t *testing.T) {
-	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
-
-	tfObj := dummyTensorFlowCustomObj(100, 50, 1)
-	taskTemplate := dummySparkTaskTemplate("the job", tfObj)
-
-	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
-	assert.NoError(t, err)
-	assert.NotNil(t, resource)
-
-	tensorflowJob, ok := resource.(*kubeflowv1.TFJob)
-	assert.True(t, ok)
-	assert.Equal(t, int32(100), *tensorflowJob.Spec.TFReplicaSpecs[kubeflowv1.TFJobReplicaTypeWorker].Replicas)
-	assert.Equal(t, int32(50), *tensorflowJob.Spec.TFReplicaSpecs[kubeflowv1.TFJobReplicaTypePS].Replicas)
-	assert.Equal(t, int32(1), *tensorflowJob.Spec.TFReplicaSpecs[kubeflowv1.TFJobReplicaTypeChief].Replicas)
-
-	for _, replicaSpec := range tensorflowJob.Spec.TFReplicaSpecs {
-		var hasContainerWithDefaultTensorFlowName = false
-
-		for _, container := range replicaSpec.Template.Spec.Containers {
-			if container.Name == kubeflowv1.TFJobDefaultContainerName {
-				hasContainerWithDefaultTensorFlowName = true
-			}
-
-			assert.Equal(t, resourceRequirements.Requests, container.Resources.Requests)
-			assert.Equal(t, resourceRequirements.Limits, container.Resources.Limits)
-		}
-
-		assert.True(t, hasContainerWithDefaultTensorFlowName)
-	}
-}
-
-func TestGetTaskPhase(t *testing.T) {
-	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
-	ctx := context.TODO()
-
-	dummyTensorFlowJobResourceCreator := func(conditionType commonOp.JobConditionType) *kubeflowv1.TFJob {
-		return dummyTensorFlowJobResource(tensorflowResourceHandler, 2, 1, 1, conditionType)
-	}
-
-	taskPhase, err := tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobCreated))
-	assert.NoError(t, err)
-	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
-	assert.NotNil(t, taskPhase.Info())
-	assert.Nil(t, err)
-
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobRunning))
-	assert.NoError(t, err)
-	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
-	assert.NotNil(t, taskPhase.Info())
-	assert.Nil(t, err)
-
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobSucceeded))
-	assert.NoError(t, err)
-	assert.Equal(t, pluginsCore.PhaseSuccess, taskPhase.Phase())
-	assert.NotNil(t, taskPhase.Info())
-	assert.Nil(t, err)
-
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobFailed))
-	assert.NoError(t, err)
-	assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskPhase.Phase())
-	assert.NotNil(t, taskPhase.Info())
-	assert.Nil(t, err)
-
-	taskPhase, err = tensorflowResourceHandler.GetTaskPhase(ctx, nil, dummyTensorFlowJobResourceCreator(commonOp.JobRestarting))
-	assert.NoError(t, err)
-	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
-	assert.NotNil(t, taskPhase.Info())
-	assert.Nil(t, err)
-}
-
-func TestGetLogs(t *testing.T) {
-	assert.NoError(t, logs.SetLogConfig(&logs.LogConfig{
-		IsKubernetesEnabled: true,
-		KubernetesURL:       "k8s.com",
-	}))
-
-	workers := int32(2)
-	psReplicas := int32(1)
-	chiefReplicas := int32(1)
-
-	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
-	tensorFlowJob := dummyTensorFlowJobResource(tensorflowResourceHandler, workers, psReplicas, chiefReplicas, commonOp.JobRunning)
-	jobLogs, err := common.GetLogs(common.TensorflowTaskType, tensorFlowJob.Name, tensorFlowJob.Namespace,
-		workers, psReplicas, chiefReplicas)
-	assert.NoError(t, err)
-	assert.Equal(t, 4, len(jobLogs))
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=tensorflow-namespace", jobNamespace, jobName), jobLogs[0].Uri)
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-1/pod?namespace=tensorflow-namespace", jobNamespace, jobName), jobLogs[1].Uri)
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-psReplica-0/pod?namespace=tensorflow-namespace", jobNamespace, jobName), jobLogs[2].Uri)
-	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-chiefReplica-0/pod?namespace=tensorflow-namespace", jobNamespace, jobName), jobLogs[3].Uri)
-}
-
-func TestGetProperties(t *testing.T) {
-	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
-	expected := k8s.PluginProperties{}
-	assert.Equal(t, expected, tensorflowResourceHandler.GetProperties())
 }

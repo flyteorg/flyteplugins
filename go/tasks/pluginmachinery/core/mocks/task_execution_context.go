@@ -322,6 +322,74 @@ func (_m *TaskExecutionContext) ResourceManager() core.ResourceManager {
 	return r0
 }
 
+type TaskExecutionContext_ResourcePluginStateReader struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionContext_ResourcePluginStateReader) Return(_a0 core.PluginStateReader) *TaskExecutionContext_ResourcePluginStateReader {
+	return &TaskExecutionContext_ResourcePluginStateReader{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionContext) OnResourcePluginStateReader() *TaskExecutionContext_ResourcePluginStateReader {
+	c_call := _m.On("ResourcePluginStateReader")
+	return &TaskExecutionContext_ResourcePluginStateReader{Call: c_call}
+}
+
+func (_m *TaskExecutionContext) OnResourcePluginStateReaderMatch(matchers ...interface{}) *TaskExecutionContext_ResourcePluginStateReader {
+	c_call := _m.On("ResourcePluginStateReader", matchers...)
+	return &TaskExecutionContext_ResourcePluginStateReader{Call: c_call}
+}
+
+// ResourcePluginStateReader provides a mock function with given fields:
+func (_m *TaskExecutionContext) ResourcePluginStateReader() core.PluginStateReader {
+	ret := _m.Called()
+
+	var r0 core.PluginStateReader
+	if rf, ok := ret.Get(0).(func() core.PluginStateReader); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.PluginStateReader)
+		}
+	}
+
+	return r0
+}
+
+type TaskExecutionContext_ResourcePluginStateWriter struct {
+	*mock.Call
+}
+
+func (_m TaskExecutionContext_ResourcePluginStateWriter) Return(_a0 core.PluginStateWriter) *TaskExecutionContext_ResourcePluginStateWriter {
+	return &TaskExecutionContext_ResourcePluginStateWriter{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *TaskExecutionContext) OnResourcePluginStateWriter() *TaskExecutionContext_ResourcePluginStateWriter {
+	c_call := _m.On("ResourcePluginStateWriter")
+	return &TaskExecutionContext_ResourcePluginStateWriter{Call: c_call}
+}
+
+func (_m *TaskExecutionContext) OnResourcePluginStateWriterMatch(matchers ...interface{}) *TaskExecutionContext_ResourcePluginStateWriter {
+	c_call := _m.On("ResourcePluginStateWriter", matchers...)
+	return &TaskExecutionContext_ResourcePluginStateWriter{Call: c_call}
+}
+
+// ResourcePluginStateWriter provides a mock function with given fields:
+func (_m *TaskExecutionContext) ResourcePluginStateWriter() core.PluginStateWriter {
+	ret := _m.Called()
+
+	var r0 core.PluginStateWriter
+	if rf, ok := ret.Get(0).(func() core.PluginStateWriter); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(core.PluginStateWriter)
+		}
+	}
+
+	return r0
+}
+
 type TaskExecutionContext_SecretManager struct {
 	*mock.Call
 }

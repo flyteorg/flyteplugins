@@ -43,6 +43,8 @@ type TaskExecutionContext interface {
 	// Returns a reader that retrieves previously stored plugin internal state. the state itself is immutable
 	PluginStateReader() PluginStateReader
 
+	ResourcePluginStateReader() PluginStateReader
+
 	// Returns a TaskReader, to retrieve task details
 	TaskReader() TaskReader
 
@@ -58,6 +60,8 @@ type TaskExecutionContext interface {
 	// Get a handle to the PluginStateWriter. Any mutations to the plugins internal state can be persisted using this
 	// These mutation will be visible in the next round
 	PluginStateWriter() PluginStateWriter
+
+	ResourcePluginStateWriter() PluginStateWriter
 
 	// Get a handle to catalog client
 	Catalog() catalog.AsyncClient
