@@ -3,9 +3,10 @@ package ray
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	v1 "k8s.io/api/core/v1"
-	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -102,8 +103,8 @@ func (rayClusterResourceHandler) BuildResource(ctx context.Context, taskCtx plug
 
 	serviceAccountName := flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 	rayCluster.Spec.HeadGroupSpec.Template.Spec.ServiceAccountName = serviceAccountName
-	for _, worker := range rayCluster.Spec.WorkerGroupSpecs {
-		worker.Template.Spec.ServiceAccountName = serviceAccountName
+	for index, _ := range rayCluster.Spec.WorkerGroupSpecs {
+		rayCluster.Spec.WorkerGroupSpecs[index].Template.Spec.ServiceAccountName = serviceAccountName
 	}
 
 	return rayCluster, nil
