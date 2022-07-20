@@ -51,10 +51,10 @@ var (
 
 func dummyRayCustomObj() *core.RayCluster {
 	return &core.RayCluster{
-		Name: "testRayCluster",
+		Name: clusterName,
 		ClusterSpec: &core.ClusterSpec{
-			HeadGroupSpec:   &core.HeadGroupSpec{Image: "rayproject/ray:1.8.0", ServiceType: "NodePort"},
-			WorkerGroupSpec: []*core.WorkerGroupSpec{{GroupName: "test-group", Replicas: 3}},
+			HeadGroupSpec:   &core.HeadGroupSpec{Image: rayImage, ServiceType: "ClusterIP"},
+			WorkerGroupSpec: []*core.WorkerGroupSpec{{Image: rayImage, GroupName: workerGroupName, Replicas: 3}},
 		},
 	}
 }
@@ -70,13 +70,7 @@ func dummyRayTaskTemplate(id string) *core.TaskTemplate {
 				Env:   dummyEnvVars,
 			},
 		},
-		Resources: map[string]*core.Resource{id: {Value: &core.Resource_Ray{Ray: &core.RayCluster{
-			Name: clusterName,
-			ClusterSpec: &core.ClusterSpec{
-				HeadGroupSpec:   &core.HeadGroupSpec{Image: rayImage, ServiceType: "ClusterIP"},
-				WorkerGroupSpec: []*core.WorkerGroupSpec{{Image: rayImage, GroupName: workerGroupName, Replicas: 3}},
-			},
-		}}}},
+		Resources: map[string]*core.Resource{id: {Value: &core.Resource_Ray{Ray: dummyRayCustomObj()}}},
 	}
 }
 
