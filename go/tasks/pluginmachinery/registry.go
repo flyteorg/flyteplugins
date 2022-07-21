@@ -14,10 +14,9 @@ import (
 )
 
 type taskPluginRegistry struct {
-	m                     sync.Mutex
-	k8sPlugin             []k8s.PluginEntry
-	clusterResourcePlugin []k8s.PluginEntry
-	corePlugin            []core.PluginEntry
+	m          sync.Mutex
+	k8sPlugin  []k8s.PluginEntry
+	corePlugin []core.PluginEntry
 }
 
 // A singleton variable that maintains a registry of all plugins. The framework uses this to access all plugins
@@ -73,29 +72,6 @@ func (p *taskPluginRegistry) RegisterK8sPlugin(info k8s.PluginEntry) {
 	p.k8sPlugin = append(p.k8sPlugin, info)
 }
 
-// Use this method to register Kubernetes cluster resource Plugins
-func (p *taskPluginRegistry) RegisterClusterResourcePlugin(info k8s.PluginEntry) {
-	if info.ID == "" {
-		logger.Panicf(context.TODO(), "ID is required attribute for k8s plugin")
-	}
-
-	if len(info.RegisteredTaskTypes) == 0 {
-		logger.Panicf(context.TODO(), "K8s AsyncPlugin should be registered to handle atleast one task type")
-	}
-
-	if info.Plugin == nil {
-		logger.Panicf(context.TODO(), "K8s AsyncPlugin cannot be nil")
-	}
-
-	if info.ResourceToWatch == nil {
-		logger.Panicf(context.TODO(), "The framework requires a K8s resource to watch, for valid plugin registration")
-	}
-
-	p.m.Lock()
-	defer p.m.Unlock()
-	p.clusterResourcePlugin = append(p.clusterResourcePlugin, info)
-}
-
 // Use this method to register core plugins
 func (p *taskPluginRegistry) RegisterCorePlugin(info core.PluginEntry) {
 	if info.ID == "" {
@@ -127,19 +103,10 @@ func (p *taskPluginRegistry) GetK8sPlugins() []k8s.PluginEntry {
 	return append(p.k8sPlugin[:0:0], p.k8sPlugin...)
 }
 
-// Returns a snapshot of all registered K8s plugins
-func (p *taskPluginRegistry) GetClusterResourcePlugins() []k8s.PluginEntry {
-	p.m.Lock()
-	defer p.m.Unlock()
-	return append(p.clusterResourcePlugin[:0:0], p.clusterResourcePlugin...)
-}
-
 type TaskPluginRegistry interface {
 	RegisterK8sPlugin(info k8s.PluginEntry)
-	RegisterClusterResourcePlugin(info k8s.PluginEntry)
 	RegisterCorePlugin(info core.PluginEntry)
 	RegisterRemotePlugin(info webapi.PluginEntry)
 	GetCorePlugins() []core.PluginEntry
 	GetK8sPlugins() []k8s.PluginEntry
-	GetClusterResourcePlugins() []k8s.PluginEntry
 }
