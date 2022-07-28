@@ -114,6 +114,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		RayClusterSpec:           rayClusterSpec,
 		Entrypoint:               strings.Join(podSpec.Containers[0].Args, " "),
 		ShutdownAfterJobFinishes: true,
+		TTLSecondsAfterFinished:  &rayJob.TtlSecondsAfterFinished,
 		RuntimeEnv:               rayJob.RuntimeEnv,
 	}
 
