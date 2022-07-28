@@ -26,7 +26,6 @@ require (
 	github.com/ray-project/kuberay/ray-operator v0.0.0-20220721051531-26167469bb8f
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.2
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	google.golang.org/api v0.43.0
@@ -134,4 +133,4 @@ require (
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
 
-replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.9-0.20220704184335-8790f3e1e59e
+replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.1.10-0.20220728005909-ab656cdcaab4

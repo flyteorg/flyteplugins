@@ -4,7 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/golang/protobuf/jsonpb"
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -14,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
-	k8sV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -44,22 +48,34 @@ var (
 		},
 	}
 
-	clusterName     = "testRayCluster"
-	rayImage        = "rayproject/ray:1.8.0"
 	workerGroupName = "worker-group"
 )
 
-func dummyRayCustomObj() *core.RayCluster {
-	return &core.RayCluster{
-		Name: clusterName,
-		ClusterSpec: &core.ClusterSpec{
-			HeadGroupSpec:   &core.HeadGroupSpec{Image: rayImage, ServiceType: "ClusterIP"},
-			WorkerGroupSpec: []*core.WorkerGroupSpec{{Image: rayImage, GroupName: workerGroupName, Replicas: 3}},
+func dummyRayCustomObj() *plugins.RayJob {
+	return &plugins.RayJob{
+		RayCluster: &plugins.RayCluster{
+			ClusterSpec: &plugins.ClusterSpec{
+				HeadGroupSpec:   &plugins.HeadGroupSpec{RayStartParams: map[string]string{"num-cpus": "1"}},
+				WorkerGroupSpec: []*plugins.WorkerGroupSpec{{GroupName: workerGroupName, Replicas: 3}},
+			},
 		},
 	}
 }
 
-func dummyRayTaskTemplate(id string) *core.TaskTemplate {
+func dummyRayTaskTemplate(id string, rayJobObj *plugins.RayJob) *core.TaskTemplate {
+
+	ptObjJSON, err := utils.MarshalToString(rayJobObj)
+	if err != nil {
+		panic(err)
+	}
+
+	structObj := structpb.Struct{}
+
+	err = jsonpb.UnmarshalString(ptObjJSON, &structObj)
+	if err != nil {
+		panic(err)
+	}
+
 	return &core.TaskTemplate{
 		Id:   &core.Identifier{Name: id},
 		Type: "container",
@@ -70,7 +86,7 @@ func dummyRayTaskTemplate(id string) *core.TaskTemplate {
 				Env:   dummyEnvVars,
 			},
 		},
-		Resources: map[string]*core.Resource{id: {Value: &core.Resource_Ray{Ray: dummyRayCustomObj()}}},
+		Custom: &structObj,
 	}
 }
 
@@ -128,34 +144,33 @@ func dummyRayTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecut
 }
 
 func TestBuildResourceRay(t *testing.T) {
-	rayResourceHandler := rayClusterResourceHandler{}
-	taskTemplate := dummyRayTaskTemplate("ray-id")
+	rayJobResourceHandler := rayJobResourceHandler{}
+	taskTemplate := dummyRayTaskTemplate("ray-id", dummyRayCustomObj())
 
-	RayResource, err := rayResourceHandler.BuildResource(context.TODO(), dummyRayTaskContext(taskTemplate))
+	RayResource, err := rayJobResourceHandler.BuildResource(context.TODO(), dummyRayTaskContext(taskTemplate))
 	assert.Nil(t, err)
 
 	assert.NotNil(t, RayResource)
-	ray, ok := RayResource.(*rayv1alpha1.RayCluster)
+	ray, ok := RayResource.(*rayv1alpha1.RayJob)
 	assert.True(t, ok)
-	assert.Equal(t, ray.Name, clusterName)
 
 	headReplica := int32(1)
-	assert.Equal(t, ray.Spec.HeadGroupSpec.Replicas, &headReplica)
-	assert.Equal(t, ray.Spec.HeadGroupSpec.ServiceType, k8sV1.ServiceType("ClusterIP"))
-	assert.Equal(t, ray.Spec.HeadGroupSpec.Template.Spec.ServiceAccountName, serviceAccount)
-	assert.Equal(t, ray.Spec.HeadGroupSpec.RayStartParams, map[string]string{"node-ip-address": "$MY_POD_IP"})
+	assert.Equal(t, ray.Spec.RayClusterSpec.HeadGroupSpec.Replicas, &headReplica)
+	assert.Equal(t, ray.Spec.RayClusterSpec.HeadGroupSpec.Template.Spec.ServiceAccountName, serviceAccount)
+	assert.Equal(t, ray.Spec.RayClusterSpec.HeadGroupSpec.RayStartParams,
+		map[string]string{"dashboard-host": "0.0.0.0", "node-ip-address": "$MY_POD_IP", "num-cpus": "1"})
 
 	workerReplica := int32(3)
-	assert.Equal(t, ray.Spec.WorkerGroupSpecs[0].Replicas, &workerReplica)
-	assert.Equal(t, ray.Spec.WorkerGroupSpecs[0].MinReplicas, &workerReplica)
-	assert.Equal(t, ray.Spec.WorkerGroupSpecs[0].MaxReplicas, &workerReplica)
-	assert.Equal(t, ray.Spec.WorkerGroupSpecs[0].GroupName, workerGroupName)
-	assert.Equal(t, ray.Spec.WorkerGroupSpecs[0].Template.Spec.ServiceAccountName, serviceAccount)
-	assert.Equal(t, ray.Spec.WorkerGroupSpecs[0].RayStartParams, map[string]string{"node-ip-address": "$MY_POD_IP"})
+	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].Replicas, &workerReplica)
+	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].MinReplicas, &workerReplica)
+	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].MaxReplicas, &workerReplica)
+	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].GroupName, workerGroupName)
+	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].Template.Spec.ServiceAccountName, serviceAccount)
+	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].RayStartParams, map[string]string{"node-ip-address": "$MY_POD_IP"})
 }
 
 func TestGetPropertiesRay(t *testing.T) {
-	rayResourceHandler := rayClusterResourceHandler{}
+	rayJobResourceHandler := rayJobResourceHandler{}
 	expected := k8s.PluginProperties{}
-	assert.Equal(t, expected, rayResourceHandler.GetProperties())
+	assert.Equal(t, expected, rayJobResourceHandler.GetProperties())
 }

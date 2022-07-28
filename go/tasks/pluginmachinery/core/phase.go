@@ -25,8 +25,6 @@ const (
 	PhaseQueued
 	// The system has started the pre-execution process, like container download, cluster startup etc
 	PhaseInitializing
-	// Indicates that the cluster has started executing
-	PhaseClusterRunning
 	// Indicates that the task has started executing
 	PhaseRunning
 	// Indicates that the task has completed successfully
@@ -45,7 +43,6 @@ var Phases = []Phase{
 	PhaseWaitingForResources,
 	PhaseQueued,
 	PhaseInitializing,
-	PhaseClusterRunning,
 	PhaseRunning,
 	PhaseSuccess,
 	PhaseRetryableFailure,
@@ -213,10 +210,6 @@ func PhaseInfoFailed(p Phase, err *core.ExecutionError, info *TaskInfo) PhaseInf
 		}
 	}
 	return phaseInfo(p, DefaultPhaseVersion, err, info)
-}
-
-func PhaseInfoClusterRunning(version uint32, info *TaskInfo) PhaseInfo {
-	return phaseInfo(PhaseClusterRunning, version, nil, info)
 }
 
 func PhaseInfoRunning(version uint32, info *TaskInfo) PhaseInfo {
