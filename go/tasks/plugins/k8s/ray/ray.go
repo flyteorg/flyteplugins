@@ -26,9 +26,8 @@ import (
 )
 
 const (
-	rayTaskType    = "ray"
-	rayClusterName = "rayClusterName"
-	KindRayJob     = "RayJob"
+	rayTaskType = "ray"
+	KindRayJob  = "RayJob"
 )
 
 type rayJobResourceHandler struct {
@@ -49,6 +48,9 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 
 	rayJob := plugins.RayJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &rayJob)
+	if err != nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
+	}
 
 	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
@@ -103,7 +105,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	serviceAccountName := flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	rayClusterSpec.HeadGroupSpec.Template.Spec.ServiceAccountName = serviceAccountName
-	for index, _ := range rayClusterSpec.WorkerGroupSpecs {
+	for index := range rayClusterSpec.WorkerGroupSpecs {
 		rayClusterSpec.WorkerGroupSpecs[index].Template.Spec.ServiceAccountName = serviceAccountName
 	}
 
