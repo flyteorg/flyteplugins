@@ -136,16 +136,8 @@ func buildHeadPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
 	primaryContainer.Resources = podSpec.Containers[0].Resources
 	primaryContainer.Env = []v1.EnvVar{
 		{
-			Name: "MY_POD_IP",
-			ValueFrom: &v1.EnvVarSource{
-				FieldRef: &v1.ObjectFieldSelector{
-					FieldPath: "status.podIP",
-				},
-			},
-		},
-		{
-			Name:  "RAY_LOG_TO_STDERR",
-			Value: "1",
+			Name:  "MY_POD_IP",
+			Value: "0.0.0.0",
 		},
 	}
 	primaryContainer.Env = append(primaryContainer.Env, podSpec.Containers[0].Env...)
@@ -198,10 +190,6 @@ func buildWorkerPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
 		{
 			Name:  "TYPE",
 			Value: "worker",
-		},
-		{
-			Name:  "RAY_LOG_TO_STDERR",
-			Value: "1",
 		},
 		{
 			Name: "CPU_REQUEST",
