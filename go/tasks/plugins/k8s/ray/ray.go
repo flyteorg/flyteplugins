@@ -61,6 +61,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	if rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams == nil {
 		rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams = make(map[string]string)
 	}
+	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["include-dashboard"] = "True"
 	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
 	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["dashboard-host"] = "0.0.0.0"
 
