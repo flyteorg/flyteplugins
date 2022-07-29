@@ -31,6 +31,14 @@ type sidecarJob struct {
 type sidecarPodBuilder struct {
 }
 
+func (sidecarPodBuilder) getPrimaryContainerName(taskCtx pluginsCore.TaskExecutionContext) (string, error) {
+	primaryContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	if primaryContainerName == "" {
+		return "", errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification, missing generated name")
+	}
+	return primaryContainerName, nil
+}
+
 func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
 	var podSpec v1.PodSpec
 	switch task.TaskTypeVersion {

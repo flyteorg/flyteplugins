@@ -135,7 +135,12 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec) (*v1.Pod, error) {
+func PrimaryContainerNameMatches(containerName string, templateContainername string, primaryContainerName string) bool {
+	// give default a real value later
+	return ((containerName == primaryContainerName) && templateContainername == "default") || (containerName == templateContainername)
+}
+
+func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
 	pod := v1.Pod{
 		TypeMeta: v12.TypeMeta{
 			Kind:       PodKind,
@@ -150,7 +155,20 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec) (*v1.Pod
 			return nil, err
 		}
 
-		basePodSpec.Containers = podSpec.Containers
+		var toAppend []v1.Container
+		for _, container := range podSpec.Containers {
+			for _, templateContainer := range basePodSpec.Containers {
+				if PrimaryContainerNameMatches(container.Name, templateContainer.Name, primaryContainerName) {
+					err := mergo.Merge(templateContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					toAppend = append(toAppend, container)
+				}
+			}
+		}
+		basePodSpec.Containers = append(basePodSpec.Containers, toAppend[:]...)
 
 		pod.ObjectMeta = podTemplate.Template.ObjectMeta
 		pod.Spec = *basePodSpec
