@@ -61,14 +61,16 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	if rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams == nil {
 		rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams = make(map[string]string)
 	}
-	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["include-dashboard"] = "True"
+	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["include-dashboard"] = "true"
 	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
 	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["dashboard-host"] = "0.0.0.0"
 
+	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
 		HeadGroupSpec: rayv1alpha1.HeadGroupSpec{
 			Template:       buildHeadPodTemplate(podSpec),
 			Replicas:       &headReplicas,
+			EnableIngress:  &enableIngress,
 			RayStartParams: rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams,
 		},
 		WorkerGroupSpecs: []rayv1alpha1.WorkerGroupSpec{},
@@ -136,8 +138,12 @@ func buildHeadPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
 	primaryContainer.Resources = podSpec.Containers[0].Resources
 	primaryContainer.Env = []v1.EnvVar{
 		{
-			Name:  "MY_POD_IP",
-			Value: "0.0.0.0",
+			Name: "MY_POD_IP",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
 		},
 	}
 	primaryContainer.Env = append(primaryContainer.Env, podSpec.Containers[0].Env...)
