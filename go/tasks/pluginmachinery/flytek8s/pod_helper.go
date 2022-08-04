@@ -135,12 +135,20 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-func PrimaryContainerNameMatches(containerName string, templateContainername string, primaryContainerName string) bool {
+// TODO context just for debugging
+func PrimaryContainerNameMatches(ctx context.Context, containerName string, templateContainerName string, primaryContainerName string) bool {
 	// give default a real value later
-	return ((containerName == primaryContainerName) && templateContainername == "default") || (containerName == templateContainername)
+	logger.Infof(ctx, "containerName: %v\n", containerName)
+	logger.Infof(ctx, "templateContainername: %v\n", templateContainerName)
+	logger.Infof(ctx, "primaryContainerName: %v\n", templateContainerName)
+	debugresult := ((containerName == primaryContainerName) && templateContainerName == "default") || (containerName == templateContainerName)
+	logger.Infof(ctx, "debugresult: %v\n", debugresult)
+	return ((containerName == primaryContainerName) && templateContainerName == "default") || (containerName == templateContainerName)
 }
 
-func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
+// TODO context just for debugging
+func BuildPodWithSpec(ctx context.Context, podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
+	logger.Info(ctx, "Building pod with spec")
 	pod := v1.Pod{
 		TypeMeta: v12.TypeMeta{
 			Kind:       PodKind,
@@ -148,7 +156,9 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 		},
 	}
 
+	logger.Info(ctx, "Checking if pod template is null")
 	if podTemplate != nil {
+		logger.Info(ctx, "Pod template isn't null")
 		basePodSpec := podTemplate.Template.Spec.DeepCopy()
 		err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 		if err != nil {
@@ -158,17 +168,25 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 		var toAppend []v1.Container
 		for _, container := range podSpec.Containers {
 			for _, templateContainer := range basePodSpec.Containers {
-				if PrimaryContainerNameMatches(container.Name, templateContainer.Name, primaryContainerName) {
-					err := mergo.Merge(templateContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
+				if PrimaryContainerNameMatches(ctx, container.Name, templateContainer.Name, primaryContainerName) {
+					logger.Info(ctx, "primary container name matches")
+					logger.Infof(ctx, "Premerge template: %v", templateContainer)
+					logger.Infof(ctx, "Premerge container: %v", container)
+					newContainer := templateContainer.DeepCopy()
+					err := mergo.Merge(newContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
 					if err != nil {
 						return nil, err
 					}
+					logger.Infof(ctx, "Postmerge container: %v", newContainer)
+					toAppend = append(toAppend, *newContainer)
 				} else {
 					toAppend = append(toAppend, container)
+					logger.Infof(ctx, "Appending container: %v", container)
 				}
 			}
 		}
 		basePodSpec.Containers = append(basePodSpec.Containers, toAppend[:]...)
+		logger.Infof(ctx, "Postmerge basePodSpec.Containers: %v", basePodSpec.Containers)
 
 		pod.ObjectMeta = podTemplate.Template.ObjectMeta
 		pod.Spec = *basePodSpec
