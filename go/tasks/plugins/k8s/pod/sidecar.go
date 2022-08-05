@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -32,11 +33,7 @@ type sidecarPodBuilder struct {
 }
 
 func (sidecarPodBuilder) getPrimaryContainerName(taskCtx pluginsCore.TaskExecutionContext) (string, error) {
-	primaryContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	if primaryContainerName == "" {
-		return "", errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification, missing generated name")
-	}
-	return primaryContainerName, nil
+	return getPrimaryContainerNameFromTask(taskCtx)
 }
 
 func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
@@ -85,6 +82,7 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 	return &podSpec, nil
 }
 
+/* TODO figure out if I still need this or not
 func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) {
 	if len(task.GetConfig()) == 0 {
 		return "", errors.Errorf(errors.BadTaskSpecification,
@@ -98,6 +96,14 @@ func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) 
 	}
 
 	return primaryContainerName, nil
+}*/
+
+func getPrimaryContainerNameFromTask(taskCtx pluginsCore.TaskExecutionContext) (string, error) {
+	primaryContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	if primaryContainerName == "" {
+		return "", errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification, missing generated name")
+	}
+	return primaryContainerName, nil
 }
 
 func mergeMapInto(src map[string]string, dst map[string]string) {
@@ -110,6 +116,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 	pod.Annotations = make(map[string]string)
 	pod.Labels = make(map[string]string)
 
+	logger.Info(ctx, "sidecar builder is executing")
 	var primaryContainerName string
 	switch task.TaskTypeVersion {
 	case 0:
@@ -126,7 +133,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 		primaryContainerName = sidecarJob.PrimaryContainerName
 	case 1:
 		// Handles pod tasks that marshal the pod spec to the task custom.
-		containerName, err := getPrimaryContainerNameFromConfig(task)
+		containerName, err := getPrimaryContainerNameFromTask(taskCtx)
 		if err != nil {
 			return err
 		}
@@ -139,7 +146,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 			mergeMapInto(task.GetK8SPod().Metadata.Labels, pod.Labels)
 		}
 
-		containerName, err := getPrimaryContainerNameFromConfig(task)
+		containerName, err := getPrimaryContainerNameFromTask(taskCtx)
 		if err != nil {
 			return err
 		}
