@@ -75,6 +75,19 @@ func TestEndToEnd(t *testing.T) {
 
 		assert.Equal(t, true, phase.Phase().IsSuccess())
 	})
+
+	t.Run("pending job", func(t *testing.T) {
+		queryJobConfig := QueryJobConfig{
+			ProjectID: "pending",
+		}
+
+		custom, _ := pluginUtils.MarshalObjToStruct(queryJobConfig)
+		template.Custom = custom
+
+		phase := tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)
+
+		assert.Equal(t, true, phase.Phase().IsSuccess())
+	})
 }
 
 func newFakeBigQueryServer() *httptest.Server {
@@ -114,6 +127,22 @@ func newFakeBigQueryServer() *httptest.Server {
 					Query: &bigquery.JobConfigurationQuery{
 						DestinationTable: &bigquery.TableReference{
 							ProjectId: "project", DatasetId: "dataset", TableId: "table"}}}}
+			bytes, _ := json.Marshal(job)
+			_, _ = writer.Write(bytes)
+			return
+		}
+
+		if request.URL.Path == "/projects/pending/jobs" && request.Method == "POST" {
+			writer.WriteHeader(200)
+			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusPending}}
+			bytes, _ := json.Marshal(job)
+			_, _ = writer.Write(bytes)
+			return
+		}
+
+		if strings.HasPrefix(request.URL.Path, "/projects/pending/jobs/") && request.Method == "GET" {
+			writer.WriteHeader(200)
+			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusDone}}
 			bytes, _ := json.Marshal(job)
 			_, _ = writer.Write(bytes)
 			return
