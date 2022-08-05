@@ -91,9 +91,13 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		return nil, err
 	}
 
-	logger.Info(ctx, "Setting PrimaryContainerKey %v", PrimaryContainerKey)
+	logger.Info(ctx, "Setting PrimaryContainerKey ", PrimaryContainerKey)
+	logger.Info(ctx, "Existing annotations ", pod.Annotations)
 	if _, present := pod.Annotations[PrimaryContainerKey]; present {
 		logger.Info(ctx, "PrimaryContainerKey already present")
+	}
+	if len(pod.Annotations) == 0 { // Initialize map
+		pod.Annotations = make(map[string]string)
 	}
 	pod.Annotations[PrimaryContainerKey] = primaryContainerName
 

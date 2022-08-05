@@ -167,13 +167,16 @@ func BuildPodWithSpec(ctx context.Context, podTemplate *v1.PodTemplate, podSpec 
 
 		var toAppend []v1.Container
 		for _, container := range podSpec.Containers {
+			logger.Infof(ctx, "podSpec.Containers length %v", len(podSpec.Containers))
 			for _, templateContainer := range basePodSpec.Containers {
 				if PrimaryContainerNameMatches(ctx, container.Name, templateContainer.Name, primaryContainerName) {
 					logger.Info(ctx, "primary container name matches")
+					logger.Infof(ctx, "Premerge basePodSpec.Containers: %v", basePodSpec.Containers)
+					logger.Infof(ctx, "basePodSpec.Containers length %v", len(basePodSpec.Containers))
 					logger.Infof(ctx, "Premerge template: %v", templateContainer)
 					logger.Infof(ctx, "Premerge container: %v", container)
 					newContainer := templateContainer.DeepCopy()
-					err := mergo.Merge(newContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
+					err := mergo.Merge(newContainer, container)
 					if err != nil {
 						return nil, err
 					}
@@ -185,8 +188,10 @@ func BuildPodWithSpec(ctx context.Context, podTemplate *v1.PodTemplate, podSpec 
 				}
 			}
 		}
-		basePodSpec.Containers = append(basePodSpec.Containers, toAppend[:]...)
+		basePodSpec.Containers = toAppend
+		//basePodSpec.Containers = append(basePodSpec.Containers, toAppend[:]...)
 		logger.Infof(ctx, "Postmerge basePodSpec.Containers: %v", basePodSpec.Containers)
+		logger.Infof(ctx, "basePodSpec.Containers length %v", len(basePodSpec.Containers))
 
 		pod.ObjectMeta = podTemplate.Template.ObjectMeta
 		pod.Spec = *basePodSpec
