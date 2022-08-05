@@ -25,6 +25,11 @@ import (
 	"google.golang.org/api/bigquery/v2"
 )
 
+const (
+	httpPost string = "POST"
+	httpGet  string = "GET"
+)
+
 func TestEndToEnd(t *testing.T) {
 	server := newFakeBigQueryServer()
 	defer server.Close()
@@ -92,7 +97,7 @@ func TestEndToEnd(t *testing.T) {
 
 func newFakeBigQueryServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == "/projects/flyte/jobs" && request.Method == "POST" {
+		if request.URL.Path == "/projects/flyte/jobs" && request.Method == httpPost {
 			writer.WriteHeader(200)
 			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusRunning}}
 			bytes, _ := json.Marshal(job)
@@ -100,7 +105,7 @@ func newFakeBigQueryServer() *httptest.Server {
 			return
 		}
 
-		if strings.HasPrefix(request.URL.Path, "/projects/flyte/jobs/") && request.Method == "GET" {
+		if strings.HasPrefix(request.URL.Path, "/projects/flyte/jobs/") && request.Method == httpGet {
 			writer.WriteHeader(200)
 			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusDone},
 				Configuration: &bigquery.JobConfiguration{
@@ -112,7 +117,7 @@ func newFakeBigQueryServer() *httptest.Server {
 			return
 		}
 
-		if request.URL.Path == "/projects/cache/jobs" && request.Method == "POST" {
+		if request.URL.Path == "/projects/cache/jobs" && request.Method == httpPost {
 			writer.WriteHeader(200)
 			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusDone}}
 			bytes, _ := json.Marshal(job)
@@ -120,7 +125,7 @@ func newFakeBigQueryServer() *httptest.Server {
 			return
 		}
 
-		if strings.HasPrefix(request.URL.Path, "/projects/cache/jobs/") && request.Method == "GET" {
+		if strings.HasPrefix(request.URL.Path, "/projects/cache/jobs/") && request.Method == httpGet {
 			writer.WriteHeader(200)
 			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusDone},
 				Configuration: &bigquery.JobConfiguration{
@@ -132,7 +137,7 @@ func newFakeBigQueryServer() *httptest.Server {
 			return
 		}
 
-		if request.URL.Path == "/projects/pending/jobs" && request.Method == "POST" {
+		if request.URL.Path == "/projects/pending/jobs" && request.Method == httpPost {
 			writer.WriteHeader(200)
 			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusPending}}
 			bytes, _ := json.Marshal(job)
@@ -140,7 +145,7 @@ func newFakeBigQueryServer() *httptest.Server {
 			return
 		}
 
-		if strings.HasPrefix(request.URL.Path, "/projects/pending/jobs/") && request.Method == "GET" {
+		if strings.HasPrefix(request.URL.Path, "/projects/pending/jobs/") && request.Method == httpGet {
 			writer.WriteHeader(200)
 			job := bigquery.Job{Status: &bigquery.JobStatus{State: bigqueryStatusDone}}
 			bytes, _ := json.Marshal(job)
