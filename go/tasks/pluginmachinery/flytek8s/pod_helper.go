@@ -23,6 +23,7 @@ const PodKind = "pod"
 const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
+const DefaultContainerName = "default" // TODO can probably use something better
 
 // ApplyInterruptibleNodeAffinity configures the node-affinity for the pod using the configuration specified.
 func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
@@ -135,20 +136,11 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-// TODO context just for debugging
-func PrimaryContainerNameMatches(ctx context.Context, containerName string, templateContainerName string, primaryContainerName string) bool {
-	// give default a real value later
-	logger.Infof(ctx, "containerName: %v\n", containerName)
-	logger.Infof(ctx, "templateContainername: %v\n", templateContainerName)
-	logger.Infof(ctx, "primaryContainerName: %v\n", templateContainerName)
-	debugresult := ((containerName == primaryContainerName) && templateContainerName == "default") || (containerName == templateContainerName)
-	logger.Infof(ctx, "debugresult: %v\n", debugresult)
-	return ((containerName == primaryContainerName) && templateContainerName == "default") || (containerName == templateContainerName)
+func PrimaryContainerNameMatches(containerName string, templateContainerName string, primaryContainerName string) bool {
+	return ((containerName == primaryContainerName) && templateContainerName == DefaultContainerName) || (containerName == templateContainerName)
 }
 
-// TODO context just for debugging
-func BuildPodWithSpec(ctx context.Context, podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
-	logger.Info(ctx, "Building pod with spec")
+func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
 	pod := v1.Pod{
 		TypeMeta: v12.TypeMeta{
 			Kind:       PodKind,
@@ -156,43 +148,29 @@ func BuildPodWithSpec(ctx context.Context, podTemplate *v1.PodTemplate, podSpec 
 		},
 	}
 
-	logger.Info(ctx, "Checking if pod template is null")
 	if podTemplate != nil {
-		logger.Info(ctx, "Pod template isn't null")
 		basePodSpec := podTemplate.Template.Spec.DeepCopy()
 		err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 		if err != nil {
 			return nil, err
 		}
 
-		var toAppend []v1.Container
+		var mergedContainers []v1.Container
 		for _, container := range podSpec.Containers {
-			logger.Infof(ctx, "podSpec.Containers length %v", len(podSpec.Containers))
 			for _, templateContainer := range basePodSpec.Containers {
-				if PrimaryContainerNameMatches(ctx, container.Name, templateContainer.Name, primaryContainerName) {
-					logger.Info(ctx, "primary container name matches")
-					logger.Infof(ctx, "Premerge basePodSpec.Containers: %v", basePodSpec.Containers)
-					logger.Infof(ctx, "basePodSpec.Containers length %v", len(basePodSpec.Containers))
-					logger.Infof(ctx, "Premerge template: %v", templateContainer)
-					logger.Infof(ctx, "Premerge container: %v", container)
+				if PrimaryContainerNameMatches(container.Name, templateContainer.Name, primaryContainerName) {
 					newContainer := templateContainer.DeepCopy()
 					err := mergo.Merge(newContainer, container)
 					if err != nil {
 						return nil, err
 					}
-					logger.Infof(ctx, "Postmerge container: %v", newContainer)
-					toAppend = append(toAppend, *newContainer)
+					mergedContainers = append(mergedContainers, *newContainer)
 				} else {
-					toAppend = append(toAppend, container)
-					logger.Infof(ctx, "Appending container: %v", container)
+					mergedContainers = append(mergedContainers, container)
 				}
 			}
 		}
-		basePodSpec.Containers = toAppend
-		//basePodSpec.Containers = append(basePodSpec.Containers, toAppend[:]...)
-		logger.Infof(ctx, "Postmerge basePodSpec.Containers: %v", basePodSpec.Containers)
-		logger.Infof(ctx, "basePodSpec.Containers length %v", len(basePodSpec.Containers))
-
+		basePodSpec.Containers = mergedContainers
 		pod.ObjectMeta = podTemplate.Template.ObjectMeta
 		pod.Spec = *basePodSpec
 	} else {

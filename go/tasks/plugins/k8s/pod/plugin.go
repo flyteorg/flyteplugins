@@ -15,7 +15,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/flyteorg/flytestdlib/logger" // TODO for debugging
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -63,8 +62,6 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		builder = p.defaultPodBuilder
 	}
 
-	// build pod
-	logger.Info(ctx, "Building podSpec")
 	podSpec, err := builder.buildPodSpec(ctx, task, taskCtx)
 	if err != nil {
 		return nil, err
@@ -73,15 +70,12 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
-	logger.Info(ctx, "Getting primaryContainerName")
 	primaryContainerName, err := builder.getPrimaryContainerName(taskCtx)
 	if err != nil {
 		return nil, err
 	}
-	logger.Infof(ctx, "Got primaryContainerName: [%s]", primaryContainerName)
 
-	// TODO context just for debugging
-	pod, err := flytek8s.BuildPodWithSpec(ctx, podTemplate, podSpec, primaryContainerName)
+	pod, err := flytek8s.BuildPodWithSpec(podTemplate, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, err
 	}
@@ -91,17 +85,11 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		return nil, err
 	}
 
-	logger.Info(ctx, "Setting PrimaryContainerKey ", PrimaryContainerKey)
-	logger.Info(ctx, "Existing annotations ", pod.Annotations)
-	if _, present := pod.Annotations[PrimaryContainerKey]; present {
-		logger.Info(ctx, "PrimaryContainerKey already present")
-	}
 	if len(pod.Annotations) == 0 { // Initialize map
 		pod.Annotations = make(map[string]string)
 	}
 	pod.Annotations[PrimaryContainerKey] = primaryContainerName
 
-	logger.Info(ctx, "Built pod, done.")
 	return pod, nil
 }
 
