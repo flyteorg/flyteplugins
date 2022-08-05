@@ -153,7 +153,7 @@ func (p Plugin) createImpl(ctx context.Context, taskCtx webapi.TaskExecutionCont
 
 	var outputLocation string
 	if resp.Status != nil && resp.Status.State == bigqueryStatusDone {
-		job, err := client.Jobs.Get(job.JobReference.ProjectId, job.JobReference.JobId).Do()
+		getResp, err := client.Jobs.Get(job.JobReference.ProjectId, job.JobReference.JobId).Do()
 
 		if err != nil {
 			err := pluginErrors.Wrapf(
@@ -164,7 +164,7 @@ func (p Plugin) createImpl(ctx context.Context, taskCtx webapi.TaskExecutionCont
 
 			return nil, nil, err
 		}
-		outputLocation = constructOutputLocation(job)
+		outputLocation = constructOutputLocation(getResp)
 	}
 	resource := ResourceWrapper{Status: resp.Status, OutputLocation: outputLocation}
 	resourceMeta := ResourceMetaWrapper{
@@ -308,10 +308,10 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 }
 
 func constructOutputLocation(job *bigquery.Job) string {
-	dst := job.Configuration.Query.DestinationTable
-	if dst == nil {
+	if job == nil || job.Configuration == nil || job.Configuration.Query == nil || job.Configuration.Query.DestinationTable == nil {
 		return ""
 	}
+	dst := job.Configuration.Query.DestinationTable
 	return fmt.Sprintf("bq://%v:%v.%v", dst.ProjectId, dst.DatasetId, dst.TableId)
 }
 
