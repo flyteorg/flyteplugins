@@ -54,11 +54,11 @@ func TestConstructOutputLocation(t *testing.T) {
 			},
 		},
 	}
-	ol := constructOutputLocation(job)
+	ol := constructOutputLocation(context.Background(), job)
 	assert.Equal(t, ol, "bq://project:dataset.table")
 
 	job.Configuration.Query.DestinationTable = nil
-	ol = constructOutputLocation(job)
+	ol = constructOutputLocation(context.Background(), job)
 	assert.Equal(t, ol, "")
 }
 

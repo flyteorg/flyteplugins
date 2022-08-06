@@ -164,7 +164,7 @@ func (p Plugin) createImpl(ctx context.Context, taskCtx webapi.TaskExecutionCont
 
 			return nil, nil, err
 		}
-		outputLocation = constructOutputLocation(getResp)
+		outputLocation = constructOutputLocation(ctx, getResp)
 	}
 	resource := ResourceWrapper{Status: resp.Status, OutputLocation: outputLocation}
 	resourceMeta := ResourceMetaWrapper{
@@ -232,7 +232,7 @@ func (p Plugin) getImpl(ctx context.Context, taskCtx webapi.GetContext) (wrapper
 		return nil, err
 	}
 
-	outputLocation := constructOutputLocation(job)
+	outputLocation := constructOutputLocation(ctx, job)
 	return &ResourceWrapper{
 		Status:         job.Status,
 		OutputLocation: outputLocation,
@@ -307,12 +307,14 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.Status.State)
 }
 
-func constructOutputLocation(job *bigquery.Job) string {
+func constructOutputLocation(ctx context.Context, job *bigquery.Job) string {
 	if job == nil || job.Configuration == nil || job.Configuration.Query == nil || job.Configuration.Query.DestinationTable == nil {
 		return ""
 	}
 	dst := job.Configuration.Query.DestinationTable
-	return fmt.Sprintf("bq://%v:%v.%v", dst.ProjectId, dst.DatasetId, dst.TableId)
+	outputLocation := fmt.Sprintf("bq://%v:%v.%v", dst.ProjectId, dst.DatasetId, dst.TableId)
+	logger.Debugf(ctx, "BigQuery saves query results to [%v]", outputLocation)
+	return outputLocation
 }
 
 func writeOutput(ctx context.Context, tCtx webapi.StatusContext, OutputLocation string) error {
