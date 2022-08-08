@@ -10,6 +10,7 @@ var (
 	defaultConfig = Config{
 		ShutdownAfterJobFinishes: true,
 		TTLSecondsAfterFinished:  3600,
+		ServiceType:              "NodePort",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("ray", &defaultConfig)
@@ -23,6 +24,9 @@ type Config struct {
 	// TTLSecondsAfterFinished is the TTL to clean up RayCluster.
 	// It's only working when ShutdownAfterJobFinishes set to true.
 	TTLSecondsAfterFinished int32 `json:"ttlSecondsAfterFinished,omitempty"`
+
+	// Kubernetes Service Type, valid values are 'ClusterIP', 'NodePort' and 'LoadBalancer'
+	ServiceType string `json:"serviceType,omitempty"`
 }
 
 func GetConfig() *Config {

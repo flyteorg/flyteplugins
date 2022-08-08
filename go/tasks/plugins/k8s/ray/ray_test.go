@@ -54,10 +54,8 @@ var (
 func dummyRayCustomObj() *plugins.RayJob {
 	return &plugins.RayJob{
 		RayCluster: &plugins.RayCluster{
-			ClusterSpec: &plugins.ClusterSpec{
-				HeadGroupSpec:   &plugins.HeadGroupSpec{RayStartParams: map[string]string{"num-cpus": "1"}},
-				WorkerGroupSpec: []*plugins.WorkerGroupSpec{{GroupName: workerGroupName, Replicas: 3}},
-			},
+			HeadGroupSpec:   &plugins.HeadGroupSpec{RayStartParams: map[string]string{"num-cpus": "1"}},
+			WorkerGroupSpec: []*plugins.WorkerGroupSpec{{GroupName: workerGroupName, Replicas: 3}},
 		},
 	}
 }

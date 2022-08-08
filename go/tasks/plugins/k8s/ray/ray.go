@@ -69,6 +69,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
 		HeadGroupSpec: rayv1alpha1.HeadGroupSpec{
 			Template:       buildHeadPodTemplate(podSpec),
+			ServiceType:    v1.ServiceType(GetConfig().ServiceType),
 			Replicas:       &headReplicas,
 			EnableIngress:  &enableIngress,
 			RayStartParams: rayJob.RayCluster.HeadGroupSpec.RayStartParams,
