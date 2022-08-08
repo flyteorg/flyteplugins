@@ -58,12 +58,12 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	}
 
 	headReplicas := int32(1)
-	if rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams == nil {
-		rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams = make(map[string]string)
+	if rayJob.RayCluster.HeadGroupSpec.RayStartParams == nil {
+		rayJob.RayCluster.HeadGroupSpec.RayStartParams = make(map[string]string)
 	}
-	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["include-dashboard"] = "true"
-	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
-	rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams["dashboard-host"] = "0.0.0.0"
+	rayJob.RayCluster.HeadGroupSpec.RayStartParams["include-dashboard"] = "true"
+	rayJob.RayCluster.HeadGroupSpec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
+	rayJob.RayCluster.HeadGroupSpec.RayStartParams["dashboard-host"] = "0.0.0.0"
 
 	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
@@ -71,12 +71,12 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 			Template:       buildHeadPodTemplate(podSpec),
 			Replicas:       &headReplicas,
 			EnableIngress:  &enableIngress,
-			RayStartParams: rayJob.RayCluster.ClusterSpec.HeadGroupSpec.RayStartParams,
+			RayStartParams: rayJob.RayCluster.HeadGroupSpec.RayStartParams,
 		},
 		WorkerGroupSpecs: []rayv1alpha1.WorkerGroupSpec{},
 	}
 
-	for _, spec := range rayJob.RayCluster.ClusterSpec.WorkerGroupSpec {
+	for _, spec := range rayJob.RayCluster.WorkerGroupSpec {
 		workerPodTemplate := buildWorkerPodTemplate(podSpec)
 
 		minReplicas := spec.Replicas
