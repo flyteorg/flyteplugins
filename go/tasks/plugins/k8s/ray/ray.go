@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	v1 "k8s.io/api/core/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -309,17 +308,8 @@ func getEventInfoForRayJob(rayJob *rayv1alpha1.RayJob) (*pluginsCore.TaskInfo, e
 		return nil, nil
 	}
 
-	o, err := logPlugin.GetTaskLogs(tasklog.Input{
-		PodName:   rayJob.Status.RayClusterName + "-head",
-		Namespace: rayJob.Namespace,
-		LogName:   "(Head Node)",
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	taskLogs = append(taskLogs, o.TaskLogs...)
+	// TODO: Retrieve the name of head pod from rayJob.status, and add it to task logs
+	// RayJob CRD does not include the name of the worker or head pod for now
 
 	// TODO: Add ray Dashboard URI to task logs
 
