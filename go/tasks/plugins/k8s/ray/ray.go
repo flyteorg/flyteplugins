@@ -59,7 +59,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 
 	headReplicas := int32(1)
 	headNodeRayStartParams := make(map[string]string)
-	if rayJob.RayCluster.HeadGroupSpec != nil || rayJob.RayCluster.HeadGroupSpec.RayStartParams != nil {
+	if rayJob.RayCluster.HeadGroupSpec != nil && rayJob.RayCluster.HeadGroupSpec.RayStartParams != nil {
 		headNodeRayStartParams = rayJob.RayCluster.HeadGroupSpec.RayStartParams
 	}
 	headNodeRayStartParams["include-dashboard"] = "true"
