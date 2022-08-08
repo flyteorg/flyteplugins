@@ -27,6 +27,9 @@ type Config struct {
 
 	// Kubernetes Service Type, valid values are 'ClusterIP', 'NodePort' and 'LoadBalancer'
 	ServiceType string `json:"serviceType,omitempty"`
+
+	// ClusterSelector is used to select running rayclusters by labels
+	ClusterSelector map[string]string `json:"clusterSelector,omitempty"`
 }
 
 func GetConfig() *Config {

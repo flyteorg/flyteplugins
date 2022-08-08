@@ -141,4 +141,18 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Test_clusterSelector", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "a=1,b=2"
+
+			cmdFlags.Set("clusterSelector", testValue)
+			if vStringToString, err := cmdFlags.GetStringToString("clusterSelector"); err == nil {
+				testDecodeRaw_Config(t, vStringToString, &actual.ClusterSelector)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
 }

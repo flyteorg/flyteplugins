@@ -120,6 +120,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		ShutdownAfterJobFinishes: GetConfig().ShutdownAfterJobFinishes,
 		TTLSecondsAfterFinished:  &GetConfig().TTLSecondsAfterFinished,
 		RuntimeEnv:               rayJob.RuntimeEnv,
+		ClusterSelector:          GetConfig().ClusterSelector,
 	}
 
 	rayJobObject := rayv1alpha1.RayJob{
