@@ -296,7 +296,7 @@ func (rayJobResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx 
 	}, nil
 }
 
-func getEventInfoForRayJob(rayJob *rayv1alpha1.RayJob) (*pluginsCore.TaskInfo, error) {
+func getEventInfoForRayJob() (*pluginsCore.TaskInfo, error) {
 	taskLogs := make([]*core.TaskLog, 0, 3)
 	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
 
@@ -320,7 +320,7 @@ func getEventInfoForRayJob(rayJob *rayv1alpha1.RayJob) (*pluginsCore.TaskInfo, e
 
 func (rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 	rayJob := resource.(*rayv1alpha1.RayJob)
-	info, err := getEventInfoForRayJob(rayJob)
+	info, err := getEventInfoForRayJob()
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
