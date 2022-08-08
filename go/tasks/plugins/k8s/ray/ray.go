@@ -58,12 +58,13 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	}
 
 	headReplicas := int32(1)
-	if rayJob.RayCluster.HeadGroupSpec.RayStartParams == nil {
-		rayJob.RayCluster.HeadGroupSpec.RayStartParams = make(map[string]string)
+	headNodeRayStartParams := make(map[string]string)
+	if rayJob.RayCluster.HeadGroupSpec != nil || rayJob.RayCluster.HeadGroupSpec.RayStartParams != nil {
+		headNodeRayStartParams = rayJob.RayCluster.HeadGroupSpec.RayStartParams
 	}
-	rayJob.RayCluster.HeadGroupSpec.RayStartParams["include-dashboard"] = "true"
-	rayJob.RayCluster.HeadGroupSpec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
-	rayJob.RayCluster.HeadGroupSpec.RayStartParams["dashboard-host"] = "0.0.0.0"
+	headNodeRayStartParams["include-dashboard"] = "true"
+	headNodeRayStartParams["node-ip-address"] = "$MY_POD_IP"
+	headNodeRayStartParams["dashboard-host"] = "0.0.0.0"
 
 	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
@@ -72,7 +73,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 			ServiceType:    v1.ServiceType(GetConfig().ServiceType),
 			Replicas:       &headReplicas,
 			EnableIngress:  &enableIngress,
-			RayStartParams: rayJob.RayCluster.HeadGroupSpec.RayStartParams,
+			RayStartParams: headNodeRayStartParams,
 		},
 		WorkerGroupSpecs: []rayv1alpha1.WorkerGroupSpec{},
 	}
@@ -89,17 +90,18 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 			maxReplicas = spec.MaxReplicas
 		}
 
-		if spec.RayStartParams == nil {
-			spec.RayStartParams = make(map[string]string)
+		workerNodeRayStartParams := make(map[string]string)
+		if spec.RayStartParams != nil {
+			workerNodeRayStartParams = spec.RayStartParams
 		}
-		spec.RayStartParams["node-ip-address"] = "$MY_POD_IP"
+		workerNodeRayStartParams["node-ip-address"] = "$MY_POD_IP"
 
 		workerNodeSpec := rayv1alpha1.WorkerGroupSpec{
 			GroupName:      spec.GroupName,
 			MinReplicas:    &minReplicas,
 			MaxReplicas:    &maxReplicas,
 			Replicas:       &spec.Replicas,
-			RayStartParams: spec.RayStartParams,
+			RayStartParams: workerNodeRayStartParams,
 			Template:       workerPodTemplate,
 		}
 
