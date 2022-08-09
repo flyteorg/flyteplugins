@@ -28,8 +28,11 @@ import (
 )
 
 const (
-	rayTaskType = "ray"
-	KindRayJob  = "RayJob"
+	rayTaskType      = "ray"
+	KindRayJob       = "RayJob"
+	IncludeDashboard = "include-dashboard"
+	NodeIPAddress    = "node-ip-address"
+	DashboardHost    = "dashboard-host"
 )
 
 type rayJobResourceHandler struct {
@@ -75,9 +78,15 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	if rayJob.RayCluster.HeadGroupSpec != nil && rayJob.RayCluster.HeadGroupSpec.RayStartParams != nil {
 		headNodeRayStartParams = rayJob.RayCluster.HeadGroupSpec.RayStartParams
 	}
-	headNodeRayStartParams["include-dashboard"] = strconv.FormatBool(GetConfig().IncludeDashboard)
-	headNodeRayStartParams["node-ip-address"] = GetConfig().NodeIPAddress
-	headNodeRayStartParams["dashboard-host"] = GetConfig().DashboardHost
+	if _, exist := headNodeRayStartParams[IncludeDashboard]; !exist {
+		headNodeRayStartParams[IncludeDashboard] = strconv.FormatBool(GetConfig().IncludeDashboard)
+	}
+	if _, exist := headNodeRayStartParams[NodeIPAddress]; !exist {
+		headNodeRayStartParams[NodeIPAddress] = GetConfig().NodeIPAddress
+	}
+	if _, exist := headNodeRayStartParams[DashboardHost]; !exist {
+		headNodeRayStartParams[DashboardHost] = GetConfig().DashboardHost
+	}
 
 	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
@@ -107,7 +116,9 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		if spec.RayStartParams != nil {
 			workerNodeRayStartParams = spec.RayStartParams
 		}
-		workerNodeRayStartParams["node-ip-address"] = GetConfig().NodeIPAddress
+		if _, exist := workerNodeRayStartParams[NodeIPAddress]; !exist {
+			workerNodeRayStartParams[NodeIPAddress] = GetConfig().NodeIPAddress
+		}
 
 		workerNodeSpec := rayv1alpha1.WorkerGroupSpec{
 			GroupName:      spec.GroupName,
