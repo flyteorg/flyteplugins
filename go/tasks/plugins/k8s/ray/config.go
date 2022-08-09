@@ -31,9 +31,6 @@ type Config struct {
 	// Kubernetes Service Type, valid values are 'ClusterIP', 'NodePort' and 'LoadBalancer'
 	ServiceType string `json:"serviceType,omitempty"`
 
-	// ClusterSelector is used to select running rayclusters by labels
-	ClusterSelector map[string]string `json:"clusterSelector,omitempty"`
-
 	// IncludeDashboard is used to start a Ray Dashboard if set to true
 	IncludeDashboard bool `json:"includeDashboard,omitempty"`
 

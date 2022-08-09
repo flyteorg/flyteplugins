@@ -141,14 +141,42 @@ func TestConfig_SetFlags(t *testing.T) {
 			}
 		})
 	})
-	t.Run("Test_clusterSelector", func(t *testing.T) {
+	t.Run("Test_includeDashboard", func(t *testing.T) {
 
 		t.Run("Override", func(t *testing.T) {
-			testValue := "a=1,b=2"
+			testValue := "1"
 
-			cmdFlags.Set("clusterSelector", testValue)
-			if vStringToString, err := cmdFlags.GetStringToString("clusterSelector"); err == nil {
-				testDecodeRaw_Config(t, vStringToString, &actual.ClusterSelector)
+			cmdFlags.Set("includeDashboard", testValue)
+			if vBool, err := cmdFlags.GetBool("includeDashboard"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vBool), &actual.IncludeDashboard)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_dashboardHost", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("dashboardHost", testValue)
+			if vString, err := cmdFlags.GetString("dashboardHost"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DashboardHost)
+
+			} else {
+				assert.FailNow(t, err.Error())
+			}
+		})
+	})
+	t.Run("Test_nodeIPAddress", func(t *testing.T) {
+
+		t.Run("Override", func(t *testing.T) {
+			testValue := "1"
+
+			cmdFlags.Set("nodeIPAddress", testValue)
+			if vString, err := cmdFlags.GetString("nodeIPAddress"); err == nil {
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.NodeIPAddress)
 
 			} else {
 				assert.FailNow(t, err.Error())

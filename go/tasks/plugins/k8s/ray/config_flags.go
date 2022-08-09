@@ -53,6 +53,8 @@ func (cfg Config) GetPFlagSet(prefix string) *pflag.FlagSet {
 	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "shutdownAfterJobFinishes"), defaultConfig.ShutdownAfterJobFinishes, "")
 	cmdFlags.Int32(fmt.Sprintf("%v%v", prefix, "ttlSecondsAfterFinished"), defaultConfig.TTLSecondsAfterFinished, "")
 	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "serviceType"), defaultConfig.ServiceType, "")
-	cmdFlags.StringToString(fmt.Sprintf("%v%v", prefix, "clusterSelector"), defaultConfig.ClusterSelector, "")
+	cmdFlags.Bool(fmt.Sprintf("%v%v", prefix, "includeDashboard"), defaultConfig.IncludeDashboard, "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "dashboardHost"), defaultConfig.DashboardHost, "")
+	cmdFlags.String(fmt.Sprintf("%v%v", prefix, "nodeIPAddress"), defaultConfig.NodeIPAddress, "")
 	return cmdFlags
 }
