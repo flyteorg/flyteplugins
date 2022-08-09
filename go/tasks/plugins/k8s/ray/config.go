@@ -38,6 +38,7 @@ type Config struct {
 	// or 0.0.0.0 (available from all interfaces). By default, this is localhost.
 	DashboardHost string `json:"dashboardHost,omitempty"`
 
+	// NodeIPAddress the IP address of the head node. By default, this pod ip address.
 	NodeIPAddress string `json:"nodeIPAddress,omitempty"`
 }
 
