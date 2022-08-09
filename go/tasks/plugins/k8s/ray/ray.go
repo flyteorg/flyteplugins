@@ -68,9 +68,16 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
 	}
 	container, err := flytek8s.ToK8sContainer(ctx, taskTemplate.GetContainer(), taskTemplate.Interface, templateParameters)
-
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "Unable to create container spec: [%v]", err.Error())
+	}
+	if templateParameters.TaskExecMetadata.GetOverrides() != nil && templateParameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
+		res := templateParameters.TaskExecMetadata.GetOverrides().GetResources()
+		platformResources := templateParameters.TaskExecMetadata.GetPlatformResources()
+		if platformResources == nil {
+			platformResources = &v1.ResourceRequirements{}
+		}
+		container.Resources = flytek8s.ApplyResourceOverrides(*res, *platformResources, true)
 	}
 
 	headReplicas := int32(1)
