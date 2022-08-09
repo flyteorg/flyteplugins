@@ -3,6 +3,9 @@ package ray
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flytestdlib/logger"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,9 +54,20 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 	}
 
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
+	if taskTemplate.GetContainer() == nil {
+		logger.Errorf(ctx, "Default Pod creation logic works for default container in the task template only.")
+		return nil, fmt.Errorf("container not specified in task template")
+	}
+	templateParameters := template.Parameters{
+		Task:             taskCtx.TaskReader(),
+		Inputs:           taskCtx.InputReader(),
+		OutputPath:       taskCtx.OutputWriter(),
+		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+	}
+	container, err := flytek8s.ToK8sContainer(ctx, taskTemplate.GetContainer(), taskTemplate.Interface, templateParameters)
+
 	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
+		return nil, errors.Errorf(errors.BadTaskSpecification, "Unable to create container spec: [%v]", err.Error())
 	}
 
 	headReplicas := int32(1)
@@ -61,14 +75,14 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	if rayJob.RayCluster.HeadGroupSpec != nil && rayJob.RayCluster.HeadGroupSpec.RayStartParams != nil {
 		headNodeRayStartParams = rayJob.RayCluster.HeadGroupSpec.RayStartParams
 	}
-	headNodeRayStartParams["include-dashboard"] = "true"
-	headNodeRayStartParams["node-ip-address"] = "$MY_POD_IP"
-	headNodeRayStartParams["dashboard-host"] = "0.0.0.0"
+	headNodeRayStartParams["include-dashboard"] = strconv.FormatBool(GetConfig().IncludeDashboard)
+	headNodeRayStartParams["node-ip-address"] = GetConfig().NodeIPAddress
+	headNodeRayStartParams["dashboard-host"] = GetConfig().DashboardHost
 
 	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
 		HeadGroupSpec: rayv1alpha1.HeadGroupSpec{
-			Template:       buildHeadPodTemplate(podSpec),
+			Template:       buildHeadPodTemplate(container),
 			ServiceType:    v1.ServiceType(GetConfig().ServiceType),
 			Replicas:       &headReplicas,
 			EnableIngress:  &enableIngress,
@@ -78,7 +92,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	}
 
 	for _, spec := range rayJob.RayCluster.WorkerGroupSpec {
-		workerPodTemplate := buildWorkerPodTemplate(podSpec)
+		workerPodTemplate := buildWorkerPodTemplate(container)
 
 		minReplicas := spec.Replicas
 		maxReplicas := spec.Replicas
@@ -93,7 +107,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		if spec.RayStartParams != nil {
 			workerNodeRayStartParams = spec.RayStartParams
 		}
-		workerNodeRayStartParams["node-ip-address"] = "$MY_POD_IP"
+		workerNodeRayStartParams["node-ip-address"] = GetConfig().NodeIPAddress
 
 		workerNodeSpec := rayv1alpha1.WorkerGroupSpec{
 			GroupName:      spec.GroupName,
@@ -116,7 +130,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 
 	jobSpec := rayv1alpha1.RayJobSpec{
 		RayClusterSpec:           rayClusterSpec,
-		Entrypoint:               strings.Join(podSpec.Containers[0].Args, " "),
+		Entrypoint:               strings.Join(container.Args, " "),
 		ShutdownAfterJobFinishes: GetConfig().ShutdownAfterJobFinishes,
 		TTLSecondsAfterFinished:  &GetConfig().TTLSecondsAfterFinished,
 		RuntimeEnv:               rayJob.RuntimeEnv,
@@ -134,11 +148,11 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	return &rayJobObject, nil
 }
 
-func buildHeadPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
+func buildHeadPodTemplate(container *v1.Container) v1.PodTemplateSpec {
 	// Some configs are copy from  https://github.com/ray-project/kuberay/blob/b72e6bdcd9b8c77a9dc6b5da8560910f3a0c3ffd/apiserver/pkg/util/cluster.go#L97
 	// They should always be the same, so we could hard code here.
-	primaryContainer := &v1.Container{Name: "ray-head", Image: podSpec.Containers[0].Image}
-	primaryContainer.Resources = podSpec.Containers[0].Resources
+	primaryContainer := &v1.Container{Name: "ray-head", Image: container.Image}
+	primaryContainer.Resources = container.Resources
 	primaryContainer.Env = []v1.EnvVar{
 		{
 			Name: "MY_POD_IP",
@@ -149,7 +163,7 @@ func buildHeadPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
 			},
 		},
 	}
-	primaryContainer.Env = append(primaryContainer.Env, podSpec.Containers[0].Env...)
+	primaryContainer.Env = append(primaryContainer.Env, container.Env...)
 	primaryContainer.Ports = []v1.ContainerPort{
 		{
 			Name:          "redis",
@@ -173,7 +187,7 @@ func buildHeadPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
 	return podTemplateSpec
 }
 
-func buildWorkerPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
+func buildWorkerPodTemplate(container *v1.Container) v1.PodTemplateSpec {
 	// Some configs are copy from  https://github.com/ray-project/kuberay/blob/b72e6bdcd9b8c77a9dc6b5da8560910f3a0c3ffd/apiserver/pkg/util/cluster.go#L185
 	// They should always be the same, so we could hard code here.
 	initContainers := []v1.Container{
@@ -185,12 +199,12 @@ func buildWorkerPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
 				"-c",
 				"until nslookup $RAY_IP.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done",
 			},
-			Resources: podSpec.Containers[0].Resources,
+			Resources: container.Resources,
 		},
 	}
 
-	primaryContainer := &v1.Container{Name: "ray-worker", Image: podSpec.Containers[0].Image}
-	primaryContainer.Resources = podSpec.Containers[0].Resources
+	primaryContainer := &v1.Container{Name: "ray-worker", Image: container.Image}
+	primaryContainer.Resources = container.Resources
 	primaryContainer.Env = []v1.EnvVar{
 		{
 			Name:  "RAY_DISABLE_DOCKER_CPU_WARNING",
@@ -253,7 +267,7 @@ func buildWorkerPodTemplate(podSpec *v1.PodSpec) v1.PodTemplateSpec {
 			},
 		},
 	}
-	primaryContainer.Env = append(primaryContainer.Env, podSpec.Containers[0].Env...)
+	primaryContainer.Env = append(primaryContainer.Env, container.Env...)
 	primaryContainer.Lifecycle = &v1.Lifecycle{
 		PreStop: &v1.LifecycleHandler{
 			Exec: &v1.ExecAction{
@@ -333,6 +347,8 @@ func (rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s
 		return pluginsCore.PhaseInfoFailure(errors.TaskFailedWithError, reason, info), nil
 	case rayv1alpha1.JobStatusSucceeded:
 		return pluginsCore.PhaseInfoSuccess(info), nil
+	case rayv1alpha1.JobStatusRunning:
+		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 	}
 	return pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
 }

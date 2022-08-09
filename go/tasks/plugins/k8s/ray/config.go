@@ -11,6 +11,9 @@ var (
 		ShutdownAfterJobFinishes: true,
 		TTLSecondsAfterFinished:  3600,
 		ServiceType:              "NodePort",
+		IncludeDashboard:         true,
+		DashboardHost:            "0.0.0.0",
+		NodeIPAddress:            "$MY_POD_IP",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("ray", &defaultConfig)
@@ -30,6 +33,15 @@ type Config struct {
 
 	// ClusterSelector is used to select running rayclusters by labels
 	ClusterSelector map[string]string `json:"clusterSelector,omitempty"`
+
+	// IncludeDashboard is used to start a Ray Dashboard if set to true
+	IncludeDashboard bool `json:"includeDashboard,omitempty"`
+
+	// DashboardHost the host to bind the dashboard server to, either localhost (127.0.0.1)
+	// or 0.0.0.0 (available from all interfaces). By default, this is localhost.
+	DashboardHost string `json:"dashboardHost,omitempty"`
+
+	NodeIPAddress string `json:"nodeIPAddress,omitempty"`
 }
 
 func GetConfig() *Config {
