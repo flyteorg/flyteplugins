@@ -136,10 +136,6 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-func PrimaryContainerNameMatches(containerName string, templateContainerName string, primaryContainerName string) bool {
-	return ((containerName == primaryContainerName) && templateContainerName == DefaultContainerName) || (containerName == templateContainerName)
-}
-
 func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
 	pod := v1.Pod{
 		TypeMeta: v12.TypeMeta{
@@ -158,15 +154,13 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 		var mergedContainers []v1.Container
 		for _, container := range podSpec.Containers {
 			for _, templateContainer := range basePodSpec.Containers {
-				if PrimaryContainerNameMatches(container.Name, templateContainer.Name, primaryContainerName) {
+				if ((container.Name == primaryContainerName) && templateContainer.Name == DefaultContainerName) || (container.Name == templateContainer.Name) {
 					newContainer := templateContainer.DeepCopy()
 					err := mergo.Merge(newContainer, container)
 					if err != nil {
 						return nil, err
 					}
 					mergedContainers = append(mergedContainers, *newContainer)
-				} else {
-					mergedContainers = append(mergedContainers, container)
 				}
 			}
 		}

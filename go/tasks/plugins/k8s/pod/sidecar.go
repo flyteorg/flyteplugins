@@ -12,6 +12,8 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
+	"github.com/imdario/mergo"
+
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -82,7 +84,7 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 	return &podSpec, nil
 }
 
-/* TODO figure out if I still need this or not
+// TODO figure out if I still need this or not
 func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) {
 	if len(task.GetConfig()) == 0 {
 		return "", errors.Errorf(errors.BadTaskSpecification,
@@ -96,7 +98,7 @@ func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) 
 	}
 
 	return primaryContainerName, nil
-}*/
+}
 
 func getPrimaryContainerNameFromTask(taskCtx pluginsCore.TaskExecutionContext) (string, error) {
 	primaryContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
@@ -133,7 +135,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 		primaryContainerName = sidecarJob.PrimaryContainerName
 	case 1:
 		// Handles pod tasks that marshal the pod spec to the task custom.
-		containerName, err := getPrimaryContainerNameFromTask(taskCtx)
+		containerName, err := getPrimaryContainerNameFromConfig(task)
 		if err != nil {
 			return err
 		}
@@ -146,7 +148,7 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 			mergeMapInto(task.GetK8SPod().Metadata.Labels, pod.Labels)
 		}
 
-		containerName, err := getPrimaryContainerNameFromTask(taskCtx)
+		containerName, err := getPrimaryContainerNameFromConfig(task)
 		if err != nil {
 			return err
 		}
@@ -167,13 +169,28 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 // spec if necessary.
 func validateAndFinalizePodSpec(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, podSpec *v1.PodSpec) error {
 	var hasPrimaryContainer bool
+	var hasDefaultContainer bool
+	var primaryContainer v1.Container
+	var defaultContainer v1.Container
+
+	logger.Infof(ctx, "primary container name %v", primaryContainerName)
+	taskName, err := getPrimaryContainerNameFromTask(taskCtx)
+	if err != nil {
+		return err
+	}
+	logger.Infof(ctx, "task name %v", taskName)
 
 	resReqs := make([]v1.ResourceRequirements, 0, len(podSpec.Containers))
 	for index, container := range podSpec.Containers {
 		var resourceMode = flytek8s.ResourceCustomizationModeEnsureExistingResourcesInRange
+		logger.Infof(ctx, "checking container name %v", container.Name)
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 			resourceMode = flytek8s.ResourceCustomizationModeMergeExistingResources
+			primaryContainer = container
+		}
+		if container.Name == DefaultContainerName {
+			defaultContainer = container
 		}
 
 		templateParameters := template.Parameters{
@@ -189,6 +206,18 @@ func validateAndFinalizePodSpec(ctx context.Context, taskCtx pluginsCore.TaskExe
 		}
 
 		resReqs = append(resReqs, container.Resources)
+	}
+	// TODO all the edits here are super shoddy just for testing
+	if hasPrimaryContainer && hasDefaultContainer {
+		for index, container := range podSpec.Containers {
+			if container.Name == primaryContainerName {
+				err := mergo.Merge(primaryContainer, defaultContainer)
+				if err != nil {
+					return err
+				}
+				podSpec.Containers[index] = primaryContainer
+			}
+		}
 	}
 
 	if !hasPrimaryContainer {

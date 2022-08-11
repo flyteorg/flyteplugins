@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	podTaskType         = "pod"
-	PrimaryContainerKey = "primary_container_name"
+	podTaskType          = "pod"
+	PrimaryContainerKey  = "primary_container_name"
+	DefaultContainerName = "default" // TODO can probably use something better
 )
 
 var (
