@@ -91,6 +91,11 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			return core.UnknownTransition, err
 		}
 
+		// if the next state has not yet transitioned from PhaseStart it means that the background
+		// cache lookup for map task subtasks has not yet been completed. this is necessary for
+		// the InitializeExternalResources operation, which is used to notify admin of subtask
+		// including cache status. a transition from PhaseStart indicates cache lookup completion
+		// and we may InitializeExternalResources.
 		if np, _ := nextState.GetPhase(); np != arrayCore.PhaseStart {
 			externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
 				func(tCtx core.TaskExecutionContext, childIndex int) string {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand" // TODO @hamersaw - remove for testing
 	"strconv"
 
 	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -192,7 +191,6 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion).SetReason("Finished cache lookup.")
 	case catalog.ResponseStatusNotReady:
-		logger.Infof(ctx, "HAMERSAW - not yet ready")
 		ownerSignal := tCtx.TaskRefreshIndicator()
 		future.OnReady(func(ctx context.Context, _ catalog.Future) {
 			ownerSignal(ctx)
