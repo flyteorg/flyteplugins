@@ -91,12 +91,14 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			return core.UnknownTransition, err
 		}
 
-		externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
-			func(tCtx core.TaskExecutionContext, childIndex int) string {
-				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
-				return subTaskExecutionID.GetGeneratedName()
-			},
-		)
+		if np, _ := nextState.GetPhase(); np != arrayCore.PhaseStart {
+			externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
+				func(tCtx core.TaskExecutionContext, childIndex int) string {
+					subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
+					return subTaskExecutionID.GetGeneratedName()
+				},
+			)
+		}
 
 	case arrayCore.PhasePreLaunch:
 		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")

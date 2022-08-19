@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/rand" // TODO @hamersaw - remove for testing
 	"strconv"
 
 	idlPlugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -121,6 +122,13 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	// Otherwise, run the data catalog steps - create and submit work items to the catalog processor,
+	cfg := catalog.GetConfig()
+	if int(arrayJobSize) > cfg.WriterWorkqueueConfig.IndexCacheMaxItems || int(arrayJobSize) > cfg.ReaderWorkqueueConfig.IndexCacheMaxItems {
+		ee := fmt.Errorf("array size > max allowed for cache lookup. requested [%v]. writer allowed [%v] reader allowed [%v]",
+			arrayJobSize, cfg.WriterWorkqueueConfig.IndexCacheMaxItems, cfg.ReaderWorkqueueConfig.IndexCacheMaxItems)
+		logger.Error(ctx, ee)
+		return state, ee
+	}
 
 	// build output writers
 	outputWriters, err := ConstructOutputWriters(ctx, tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), int(arrayJobSize))
@@ -184,6 +192,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		state = state.SetPhase(arrayCore.PhasePreLaunch, core.DefaultPhaseVersion).SetReason("Finished cache lookup.")
 	case catalog.ResponseStatusNotReady:
+		logger.Infof(ctx, "HAMERSAW - not yet ready")
 		ownerSignal := tCtx.TaskRefreshIndicator()
 		future.OnReady(func(ctx context.Context, _ catalog.Future) {
 			ownerSignal(ctx)
