@@ -52,7 +52,7 @@ func TestFixedLengthUniqueIDForParts(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			i, err := FixedLengthUniqueIDForParts(test.maxLength, test.parts...)
+			i, err := FixedLengthUniqueIDForParts(test.maxLength, test.parts)
 			if test.expectError {
 				assert.Error(t, err)
 			} else {
