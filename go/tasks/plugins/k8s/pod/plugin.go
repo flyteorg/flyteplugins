@@ -16,8 +16,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/flyteorg/flytestdlib/logger" // TODO debugging
 )
 
 const (
@@ -78,13 +76,10 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		return nil, err
 	}
 
-	logger.Info(ctx, "Pod template with name ", podTemplate.Name)
-	logger.Info(ctx, "Got here?")
 	pod, err := flytek8s.BuildPodWithSpec(podTemplate, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, err
 	}
-	logger.Infof(ctx, "Built pod with containers %v", pod.Spec.Containers)
 
 	// update pod metadata
 	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
