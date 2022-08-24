@@ -16,6 +16,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/flyteorg/flytestdlib/logger" // TODO debugging
 )
 
 const (
@@ -34,7 +36,7 @@ var (
 )
 
 type podBuilder interface {
-	getPrimaryContainerName(taskCtx pluginsCore.TaskExecutionContext) (string, error)
+	getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error)
 	buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error)
 	updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error
 }
@@ -71,15 +73,18 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
-	primaryContainerName, err := builder.getPrimaryContainerName(taskCtx)
+	primaryContainerName, err := builder.getPrimaryContainerName(task, taskCtx)
 	if err != nil {
 		return nil, err
 	}
 
+	logger.Info(ctx, "Pod template with name ", podTemplate.Name)
+	logger.Info(ctx, "Got here?")
 	pod, err := flytek8s.BuildPodWithSpec(podTemplate, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, err
 	}
+	logger.Infof(ctx, "Built pod with containers %v", pod.Spec.Containers)
 
 	// update pod metadata
 	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {

@@ -19,7 +19,7 @@ const (
 type containerPodBuilder struct {
 }
 
-func (containerPodBuilder) getPrimaryContainerName(taskCtx pluginsCore.TaskExecutionContext) (string, error) {
+func (containerPodBuilder) getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error) {
 	primaryContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	if primaryContainerName == "" {
 		return "", errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification, missing generated name")

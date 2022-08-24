@@ -12,8 +12,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
-	"github.com/imdario/mergo"
-
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -34,8 +32,8 @@ type sidecarJob struct {
 type sidecarPodBuilder struct {
 }
 
-func (sidecarPodBuilder) getPrimaryContainerName(taskCtx pluginsCore.TaskExecutionContext) (string, error) {
-	return getPrimaryContainerNameFromTask(taskCtx)
+func (sidecarPodBuilder) getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error) {
+	return getPrimaryContainerNameFromConfig(task)
 }
 
 func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
@@ -100,14 +98,6 @@ func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) 
 	return primaryContainerName, nil
 }
 
-func getPrimaryContainerNameFromTask(taskCtx pluginsCore.TaskExecutionContext) (string, error) {
-	primaryContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
-	if primaryContainerName == "" {
-		return "", errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification, missing generated name")
-	}
-	return primaryContainerName, nil
-}
-
 func mergeMapInto(src map[string]string, dst map[string]string) {
 	for key, value := range src {
 		dst[key] = value
@@ -169,16 +159,6 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 // spec if necessary.
 func validateAndFinalizePodSpec(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, primaryContainerName string, podSpec *v1.PodSpec) error {
 	var hasPrimaryContainer bool
-	var hasDefaultContainer bool
-	var primaryContainer v1.Container
-	var defaultContainer v1.Container
-
-	logger.Infof(ctx, "primary container name %v", primaryContainerName)
-	taskName, err := getPrimaryContainerNameFromTask(taskCtx)
-	if err != nil {
-		return err
-	}
-	logger.Infof(ctx, "task name %v", taskName)
 
 	resReqs := make([]v1.ResourceRequirements, 0, len(podSpec.Containers))
 	for index, container := range podSpec.Containers {
@@ -187,10 +167,6 @@ func validateAndFinalizePodSpec(ctx context.Context, taskCtx pluginsCore.TaskExe
 		if container.Name == primaryContainerName {
 			hasPrimaryContainer = true
 			resourceMode = flytek8s.ResourceCustomizationModeMergeExistingResources
-			primaryContainer = container
-		}
-		if container.Name == DefaultContainerName {
-			defaultContainer = container
 		}
 
 		templateParameters := template.Parameters{
@@ -206,18 +182,6 @@ func validateAndFinalizePodSpec(ctx context.Context, taskCtx pluginsCore.TaskExe
 		}
 
 		resReqs = append(resReqs, container.Resources)
-	}
-	// TODO all the edits here are super shoddy just for testing
-	if hasPrimaryContainer && hasDefaultContainer {
-		for index, container := range podSpec.Containers {
-			if container.Name == primaryContainerName {
-				err := mergo.Merge(primaryContainer, defaultContainer)
-				if err != nil {
-					return err
-				}
-				podSpec.Containers[index] = primaryContainer
-			}
-		}
 	}
 
 	if !hasPrimaryContainer {
