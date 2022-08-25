@@ -241,6 +241,45 @@ func TestDetermineDiscoverability(t *testing.T) {
 			Reason:               "Finished cache lookup.",
 		}, 1, nil)
 	})
+
+	t.Run("Discoverable but not cached", func(t *testing.T) {
+		download.OnGetCachedResults().Return(bitarray.NewBitSet(1)).Once()
+		toCache := bitarray.NewBitSet(1)
+		toCache.Set(0)
+
+		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhasePreLaunch,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			ExecutionArraySize:   1,
+			OriginalArraySize:    1,
+			OriginalMinSuccesses: 1,
+			IndexesToCache:       toCache,
+			Reason:               "Finished cache lookup.",
+		}, 1, nil)
+	})
+
+	t.Run("DiscoveryNotYetComplete ", func(t *testing.T) {
+		future := &catalogMocks.DownloadFuture{}
+		future.OnGetResponseStatus().Return(catalog.ResponseStatusNotReady)
+		future.On("OnReady", mock.Anything).Return(func(_ context.Context, _ catalog.Future) {})
+
+		runDetermineDiscoverabilityTest(t, template, future, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhaseStart,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			OriginalArraySize:    1,
+			OriginalMinSuccesses: 1,
+		}, 1, nil)
+	})
+
+	t.Run("MaxArrayJobSizeFailure", func(t *testing.T) {
+		runDetermineDiscoverabilityTest(t, template, f, &arrayCore.State{
+			CurrentPhase:         arrayCore.PhasePermanentFailure,
+			PhaseVersion:         core2.DefaultPhaseVersion,
+			OriginalArraySize:    1,
+			OriginalMinSuccesses: 1,
+			Reason:               "array size > max allowed. requested [1]. allowed [0]",
+		}, 0, nil)
+	})
 }
 
 func TestDiscoverabilityTaskType1(t *testing.T) {
