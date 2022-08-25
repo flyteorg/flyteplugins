@@ -87,27 +87,19 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	switch p, version := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginConfig.MaxArrayJobSize, pluginState)
-		if err != nil {
-			return core.UnknownTransition, err
-		}
-
-		// if the next state has not yet transitioned from PhaseStart it means that the background
-		// cache lookup for map task subtasks has not yet been completed. this is necessary for
-		// the InitializeExternalResources operation, which is used to notify admin of subtask
-		// including cache status. a transition from PhaseStart indicates cache lookup completion
-		// and we may InitializeExternalResources.
-		if np, _ := nextState.GetPhase(); np != arrayCore.PhaseStart {
-			externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
-				func(tCtx core.TaskExecutionContext, childIndex int) string {
-					subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
-					return subTaskExecutionID.GetGeneratedName()
-				},
-			)
-		}
 
 	case arrayCore.PhasePreLaunch:
 		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
-		err = nil
+
+		// we wait for PhasePreLaunch to InitializeExternalResources because then the array job
+		// configuration has been validated and all of the metadata necessary to report subtask
+		// status (ie. cache hit / etc) is available.
+		externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
+			func(tCtx core.TaskExecutionContext, childIndex int) string {
+				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
+				return subTaskExecutionID.GetGeneratedName()
+			},
+		)
 
 	case arrayCore.PhaseWaitingForResources:
 		fallthrough
