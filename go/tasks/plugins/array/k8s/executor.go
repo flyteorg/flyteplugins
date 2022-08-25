@@ -86,7 +86,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	switch p, version := pluginState.GetPhase(); p {
 	case arrayCore.PhaseStart:
-		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginState)
+		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginConfig.MaxArrayJobSize, pluginState)
 		if err != nil {
 			return core.UnknownTransition, err
 		}
