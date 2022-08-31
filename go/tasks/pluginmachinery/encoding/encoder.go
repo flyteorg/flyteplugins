@@ -12,10 +12,14 @@ const specialEncoderKey = "abcdefghijklmnopqrstuvwxyz123456"
 
 var Base32Encoder = base32.NewEncoding(specialEncoderKey).WithPadding(base32.NoPadding)
 
+// Algorithm defines an enum for the encoding algorithm to use.
 type Algorithm uint32
 
 const (
+	// Algorithm32 uses fnv32 bit encoder.
 	Algorithm32 Algorithm = iota
+
+	// Algorithm64 uses fnv64 bit encoder.
 	Algorithm64
 )
 
@@ -23,11 +27,13 @@ type Option interface {
 	option()
 }
 
+// AlgorithmOption defines a wrapper to pass the algorithm to encoding functions.
 type AlgorithmOption struct {
 	Option
 	algo Algorithm
 }
 
+// NewAlgorithmOption wraps the Algorithm into an AlgorithmOption to pass to the encoding functions.
 func NewAlgorithmOption(algo Algorithm) AlgorithmOption {
 	return AlgorithmOption{
 		algo: algo,
