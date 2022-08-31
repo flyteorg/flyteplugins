@@ -17,10 +17,10 @@ func TestFixedLengthUniqueID(t *testing.T) {
 		expectError bool
 	}{
 		{"smallerThanMax", "x", 5, "x", false},
-		{"veryLowLimit", "xx", 1, "fbdyvab4vrxwm1", true},
-		{"highLimit", "xxxxxx", 5, "fsbykgqw4gv441", true},
+		{"veryLowLimit", "xx", 1, "flfryc2i", true},
+		{"highLimit", "xxxxxx", 5, "fufiti6i", true},
 		{"higherLimit", "xxxxx", 10, "xxxxx", false},
-		{"largeID", "xxxxxxxxxxxxxxxxxxxxxxxx", 20, "fyuigwrqamd3yk", false},
+		{"largeID", "xxxxxxxxxxxxxxxxxxxxxxxx", 20, "fuaa3aji", false},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -41,18 +41,20 @@ func TestFixedLengthUniqueIDForParts(t *testing.T) {
 		name        string
 		parts       []string
 		maxLength   int
+		algorithm   Algorithm
 		output      string
 		expectError bool
 	}{
-		{"smallerThanMax", []string{"x", "y", "z"}, 10, "x-y-z", false},
-		{"veryLowLimit", []string{"x", "y"}, 1, "fx2llkgl6golek", true},
-		{"fittingID", []string{"x"}, 2, "x", false},
-		{"highLimit", []string{"x", "y", "z"}, 4, "fvzirkr1kofp1m", true},
-		{"largeID", []string{"x", "y", "z", "m", "n", "y", "z", "m", "n", "y", "z", "m", "n"}, 15, "fwp4bky2kucex5", false},
+		{"smallerThanMax", []string{"x", "y", "z"}, 10, Algorithm32, "x-y-z", false},
+		{"veryLowLimit", []string{"x", "y"}, 1, Algorithm32, "fz2jizji", true},
+		{"fittingID", []string{"x"}, 2, Algorithm32, "x", false},
+		{"highLimit", []string{"x", "y", "z"}, 4, Algorithm32, "fxzsoqrq", true},
+		{"largeID", []string{"x", "y", "z", "m", "n", "y", "z", "m", "n", "y", "z", "m", "n"}, 15, Algorithm32, "fe63sz6y", false},
+		{"largeID", []string{"x", "y", "z", "m", "n", "y", "z", "m", "n", "y", "z", "m", "n"}, 15, Algorithm64, "fwp4bky2kucex5", false},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			i, err := FixedLengthUniqueIDForParts(test.maxLength, test.parts)
+			i, err := FixedLengthUniqueIDForParts(test.maxLength, test.parts, NewAlgorithmOption(test.algorithm))
 			if test.expectError {
 				assert.Error(t, err)
 			} else {
