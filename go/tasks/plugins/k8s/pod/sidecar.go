@@ -84,10 +84,10 @@ func (sidecarPodBuilder) getPrimaryContainerName(task *core.TaskTemplate, taskCt
 		sidecarJob := sidecarJob{}
 		err := utils.UnmarshalStructToObj(task.GetCustom(), &sidecarJob)
 		if err != nil {
-			return errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
+			return "", errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
 		}
 
-		return sidecarJob.PrimaryContainerName
+		return sidecarJob.PrimaryContainerName, nil
 	default:
 		if len(task.GetConfig()) == 0 {
 			return "", errors.Errorf(errors.BadTaskSpecification,
@@ -110,7 +110,7 @@ func mergeMapInto(src map[string]string, dst map[string]string) {
 	}
 }
 
-func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
+func (s sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
 	pod.Annotations = make(map[string]string)
 	pod.Labels = make(map[string]string)
 
@@ -134,7 +134,11 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 	}
 
 	// validate pod and update resource requirements
-	primaryContainerName := sidecarPodBuiler.getPrimaryContainerName()
+	primaryContainerName, err := s.getPrimaryContainerName(task, taskCtx)
+	if err != nil {
+		return err
+	}
+
 	if err := validateAndFinalizePodSpec(ctx, taskCtx, primaryContainerName, &pod.Spec); err != nil {
 		return err
 	}

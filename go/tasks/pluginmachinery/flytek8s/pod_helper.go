@@ -23,8 +23,8 @@ const PodKind = "pod"
 const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
-const defaultContainerName = "default"
-const primaryContainerName = "primary"
+const defaultContainerTemplateName = "default"
+const primaryContainerTemplateName = "primary"
 
 // ApplyInterruptibleNodeAffinity configures the node-affinity for the pod using the configuration specified.
 func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
@@ -156,12 +156,11 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 		// merge template Containers
 		var mergedContainers []v1.Container
 		var defaultContainerTemplate, primaryContainerTemplate *v1.Container
-
 		for _, container := range podTemplate.Template.Spec.Containers {
-			if container.Name == defaultContainerName {
-				defaultContainerTemplate = container
-			} else if container.Name == primaryContainerName {
-				primaryContainerTemplate = container
+			if container.Name == defaultContainerTemplateName {
+				defaultContainerTemplate = container.DeepCopy()
+			} else if container.Name == primaryContainerTemplateName {
+				primaryContainerTemplate = container.DeepCopy()
 			}
 		}
 
@@ -186,7 +185,7 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 
 			// if applicable merge with existing container
 			if mergedContainer == nil {
-				mergedContainer = container
+				mergedContainer = &container
 			} else {
 				err := mergo.Merge(mergedContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
 				if err != nil {
@@ -194,7 +193,7 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 				}
 			}
 
-			mergedContainers = append(mergedContainers, mergedContainer)
+			mergedContainers = append(mergedContainers, *mergedContainer)
 		}
 
 		// update Pod fields
