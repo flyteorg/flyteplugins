@@ -127,7 +127,7 @@ func (s sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, t
 		mergeMapInto(sidecarJob.Labels, pod.Labels)
 	default:
 		// Handles pod tasks that marshal the pod spec to the k8s_pod task target.
-		if task.GetK8SPod() == nil || task.GetK8SPod().Metadata != nil {
+		if task.GetK8SPod() != nil && task.GetK8SPod().Metadata != nil {
 			mergeMapInto(task.GetK8SPod().Metadata.Annotations, pod.Annotations)
 			mergeMapInto(task.GetK8SPod().Metadata.Labels, pod.Labels)
 		}
