@@ -51,6 +51,7 @@ func TestFixedLengthUniqueIDForParts(t *testing.T) {
 		{"highLimit", []string{"x", "y", "z"}, 4, Algorithm32, "fxzsoqrq", true},
 		{"largeID", []string{"x", "y", "z", "m", "n", "y", "z", "m", "n", "y", "z", "m", "n"}, 15, Algorithm32, "fe63sz6y", false},
 		{"largeID", []string{"x", "y", "z", "m", "n", "y", "z", "m", "n", "y", "z", "m", "n"}, 15, Algorithm64, "fwp4bky2kucex5", false},
+		{"largeID", []string{"x", "y", "z", "m", "n", "y", "z", "m", "n", "y", "z", "m", "n", "z", "m", "n", "y", "z", "m", "n"}, 30, Algorithm128, "fbmesl15enghpjepzjm5cp1zfqe", false},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

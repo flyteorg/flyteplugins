@@ -21,6 +21,9 @@ const (
 
 	// Algorithm64 uses fnv64 bit encoder.
 	Algorithm64
+
+	// Algorithm128 uses fnv128 bit encoder.
+	Algorithm128
 )
 
 type Option interface {
@@ -55,6 +58,8 @@ func FixedLengthUniqueID(inputID string, maxLength int, options ...Option) (stri
 				hasher = fnv.New32a()
 			case Algorithm64:
 				hasher = fnv.New64a()
+			case Algorithm128:
+				hasher = fnv.New128a()
 			}
 		}
 	}
