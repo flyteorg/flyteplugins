@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	podTaskType          = "pod"
-	PrimaryContainerKey  = "primary_container_name"
+	podTaskType         = "pod"
+	PrimaryContainerKey = "primary_container_name"
 )
 
 var (

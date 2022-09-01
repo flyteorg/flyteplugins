@@ -185,15 +185,16 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 
 			// if applicable merge with existing container
 			if mergedContainer == nil {
-				mergedContainer = &container
+				mergedContainers = append(mergedContainers, container)
 			} else {
 				err := mergo.Merge(mergedContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
 				if err != nil {
 					return nil, err
 				}
+
+				mergedContainers = append(mergedContainers, *mergedContainer)
 			}
 
-			mergedContainers = append(mergedContainers, *mergedContainer)
 		}
 
 		// update Pod fields

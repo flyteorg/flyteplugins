@@ -1018,10 +1018,10 @@ func TestBuildPodWithSpec(t *testing.T) {
 	podSpec := v1.PodSpec{
 		Containers: []v1.Container{
 			v1.Container{
-				Name:            "foo",
+				Name: "foo",
 			},
 			v1.Container{
-				Name:            "bar",
+				Name: "bar",
 			},
 		},
 		NodeSelector: map[string]string{
