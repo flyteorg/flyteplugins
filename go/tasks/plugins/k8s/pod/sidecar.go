@@ -31,10 +31,6 @@ type sidecarJob struct {
 type sidecarPodBuilder struct {
 }
 
-func (sidecarPodBuilder) getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error) {
-	return getPrimaryContainerNameFromConfig(task)
-}
-
 func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
 	var podSpec v1.PodSpec
 	switch task.TaskTypeVersion {
@@ -81,19 +77,31 @@ func (sidecarPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTempla
 	return &podSpec, nil
 }
 
-func getPrimaryContainerNameFromConfig(task *core.TaskTemplate) (string, error) {
-	if len(task.GetConfig()) == 0 {
-		return "", errors.Errorf(errors.BadTaskSpecification,
-			"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", PrimaryContainerKey)
-	}
+func (sidecarPodBuilder) getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error) {
+	switch task.TaskTypeVersion {
+	case 0:
+		// Handles pod tasks when they are defined as Sidecar tasks and marshal the podspec using k8s proto.
+		sidecarJob := sidecarJob{}
+		err := utils.UnmarshalStructToObj(task.GetCustom(), &sidecarJob)
+		if err != nil {
+			return errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
+		}
 
-	primaryContainerName, ok := task.GetConfig()[PrimaryContainerKey]
-	if !ok {
-		return "", errors.Errorf(errors.BadTaskSpecification,
-			"invalid TaskSpecification, config missing [%s] key in [%v]", PrimaryContainerKey, task.GetConfig())
-	}
+		return sidecarJob.PrimaryContainerName
+	default:
+		if len(task.GetConfig()) == 0 {
+			return "", errors.Errorf(errors.BadTaskSpecification,
+				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", PrimaryContainerKey)
+		}
 
-	return primaryContainerName, nil
+		primaryContainerName, ok := task.GetConfig()[PrimaryContainerKey]
+		if !ok {
+			return "", errors.Errorf(errors.BadTaskSpecification,
+				"invalid TaskSpecification, config missing [%s] key in [%v]", PrimaryContainerKey, task.GetConfig())
+		}
+
+		return primaryContainerName, nil
+	}
 }
 
 func mergeMapInto(src map[string]string, dst map[string]string) {
@@ -106,7 +114,6 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 	pod.Annotations = make(map[string]string)
 	pod.Labels = make(map[string]string)
 
-	var primaryContainerName string
 	switch task.TaskTypeVersion {
 	case 0:
 		// Handles pod tasks when they are defined as Sidecar tasks and marshal the podspec using k8s proto.
@@ -118,32 +125,16 @@ func (sidecarPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, tas
 
 		mergeMapInto(sidecarJob.Annotations, pod.Annotations)
 		mergeMapInto(sidecarJob.Labels, pod.Labels)
-
-		primaryContainerName = sidecarJob.PrimaryContainerName
-	case 1:
-		// Handles pod tasks that marshal the pod spec to the task custom.
-		containerName, err := getPrimaryContainerNameFromConfig(task)
-		if err != nil {
-			return err
-		}
-
-		primaryContainerName = containerName
 	default:
 		// Handles pod tasks that marshal the pod spec to the k8s_pod task target.
 		if task.GetK8SPod() == nil || task.GetK8SPod().Metadata != nil {
 			mergeMapInto(task.GetK8SPod().Metadata.Annotations, pod.Annotations)
 			mergeMapInto(task.GetK8SPod().Metadata.Labels, pod.Labels)
 		}
-
-		containerName, err := getPrimaryContainerNameFromConfig(task)
-		if err != nil {
-			return err
-		}
-
-		primaryContainerName = containerName
 	}
 
 	// validate pod and update resource requirements
+	primaryContainerName := sidecarPodBuiler.getPrimaryContainerName()
 	if err := validateAndFinalizePodSpec(ctx, taskCtx, primaryContainerName, &pod.Spec); err != nil {
 		return err
 	}

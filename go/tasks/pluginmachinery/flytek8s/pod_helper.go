@@ -23,7 +23,8 @@ const PodKind = "pod"
 const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
-const DefaultContainerName = "default" // TODO can probably use something better
+const defaultContainerName = "default"
+const primaryContainerName = "primary"
 
 // ApplyInterruptibleNodeAffinity configures the node-affinity for the pod using the configuration specified.
 func ApplyInterruptibleNodeAffinity(interruptible bool, podSpec *v1.PodSpec) {
@@ -145,25 +146,58 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 	}
 
 	if podTemplate != nil {
+		// merge template PodSpec
 		basePodSpec := podTemplate.Template.Spec.DeepCopy()
 		err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 		if err != nil {
 			return nil, err
 		}
 
+		// merge template Containers
 		var mergedContainers []v1.Container
+		var defaultContainerTemplate, primaryContainerTemplate *v1.Container
+
+		for _, container := range podTemplate.Template.Spec.Containers {
+			if container.Name == defaultContainerName {
+				defaultContainerTemplate = container
+			} else if container.Name == primaryContainerName {
+				primaryContainerTemplate = container
+			}
+		}
+
 		for _, container := range podSpec.Containers {
-			for _, templateContainer := range basePodSpec.Containers {
-				if ((container.Name == primaryContainerName) && templateContainer.Name == DefaultContainerName) || (container.Name == templateContainer.Name) {
-					newContainer := templateContainer.DeepCopy()
-					err := mergo.Merge(newContainer, container)
+			// if applicable start with defaultContainerTemplate
+			var mergedContainer *v1.Container
+			if defaultContainerTemplate != nil {
+				mergedContainer = defaultContainerTemplate.DeepCopy()
+			}
+
+			// if applicable merge with primaryContainerTemplate
+			if container.Name == primaryContainerName && primaryContainerTemplate != nil {
+				if mergedContainer == nil {
+					mergedContainer = primaryContainerTemplate.DeepCopy()
+				} else {
+					err := mergo.Merge(mergedContainer, primaryContainerTemplate, mergo.WithOverride, mergo.WithAppendSlice)
 					if err != nil {
 						return nil, err
 					}
-					mergedContainers = append(mergedContainers, *newContainer)
 				}
 			}
+
+			// if applicable merge with existing container
+			if mergedContainer == nil {
+				mergedContainer = container
+			} else {
+				err := mergo.Merge(mergedContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			mergedContainers = append(mergedContainers, mergedContainer)
 		}
+
+		// update Pod fields
 		basePodSpec.Containers = mergedContainers
 		pod.ObjectMeta = podTemplate.Template.ObjectMeta
 		pod.Spec = *basePodSpec

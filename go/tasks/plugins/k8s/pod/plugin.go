@@ -21,7 +21,6 @@ import (
 const (
 	podTaskType          = "pod"
 	PrimaryContainerKey  = "primary_container_name"
-	DefaultContainerName = "default" // TODO can probably use something better
 )
 
 var (
@@ -34,8 +33,8 @@ var (
 )
 
 type podBuilder interface {
-	getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error)
 	buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error)
+	getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error)
 	updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error
 }
 
@@ -85,11 +84,6 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
 		return nil, err
 	}
-
-	if len(pod.Annotations) == 0 { // Initialize map
-		pod.Annotations = make(map[string]string)
-	}
-	pod.Annotations[PrimaryContainerKey] = primaryContainerName
 
 	return pod, nil
 }
