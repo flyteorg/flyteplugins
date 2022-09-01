@@ -156,11 +156,11 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 		// merge template Containers
 		var mergedContainers []v1.Container
 		var defaultContainerTemplate, primaryContainerTemplate *v1.Container
-		for _, container := range podTemplate.Template.Spec.Containers {
-			if container.Name == defaultContainerTemplateName {
-				defaultContainerTemplate = container.DeepCopy()
-			} else if container.Name == primaryContainerTemplateName {
-				primaryContainerTemplate = container.DeepCopy()
+		for i := 0; i < len(podTemplate.Template.Spec.Containers); i++ {
+			if podTemplate.Template.Spec.Containers[i].Name == defaultContainerTemplateName {
+				defaultContainerTemplate = &podTemplate.Template.Spec.Containers[i]
+			} else if podTemplate.Template.Spec.Containers[i].Name == primaryContainerTemplateName {
+				primaryContainerTemplate = &podTemplate.Template.Spec.Containers[i]
 			}
 		}
 
