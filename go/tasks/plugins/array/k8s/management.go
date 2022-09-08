@@ -66,12 +66,6 @@ func deallocateResource(ctx context.Context, tCtx core.TaskExecutionContext, con
 func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, kubeClient core.KubeClient,
 	config *Config, dataStore *storage.DataStore, outputPrefix, baseOutputDataSandbox storage.DataReference, currentState *arrayCore.State) (
 	newState *arrayCore.State, externalResources []*core.ExternalResource, err error) {
-	if int64(currentState.GetExecutionArraySize()) > config.MaxArrayJobSize {
-		ee := fmt.Errorf("array size > max allowed. Requested [%v]. Allowed [%v]", currentState.GetExecutionArraySize(), config.MaxArrayJobSize)
-		logger.Info(ctx, ee)
-		currentState = currentState.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(ee.Error())
-		return currentState, externalResources, nil
-	}
 
 	newState = currentState
 	messageCollector := errorcollector.NewErrorMessageCollector()
@@ -113,7 +107,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 	// interruptible subtasks.
 	if len(currentState.SystemFailures.GetItems()) == 0 {
 		count := uint(currentState.GetExecutionArraySize())
-		maxValue := bitarray.Item(tCtx.TaskExecutionMetadata().GetInterruptibleFailureThreshold())
+		maxValue := bitarray.Item(tCtx.TaskExecutionMetadata().GetMaxAttempts())
 
 		systemFailuresArray, err := bitarray.NewCompactArray(count, maxValue)
 		if err != nil {
@@ -230,7 +224,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 					return currentState, externalResources, err
 				}
 
-				if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, &io.ExecutionError{
+				if err = ow.Put(ctx, ioutils.NewInMemoryOutputReader(nil, nil, &io.ExecutionError{
 					ExecutionError: phaseInfo.Err(),
 					IsRecoverable:  phaseInfo.Phase() != core.PhasePermanentFailure,
 				})); err != nil {
