@@ -75,7 +75,7 @@ func FixedLengthUniqueID(inputID string, maxLength int, options ...Option) (stri
 	// Encoding Length Calculation:
 	// Base32 Encoder will encode every 5 bits into an output character (2 ^ 5 = 32)
 	// output length = ciel(<input bits> / 5)
-	//	for 32a hashing	= ceil(32 / 5) = 7
+	//  for 32a hashing	= ceil(32 / 5) = 7
 	//  for 64a hashing	= ceil(64 / 5) = 13
 	// We prefix with character `f` so the final output is 8 or 14
 
