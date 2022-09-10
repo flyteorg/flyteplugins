@@ -11,6 +11,8 @@ import (
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flytestdlib/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -133,6 +135,31 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		},
 	}
 
+	jobContainerSpec := v1.Container{
+				Name:  "dask-job", // FIXME
+				Image: image,
+				Args: container.GetArgs(),
+				Resources: v1.ResourceRequirements{
+					Limits: map[v1.ResourceName]resource.Quantity{
+						v1.ResourceCPU:    resource.MustParse("0.5"),
+						v1.ResourceMemory: resource.MustParse("200Mi"),
+					},
+				},
+			}
+
+	templateParameters := template.Parameters{
+		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+		Inputs:           taskCtx.InputReader(),
+		OutputPath:       taskCtx.OutputWriter(),
+		Task:             taskCtx.TaskReader(),
+	}
+	resourceMode := flytek8s.ResourceCustomizationModeMergeExistingResources
+
+	err = flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &jobContainerSpec)
+	if err != nil {
+		return nil, err
+	}
+
 	job := &daskAPI.DaskJob{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       KindDaskCluster,
@@ -145,17 +172,7 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 			Job: daskAPI.JobSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
-						{
-							Name:  "dask-job", // FIXME
-							Image: image,
-							Args: container.GetArgs(),
-							Resources: v1.ResourceRequirements{
-								Limits: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceCPU:    resource.MustParse("0.5"),
-									v1.ResourceMemory: resource.MustParse("200Mi"),
-								},
-							},
-						},
+						jobContainerSpec,
 					},
 				},
 			},
