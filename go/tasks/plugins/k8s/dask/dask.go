@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -28,6 +29,7 @@ import (
 
 const (
 	daskTaskType        = "dask"
+	jobRunnerPodPostfix = "-runner"
 	KindDaskJob         = "DaskJob"
 	PrimaryContainerKey = "primary_container_name"
 )
@@ -61,7 +63,48 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	container := task.GetContainer()
 	image := container.GetImage()
 
-	workerSpec := daskAPI.WorkerSpec{
+	workerSpec := createWorkerSpec(image)
+	schedulerSpec := createSchedulerSpec(taskName, image)
+
+	templateParameters := template.Parameters{
+		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+		Inputs:           taskCtx.InputReader(),
+		OutputPath:       taskCtx.OutputWriter(),
+		Task:             taskCtx.TaskReader(),
+	}
+	resourceMode := flytek8s.ResourceCustomizationModeMergeExistingResources
+	jobContainer := v1.Container{
+		Name:  "dask-job",
+		Image: image,
+		Args:  container.GetArgs(),
+		Resources: v1.ResourceRequirements{
+			Limits: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceCPU:    resource.MustParse("0.5"),
+				v1.ResourceMemory: resource.MustParse("200Mi"),
+			},
+		},
+	}
+	err = flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &jobContainer)
+	if err != nil {
+		return nil, err
+	}
+	jobSpec := createJobSpec(image, container, jobContainer, workerSpec, schedulerSpec)
+
+	job := &daskAPI.DaskJob{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       KindDaskJob,
+			APIVersion: daskAPI.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dask-job", // Will be overridden by Flyte
+		},
+		Spec: jobSpec,
+	}
+	return job, nil
+}
+
+func createWorkerSpec(image string) daskAPI.WorkerSpec {
+	return daskAPI.WorkerSpec{
 		Replicas: 1,
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -84,8 +127,10 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 			},
 		},
 	}
+}
 
-	schedulerSpec := daskAPI.SchedulerSpec{
+func createSchedulerSpec(taskName string, image string) daskAPI.SchedulerSpec {
+	return daskAPI.SchedulerSpec{
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
@@ -135,58 +180,25 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 			},
 		},
 	}
+}
 
-	jobContainerSpec := v1.Container{
-		Name:  "dask-job", // FIXME
-		Image: image,
-		Args:  container.GetArgs(),
-		Resources: v1.ResourceRequirements{
-			Limits: map[v1.ResourceName]resource.Quantity{
-				v1.ResourceCPU:    resource.MustParse("0.5"),
-				v1.ResourceMemory: resource.MustParse("200Mi"),
-			},
-		},
-	}
+func createJobSpec(image string, container *core.Container, jobContainer v1.Container, workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec) daskAPI.DaskJobSpec {
 
-	templateParameters := template.Parameters{
-		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
-		Inputs:           taskCtx.InputReader(),
-		OutputPath:       taskCtx.OutputWriter(),
-		Task:             taskCtx.TaskReader(),
-	}
-	resourceMode := flytek8s.ResourceCustomizationModeMergeExistingResources
-
-	err = flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &jobContainerSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	job := &daskAPI.DaskJob{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       KindDaskJob,
-			APIVersion: daskAPI.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "my-job", // FIXME
-		},
-		Spec: daskAPI.DaskJobSpec{
-			Job: daskAPI.JobSpec{
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						jobContainerSpec,
-					},
-				},
-			},
-			Cluster: daskAPI.JobClusterSpec{
-				Spec: daskAPI.DaskClusterSpec{
-					Worker:    workerSpec,
-					Scheduler: schedulerSpec,
+	return daskAPI.DaskJobSpec{
+		Job: daskAPI.JobSpec{
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					jobContainer,
 				},
 			},
 		},
+		Cluster: daskAPI.JobClusterSpec{
+			Spec: daskAPI.DaskClusterSpec{
+				Worker:    workerSpec,
+				Scheduler: schedulerSpec,
+			},
+		},
 	}
-
-	return job, nil
 }
 
 func (p daskResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
@@ -201,23 +213,12 @@ func (p daskResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s
 func (daskResourceHandler) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin, logSuffix string) (pluginsCore.PhaseInfo, error) {
 	job := r.(*daskAPI.DaskJob)
 
-	// FIXME: Handle auth
-    config, err := clientcmd.BuildConfigFromFlags("", "/Users/bstadlbauer/.kube/config")
-    if err != nil {
-        return pluginsCore.PhaseInfoUndefined, err
-    }
-	clientset, err := kubernetes.NewForConfig(config)
+	pod, err := getJobPodFromJobResource(job, ctx)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
-
-	jobPodName := job.ObjectMeta.Name + "-runner"  // FIXME: Pull out into constant - check if also in CRD
-	jobPodNamespace := job.ObjectMeta.Namespace
-	pod, err := clientset.CoreV1().Pods(jobPodNamespace).Get(ctx, jobPodName, metav1.GetOptions{})
-	if err != nil {
-		return pluginsCore.PhaseInfoUndefined, err
-	}
-
+	
+	// Logic copied from the pod plugin
 	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
 	info := pluginsCore.TaskInfo{
 		OccurredAt: &transitionOccurredAt,
@@ -248,6 +249,35 @@ func (daskResourceHandler) GetTaskPhaseWithLogs(ctx context.Context, pluginConte
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, &info), nil
 	}
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
+}
+
+
+func getClientset() (*kubernetes.Clientset, error) {
+	// FIXME: Handle auth
+	config, err := clientcmd.BuildConfigFromFlags("", "/Users/bstadlbauer/.kube/config")
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientset, nil
+}
+
+func getJobPodFromJobResource(job *daskAPI.DaskJob, ctx context.Context) (*v1.Pod, error) {
+	clientset, err := getClientset()
+	if err != nil {
+		return nil, err
+	}
+
+	jobPodName := job.ObjectMeta.Name + jobRunnerPodPostfix
+	jobPodNamespace := job.ObjectMeta.Namespace
+	pod, err := clientset.CoreV1().Pods(jobPodNamespace).Get(ctx, jobPodName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
 }
 
 func (daskResourceHandler) GetProperties() k8s.PluginProperties {
