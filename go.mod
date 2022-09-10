@@ -63,6 +63,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.0.0 // indirect
 	github.com/aws/smithy-go v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bstadlbauer/dask-k8s-operator-go-client v0.0.0-20220626174755-b250e40ca149 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
