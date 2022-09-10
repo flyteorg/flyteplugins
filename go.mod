@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.2.0
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
 	github.com/aws/aws-sdk-go-v2/service/athena v1.0.0
+	github.com/bstadlbauer/dask-k8s-operator-go-client v0.0.0-20220626185500-773a40749b6c
 	github.com/coocood/freecache v1.1.1
 	github.com/flyteorg/flyteidl v1.2.3
 	github.com/flyteorg/flytestdlib v1.0.11
@@ -63,7 +64,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.0.0 // indirect
 	github.com/aws/smithy-go v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bstadlbauer/dask-k8s-operator-go-client v0.0.0-20220626174755-b250e40ca149 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
