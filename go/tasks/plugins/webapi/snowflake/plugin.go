@@ -209,7 +209,7 @@ func buildRequest(method string, queryInfo QueryInfo, snowflakeEndpoint string, 
 	if snowflakeEndpoint == "" {
 		snowflakeURL = "https://" + account + ".snowflakecomputing.com/api/statements"
 	} else {
-		snowflakeURL = snowflakeEndpoint + "/api/statements"
+		snowflakeURL = snowflakeEndpoint + "/api/v2/statements"
 	}
 
 	var data []byte
