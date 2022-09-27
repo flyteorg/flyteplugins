@@ -128,7 +128,7 @@ func NewReservationEntry(expiresAt time.Time, heartbeatInterval time.Duration, o
 type Client interface {
 	Get(ctx context.Context, key Key) (Entry, error)
 	GetOrExtendReservation(ctx context.Context, key Key, ownerID string, heartbeatInterval time.Duration) (*datacatalog.Reservation, error)
-	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata) (Status, error)
+	Put(ctx context.Context, key Key, reader io.OutputReader, metadata Metadata, overwrite bool) (Status, error)
 	ReleaseReservation(ctx context.Context, key Key, ownerID string) error
 }
 

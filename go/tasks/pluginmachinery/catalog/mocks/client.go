@@ -109,8 +109,8 @@ func (_m Client_Put) Return(_a0 catalog.Status, _a1 error) *Client_Put {
 	return &Client_Put{Call: _m.Call.Return(_a0, _a1)}
 }
 
-func (_m *Client) OnPut(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata) *Client_Put {
-	c_call := _m.On("Put", ctx, key, reader, metadata)
+func (_m *Client) OnPut(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata, overwrite bool) *Client_Put {
+	c_call := _m.On("Put", ctx, key, reader, metadata, overwrite)
 	return &Client_Put{Call: c_call}
 }
 
@@ -119,20 +119,20 @@ func (_m *Client) OnPutMatch(matchers ...interface{}) *Client_Put {
 	return &Client_Put{Call: c_call}
 }
 
-// Put provides a mock function with given fields: ctx, key, reader, metadata
-func (_m *Client) Put(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata) (catalog.Status, error) {
-	ret := _m.Called(ctx, key, reader, metadata)
+// Put provides a mock function with given fields: ctx, key, reader, metadata, overwrite
+func (_m *Client) Put(ctx context.Context, key catalog.Key, reader io.OutputReader, metadata catalog.Metadata, overwrite bool) (catalog.Status, error) {
+	ret := _m.Called(ctx, key, reader, metadata, overwrite)
 
 	var r0 catalog.Status
-	if rf, ok := ret.Get(0).(func(context.Context, catalog.Key, io.OutputReader, catalog.Metadata) catalog.Status); ok {
-		r0 = rf(ctx, key, reader, metadata)
+	if rf, ok := ret.Get(0).(func(context.Context, catalog.Key, io.OutputReader, catalog.Metadata, bool) catalog.Status); ok {
+		r0 = rf(ctx, key, reader, metadata, overwrite)
 	} else {
 		r0 = ret.Get(0).(catalog.Status)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, catalog.Key, io.OutputReader, catalog.Metadata) error); ok {
-		r1 = rf(ctx, key, reader, metadata)
+	if rf, ok := ret.Get(1).(func(context.Context, catalog.Key, io.OutputReader, catalog.Metadata, bool) error); ok {
+		r1 = rf(ctx, key, reader, metadata, overwrite)
 	} else {
 		r1 = ret.Error(1)
 	}
