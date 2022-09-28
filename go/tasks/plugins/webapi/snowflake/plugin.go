@@ -207,14 +207,14 @@ func buildRequest(method string, queryInfo QueryInfo, snowflakeEndpoint string, 
 	var snowflakeURL string
 	// for mocking/testing purposes
 	if snowflakeEndpoint == "" {
-		snowflakeURL = "https://" + account + ".snowflakecomputing.com/api/v2/statements"
+		snowflakeURL = "https://" + account + ".snowflakecomputing.com/api/v2"
 	} else {
-		snowflakeURL = snowflakeEndpoint + "/api/v2/statements"
+		snowflakeURL = snowflakeEndpoint + "/api/v2"
 	}
 
 	var data []byte
 	if method == post && !isCancel {
-		snowflakeURL += "?async=true"
+		snowflakeURL += "/statements?async=true"
 		data = []byte(fmt.Sprintf(`{
 		  "statement": "%v",
 		  "database": "%v",
