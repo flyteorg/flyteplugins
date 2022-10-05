@@ -128,7 +128,7 @@ func OverrideDefaultContainerName(taskCtx pluginsCore.TaskExecutionContext, podS
 	// https://github.com/kubeflow/tf-operator/blob/984adc287e6fe82841e4ca282dc9a2cbb71e2d4a/pkg/apis/tensorflow/validation/validation.go#L55-L63
 	// hence we have to override the name set here
 	// https://github.com/flyteorg/flyteplugins/blob/209c52d002b4e6a39be5d175bc1046b7e631c153/go/tasks/pluginmachinery/flytek8s/container_helper.go#L116
-	flyteDefaultContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	flyteDefaultContainerName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName() + "-unknown"
 	for idx, c := range podSpec.Containers {
 		if c.Name == flyteDefaultContainerName {
 			podSpec.Containers[idx].Name = defaultContainerName
