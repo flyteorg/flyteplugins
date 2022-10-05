@@ -518,7 +518,7 @@ func TestToK8sPod(t *testing.T) {
 		p, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 0)
-		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
+		assert.Equal(t, "some-acceptable-name-unknown", p.Containers[0].Name)
 	})
 
 	t.Run("Default toleration, selector, scheduler", func(t *testing.T) {
@@ -553,7 +553,7 @@ func TestToK8sPod(t *testing.T) {
 		assert.Equal(t, 1, len(p.Tolerations))
 		assert.Equal(t, 1, len(p.NodeSelector))
 		assert.Equal(t, "myScheduler", p.SchedulerName)
-		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
+		assert.Equal(t, "some-acceptable-name-unknown", p.Containers[0].Name)
 	})
 }
 

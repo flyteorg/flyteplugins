@@ -117,7 +117,7 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 	}
 	// Make the container name the same as the pod name, unless it violates K8s naming conventions
 	// Container names are subject to the DNS-1123 standard
-	containerName := parameters.TaskExecMetadata.GetTaskExecutionID().GetGeneratedName()
+	containerName := parameters.TaskExecMetadata.GetTaskExecutionID().GetGeneratedName() + "-unknown"
 	if errs := validation.IsDNS1123Label(containerName); len(errs) > 0 {
 		containerName = rand.String(4)
 	}
