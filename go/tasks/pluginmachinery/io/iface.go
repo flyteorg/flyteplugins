@@ -43,6 +43,8 @@ type OutputReader interface {
 	Read(ctx context.Context) (*core.LiteralMap, *ExecutionError, error)
 	// DeckExists checks if the deck file has been generated.
 	DeckExists(ctx context.Context) (bool, error)
+	// GetOutputMetadata get the metadata from task's output, like deck uri
+	GetOutputMetadata(ctx context.Context) map[string]string
 }
 
 // CheckpointPaths provides the paths / keys to input Checkpoints directory and an output checkpoints directory.

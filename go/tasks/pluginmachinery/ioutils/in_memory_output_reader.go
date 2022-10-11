@@ -47,6 +47,10 @@ func (r InMemoryOutputReader) DeckExists(_ context.Context) (bool, error) {
 	return r.DeckPath != nil, nil
 }
 
+func (r InMemoryOutputReader) GetOutputMetadata(_ context.Context) map[string]string {
+	return map[string]string{deckURIKey: r.DeckPath.String()}
+}
+
 func NewInMemoryOutputReader(literals *core.LiteralMap, DeckPath *storage.DataReference, err *io.ExecutionError) InMemoryOutputReader {
 	return InMemoryOutputReader{
 		literals: literals,
