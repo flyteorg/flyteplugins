@@ -495,7 +495,10 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, defaultPodHostNetwork, *sparkApp.Spec.Executor.HostNetwork)
 	assert.Equal(t, defaultPodHostNetwork, *sparkApp.Spec.Driver.HostNetwork)
 
-	// Validate Interruptible Toleration and NodeSelector set for Executor but not Driver.
+	// Validate
+	// * Interruptible Toleration and NodeSelector set for Executor but not Driver.
+	// * Validate Default NodeSelector set for Driver but overwritten with Interruptible NodeSelector for Executor.
+	// * Default Tolerations set for both Driver and Executor.
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.NodeSelector))
 	assert.Equal(t, defaultNodeSelector, sparkApp.Spec.Driver.NodeSelector)
@@ -589,6 +592,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.True(t, ok)
 
 	// Validate Interruptible Toleration and NodeSelector not set  for both Driver and Executors.
+	// Validate that the default Toleration and NodeSelector are set for both Driver and Executors.
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.NodeSelector))
 	assert.Equal(t, defaultNodeSelector, sparkApp.Spec.Driver.NodeSelector)

@@ -240,7 +240,8 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.MainClass = &sparkJob.MainClass
 	}
 
-	// Add Tolerations/NodeSelector to only Executor pods.
+	// Add Interruptible Tolerations/NodeSelector to only Executor pods.
+	// The Interruptible NodeSelector takes precedence over the DefaultNodeSelector
 	if taskCtx.TaskExecutionMetadata().IsInterruptible() {
 		j.Spec.Executor.Tolerations = append(j.Spec.Executor.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
 		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
