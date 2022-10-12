@@ -367,6 +367,9 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	defaultPodHostNetwork := true
 
+	defaultEnvVars := make(map[string]string)
+	defaultEnvVars["foo"] = "bar"
+
 	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		DefaultPodSecurityContext: &corev1.PodSecurityContext{
 			RunAsUser: &runAsUser,
@@ -412,6 +415,7 @@ func TestBuildResourceSpark(t *testing.T) {
 		},
 		SchedulerName:           schedulerName,
 		EnableHostNetworkingPod: &defaultPodHostNetwork,
+		DefaultEnvVars:          defaultEnvVars,
 	}),
 	)
 	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true))
@@ -526,6 +530,8 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummySparkConf["spark.flyteorg.feature3.enabled"], sparkApp.Spec.SparkConf["spark.flyteorg.feature3.enabled"])
 
 	assert.Equal(t, len(sparkApp.Spec.Driver.EnvVars["FLYTE_MAX_ATTEMPTS"]), 1)
+	assert.Equal(t, sparkApp.Spec.Driver.EnvVars["foo"], defaultEnvVars["foo"])
+	assert.Equal(t, sparkApp.Spec.Executor.EnvVars["foo"], defaultEnvVars["foo"])
 
 	// Case 2: Driver/Executor request cores set.
 	dummyConfWithRequest := make(map[string]string)
