@@ -68,6 +68,7 @@ func TestReadOrigin(t *testing.T) {
 		exists, err := r.DeckExists(ctx)
 		assert.NoError(t, err)
 		assert.True(t, exists)
+		assert.Equal(t, "deck.html", r.GetOutputMetadata(ctx)[deckURIKey])
 	})
 
 	t.Run("system", func(t *testing.T) {

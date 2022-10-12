@@ -48,6 +48,9 @@ func (r InMemoryOutputReader) DeckExists(_ context.Context) (bool, error) {
 }
 
 func (r InMemoryOutputReader) GetOutputMetadata(_ context.Context) map[string]string {
+	if r.DeckPath == nil {
+		return map[string]string{}
+	}
 	return map[string]string{deckURIKey: r.DeckPath.String()}
 }
 
