@@ -104,6 +104,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 	}
 	driverSpec := sparkOp.DriverSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
+			Affinity:         config.GetK8sPluginConfig().DefaultAffinity,
 			Annotations:      annotations,
 			Labels:           labels,
 			EnvVars:          sparkEnvVars,
@@ -120,6 +121,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	executorSpec := sparkOp.ExecutorSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
+			Affinity:         config.GetK8sPluginConfig().DefaultAffinity,
 			Annotations:      annotations,
 			Labels:           labels,
 			Image:            &container.Image,
