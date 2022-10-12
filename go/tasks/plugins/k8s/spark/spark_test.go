@@ -365,6 +365,8 @@ func TestBuildResourceSpark(t *testing.T) {
 		"x/interruptible": "true",
 	}
 
+	defaultPodHostNetwork := true
+
 	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		DefaultPodSecurityContext: &corev1.PodSecurityContext{
 			RunAsUser: &runAsUser,
@@ -408,7 +410,8 @@ func TestBuildResourceSpark(t *testing.T) {
 				Effect:   "NoSchedule",
 			},
 		},
-		SchedulerName: schedulerName,
+		SchedulerName:           schedulerName,
+		EnableHostNetworkingPod: &defaultPodHostNetwork,
 	}),
 	)
 	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true))
@@ -461,6 +464,8 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, dummySparkConf["spark.batchScheduler"], *sparkApp.Spec.BatchScheduler)
 	assert.Equal(t, schedulerName, *sparkApp.Spec.Executor.SchedulerName)
 	assert.Equal(t, schedulerName, *sparkApp.Spec.Driver.SchedulerName)
+	assert.Equal(t, defaultPodHostNetwork, *sparkApp.Spec.Executor.HostNetwork)
+	assert.Equal(t, defaultPodHostNetwork, *sparkApp.Spec.Driver.HostNetwork)
 
 	// Validate Interruptible Toleration and NodeSelector set for Executor but not Driver.
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))

@@ -108,6 +108,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			Tolerations:      config.GetK8sPluginConfig().DefaultTolerations,
 			SchedulerName:    &config.GetK8sPluginConfig().SchedulerName,
 			NodeSelector:     config.GetK8sPluginConfig().DefaultNodeSelector,
+			HostNetwork:      config.GetK8sPluginConfig().EnableHostNetworkingPod,
 		},
 		ServiceAccount: &serviceAccountName,
 	}
@@ -123,6 +124,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 			Tolerations:      config.GetK8sPluginConfig().DefaultTolerations,
 			SchedulerName:    &config.GetK8sPluginConfig().SchedulerName,
 			NodeSelector:     config.GetK8sPluginConfig().DefaultNodeSelector,
+			HostNetwork:      config.GetK8sPluginConfig().EnableHostNetworkingPod,
 		},
 	}
 
