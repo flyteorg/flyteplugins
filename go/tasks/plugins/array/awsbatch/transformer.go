@@ -2,7 +2,9 @@ package awsbatch
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -177,12 +179,15 @@ func toEnvironmentVariables(_ context.Context, envVars []v1.EnvVar) []*batch.Key
 
 func toContainerOverrides(ctx context.Context, command []string, overrides *v1.ResourceRequirements,
 	envVars []v1.EnvVar) *batch.ContainerOverrides {
-
 	return &batch.ContainerOverrides{
-		//// Batch expects memory override in megabytes.
-		//Memory: refInt(overrides.Limits.Memory().ScaledValue(resource.Mega)),
-		//// Batch expects a rounded number of whole CPUs.
-		//Vcpus:       refInt(overrides.Limits.Cpu().Value()),
+		ResourceRequirements: []*batch.ResourceRequirement{
+			{
+				Type: refStr("VCPU"), Value: refStr(strconv.FormatInt(overrides.Limits.Cpu().Value(), 10)),
+			},
+			{
+				Type: refStr("MEMORY"), Value: refStr(strconv.FormatInt(overrides.Limits.Memory().ScaledValue(resource.Mega), 10)),
+			},
+		},
 		Environment: toEnvironmentVariables(ctx, envVars),
 		Command:     refStrSlice(command),
 	}
