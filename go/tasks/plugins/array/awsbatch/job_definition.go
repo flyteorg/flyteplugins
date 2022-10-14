@@ -61,7 +61,7 @@ func EnsureJobDefinition(ctx context.Context, tCtx pluginCore.TaskExecutionConte
 
 	cacheKey := definition.NewCacheKey(role, containerImage, platformCapabilities)
 	if existingArn, found := definitionCache.Get(cacheKey); found {
-		logger.Infof(ctx, "Found an existing job definition for Image [%v], Role [%v], JobDefinitionInput [%v]. Arn [%v]",
+		logger.Infof(ctx, "Registering job definition job definition for Image [%v], Role [%v], JobDefinitionInput [%v]. Arn [%v]",
 			containerImage, role, platformCapabilities, existingArn)
 
 		nextState = currentState.SetJobDefinitionArn(existingArn)
