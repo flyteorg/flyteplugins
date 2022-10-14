@@ -75,10 +75,6 @@ func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role st
 		ContainerProperties: &batch.ContainerProperties{
 			Image:      refStr(image),
 			JobRoleArn: refStr(role),
-
-			// These will be overwritten on execution
-			Vcpus:  refInt(1),
-			Memory: refInt(100),
 		},
 	})
 	if err != nil {

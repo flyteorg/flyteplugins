@@ -19,7 +19,6 @@ import (
 	config2 "github.com/flyteorg/flyteplugins/go/tasks/plugins/array/awsbatch/config"
 	"github.com/golang/protobuf/ptypes/duration"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -180,10 +179,10 @@ func toContainerOverrides(ctx context.Context, command []string, overrides *v1.R
 	envVars []v1.EnvVar) *batch.ContainerOverrides {
 
 	return &batch.ContainerOverrides{
-		// Batch expects memory override in megabytes.
-		Memory: refInt(overrides.Limits.Memory().ScaledValue(resource.Mega)),
-		// Batch expects a rounded number of whole CPUs.
-		Vcpus:       refInt(overrides.Limits.Cpu().Value()),
+		//// Batch expects memory override in megabytes.
+		//Memory: refInt(overrides.Limits.Memory().ScaledValue(resource.Mega)),
+		//// Batch expects a rounded number of whole CPUs.
+		//Vcpus:       refInt(overrides.Limits.Cpu().Value()),
 		Environment: toEnvironmentVariables(ctx, envVars),
 		Command:     refStrSlice(command),
 	}
