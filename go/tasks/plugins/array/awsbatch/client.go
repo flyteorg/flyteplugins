@@ -8,7 +8,6 @@ package awsbatch
 import (
 	"context"
 	"fmt"
-
 	a "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/batch"
@@ -75,6 +74,15 @@ func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role st
 		ContainerProperties: &batch.ContainerProperties{
 			Image:      refStr(image),
 			JobRoleArn: refStr(role),
+			// These will be overwritten on execution
+			ResourceRequirements: []*batch.ResourceRequirement{
+				{
+					Type: refStr("VCPU"), Value: refStr("1"),
+				},
+				{
+					Type: refStr("MEMORY"), Value: refStr("100"),
+				},
+			},
 		},
 	})
 	if err != nil {
