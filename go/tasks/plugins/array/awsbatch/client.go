@@ -77,10 +77,10 @@ func (b *client) RegisterJobDefinition(ctx context.Context, name, image, role st
 			// These will be overwritten on execution
 			ResourceRequirements: []*batch.ResourceRequirement{
 				{
-					Type: refStr("VCPU"), Value: refStr("1"),
+					Type: refStr("VCPU"), Value: refStr("0.25"),
 				},
 				{
-					Type: refStr("MEMORY"), Value: refStr("100"),
+					Type: refStr("MEMORY"), Value: refStr("512"),
 				},
 			},
 		},
