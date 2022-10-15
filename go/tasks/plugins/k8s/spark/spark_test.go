@@ -3,6 +3,7 @@ package spark
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"testing"
 
@@ -367,11 +368,16 @@ func TestBuildResourceSpark(t *testing.T) {
 
 	defaultPodHostNetwork := true
 
+	// Default env vars passed explicitly and default env vars derived from environment
 	defaultEnvVars := make(map[string]string)
 	defaultEnvVars["foo"] = "bar"
 
 	defaultEnvVarsFromEnv := make(map[string]string)
-	defaultEnvVarsFromEnv["fooEnv"] = "barEnv"
+	target_key_from_env := "TEST_VAR_FROM_ENV_KEY"
+	target_value_from_env := "TEST_VAR_FROM_ENV_VALUE"
+	os.Setenv(target_key_from_env, target_value_from_env)
+	defer os.Unsetenv(target_key_from_env)
+	defaultEnvVarsFromEnv["fooEnv"] = target_key_from_env
 
 	// Default affinity/anti-affinity
 	defaultAffinity := &corev1.Affinity{
@@ -559,8 +565,8 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, len(sparkApp.Spec.Driver.EnvVars["FLYTE_MAX_ATTEMPTS"]), 1)
 	assert.Equal(t, sparkApp.Spec.Driver.EnvVars["foo"], defaultEnvVars["foo"])
 	assert.Equal(t, sparkApp.Spec.Executor.EnvVars["foo"], defaultEnvVars["foo"])
-	assert.Equal(t, sparkApp.Spec.Driver.EnvVars["fooEnv"], defaultEnvVarsFromEnv["fooEnv"])
-	assert.Equal(t, sparkApp.Spec.Executor.EnvVars["fooEnv"], defaultEnvVarsFromEnv["fooEnv"])
+	assert.Equal(t, sparkApp.Spec.Driver.EnvVars["fooEnv"], target_value_from_env)
+	assert.Equal(t, sparkApp.Spec.Executor.EnvVars["fooEnv"], target_value_from_env)
 	assert.Equal(t, sparkApp.Spec.Driver.Affinity, defaultAffinity)
 	assert.Equal(t, sparkApp.Spec.Executor.Affinity, defaultAffinity)
 

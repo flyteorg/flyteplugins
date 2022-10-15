@@ -91,10 +91,6 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		sparkEnvVars[envVar.Name] = envVar.Value
 	}
 
-	for k, v := range config.GetK8sPluginConfig().DefaultEnvVarsFromEnv {
-		sparkEnvVars[k] = v
-	}
-
 	sparkEnvVars["FLYTE_MAX_ATTEMPTS"] = strconv.Itoa(int(taskCtx.TaskExecutionMetadata().GetMaxAttempts()))
 
 	serviceAccountName := flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
