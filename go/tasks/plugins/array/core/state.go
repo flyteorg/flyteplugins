@@ -242,6 +242,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
 	totalPermanentFailures := int64(0)
+	totalRetryLimitExceededFailures := int64(0)
 	totalRetryableFailures := int64(0)
 	totalRunning := int64(0)
 	totalWaitingForResources := int64(0)
@@ -253,6 +254,8 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 			totalSuccesses += count
 		case core.PhasePermanentFailure:
 			totalPermanentFailures += count
+		case core.PhaseRetryLimitExceededFailure:
+			totalRetryLimitExceededFailures += count
 		case core.PhaseRetryableFailure:
 			totalRetryableFailures += count
 		case core.PhaseWaitingForResources:
@@ -283,8 +286,8 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 		return PhaseWriteToDiscovery
 	}
 
-	logger.Debugf(ctx, "Array is still running [Successes: %v, PermanentFailures: %v, RetryableFailures: %v, Total: %v, MinSuccesses: %v]",
-		totalSuccesses, totalPermanentFailures, totalRetryableFailures, totalCount, minSuccesses)
+	logger.Debugf(ctx, "Array is still running [Successes: %v, PermanentFailures: %v, RetryLimitExceededFailures: %v, RetryableFailures: %v, Total: %v, MinSuccesses: %v]",
+		totalSuccesses, totalPermanentFailures, totalRetryableFailures, totalRetryableFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
 }
 

@@ -2,7 +2,6 @@ package awsbatch
 
 import (
 	"context"
-
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/storage"
 
@@ -35,7 +34,7 @@ func createSubJobList(count int) []*Job {
 }
 
 func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata, outputPrefix, baseOutputSandbox storage.DataReference, jobStore *JobStore,
-	dataStore *storage.DataStore, cfg *config.Config, currentState *State, metrics ExecutorMetrics) (newState *State, err error) {
+	dataStore *storage.DataStore, cfg *config.Config, currentState *State, metrics ExecutorMetrics, retryLimit int64) (newState *State, err error) {
 	newState = currentState
 	parentState := currentState.State
 	jobName := taskMeta.GetTaskExecutionID().GetGeneratedName()
@@ -107,6 +106,10 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 				}
 			} else {
 				msg.Collect(childIdx, "Job failed")
+			}
+
+			if subJob.Status.Phase == core.PhaseRetryableFailure && retryLimit == int64(len(subJob.Attempts)) {
+				actualPhase = core.PhaseRetryLimitExceededFailure
 			}
 		} else if subJob.Status.Phase.IsSuccess() {
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputSandbox, childIdx, originalIdx)

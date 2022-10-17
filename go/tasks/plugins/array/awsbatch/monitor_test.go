@@ -61,7 +61,7 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 			ExternalJobID:    refStr("job-id"),
 			JobDefinitionArn: "",
-		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()))
+		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()), 3)
 
 		assert.NoError(t, err)
 		p, _ := newState.GetPhase()
@@ -107,7 +107,7 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 			ExternalJobID:    refStr("job-id"),
 			JobDefinitionArn: "",
-		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()))
+		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()), 3)
 
 		assert.NoError(t, err)
 		p, _ := newState.GetPhase()
@@ -153,7 +153,7 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 			ExternalJobID:    refStr("job-id"),
 			JobDefinitionArn: "",
-		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()))
+		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()), 3)
 
 		assert.NoError(t, err)
 		p, _ := newState.GetPhase()
@@ -201,7 +201,7 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 			ExternalJobID:    refStr("job-id"),
 			JobDefinitionArn: "",
-		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()))
+		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()), 3)
 
 		assert.NoError(t, err)
 		p, _ := newState.GetPhase()

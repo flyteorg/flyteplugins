@@ -33,6 +33,8 @@ const (
 	PhaseRetryableFailure
 	// Indicate that the failure is non recoverable even if retries exist
 	PhasePermanentFailure
+	// Indicate that the tasks won't be executed again because the retry limit exceeded
+	PhaseRetryLimitExceededFailure
 	// Indicates the task is waiting for the cache to be populated so it can reuse results
 	PhaseWaitingForCache
 )

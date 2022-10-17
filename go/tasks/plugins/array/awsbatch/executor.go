@@ -80,9 +80,18 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState, err = LaunchSubTasks(ctx, tCtx, e.jobStore, pluginConfig, pluginState, e.metrics)
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
+		// Check that the taskTemplate is valid
+		taskTemplate, err := tCtx.TaskReader().Read(ctx)
+		if err != nil {
+			return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read task template")
+		} else if taskTemplate == nil {
+			return core.UnknownTransition, errors.Errorf(errors.BadTaskSpecification, "Required value not set, taskTemplate is nil")
+		}
+		retry := toRetryStrategy(ctx, toBackoffLimit(taskTemplate.Metadata), pluginConfig.MinRetries, pluginConfig.MaxRetries)
+
 		pluginState, err = CheckSubTasksState(ctx, tCtx.TaskExecutionMetadata(),
 			tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(),
-			e.jobStore, tCtx.DataStore(), pluginConfig, pluginState, e.metrics)
+			e.jobStore, tCtx.DataStore(), pluginConfig, pluginState, e.metrics, *retry.Attempts)
 
 	case arrayCore.PhaseAssembleFinalOutput:
 		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.outputAssembler, tCtx, arrayCore.PhaseSuccess, version, pluginState.State)
@@ -94,7 +103,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		pluginState.State, err = array.WriteToDiscovery(ctx, tCtx, pluginState.State, arrayCore.PhaseAssembleFinalOutput, version)
 
 	case arrayCore.PhaseAssembleFinalError:
-		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhaseRetryableFailure, version, pluginState.State)
+		pluginState.State, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhasePermanentFailure, version, pluginState.State)
 	}
 
 	if err != nil {
