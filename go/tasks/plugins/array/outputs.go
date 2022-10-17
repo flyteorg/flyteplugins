@@ -267,7 +267,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 			Message: w.Error().Error(),
 		})
 
-		state = state.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason("Failed to assemble outputs/errors.")
+		state = state.SetPhase(arrayCore.PhaseRetryableFailure, 0).SetReason("Failed to assemble outputs/errors.")
 	}
 
 	return state, nil
