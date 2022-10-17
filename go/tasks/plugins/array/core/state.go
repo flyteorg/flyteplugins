@@ -205,9 +205,6 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	case PhaseAssembleFinalError:
 		fallthrough
 
-	case PhaseWriteToDiscoveryThenFail:
-		fallthrough
-
 	case PhaseWriteToDiscovery:
 		// The state version is only incremented in PhaseCheckingSubTaskExecutions when subtask
 		// phases are updated. Therefore by adding the phase to the state version we ensure that
@@ -225,7 +222,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 			phaseInfo = core.PhaseInfoRetryableFailure(ErrorK8sArrayGeneric, state.GetReason(), nowTaskInfo)
 		}
 
-	case PhasePermanentFailure:
+	case PhasePermanentFailure, PhaseWriteToDiscoveryThenFail:
 		if state.GetExecutionErr() != nil {
 			phaseInfo = core.PhaseInfoFailed(core.PhasePermanentFailure, state.GetExecutionErr(), nowTaskInfo)
 		} else {
@@ -287,7 +284,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	}
 
 	logger.Debugf(ctx, "Array is still running [Successes: %v, PermanentFailures: %v, RetryLimitExceededFailures: %v, RetryableFailures: %v, Total: %v, MinSuccesses: %v]",
-		totalSuccesses, totalPermanentFailures, totalRetryableFailures, totalRetryableFailures, totalCount, minSuccesses)
+		totalSuccesses, totalPermanentFailures, totalRetryLimitExceededFailures, totalRetryableFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
 }
 

@@ -133,7 +133,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 
 	if phase != arrayCore.PhaseCheckingSubTaskExecutions {
 		metrics.SubTasksSucceeded.Add(ctx, float64(newArrayStatus.Summary[core.PhaseSuccess]))
-		totalFailed := newArrayStatus.Summary[core.PhasePermanentFailure] + newArrayStatus.Summary[core.PhaseRetryableFailure]
+		totalFailed := newArrayStatus.Summary[core.PhasePermanentFailure] + newArrayStatus.Summary[core.PhaseRetryableFailure] + newArrayStatus.Summary[core.PhaseRetryLimitExceededFailure]
 		metrics.SubTasksFailed.Add(ctx, float64(totalFailed))
 	}
 	if phase == arrayCore.PhaseWriteToDiscoveryThenFail {

@@ -33,7 +33,7 @@ func CheckTaskOutput(ctx context.Context, dataStore *storage.DataStore, outputPr
 		if errExists {
 			logger.Debugf(ctx, "Found error file for sub task [%v] with original index [%v]. Marking as failure.",
 				childIdx, originalIdx)
-			return core.PhaseRetryLimitExceededFailure, nil
+			return core.PhaseRetryableFailure, nil
 		}
 	}
 
