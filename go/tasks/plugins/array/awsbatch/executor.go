@@ -81,7 +81,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
 		// Check that the taskTemplate is valid
-		taskTemplate, err := tCtx.TaskReader().Read(ctx)
+		var taskTemplate *idlCore.TaskTemplate
+		taskTemplate, err = tCtx.TaskReader().Read(ctx)
 		if err != nil {
 			return core.UnknownTransition, errors.Wrapf(errors.CorruptedPluginState, err, "Failed to read task template")
 		} else if taskTemplate == nil {
