@@ -2,6 +2,7 @@ package awsbatch
 
 import (
 	"context"
+
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/storage"
 
