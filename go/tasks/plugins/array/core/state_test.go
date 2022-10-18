@@ -338,15 +338,15 @@ func TestSummaryToPhase(t *testing.T) {
 			"FailedToRetry",
 			PhaseWriteToDiscoveryThenFail,
 			map[core.Phase]int64{
-				core.PhaseSuccess:                   5,
-				core.PhaseRetryLimitExceededFailure: 5,
+				core.PhaseSuccess:          5,
+				core.PhaseRetryableFailure: 5,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.phase, SummaryToPhase(context.TODO(), minSuccesses, tt.summary))
+			assert.Equal(t, tt.phase, SummaryToPhase(context.TODO(), minSuccesses, tt.summary, 5))
 		})
 	}
 }

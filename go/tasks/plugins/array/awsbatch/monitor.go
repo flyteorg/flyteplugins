@@ -69,6 +69,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 	}
 
 	queued := 0
+	totalRetryLimitExceeded := 0
 	for childIdx, subJob := range job.SubJobs {
 		actualPhase := subJob.Status.Phase
 		originalIdx := arrayCore.CalculateOriginalIndex(childIdx, currentState.GetIndexesToCache())
@@ -110,7 +111,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 			}
 
 			if subJob.Status.Phase == core.PhaseRetryableFailure && retryLimit == int64(len(subJob.Attempts)) {
-				actualPhase = core.PhaseRetryLimitExceededFailure
+				totalRetryLimitExceeded += 1
 			}
 		} else if subJob.Status.Phase.IsSuccess() {
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputSandbox, childIdx, originalIdx)
@@ -130,11 +131,11 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 
 	parentState = parentState.SetArrayStatus(newArrayStatus)
 	// Based on the summary produced above, deduce the overall phase of the task.
-	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
+	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary, int64(totalRetryLimitExceeded))
 
 	if phase != arrayCore.PhaseCheckingSubTaskExecutions {
 		metrics.SubTasksSucceeded.Add(ctx, float64(newArrayStatus.Summary[core.PhaseSuccess]))
-		totalFailed := newArrayStatus.Summary[core.PhasePermanentFailure] + newArrayStatus.Summary[core.PhaseRetryableFailure] + newArrayStatus.Summary[core.PhaseRetryLimitExceededFailure]
+		totalFailed := newArrayStatus.Summary[core.PhasePermanentFailure] + newArrayStatus.Summary[core.PhaseRetryableFailure]
 		metrics.SubTasksFailed.Add(ctx, float64(totalFailed))
 	}
 	if phase == arrayCore.PhaseWriteToDiscoveryThenFail {

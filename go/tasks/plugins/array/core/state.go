@@ -205,6 +205,9 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	case PhaseAssembleFinalError:
 		fallthrough
 
+	case PhaseWriteToDiscoveryThenFail:
+		fallthrough
+
 	case PhaseWriteToDiscovery:
 		// The state version is only incremented in PhaseCheckingSubTaskExecutions when subtask
 		// phases are updated. Therefore by adding the phase to the state version we ensure that
@@ -222,7 +225,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 			phaseInfo = core.PhaseInfoRetryableFailure(ErrorK8sArrayGeneric, state.GetReason(), nowTaskInfo)
 		}
 
-	case PhasePermanentFailure, PhaseWriteToDiscoveryThenFail:
+	case PhasePermanentFailure:
 		if state.GetExecutionErr() != nil {
 			phaseInfo = core.PhaseInfoFailed(core.PhasePermanentFailure, state.GetExecutionErr(), nowTaskInfo)
 		} else {
@@ -235,11 +238,10 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	return phaseInfo, nil
 }
 
-func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {
+func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary, totalRetryLimitExceeded int64) Phase {
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
 	totalPermanentFailures := int64(0)
-	totalRetryLimitExceededFailures := int64(0)
 	totalRetryableFailures := int64(0)
 	totalRunning := int64(0)
 	totalWaitingForResources := int64(0)
@@ -251,8 +253,6 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 			totalSuccesses += count
 		case core.PhasePermanentFailure:
 			totalPermanentFailures += count
-		case core.PhaseRetryLimitExceededFailure:
-			totalRetryLimitExceededFailures += count
 		case core.PhaseRetryableFailure:
 			totalRetryableFailures += count
 		case core.PhaseWaitingForResources:
@@ -268,7 +268,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	}
 
 	// No chance to reach the required success numbers.
-	if totalRunning+totalSuccesses+totalWaitingForResources+totalRetryableFailures < minSuccesses {
+	if totalRunning+totalSuccesses+totalWaitingForResources+totalRetryableFailures-totalRetryLimitExceeded < minSuccesses {
 		logger.Infof(ctx, "Array failed early because total failures > minSuccesses[%v]. Snapshot totalRunning[%v] + totalSuccesses[%v] + totalWaitingForResource[%v] + totalRetryableFailures[%v]",
 			minSuccesses, totalRunning, totalSuccesses, totalWaitingForResources, totalRetryableFailures)
 		return PhaseWriteToDiscoveryThenFail
@@ -283,8 +283,8 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 		return PhaseWriteToDiscovery
 	}
 
-	logger.Debugf(ctx, "Array is still running [Successes: %v, PermanentFailures: %v, RetryLimitExceededFailures: %v, RetryableFailures: %v, Total: %v, MinSuccesses: %v]",
-		totalSuccesses, totalPermanentFailures, totalRetryLimitExceededFailures, totalRetryableFailures, totalCount, minSuccesses)
+	logger.Debugf(ctx, "Array is still running [Successes: %v, PermanentFailures: %v, RetryableFailures: %v, Total: %v, MinSuccesses: %v]",
+		totalSuccesses, totalPermanentFailures, totalRetryableFailures, totalCount, minSuccesses)
 	return PhaseCheckingSubTaskExecutions
 }
 
