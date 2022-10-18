@@ -286,14 +286,16 @@ func TestToArrayJob(t *testing.T) {
 func TestSummaryToPhase(t *testing.T) {
 	minSuccesses := int64(10)
 	tests := []struct {
-		name    string
-		phase   Phase
-		summary map[core.Phase]int64
+		name                    string
+		phase                   Phase
+		summary                 map[core.Phase]int64
+		totalRetryLimitExceeded int64
 	}{
 		{
 			"FailOnTooFewTasks",
 			PhaseWriteToDiscoveryThenFail,
 			map[core.Phase]int64{},
+			0,
 		},
 		{
 			"ContinueOnRetryableFailures",
@@ -302,6 +304,7 @@ func TestSummaryToPhase(t *testing.T) {
 				core.PhaseRetryableFailure: 1,
 				core.PhaseUndefined:        9,
 			},
+			0,
 		},
 		{
 			"FailOnToManyPermanentFailures",
@@ -310,6 +313,7 @@ func TestSummaryToPhase(t *testing.T) {
 				core.PhasePermanentFailure: 1,
 				core.PhaseUndefined:        9,
 			},
+			0,
 		},
 		{
 			"CheckWaitingForResources",
@@ -318,6 +322,7 @@ func TestSummaryToPhase(t *testing.T) {
 				core.PhaseWaitingForResources: 1,
 				core.PhaseUndefined:           9,
 			},
+			0,
 		},
 		{
 			"WaitForAllSubtasksToComplete",
@@ -326,6 +331,7 @@ func TestSummaryToPhase(t *testing.T) {
 				core.PhaseUndefined: 1,
 				core.PhaseSuccess:   9,
 			},
+			0,
 		},
 		{
 			"SuccessfullyCompleted",
@@ -333,6 +339,7 @@ func TestSummaryToPhase(t *testing.T) {
 			map[core.Phase]int64{
 				core.PhaseSuccess: 10,
 			},
+			0,
 		},
 		{
 			"FailedToRetry",
@@ -341,12 +348,22 @@ func TestSummaryToPhase(t *testing.T) {
 				core.PhaseSuccess:          5,
 				core.PhaseRetryableFailure: 5,
 			},
+			5,
+		},
+		{
+			"Retrying",
+			PhaseCheckingSubTaskExecutions,
+			map[core.Phase]int64{
+				core.PhaseSuccess:          5,
+				core.PhaseRetryableFailure: 5,
+			},
+			0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.phase, SummaryToPhase(context.TODO(), minSuccesses, tt.summary, 5))
+			assert.Equal(t, tt.phase, SummaryToPhase(context.TODO(), minSuccesses, tt.summary, tt.totalRetryLimitExceeded))
 		})
 	}
 }
