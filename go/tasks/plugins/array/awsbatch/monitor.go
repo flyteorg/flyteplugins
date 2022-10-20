@@ -111,7 +111,7 @@ func CheckSubTasksState(ctx context.Context, taskMeta core.TaskExecutionMetadata
 			}
 
 			if subJob.Status.Phase == core.PhaseRetryableFailure && retryLimit == int64(len(subJob.Attempts)) {
-				totalRetryLimitExceeded += 1
+				totalRetryLimitExceeded++
 			}
 		} else if subJob.Status.Phase.IsSuccess() {
 			actualPhase, err = array.CheckTaskOutput(ctx, dataStore, outputPrefix, baseOutputSandbox, childIdx, originalIdx)
