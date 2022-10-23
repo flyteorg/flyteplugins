@@ -97,7 +97,7 @@ func InitializeLogPlugins(cfg *LogConfig) (tasklog.Plugin, error) {
 			logPlugins = append(logPlugins, logPlugin{Name: "Cloudwatch Logs", Plugin: tasklog.NewTemplateLogPlugin([]string{cfg.CloudwatchTemplateURI}, core.TaskLog_JSON)})
 		} else {
 			logPlugins = append(logPlugins, logPlugin{Name: "Cloudwatch Logs", Plugin: tasklog.NewTemplateLogPlugin(
-				[]string{fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=%s#logEventViewer:group=%s;stream=var.log.containers.{{ .podName }}_{{ .namespace }}_{{ .containerName }}-{{ .containerId }}.log", cfg.CloudwatchRegion, cfg.CloudwatchLogGroup)}, core.TaskLog_JSON)})
+				[]string{fmt.Sprintf("https://console.aws.amazon.com/cloudwatch/home?region=%s#logsV2:log-groups/log-group/%s$3FlogStreamNameFilter=var.log.containers.{{ .podName }}_{{ .namespace }}_{{ .containerName }}", cfg.CloudwatchRegion, cfg.CloudwatchLogGroup)}, core.TaskLog_JSON)})
 		}
 	}
 
