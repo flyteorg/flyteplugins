@@ -3,14 +3,14 @@ package dask
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -29,7 +29,6 @@ import (
 
 const (
 	daskTaskType        = "dask"
-	jobRunnerPodPostfix = "-runner"
 	KindDaskJob         = "DaskJob"
 	PrimaryContainerKey = "primary_container_name"
 )
@@ -39,12 +38,12 @@ type daskResourceHandler struct {
 
 func (daskResourceHandler) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (
 	client.Object, error) {
-	return &daskAPI.DaskJob{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       KindDaskJob,
-			APIVersion: daskAPI.SchemeGroupVersion.String(),
-		},
-	}, nil
+		return &daskAPI.DaskJob{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       KindDaskJob,
+				APIVersion: daskAPI.SchemeGroupVersion.String(),
+			},
+		}, nil
 }
 
 func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
@@ -161,7 +160,7 @@ func createSchedulerSpec(taskName string, image string) daskAPI.SchedulerSpec {
 		Service: v1.ServiceSpec{
 			Type: "NodePort",
 			Selector: map[string]string{
-				"dask.org/cluster-name": taskName + "-cluster",
+				"dask.org/cluster-name": taskName,
 				"dask.org/component":    "scheduler",
 			},
 			Ports: []v1.ServicePort{
@@ -212,73 +211,28 @@ func (p daskResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s
 
 func (daskResourceHandler) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin, logSuffix string) (pluginsCore.PhaseInfo, error) {
 	job := r.(*daskAPI.DaskJob)
-
-	pod, err := getJobPodFromJobResource(job, ctx)
-	if err != nil {
-		return pluginsCore.PhaseInfoUndefined, err
-	}
 	
-	// Logic copied from the pod plugin
-	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
-	info := pluginsCore.TaskInfo{
-		OccurredAt: &transitionOccurredAt,
+	// FIXME
+	info := &pluginsCore.TaskInfo{
+		Logs: []*core.TaskLog{},
 	}
 
-	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		taskLogs, err := logs.GetLogsForContainerInPod(ctx, logPlugin, pod, 0, logSuffix)
-		if err != nil {
-			return pluginsCore.PhaseInfoUndefined, err
-		}
-		info.Logs = taskLogs
-	}
 
-	switch pod.Status.Phase {
-	case v1.PodSucceeded:
-		return flytek8s.DemystifySuccess(pod.Status, info)
-	case v1.PodFailed:
-		return flytek8s.DemystifyFailure(pod.Status, info)
-	case v1.PodPending:
-		return flytek8s.DemystifyPending(pod.Status)
-	case v1.PodReasonUnschedulable:
-		return pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable"), nil
-	case v1.PodUnknown:
-		return pluginsCore.PhaseInfoUndefined, nil
+	occurredAt := time.Now()
+	switch job.Status.JobStatus {
+	case daskAPI.DaskJobCreated:
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job created"), nil
+	case daskAPI.DaskJobClusterCreated:
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "cluster created"), nil
+	case daskAPI.DaskJobFailed:
+		reason := "Dask Job failed"
+		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
+	case daskAPI.DaskJobSuccessful:
+		return pluginsCore.PhaseInfoSuccess(info), nil
 	}
-
-	if len(info.Logs) > 0 {
-		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, &info), nil
-	}
-	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
+	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
 
-
-func getClientset() (*kubernetes.Clientset, error) {
-	// FIXME: Handle auth
-	config, err := clientcmd.BuildConfigFromFlags("", "/Users/bstadlbauer/.kube/config")
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return clientset, nil
-}
-
-func getJobPodFromJobResource(job *daskAPI.DaskJob, ctx context.Context) (*v1.Pod, error) {
-	clientset, err := getClientset()
-	if err != nil {
-		return nil, err
-	}
-
-	jobPodName := job.ObjectMeta.Name + jobRunnerPodPostfix
-	jobPodNamespace := job.ObjectMeta.Namespace
-	pod, err := clientset.CoreV1().Pods(jobPodNamespace).Get(ctx, jobPodName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return pod, nil
-}
 
 func (daskResourceHandler) GetProperties() k8s.PluginProperties {
 	return k8s.PluginProperties{}
