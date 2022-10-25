@@ -315,7 +315,8 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, cfg
 		// the node are marked with a deletionTimestamp, but our finalizers prevent the pod from being deleted.
 		// This can also happen when a user deletes a Pod directly.
 		err := kubeClient.GetClient().Get(ctx, nsName, pod)
-		failureReason := fmt.Sprintf("object [%s] terminated in the background, manually. reason: %s", nsName.String(), err.Error())
+		freason := k8serrors.ReasonForError(err)
+		failureReason := fmt.Sprintf("object [%s] terminated in the background, manually due to reason: %s", nsName.String(), freason.String())
 		return pluginsCore.PhaseInfoSystemRetryableFailure("UnexpectedObjectDeletion", failureReason, nil), nil
 	}
 
