@@ -398,6 +398,21 @@ func TestBuildResourceSpark(t *testing.T) {
 		},
 	}
 
+	// interruptible/non-interruptible nodeselector requirement
+	interruptibleNodeSelectorRequirement := &corev1.NodeSelectorRequirement{
+		Key:      "x/interruptible",
+		Operator: corev1.NodeSelectorOpIn,
+		Values:   []string{"true"},
+	}
+
+	nonInterruptibleNodeSelectorRequirement := &corev1.NodeSelectorRequirement{
+		Key:      "x/non-interruptible",
+		Operator: corev1.NodeSelectorOpIn,
+		Values:   []string{"true"},
+	}
+
+	// NonInterruptibleNodeSelectorRequirement
+
 	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
 		DefaultAffinity: defaultAffinity,
 		DefaultPodSecurityContext: &corev1.PodSecurityContext{
@@ -442,10 +457,12 @@ func TestBuildResourceSpark(t *testing.T) {
 				Effect:   "NoSchedule",
 			},
 		},
-		SchedulerName:           schedulerName,
-		EnableHostNetworkingPod: &defaultPodHostNetwork,
-		DefaultEnvVars:          defaultEnvVars,
-		DefaultEnvVarsFromEnv:   defaultEnvVarsFromEnv,
+		InterruptibleNodeSelectorRequirement:    interruptibleNodeSelectorRequirement,
+		NonInterruptibleNodeSelectorRequirement: nonInterruptibleNodeSelectorRequirement,
+		SchedulerName:                           schedulerName,
+		EnableHostNetworkingPod:                 &defaultPodHostNetwork,
+		DefaultEnvVars:                          defaultEnvVars,
+		DefaultEnvVarsFromEnv:                   defaultEnvVarsFromEnv,
 	}),
 	)
 	resource, err := sparkResourceHandler.BuildResource(context.TODO(), dummySparkTaskContext(taskTemplate, true))
@@ -505,6 +522,7 @@ func TestBuildResourceSpark(t *testing.T) {
 	// * Interruptible Toleration and NodeSelector set for Executor but not Driver.
 	// * Validate Default NodeSelector set for Driver but overwritten with Interruptible NodeSelector for Executor.
 	// * Default Tolerations set for both Driver and Executor.
+	// * Interruptible/Non-Interruptible NodeSelectorRequirements set for Executor Affinity but not Driver Affinity.
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.Tolerations))
 	assert.Equal(t, 1, len(sparkApp.Spec.Driver.NodeSelector))
 	assert.Equal(t, defaultNodeSelector, sparkApp.Spec.Driver.NodeSelector)
@@ -568,7 +586,17 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, sparkApp.Spec.Driver.EnvVars["fooEnv"], targetValueFromEnv)
 	assert.Equal(t, sparkApp.Spec.Executor.EnvVars["fooEnv"], targetValueFromEnv)
 	assert.Equal(t, sparkApp.Spec.Driver.Affinity, defaultAffinity)
-	assert.Equal(t, sparkApp.Spec.Executor.Affinity, defaultAffinity)
+
+	assert.Equal(
+		t,
+		sparkApp.Spec.Executor.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0],
+		defaultAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0],
+	)
+	assert.Equal(
+		t,
+		sparkApp.Spec.Executor.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[1],
+		*interruptibleNodeSelectorRequirement,
+	)
 
 	// Case 2: Driver/Executor request cores set.
 	dummyConfWithRequest := make(map[string]string)
@@ -609,6 +637,19 @@ func TestBuildResourceSpark(t *testing.T) {
 	assert.Equal(t, sparkApp.Spec.Executor.Tolerations[0].Value, "default")
 	assert.Equal(t, sparkApp.Spec.Driver.Tolerations[0].Key, "x/flyte")
 	assert.Equal(t, sparkApp.Spec.Driver.Tolerations[0].Value, "default")
+
+	// Validate correct affinity and nodeselector requirements are set for both Driver and Executors.
+	assert.Equal(t, sparkApp.Spec.Driver.Affinity, defaultAffinity)
+	assert.Equal(
+		t,
+		sparkApp.Spec.Executor.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0],
+		defaultAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0],
+	)
+	assert.Equal(
+		t,
+		sparkApp.Spec.Executor.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[1],
+		*nonInterruptibleNodeSelectorRequirement,
+	)
 
 	// Case 4: Invalid Spark Task-Template
 	taskTemplate.Custom = nil

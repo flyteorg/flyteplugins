@@ -117,7 +117,7 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 
 	executorSpec := sparkOp.ExecutorSpec{
 		SparkPodSpec: sparkOp.SparkPodSpec{
-			Affinity:         config.GetK8sPluginConfig().DefaultAffinity,
+			Affinity:         config.GetK8sPluginConfig().DefaultAffinity.DeepCopy(),
 			Annotations:      annotations,
 			Labels:           labels,
 			Image:            &container.Image,
@@ -242,6 +242,9 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.Executor.Tolerations = append(j.Spec.Executor.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
 		j.Spec.Executor.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
 	}
+
+	// Add interruptible/non-interruptible node selector requirements to executor pod
+	flytek8s.ApplyInterruptibleNodeSelectorRequirement(taskCtx.TaskExecutionMetadata().IsInterruptible(), j.Spec.Executor.Affinity)
 
 	return j, nil
 }
