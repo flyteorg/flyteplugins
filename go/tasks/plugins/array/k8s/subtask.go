@@ -314,9 +314,7 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, cfg
 		// mark the task as a retryable failure.  We've seen this happen when a kubelet disappears - all pods running on
 		// the node are marked with a deletionTimestamp, but our finalizers prevent the pod from being deleted.
 		// This can also happen when a user deletes a Pod directly.
-		err := kubeClient.GetClient().Get(ctx, nsName, pod)
-		freason := k8serrors.ReasonForError(err)
-		failureReason := fmt.Sprintf("object [%s] terminated in the background, manually due to reason: %s", nsName.String(), freason.String())
+		failureReason := fmt.Sprintf("object [%s] terminated in the background, manually due to reason: %s with the message: %s", nsName.String(), pod.Status.Reason, pod.Status.Message)
 		return pluginsCore.PhaseInfoSystemRetryableFailure("UnexpectedObjectDeletion", failureReason, nil), nil
 	}
 
