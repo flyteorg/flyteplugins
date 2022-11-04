@@ -38,7 +38,7 @@ func (p writerProcessor) Process(ctx context.Context, workItem workqueue.WorkIte
 		return workqueue.WorkStatusNotDone, fmt.Errorf("wrong work item type. Received: %v", reflect.TypeOf(workItem))
 	}
 
-	status, err := p.catalogClient.Put(ctx, wi.key, wi.data, wi.metadata, false)
+	status, err := p.catalogClient.Put(ctx, wi.key, wi.data, wi.metadata)
 	if err != nil {
 		logger.Errorf(ctx, "Error putting to catalog [%s]", err)
 		return workqueue.WorkStatusNotDone, errors.Wrapf(errors.DownstreamSystemError, err,
