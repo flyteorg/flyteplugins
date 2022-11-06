@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
+	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -38,6 +39,15 @@ var(
 		"execute-dask-task",
 	}
 	testAnnotations = map[string]string{"annotation-1": "val1"}
+	testPlatformResources = v1.ResourceRequirements{
+		Requests: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("4"),
+		},
+		Limits: v1.ResourceList{
+			v1.ResourceCPU: resource.MustParse("5"),
+			v1.ResourceMemory: resource.MustParse("17G"),
+		},
+	}
 )
 
 
@@ -95,6 +105,20 @@ func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resour
 func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.ResourceRequirements) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 
+	inputReader := &pluginIOMocks.InputReader{}
+	inputReader.OnGetInputPrefixPath().Return("/input/prefix")
+	inputReader.OnGetInputPath().Return("/input")
+	inputReader.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
+	taskCtx.OnInputReader().Return(inputReader)
+
+	outputReader := &pluginIOMocks.OutputWriter{}
+	outputReader.OnGetOutputPath().Return("/data/outputs.pb")
+	outputReader.OnGetOutputPrefixPath().Return("/data/")
+	outputReader.OnGetRawOutputPrefix().Return("")
+	outputReader.OnGetCheckpointPrefix().Return("/checkpoint")
+	outputReader.OnGetPreviousCheckpointsPrefix().Return("/prev")
+	taskCtx.On("OutputWriter").Return(outputReader)
+
 	taskReader := &mocks.TaskReader{}
 	taskReader.OnReadMatch(mock.Anything).Return(taskTemplate, nil)
 	taskCtx.OnTaskReader().Return(taskReader)
@@ -111,15 +135,12 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 	})
 	tID.On("GetGeneratedName").Return(testTaskID)
 
-	// TODO: Remove unused uncommented ones
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
 	taskExecutionMetadata.OnGetNamespace().Return(testTaskNamespace)
 	taskExecutionMetadata.OnGetAnnotations().Return(testAnnotations)
 	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
-	// taskExecutionMetadata.OnGetSecurityContext().Return(core.SecurityContext{
-	// 	RunAs: &core.Identity{K8SServiceAccount: "new-val"},
-	// })
+	taskExecutionMetadata.OnGetPlatformResources().Return(&testPlatformResources)
 	taskExecutionMetadata.OnGetMaxAttempts().Return(uint32(1))
 	taskExecutionMetadata.OnIsInterruptible().Return(true)
 	overrides := &mocks.TaskOverrides{}
@@ -135,7 +156,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 
 	taskTemplate := dummyDaskTaskTemplate(taskName, "", nil, "")
-	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
+	taskContext := dummyDaskTaskContext(taskTemplate, nil)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
@@ -150,7 +171,8 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
 	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
 	assert.Equal(t, v1.ResourceRequirements{}, jobSpec.Containers[0].Resources)
-	assert.Equal(t, testEnvVars, jobSpec.Containers[0].Env)
+	// Flyte adds more environment variables to the driver
+	assert.Contains(t, jobSpec.Containers[0].Env,  testEnvVars[0])
 
 	// Cluster
 	assert.Equal(t, testAnnotations, daskJob.Spec.Cluster.ObjectMeta.GetAnnotations())

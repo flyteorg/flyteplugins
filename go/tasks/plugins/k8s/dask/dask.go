@@ -14,6 +14,8 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -44,41 +46,63 @@ const (
 type defaults struct {
 	Namespace string
 	Image string
-	Args []string
+	Container v1.Container
 	Resources *v1.ResourceRequirements
 	Env []v1.EnvVar
 	Annotations map[string]string
 }
 
 
-func getDefaults(taskTemplate core.TaskTemplate, executionMetadata pluginsCore.TaskExecutionMetadata) (*defaults, error) {
-	defaultContainer := taskTemplate.GetContainer()
-	if defaultContainer == nil {
+func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate core.TaskTemplate) (*defaults, error) {
+	executionMetadata := taskCtx.TaskExecutionMetadata()
+
+	defaultContainerSpec := taskTemplate.GetContainer()
+	if defaultContainerSpec == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "task is missing a default container")
 	}
-	defaultImage := defaultContainer.GetImage()
+
+	defaultImage := defaultContainerSpec.GetImage()
 	if defaultImage == "" {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "task is missing a default image")
 	}
-	
+
+	envVars := []v1.EnvVar{}
+	if taskTemplate.GetContainer().GetEnv() != nil {
+		for _, keyValuePair := range taskTemplate.GetContainer().GetEnv() {
+			envVars = append(envVars, v1.EnvVar{Name: keyValuePair.Key, Value: keyValuePair.Value})
+		}
+	}
+
 	var defaultResources *v1.ResourceRequirements
 	if executionMetadata.GetOverrides() != nil && executionMetadata.GetOverrides().GetResources() != nil {
 		defaultResources = executionMetadata.GetOverrides().GetResources()
 	}
+	
+	// The default container will be used to run the job (i.e. within the driver pod)
+	defaultContainer := v1.Container{
+		Name: "job-runner", 
+		Image: defaultImage, 
+		Args: defaultContainerSpec.GetArgs(),
+		Env: envVars,
+	}
 
-	env := []v1.EnvVar{}
-	if taskTemplate.GetContainer().GetEnv() != nil {
-		for _, keyValuePair := range taskTemplate.GetContainer().GetEnv() {
-			env = append(env, v1.EnvVar{Name: keyValuePair.Key, Value: keyValuePair.Value})
-		}
+	templateParameters := template.Parameters{
+		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+		Inputs:           taskCtx.InputReader(),
+		OutputPath:       taskCtx.OutputWriter(),
+		Task:             taskCtx.TaskReader(),
+	}
+	err := flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, flytek8s.ResourceCustomizationModeAssignResources, &defaultContainer)
+	if err != nil {
+		return nil, err
 	}
 
 	return &defaults{
 		Namespace: executionMetadata.GetNamespace(),
 		Image: defaultImage,
-		Args: defaultContainer.GetArgs(),
+		Container: defaultContainer,
 		Resources: defaultResources,
-		Env: env,
+		Env: envVars,
 		Annotations: executionMetadata.GetAnnotations(),
 	}, nil
 }
@@ -151,7 +175,7 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	} else if taskTemplate == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "nil task specification")
 	}
-	defaults, err := getDefaults(*taskTemplate, taskCtx.TaskExecutionMetadata())
+	defaults, err := getDefaults(ctx, taskCtx, *taskTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +233,9 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 			return nil, err
 		}
 	}
+	if resources == nil {
+		resources = &v1.ResourceRequirements{}
+	}
 
 	workerArgs := []string{
 		"dask-worker",
@@ -218,7 +245,7 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 
 	// If limits are set, append `--nthreads` and `--memory-limit` as per these docs:
 	// https://kubernetes.dask.org/en/latest/kubecluster.html?#best-practices
-	if resources.Limits != nil {
+	if resources != nil && resources.Limits != nil {
 		limits := resources.Limits
 		if limits.Cpu() != nil {
 			cpuCount := limits.Cpu().String()
@@ -260,6 +287,9 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 		if err != nil {
 			return nil, err
 		}
+	}
+	if resources == nil {
+		resources = &v1.ResourceRequirements{}
 	}
 
 	return &daskAPI.SchedulerSpec{
@@ -311,27 +341,20 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 }
 
 func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec, defaults defaults) (*daskAPI.DaskJobSpec, error) {
-	jobContainerImage := defaults.Image
+	jobContainer := defaults.Container
+
 	if jobPodSpec.GetImage() != "" {
-		jobContainerImage = jobPodSpec.GetImage()
+		jobContainer.Image = jobPodSpec.GetImage()
 	}
 
-	var err error
-	resources := defaults.Resources
 	if jobPodSpec.GetResources() != nil {
-		resources, err = convertProtobufResourcesToK8sResources(jobPodSpec.GetResources())
+		resources, err := convertProtobufResourcesToK8sResources(jobPodSpec.GetResources())
 		if err != nil {
 			return nil, err
 		}
+		jobContainer.Resources = *resources
 	}
 
-	jobContainer := v1.Container{
-		Name:  "job-runner",
-		Image: jobContainerImage,
-		Args:  defaults.Args,
-		Resources: *resources,
-		Env: defaults.Env,
-	}
 	return &daskAPI.DaskJobSpec{
 		Job: daskAPI.JobSpec{
 			Spec: v1.PodSpec{
