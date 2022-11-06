@@ -31,8 +31,8 @@ const (
 )
 
 var(
-	dummyEnvVars = []*core.KeyValuePair{
-		{Key: "Env_Var", Value: "Env_Val"},
+	testEnvVars = []v1.EnvVar {
+		{Name: "Env_Var", Value: "Env_Val"},
 	}
 	testArgs = []string{
 		"execute-dask-task",
@@ -74,7 +74,10 @@ func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resour
 	if err != nil {
 		panic(err)
 	}
-
+	envVars := []*core.KeyValuePair{}
+	for _, envVar := range testEnvVars {
+		envVars = append(envVars, &core.KeyValuePair{Key: envVar.Name, Value: envVar.Value})
+	}
 	return &core.TaskTemplate{
 		Id:   &core.Identifier{Name: id},
 		Type: daskTaskType,
@@ -82,7 +85,7 @@ func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resour
 			Container: &core.Container{
 				Image: defaultTestImage,
 				Args:  testArgs,
-				Env:   dummyEnvVars,
+				Env:   envVars,
 			},
 		},
 		Custom: &structObj,
@@ -147,6 +150,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
 	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
 	assert.Equal(t, v1.ResourceRequirements{}, jobSpec.Containers[0].Resources)
+	assert.Equal(t, testEnvVars, jobSpec.Containers[0].Env)
 
 	// Cluster
 	assert.Equal(t, testAnnotations, daskJob.Spec.Cluster.ObjectMeta.GetAnnotations())
@@ -169,6 +173,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, v1.ResourceRequirements{}, schedulerSpec.Containers[0].Resources)
 	assert.Equal(t, []string{"dask-scheduler"}, schedulerSpec.Containers[0].Args)
 	assert.Equal(t, expectedPorts, schedulerSpec.Containers[0].Ports)
+	assert.Equal(t, testEnvVars, schedulerSpec.Containers[0].Env)
 
 	schedulerServiceSpec := daskJob.Spec.Cluster.Spec.Scheduler.Service
 	expectedSelector := map[string]string{
@@ -200,6 +205,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, v1.PullIfNotPresent, workerSpec.Containers[0].ImagePullPolicy)
 	assert.Equal(t, defaultTestImage, workerSpec.Containers[0].Image)
 	assert.Equal(t, v1.ResourceRequirements{}, workerSpec.Containers[0].Resources)
+	assert.Equal(t, testEnvVars, workerSpec.Containers[0].Env)
 	assert.Equal(t, []string{
 		"dask-worker",
 		"--name",

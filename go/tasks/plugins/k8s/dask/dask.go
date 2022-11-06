@@ -46,6 +46,7 @@ type defaults struct {
 	Image string
 	Args []string
 	Resources *v1.ResourceRequirements
+	Env []v1.EnvVar
 	Annotations map[string]string
 }
 
@@ -65,11 +66,19 @@ func getDefaults(taskTemplate core.TaskTemplate, executionMetadata pluginsCore.T
 		defaultResources = executionMetadata.GetOverrides().GetResources()
 	}
 
+	env := []v1.EnvVar{}
+	if taskTemplate.GetContainer().GetEnv() != nil {
+		for _, keyValuePair := range taskTemplate.GetContainer().GetEnv() {
+			env = append(env, v1.EnvVar{Name: keyValuePair.Key, Value: keyValuePair.Value})
+		}
+	}
+
 	return &defaults{
 		Namespace: executionMetadata.GetNamespace(),
 		Image: defaultImage,
 		Args: defaultContainer.GetArgs(),
 		Resources: defaultResources,
+		Env: env,
 		Annotations: executionMetadata.GetAnnotations(),
 	}, nil
 }
@@ -231,6 +240,7 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 					ImagePullPolicy: v1.PullIfNotPresent,
 					Args: workerArgs,
 					Resources: *resources,
+					Env: defaults.Env,
 				},
 			},
 		},
@@ -260,6 +270,7 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 					Image: schedulerImage,
 					Args:  []string{"dask-scheduler"},
 					Resources: *resources,
+					Env: defaults.Env,
 					Ports: []v1.ContainerPort{
 						{
 							Name:          "comm",
@@ -319,6 +330,7 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 		Image: jobContainerImage,
 		Args:  defaults.Args,
 		Resources: *resources,
+		Env: defaults.Env,
 	}
 	return &daskAPI.DaskJobSpec{
 		Job: daskAPI.JobSpec{
