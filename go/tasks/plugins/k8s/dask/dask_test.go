@@ -37,6 +37,7 @@ var(
 	testArgs = []string{
 		"execute-dask-task",
 	}
+	testAnnotations = map[string]string{"annotation-1": "val1"}
 )
 
 
@@ -111,7 +112,7 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
 	taskExecutionMetadata.OnGetNamespace().Return(testTaskNamespace)
-	taskExecutionMetadata.OnGetAnnotations().Return(map[string]string{"annotation-1": "val1"})
+	taskExecutionMetadata.OnGetAnnotations().Return(testAnnotations)
 	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
 	// taskExecutionMetadata.OnGetSecurityContext().Return(core.SecurityContext{
 	// 	RunAs: &core.Identity{K8SServiceAccount: "new-val"},
@@ -141,10 +142,14 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 
 	// Job
 	jobSpec := daskJob.Spec.Job.Spec
+	assert.Equal(t, testAnnotations, daskJob.ObjectMeta.GetAnnotations())
 	assert.Equal(t, "job-runner", jobSpec.Containers[0].Name)
 	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
 	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
 	assert.Equal(t, v1.ResourceRequirements{}, jobSpec.Containers[0].Resources)
+
+	// Cluster
+	assert.Equal(t, testAnnotations, daskJob.Spec.Cluster.ObjectMeta.GetAnnotations())
 
 	// Scheduler
 	schedulerSpec := daskJob.Spec.Cluster.Spec.Scheduler.Spec

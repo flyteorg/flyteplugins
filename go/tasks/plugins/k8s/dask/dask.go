@@ -46,6 +46,7 @@ type defaults struct {
 	Image string
 	Args []string
 	Resources *v1.ResourceRequirements
+	Annotations map[string]string
 }
 
 
@@ -69,6 +70,7 @@ func getDefaults(taskTemplate core.TaskTemplate, executionMetadata pluginsCore.T
 		Image: defaultImage,
 		Args: defaultContainer.GetArgs(),
 		Resources: defaultResources,
+		Annotations: executionMetadata.GetAnnotations(),
 	}, nil
 }
 
@@ -177,6 +179,7 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "will-be-overridden", // Will be overridden by Flyte to `clusterName`
 			Namespace: namespace,
+			Annotations: defaults.Annotations,
 		},
 		Spec: *jobSpec,
 	}
@@ -325,7 +328,10 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 				},
 			},
 		},
-		Cluster: daskAPI.JobClusterSpec{
+		Cluster: daskAPI.DaskCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: defaults.Annotations,
+			},
 			Spec: daskAPI.DaskClusterSpec{
 				Worker:    workerSpec,
 				Scheduler: schedulerSpec,
