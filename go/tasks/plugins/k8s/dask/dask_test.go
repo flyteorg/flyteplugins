@@ -7,12 +7,12 @@ import (
 	daskAPI "github.com/bstadlbauer/dask-k8s-operator-go-client/pkg/apis/kubernetes.dask.org/v1"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	v1Meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
@@ -26,6 +26,7 @@ import (
 const (
 	defaultTestImage = "image://"
 	testNWorkers = 10
+	testTaskID = "some-acceptable-name"
 )
 
 var(
@@ -89,24 +90,9 @@ func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resour
 func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.ResourceRequirements) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 
-	inputReader := &pluginIOMocks.InputReader{}
-	inputReader.OnGetInputPrefixPath().Return("/input/prefix")
-	inputReader.OnGetInputPath().Return("/input")
-	inputReader.OnGetMatch(mock.Anything).Return(&core.LiteralMap{}, nil)
-	taskCtx.OnInputReader().Return(inputReader)
-
-	outputReader := &pluginIOMocks.OutputWriter{}
-	outputReader.OnGetOutputPath().Return("/data/outputs.pb")
-	outputReader.OnGetOutputPrefixPath().Return("/data/")
-	outputReader.OnGetRawOutputPrefix().Return("")
-	outputReader.OnGetCheckpointPrefix().Return("/checkpoint")
-	outputReader.OnGetPreviousCheckpointsPrefix().Return("/prev")
-	taskCtx.On("OutputWriter").Return(outputReader)
-
 	taskReader := &mocks.TaskReader{}
 	taskReader.OnReadMatch(mock.Anything).Return(taskTemplate, nil)
 	taskCtx.OnTaskReader().Return(taskReader)
-
 
 	tID := &mocks.TaskExecutionID{}
 	tID.OnGetID().Return(core.TaskExecutionIdentifier{
@@ -118,21 +104,21 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 			},
 		},
 	})
-	tID.On("GetGeneratedName").Return("some-acceptable-name")
+	tID.On("GetGeneratedName").Return(testTaskID)
 
-	// TODO: Check which of these are used!
+	// TODO: Remove unused uncommented ones
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
-	taskExecutionMetadata.OnGetNamespace().Return("test-namespace")
+	// taskExecutionMetadata.OnGetNamespace().Return("test-namespace")
 	taskExecutionMetadata.OnGetAnnotations().Return(map[string]string{"annotation-1": "val1"})
 	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
-	taskExecutionMetadata.OnGetOwnerReference().Return(v1Meta.OwnerReference{
-		Kind: "node",
-		Name: "blah",
-	})
-	taskExecutionMetadata.OnGetSecurityContext().Return(core.SecurityContext{
-		RunAs: &core.Identity{K8SServiceAccount: "new-val"},
-	})
+	// taskExecutionMetadata.OnGetOwnerReference().Return(v1Meta.OwnerReference{
+	// 	Kind: "node",
+	// 	Name: "blah",
+	// })
+	// taskExecutionMetadata.OnGetSecurityContext().Return(core.SecurityContext{
+	// 	RunAs: &core.Identity{K8SServiceAccount: "new-val"},
+	// })
 	taskExecutionMetadata.OnGetMaxAttempts().Return(uint32(1))
 	taskExecutionMetadata.OnIsInterruptible().Return(true)
 	overrides := &mocks.TaskOverrides{}
@@ -157,37 +143,68 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 
 	// Job
 	jobSpec := daskJob.Spec.Job.Spec
+	assert.Equal(t, "job-runner", jobSpec.Containers[0].Name)
 	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
+	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
 	assert.Equal(t, v1.ResourceRequirements{}, jobSpec.Containers[0].Resources)
 
 	// Scheduler
 	schedulerSpec := daskJob.Spec.Cluster.Spec.Scheduler.Spec
+	expectedPorts := []v1.ContainerPort{
+		{
+			Name:          "comm",
+			ContainerPort: 8786,
+			Protocol:      "TCP",
+		},
+		{
+			Name:          "dashboard",
+			ContainerPort: 8787,
+			Protocol:      "TCP",
+		},
+	}
 	assert.Equal(t, defaultTestImage, schedulerSpec.Containers[0].Image)
 	assert.Equal(t, v1.ResourceRequirements{}, schedulerSpec.Containers[0].Resources)
+	assert.Equal(t, []string{"dask-scheduler"}, schedulerSpec.Containers[0].Args)
+	assert.Equal(t, expectedPorts, schedulerSpec.Containers[0].Ports)
+
+	schedulerServiceSpec := daskJob.Spec.Cluster.Spec.Scheduler.Service
+	expectedSelector := map[string]string{
+		"dask.org/cluster-name": testTaskID,
+		"dask.org/component":    "scheduler",
+	}
+	expectedSerivcePorts := []v1.ServicePort{
+		{
+			Name:       "comm",
+			Protocol:   "TCP",
+			Port:       8786,
+			TargetPort: intstr.FromString("comm"),
+		},
+		{
+			Name:       "dashboard",
+			Protocol:   "TCP",
+			Port:       8787,
+			TargetPort: intstr.FromString("dashboard"),
+		},
+	}
+	assert.Equal(t, v1.ServiceTypeNodePort, schedulerServiceSpec.Type)
+	assert.Equal(t, expectedSelector, schedulerServiceSpec.Selector)
+	assert.Equal(t, expectedSerivcePorts, schedulerServiceSpec.Ports)
 	
 	// Default Workers
 	workerSpec := daskJob.Spec.Cluster.Spec.Worker.Spec
 	assert.Equal(t, testNWorkers, daskJob.Spec.Cluster.Spec.Worker.Replicas)
+	assert.Equal(t, "dask-worker", workerSpec.Containers[0].Name)
+	assert.Equal(t, v1.PullIfNotPresent, workerSpec.Containers[0].ImagePullPolicy)
 	assert.Equal(t, defaultTestImage, workerSpec.Containers[0].Image)
 	assert.Equal(t, v1.ResourceRequirements{}, workerSpec.Containers[0].Resources)
+	assert.Equal(t, []string{
+		"dask-worker",
+		"--name",
+		"$(DASK_WORKER_NAME)",
+	}, workerSpec.Containers[0].Args)
 	assert.NotContains(t, workerSpec.Containers[0].Args, "--nthreads")
 	assert.NotContains(t, workerSpec.Containers[0].Args, "--memory-limit")
 }
-
-// TODO: Assert that all environment variables are present on all 
-// TODO: Check if annotations can be set
-// TODO: Make sure secrets are passed on
-
-// TODO: Configuration ideas:
-//   - If secret annotations should be passed on to workers and scheduler
-
-// TODO Docs:
-//   - Default image will be used when none is given
-//   - Additional worker groups are not supported yet, as those would require submitting two
-//     CRs
-//   - Autoscaler won't work as this would require submitting an additional CR
-//   - If limits are set, `--nthreads` and `--memory-limit` are set
-//     https://kubernetes.dask.org/en/latest/kubecluster.html?highlight=--nthreads#best-practices
 
 func TestBuildResourceDaskCustomImages(t *testing.T) {
 	customImage := "customImage"
@@ -315,4 +332,22 @@ func TestGetPropertiesDask(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	expected := k8s.PluginProperties{}
 	assert.Equal(t, expected, daskResourceHandler.GetProperties())
+}
+
+func TestBuildIdentityResourceDask(t *testing.T) {
+	daskResourceHandler := daskResourceHandler{}
+	expected := &daskAPI.DaskJob{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       KindDaskJob,
+			APIVersion: daskAPI.SchemeGroupVersion.String(),
+		},
+	}
+
+	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil)
+	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
+	identityResources, err := daskResourceHandler.BuildIdentityResource(context.TODO(), taskContext.TaskExecutionMetadata())
+	if err != nil {
+		panic(err)
+	}
+	assert.Equal(t, expected, identityResources)
 }
