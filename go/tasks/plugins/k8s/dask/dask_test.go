@@ -27,6 +27,7 @@ const (
 	defaultTestImage = "image://"
 	testNWorkers = 10
 	testTaskID = "some-acceptable-name"
+	testTaskNamespace = "task-namespace"
 )
 
 var(
@@ -39,7 +40,7 @@ var(
 )
 
 
-func dummpyDaskCustomObj(customImage string, resources *core.Resources) *plugins.DaskJob {
+func dummpyDaskCustomObj(customImage string, resources *core.Resources, namespace string) *plugins.DaskJob {
 	jobPodSpec := plugins.JobPodSpec{
 		Image: customImage,
 		Resources: resources,
@@ -52,7 +53,7 @@ func dummpyDaskCustomObj(customImage string, resources *core.Resources) *plugins
 	}
 
 	daskJob := plugins.DaskJob{
-		Namespace: "default",
+		Namespace: namespace,
 		JobPodSpec: &jobPodSpec,
 		Cluster: &cluster,
 	}
@@ -60,8 +61,8 @@ func dummpyDaskCustomObj(customImage string, resources *core.Resources) *plugins
 }
 
 
-func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resources) *core.TaskTemplate {
-	daskJob := dummpyDaskCustomObj(customImage, resources)
+func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resources, namespace string) *core.TaskTemplate {
+	daskJob := dummpyDaskCustomObj(customImage, resources, namespace)
 	daskJobJSON, err := utils.MarshalToString(daskJob)
 	if err != nil {
 		panic(err)
@@ -109,13 +110,9 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 	// TODO: Remove unused uncommented ones
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
-	// taskExecutionMetadata.OnGetNamespace().Return("test-namespace")
+	taskExecutionMetadata.OnGetNamespace().Return(testTaskNamespace)
 	taskExecutionMetadata.OnGetAnnotations().Return(map[string]string{"annotation-1": "val1"})
 	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
-	// taskExecutionMetadata.OnGetOwnerReference().Return(v1Meta.OwnerReference{
-	// 	Kind: "node",
-	// 	Name: "blah",
-	// })
 	// taskExecutionMetadata.OnGetSecurityContext().Return(core.SecurityContext{
 	// 	RunAs: &core.Identity{K8SServiceAccount: "new-val"},
 	// })
@@ -133,13 +130,14 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	taskName := "test-build-resource"
 	daskResourceHandler := daskResourceHandler{}
 
-	taskTemplate := dummyDaskTaskTemplate(taskName, "", nil)
+	taskTemplate := dummyDaskTaskTemplate(taskName, "", nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
 	daskJob, ok := resource.(*daskAPI.DaskJob)
 	assert.True(t, ok)
+	assert.Equal(t, testTaskNamespace, daskJob.ObjectMeta.Namespace)
 
 	// Job
 	jobSpec := daskJob.Spec.Job.Spec
@@ -210,7 +208,7 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 	customImage := "customImage"
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", customImage, nil)
+	taskTemplate := dummyDaskTaskTemplate("test-build-resource", customImage, nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -244,7 +242,7 @@ func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 	}
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil)
+	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -302,7 +300,7 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	}
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", &protobufResources)
+	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", &protobufResources, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -327,6 +325,20 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	assert.Contains(t, workerSpec.Containers[0].Args, "15G")
 }
 
+func TestBuildResourcesDaskCustomNamespace(t *testing.T) {
+	customNamespace := "custom-namespace"
+
+	daskResourceHandler := daskResourceHandler{}
+	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil, customNamespace)
+	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
+	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	assert.Nil(t, err)
+	assert.NotNil(t, resource)
+	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.True(t, ok)
+	assert.Equal(t, customNamespace, daskJob.ObjectMeta.Namespace)
+}
+
 
 func TestGetPropertiesDask(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
@@ -343,7 +355,7 @@ func TestBuildIdentityResourceDask(t *testing.T) {
 		},
 	}
 
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil)
+	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
 	identityResources, err := daskResourceHandler.BuildIdentityResource(context.TODO(), taskContext.TaskExecutionMetadata())
 	if err != nil {

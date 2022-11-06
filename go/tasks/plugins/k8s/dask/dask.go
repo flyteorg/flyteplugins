@@ -42,6 +42,7 @@ const (
 
 
 type defaults struct {
+	Namespace string
 	Image string
 	Args []string
 	Resources *v1.ResourceRequirements
@@ -64,6 +65,7 @@ func getDefaults(taskTemplate core.TaskTemplate, executionMetadata pluginsCore.T
 	}
 
 	return &defaults{
+		Namespace: executionMetadata.GetNamespace(),
 		Image: defaultImage,
 		Args: defaultContainer.GetArgs(),
 		Resources: defaultResources,
@@ -163,6 +165,10 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		return nil, err
 	}
 
+	namespace := defaults.Namespace
+	if daskJob.GetNamespace() != "" {
+		namespace = daskJob.GetNamespace()
+	}
 	job := &daskAPI.DaskJob{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       KindDaskJob,
@@ -170,6 +176,7 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "will-be-overridden", // Will be overridden by Flyte to `clusterName`
+			Namespace: namespace,
 		},
 		Spec: *jobSpec,
 	}
