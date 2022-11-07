@@ -243,7 +243,7 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 	if resources != nil && resources.Limits != nil {
 		limits := resources.Limits
 		if limits.Cpu() != nil {
-			cpuCount := limits.Cpu().String()
+			cpuCount := fmt.Sprintf("%v", limits.Cpu().Value())
 			workerArgs = append(workerArgs, "--nthreads", cpuCount)
 		}
 		if limits.Memory() != nil {
