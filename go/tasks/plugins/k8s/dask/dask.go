@@ -11,11 +11,13 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -369,30 +371,46 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 }
 
 func (p daskResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
-	// logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
-	// if err != nil {
-	// 	return pluginsCore.PhaseInfoUndefined, err
-	// }
+	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
+	if err != nil {
+		return pluginsCore.PhaseInfoUndefined, err
+	}
 	job := r.(*daskAPI.DaskJob)
+	status := job.Status.JobStatus
+	occurredAt := time.Now()
 
-	// FIXME
-	info := &pluginsCore.TaskInfo{
-		Logs: []*core.TaskLog{},
+	info := pluginsCore.TaskInfo{
+		OccurredAt: &occurredAt,
 	}
 
-	occurredAt := time.Now()
-	switch job.Status.JobStatus {
+	isQueued := status == daskAPI.DaskJobCreated ||
+		status == daskAPI.DaskJobClusterCreated
+
+	if !isQueued {
+		o, err := logPlugin.GetTaskLogs(tasklog.Input{
+			Namespace: job.ObjectMeta.Namespace,
+			PodName:   job.Status.JobRunnerPodName,
+			LogName:   "(User logs)",
+		},
+		)
+		if err != nil {
+			return pluginsCore.PhaseInfoUndefined, err
+		}
+		info.Logs = o.TaskLogs
+	}
+
+	switch status {
 	case daskAPI.DaskJobCreated:
-		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "job created", info), nil
+		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "job created", &info), nil
 	case daskAPI.DaskJobClusterCreated:
-		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "cluster created", info), nil
+		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "cluster created", &info), nil
 	case daskAPI.DaskJobFailed:
 		reason := "Dask Job failed"
-		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
+		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, &info), nil
 	case daskAPI.DaskJobSuccessful:
-		return pluginsCore.PhaseInfoSuccess(info), nil
+		return pluginsCore.PhaseInfoSuccess(&info), nil
 	}
-	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
+	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
 }
 
 func (daskResourceHandler) GetProperties() k8s.PluginProperties {
