@@ -60,6 +60,6 @@ jobs:
         with:
           file: coverage.txt
           flags: unittests
-          fail_ci_if_error: true
+          fail_ci_if_error: false
       - name: Lint
         run: make install && make lint
