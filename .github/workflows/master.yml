@@ -56,7 +56,7 @@ jobs:
       - name: Unit Tests
         run: make install && make test_unit_codecov
       - name: Push CodeCov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3.1.1
         with:
           file: coverage.txt
           flags: unittests
