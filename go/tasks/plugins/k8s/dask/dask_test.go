@@ -3,14 +3,15 @@ package dask
 import (
 	"context"
 	"testing"
+	"time"
 
 	daskAPI "github.com/bstadlbauer/dask-k8s-operator-go-client/pkg/apis/kubernetes.dask.org/v1"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
-	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -23,54 +24,67 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-
 const (
-	defaultTestImage = "image://"
-	testNWorkers = 10
-	testTaskID = "some-acceptable-name"
+	defaultTestImage  = "image://"
+	testNWorkers      = 10
+	testTaskID        = "some-acceptable-name"
 	testTaskNamespace = "task-namespace"
 )
 
-var(
-	testEnvVars = []v1.EnvVar {
+var (
+	testEnvVars = []v1.EnvVar{
 		{Name: "Env_Var", Value: "Env_Val"},
 	}
 	testArgs = []string{
 		"execute-dask-task",
 	}
-	testAnnotations = map[string]string{"annotation-1": "val1"}
+	testAnnotations       = map[string]string{"annotation-1": "val1"}
 	testPlatformResources = v1.ResourceRequirements{
 		Requests: v1.ResourceList{
 			v1.ResourceCPU: resource.MustParse("4"),
 		},
 		Limits: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("5"),
+			v1.ResourceCPU:    resource.MustParse("5"),
 			v1.ResourceMemory: resource.MustParse("17G"),
 		},
 	}
 )
 
+func dummyDaskJob(status daskAPI.JobStatus) *daskAPI.DaskJob {
+	return &daskAPI.DaskJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dask-job-name",
+			Namespace: "dask-namespace",
+		},
+		Status: daskAPI.DaskJobStatus{
+			ClusterName:      "dask-cluster-name",
+			EndTime:          metav1.Time{time.Now()},
+			JobRunnerPodName: "job-runner-pod-name",
+			JobStatus:        status,
+			StartTime:        metav1.Time{time.Now()},
+		},
+	}
+}
 
 func dummpyDaskCustomObj(customImage string, resources *core.Resources, namespace string) *plugins.DaskJob {
 	jobPodSpec := plugins.JobPodSpec{
-		Image: customImage,
+		Image:     customImage,
 		Resources: resources,
 	}
-	
+
 	cluster := plugins.DaskCluster{
-		Image: customImage, 
-		NWorkers: 10,
+		Image:     customImage,
+		NWorkers:  10,
 		Resources: resources,
 	}
 
 	daskJob := plugins.DaskJob{
-		Namespace: namespace,
+		Namespace:  namespace,
 		JobPodSpec: &jobPodSpec,
-		Cluster: &cluster,
+		Cluster:    &cluster,
 	}
 	return &daskJob
 }
-
 
 func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resources, namespace string) *core.TaskTemplate {
 	daskJob := dummpyDaskCustomObj(customImage, resources, namespace)
@@ -150,7 +164,6 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 	return taskCtx
 }
 
-
 func TestBuildResourceDaskHappyPath(t *testing.T) {
 	taskName := "test-build-resource"
 	daskResourceHandler := daskResourceHandler{}
@@ -172,7 +185,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
 	assert.Equal(t, v1.ResourceRequirements{}, jobSpec.Containers[0].Resources)
 	// Flyte adds more environment variables to the driver
-	assert.Contains(t, jobSpec.Containers[0].Env,  testEnvVars[0])
+	assert.Contains(t, jobSpec.Containers[0].Env, testEnvVars[0])
 
 	// Cluster
 	assert.Equal(t, testAnnotations, daskJob.Spec.Cluster.ObjectMeta.GetAnnotations())
@@ -219,7 +232,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, v1.ServiceTypeNodePort, schedulerServiceSpec.Type)
 	assert.Equal(t, expectedSelector, schedulerServiceSpec.Selector)
 	assert.Equal(t, expectedSerivcePorts, schedulerServiceSpec.Ports)
-	
+
 	// Default Workers
 	workerSpec := daskJob.Spec.Cluster.Spec.Worker.Spec
 	assert.Equal(t, testNWorkers, daskJob.Spec.Cluster.Spec.Worker.Replicas)
@@ -262,14 +275,13 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 	assert.Equal(t, customImage, workerSpec.Containers[0].Image)
 }
 
-
 func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 	flyteWorkflowResources := v1.ResourceRequirements{
 		Requests: v1.ResourceList{
 			v1.ResourceCPU: resource.MustParse("1"),
 		},
 		Limits: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("2"),
+			v1.ResourceCPU:    resource.MustParse("2"),
 			v1.ResourceMemory: resource.MustParse("2G"),
 		},
 	}
@@ -300,22 +312,21 @@ func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 	assert.Contains(t, workerSpec.Containers[0].Args, "2G")
 }
 
-
 func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	protobufResources := core.Resources{
 		Requests: []*core.Resources_ResourceEntry{
 			{
-				Name: core.Resources_CPU,
+				Name:  core.Resources_CPU,
 				Value: "5",
 			},
 		},
 		Limits: []*core.Resources_ResourceEntry{
 			{
-				Name: core.Resources_CPU,
+				Name:  core.Resources_CPU,
 				Value: "10",
 			},
 			{
-				Name: core.Resources_MEMORY,
+				Name:  core.Resources_MEMORY,
 				Value: "15G",
 			},
 		},
@@ -327,7 +338,7 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 			v1.ResourceCPU: resource.MustParse("1"),
 		},
 		Limits: v1.ResourceList{
-			v1.ResourceCPU: resource.MustParse("2"),
+			v1.ResourceCPU:    resource.MustParse("2"),
 			v1.ResourceMemory: resource.MustParse("2G"),
 		},
 	}
@@ -372,7 +383,6 @@ func TestBuildResourcesDaskCustomNamespace(t *testing.T) {
 	assert.Equal(t, customNamespace, daskJob.ObjectMeta.Namespace)
 }
 
-
 func TestGetPropertiesDask(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	expected := k8s.PluginProperties{}
@@ -395,4 +405,39 @@ func TestBuildIdentityResourceDask(t *testing.T) {
 		panic(err)
 	}
 	assert.Equal(t, expected, identityResources)
+}
+
+func TestGetTaskPhaseDask(t *testing.T) {
+	daskResourceHandler := daskResourceHandler{}
+	ctx := context.TODO()
+
+	taskPhase, err := daskResourceHandler.GetTaskPhase(ctx, nil, dummyDaskJob(daskAPI.DaskJobCreated))
+	assert.NoError(t, err)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseInitializing)
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, err)
+
+	taskPhase, err = daskResourceHandler.GetTaskPhase(ctx, nil, dummyDaskJob(daskAPI.DaskJobClusterCreated))
+	assert.NoError(t, err)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseInitializing)
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, err)
+
+	taskPhase, err = daskResourceHandler.GetTaskPhase(ctx, nil, dummyDaskJob(daskAPI.DaskJobRunning))
+	assert.NoError(t, err)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRunning)
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, err)
+
+	taskPhase, err = daskResourceHandler.GetTaskPhase(ctx, nil, dummyDaskJob(daskAPI.DaskJobSuccessful))
+	assert.NoError(t, err)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseSuccess)
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, err)
+
+	taskPhase, err = daskResourceHandler.GetTaskPhase(ctx, nil, dummyDaskJob(daskAPI.DaskJobFailed))
+	assert.NoError(t, err)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseRetryableFailure)
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, err)
 }

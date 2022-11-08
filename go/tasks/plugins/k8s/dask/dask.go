@@ -11,13 +11,11 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
-	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -28,30 +26,28 @@ import (
 )
 
 var resourceMapping = map[core.Resources_ResourceName]v1.ResourceName{
-	core.Resources_CPU: v1.ResourceCPU,
+	core.Resources_CPU:               v1.ResourceCPU,
 	core.Resources_EPHEMERAL_STORAGE: v1.ResourceEphemeralStorage,
-	core.Resources_GPU: resourceNvidiaGPU,
-	core.Resources_MEMORY: v1.ResourceMemory,
-	core.Resources_STORAGE: v1.ResourceEphemeralStorage,
+	core.Resources_GPU:               resourceNvidiaGPU,
+	core.Resources_MEMORY:            v1.ResourceMemory,
+	core.Resources_STORAGE:           v1.ResourceEphemeralStorage,
 }
 
 const (
 	daskTaskType        = "dask"
-	resourceNvidiaGPU = "nvidia.com/gpu"
+	resourceNvidiaGPU   = "nvidia.com/gpu"
 	KindDaskJob         = "DaskJob"
 	PrimaryContainerKey = "primary_container_name"
 )
 
-
 type defaults struct {
-	Namespace string
-	Image string
-	Container v1.Container
-	Resources *v1.ResourceRequirements
-	Env []v1.EnvVar
+	Namespace   string
+	Image       string
+	Container   v1.Container
+	Resources   *v1.ResourceRequirements
+	Env         []v1.EnvVar
 	Annotations map[string]string
 }
-
 
 func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate core.TaskTemplate) (*defaults, error) {
 	executionMetadata := taskCtx.TaskExecutionMetadata()
@@ -77,13 +73,13 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 	if executionMetadata.GetOverrides() != nil && executionMetadata.GetOverrides().GetResources() != nil {
 		defaultResources = executionMetadata.GetOverrides().GetResources()
 	}
-	
+
 	// The default container will be used to run the job (i.e. within the driver pod)
 	defaultContainer := v1.Container{
-		Name: "job-runner", 
-		Image: defaultImage, 
-		Args: defaultContainerSpec.GetArgs(),
-		Env: envVars,
+		Name:  "job-runner",
+		Image: defaultImage,
+		Args:  defaultContainerSpec.GetArgs(),
+		Env:   envVars,
 	}
 
 	templateParameters := template.Parameters{
@@ -98,15 +94,14 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 	}
 
 	return &defaults{
-		Namespace: executionMetadata.GetNamespace(),
-		Image: defaultImage,
-		Container: defaultContainer,
-		Resources: defaultResources,
-		Env: envVars,
+		Namespace:   executionMetadata.GetNamespace(),
+		Image:       defaultImage,
+		Container:   defaultContainer,
+		Resources:   defaultResources,
+		Env:         envVars,
 		Annotations: executionMetadata.GetAnnotations(),
 	}, nil
 }
-
 
 func createResourceList(pb_resources []*core.Resources_ResourceEntry) (v1.ResourceList, error) {
 	resourceList := v1.ResourceList{}
@@ -123,7 +118,6 @@ func createResourceList(pb_resources []*core.Resources_ResourceEntry) (v1.Resour
 	}
 	return resourceList, nil
 }
-
 
 func convertProtobufResourcesToK8sResources(pb_resources *core.Resources) (*v1.ResourceRequirements, error) {
 	var err error
@@ -150,22 +144,21 @@ func convertProtobufResourcesToK8sResources(pb_resources *core.Resources) (*v1.R
 
 	return &v1.ResourceRequirements{
 		Requests: k8s_requests,
-		Limits: k8s_limits,
+		Limits:   k8s_limits,
 	}, nil
 }
-
 
 type daskResourceHandler struct {
 }
 
 func (daskResourceHandler) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (
 	client.Object, error) {
-		return &daskAPI.DaskJob{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       KindDaskJob,
-				APIVersion: daskAPI.SchemeGroupVersion.String(),
-			},
-		}, nil
+	return &daskAPI.DaskJob{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       KindDaskJob,
+			APIVersion: daskAPI.SchemeGroupVersion.String(),
+		},
+	}, nil
 }
 
 func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
@@ -210,8 +203,8 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 			APIVersion: daskAPI.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "will-be-overridden", // Will be overridden by Flyte to `clusterName`
-			Namespace: namespace,
+			Name:        "will-be-overridden", // Will be overridden by Flyte to `clusterName`
+			Namespace:   namespace,
 			Annotations: defaults.Annotations,
 		},
 		Spec: *jobSpec,
@@ -265,9 +258,9 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 					Name:            "dask-worker",
 					Image:           image,
 					ImagePullPolicy: v1.PullIfNotPresent,
-					Args: workerArgs,
-					Resources: *resources,
-					Env: defaults.Env,
+					Args:            workerArgs,
+					Resources:       *resources,
+					Env:             defaults.Env,
 				},
 			},
 		},
@@ -296,11 +289,11 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:  "scheduler",
-					Image: schedulerImage,
-					Args:  []string{"dask-scheduler"},
+					Name:      "scheduler",
+					Image:     schedulerImage,
+					Args:      []string{"dask-scheduler"},
 					Resources: *resources,
-					Env: defaults.Env,
+					Env:       defaults.Env,
 					Ports: []v1.ContainerPort{
 						{
 							Name:          "comm",
@@ -376,29 +369,23 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 }
 
 func (p daskResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
-	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
-	if err != nil {
-		return pluginsCore.PhaseInfoUndefined, err
-	}
-
-	return p.GetTaskPhaseWithLogs(ctx, pluginContext, r, logPlugin, " (User)")
-}
-
-func (daskResourceHandler) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin, logSuffix string) (pluginsCore.PhaseInfo, error) {
+	// logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
+	// if err != nil {
+	// 	return pluginsCore.PhaseInfoUndefined, err
+	// }
 	job := r.(*daskAPI.DaskJob)
-	
+
 	// FIXME
 	info := &pluginsCore.TaskInfo{
 		Logs: []*core.TaskLog{},
 	}
 
-
 	occurredAt := time.Now()
 	switch job.Status.JobStatus {
 	case daskAPI.DaskJobCreated:
-		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "job created"), nil
+		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "job created", info), nil
 	case daskAPI.DaskJobClusterCreated:
-		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "cluster created"), nil
+		return pluginsCore.PhaseInfoInitializing(occurredAt, pluginsCore.DefaultPhaseVersion, "cluster created", info), nil
 	case daskAPI.DaskJobFailed:
 		reason := "Dask Job failed"
 		return pluginsCore.PhaseInfoRetryableFailure(errors.DownstreamSystemError, reason, info), nil
@@ -407,7 +394,6 @@ func (daskResourceHandler) GetTaskPhaseWithLogs(ctx context.Context, pluginConte
 	}
 	return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 }
-
 
 func (daskResourceHandler) GetProperties() k8s.PluginProperties {
 	return k8s.PluginProperties{}
