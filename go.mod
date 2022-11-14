@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.2.0
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
 	github.com/aws/aws-sdk-go-v2/service/athena v1.0.0
-	github.com/bstadlbauer/dask-k8s-operator-go-client v0.0.0-20220626185500-773a40749b6c
+	github.com/bstadlbauer/dask-k8s-operator-go-client v0.1.0
 	github.com/coocood/freecache v1.1.1
 	github.com/flyteorg/flyteidl v1.2.3
 	github.com/flyteorg/flytestdlib v1.0.11
@@ -134,7 +134,5 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
-
-replace github.com/bstadlbauer/dask-k8s-operator-go-client => ../dask-k8s-operator-go-client/
 
 replace github.com/flyteorg/flyteidl => ../flyteidl/
