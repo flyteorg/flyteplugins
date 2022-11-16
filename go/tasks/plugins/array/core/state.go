@@ -213,7 +213,10 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 		// phases are updated. Therefore by adding the phase to the state version we ensure that
 		// (1) all phase changes will have a new phase version and (2) all subtask phase updates
 		// result in monotonically increasing phase version.
-		phaseInfo = core.PhaseInfoRunning(version+uint32(p), nowTaskInfo)
+		//phaseInfo = core.PhaseInfoRunning(version+uint32(p), nowTaskInfo)
+
+		// TODO @hamersaw - get rid of this "+ phase" junk
+		phaseInfo = core.PhaseInfoRunning(version, nowTaskInfo)
 
 	case PhaseSuccess:
 		phaseInfo = core.PhaseInfoSuccess(nowTaskInfo)
@@ -267,8 +270,9 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 		return PhaseWriteToDiscoveryThenFail
 	}
 
-	// No chance to reach the required success numbers.
-	if totalRunning+totalSuccesses+totalWaitingForResources+totalRetryableFailures < minSuccesses {
+	// No chance to reach the required success numbers. If any subtasks are running we let them
+	// complete, so results may be writen to cache if enabled, before failing.
+	if totalSuccesses+totalWaitingForResources+totalRetryableFailures < minSuccesses && totalRunning == 0 {
 		logger.Infof(ctx, "Array failed early because total failures > minSuccesses[%v]. Snapshot totalRunning[%v] + totalSuccesses[%v] + totalWaitingForResource[%v] + totalRetryableFailures[%v]",
 			minSuccesses, totalRunning, totalSuccesses, totalWaitingForResources, totalRetryableFailures)
 		return PhaseWriteToDiscoveryThenFail

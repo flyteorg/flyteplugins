@@ -88,18 +88,25 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 	case arrayCore.PhaseStart:
 		nextState, err = array.DetermineDiscoverability(ctx, tCtx, pluginConfig.MaxArrayJobSize, pluginState)
 
-	case arrayCore.PhasePreLaunch:
-		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, core.DefaultPhaseVersion).SetReason("Nothing to do in PreLaunch phase.")
+		nextPhase, _ := nextState.GetPhase()
+		if err == nil && nextPhase != arrayCore.PhaseStart {
+			// TODO @hamersaw
+			// we need to do this here because if cached items are all found we automatically transition to PhaseAssembleFinalOutput
+			// so we need to ensure that we report subtask status' in all cases
 
-		// we wait for PhasePreLaunch to InitializeExternalResources because then the array job
-		// configuration has been validated and all of the metadata necessary to report subtask
-		// status (ie. cache hit / etc) is available.
-		externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, pluginState,
-			func(tCtx core.TaskExecutionContext, childIndex int) string {
-				subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
-				return subTaskExecutionID.GetGeneratedName()
-			},
-		)
+			// we wait for PhasePreLaunch to InitializeExternalResources because then the array job
+			// configuration has been validated and all of the metadata necessary to report subtask
+			// status (ie. cache hit / etc) is available.
+			externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, nextState,
+				func(tCtx core.TaskExecutionContext, childIndex int) string {
+					subTaskExecutionID := NewSubTaskExecutionID(tCtx.TaskExecutionMetadata().GetTaskExecutionID(), childIndex, 0)
+					return subTaskExecutionID.GetGeneratedName()
+				},
+			)
+		}
+
+	case arrayCore.PhasePreLaunch:
+		nextState = pluginState.SetPhase(arrayCore.PhaseLaunch, version+1).SetReason("Nothing to do in PreLaunch phase.")
 
 	case arrayCore.PhaseWaitingForResources:
 		fallthrough
@@ -108,7 +115,7 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 		// In order to maintain backwards compatibility with the state transitions
 		// in the aws batch plugin. Forward to PhaseCheckingSubTasksExecutions where the launching
 		// is actually occurring.
-		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, version).SetReason("Nothing to do in Launch phase.")
+		nextState = pluginState.SetPhase(arrayCore.PhaseCheckingSubTaskExecutions, version+1).SetReason("Nothing to do in Launch phase.")
 		err = nil
 
 	case arrayCore.PhaseCheckingSubTaskExecutions:
@@ -116,16 +123,16 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 			tCtx.DataStore(), tCtx.OutputWriter().GetOutputPrefixPath(), tCtx.OutputWriter().GetRawOutputPrefix(), pluginState)
 
 	case arrayCore.PhaseAssembleFinalOutput:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, version, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.outputsAssembler, tCtx, arrayCore.PhaseSuccess, version+1, pluginState)
 
 	case arrayCore.PhaseWriteToDiscoveryThenFail:
-		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalError, version)
+		nextState, externalResources, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalError, version+1)
 
 	case arrayCore.PhaseWriteToDiscovery:
-		nextState, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalOutput, version)
+		nextState, externalResources, err = array.WriteToDiscovery(ctx, tCtx, pluginState, arrayCore.PhaseAssembleFinalOutput, version+1)
 
 	case arrayCore.PhaseAssembleFinalError:
-		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhasePermanentFailure, version, pluginState)
+		nextState, err = array.AssembleFinalOutputs(ctx, e.errorAssembler, tCtx, arrayCore.PhasePermanentFailure, version+1, pluginState)
 
 	default:
 		nextState = pluginState
