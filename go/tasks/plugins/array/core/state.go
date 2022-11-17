@@ -238,7 +238,7 @@ func MapArrayStateToPluginPhase(_ context.Context, state *State, logLinks []*idl
 	return phaseInfo, nil
 }
 
-func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary, totalRetryLimitExceeded int64) Phase {
+func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus.ArraySummary) Phase {
 	totalCount := int64(0)
 	totalSuccesses := int64(0)
 	totalPermanentFailures := int64(0)
@@ -268,7 +268,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	}
 
 	// No chance to reach the required success numbers.
-	if totalRunning+totalSuccesses+totalWaitingForResources+totalRetryableFailures-totalRetryLimitExceeded < minSuccesses {
+	if totalRunning+totalSuccesses+totalWaitingForResources+totalRetryableFailures < minSuccesses {
 		logger.Infof(ctx, "Array failed early because total failures > minSuccesses[%v]. Snapshot totalRunning[%v] + totalSuccesses[%v] + totalWaitingForResource[%v] + totalRetryableFailures[%v]",
 			minSuccesses, totalRunning, totalSuccesses, totalWaitingForResources, totalRetryableFailures)
 		return PhaseWriteToDiscoveryThenFail

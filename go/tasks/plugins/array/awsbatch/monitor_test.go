@@ -236,7 +236,7 @@ func TestCheckSubTasksState(t *testing.T) {
 
 		newState, err := CheckSubTasksState(ctx, tMeta, "", "", jobStore, inMemDatastore, &config.Config{}, &State{
 			State: &arrayCore.State{
-				CurrentPhase:         arrayCore.PhaseCheckingSubTaskExecutions,
+				CurrentPhase:         arrayCore.PhaseWriteToDiscoveryThenFail,
 				ExecutionArraySize:   2,
 				OriginalArraySize:    2,
 				OriginalMinSuccesses: 2,
@@ -248,10 +248,10 @@ func TestCheckSubTasksState(t *testing.T) {
 			},
 			ExternalJobID:    refStr("job-id"),
 			JobDefinitionArn: "",
-		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()), 3)
+		}, getAwsBatchExecutorMetrics(promutils.NewTestScope()), 1)
 
 		assert.NoError(t, err)
 		p, _ := newState.GetPhase()
-		assert.Equal(t, arrayCore.PhaseCheckingSubTaskExecutions.String(), p.String())
+		assert.Equal(t, arrayCore.PhaseWriteToDiscoveryThenFail, p)
 	})
 }
