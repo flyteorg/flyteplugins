@@ -144,6 +144,62 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
+func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) error {
+	err := mergo.Merge(podTemplatePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
+	if err != nil {
+		return err
+	}
+
+	// merge template Containers
+	var mergedContainers []v1.Container
+	var defaultContainerTemplate, primaryContainerTemplate *v1.Container
+	for i := 0; i < len(podTemplatePodSpec.Containers); i++ {
+		if podTemplatePodSpec.Containers[i].Name == defaultContainerTemplateName {
+			defaultContainerTemplate = &podTemplatePodSpec.Containers[i]
+		} else if podTemplatePodSpec.Containers[i].Name == primaryContainerTemplateName {
+			primaryContainerTemplate = &podTemplatePodSpec.Containers[i]
+		}
+	}
+
+	for _, container := range podSpec.Containers {
+		// if applicable start with defaultContainerTemplate
+		var mergedContainer *v1.Container
+		if defaultContainerTemplate != nil {
+			mergedContainer = defaultContainerTemplate.DeepCopy()
+		}
+
+		// if applicable merge with primaryContainerTemplate
+		if container.Name == primaryContainerName && primaryContainerTemplate != nil {
+			if mergedContainer == nil {
+				mergedContainer = primaryContainerTemplate.DeepCopy()
+			} else {
+				err := mergo.Merge(mergedContainer, primaryContainerTemplate, mergo.WithOverride, mergo.WithAppendSlice)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// if applicable merge with existing container # TODO test
+		if mergedContainer == nil {
+			mergedContainers = append(mergedContainers, container)
+
+		} else {
+			err := mergo.Merge(mergedContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
+			if err != nil {
+				return err
+			}
+
+			mergedContainers = append(mergedContainers, *mergedContainer)
+		}
+
+	}
+
+	// update Pod fields
+	podTemplatePodSpec.Containers = mergedContainers
+	return nil
+}
+
 func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
 	pod := v1.Pod{
 		TypeMeta: v12.TypeMeta{
@@ -155,59 +211,15 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 	if podTemplate != nil {
 		// merge template PodSpec
 		basePodSpec := podTemplate.Template.Spec.DeepCopy()
-		err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
+
+		err := MergePodSpecs(basePodSpec, podSpec, primaryContainerName)
 		if err != nil {
 			return nil, err
 		}
 
-		// merge template Containers
-		var mergedContainers []v1.Container
-		var defaultContainerTemplate, primaryContainerTemplate *v1.Container
-		for i := 0; i < len(podTemplate.Template.Spec.Containers); i++ {
-			if podTemplate.Template.Spec.Containers[i].Name == defaultContainerTemplateName {
-				defaultContainerTemplate = &podTemplate.Template.Spec.Containers[i]
-			} else if podTemplate.Template.Spec.Containers[i].Name == primaryContainerTemplateName {
-				primaryContainerTemplate = &podTemplate.Template.Spec.Containers[i]
-			}
-		}
-
-		for _, container := range podSpec.Containers {
-			// if applicable start with defaultContainerTemplate
-			var mergedContainer *v1.Container
-			if defaultContainerTemplate != nil {
-				mergedContainer = defaultContainerTemplate.DeepCopy()
-			}
-
-			// if applicable merge with primaryContainerTemplate
-			if container.Name == primaryContainerName && primaryContainerTemplate != nil {
-				if mergedContainer == nil {
-					mergedContainer = primaryContainerTemplate.DeepCopy()
-				} else {
-					err := mergo.Merge(mergedContainer, primaryContainerTemplate, mergo.WithOverride, mergo.WithAppendSlice)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-
-			// if applicable merge with existing container
-			if mergedContainer == nil {
-				mergedContainers = append(mergedContainers, container)
-			} else {
-				err := mergo.Merge(mergedContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
-				if err != nil {
-					return nil, err
-				}
-
-				mergedContainers = append(mergedContainers, *mergedContainer)
-			}
-
-		}
-
-		// update Pod fields
-		basePodSpec.Containers = mergedContainers
 		pod.ObjectMeta = podTemplate.Template.ObjectMeta
 		pod.Spec = *basePodSpec
+
 	} else {
 		pod.Spec = *podSpec
 	}
@@ -231,12 +243,15 @@ func BuildIdentityPod() *v1.Pod {
 // Important considerations.
 // Pending Status in Pod could be for various reasons and sometimes could signal a problem
 // Case I: Pending because the Image pull is failing and it is backing off
-//         This could be transient. So we can actually rely on the failure reason.
-//         The failure transitions from ErrImagePull -> ImagePullBackoff
+//
+//	This could be transient. So we can actually rely on the failure reason.
+//	The failure transitions from ErrImagePull -> ImagePullBackoff
+//
 // Case II: Not enough resources are available. This is tricky. It could be that the total number of
-//          resources requested is beyond the capability of the system. for this we will rely on configuration
-//          and hence input gates. We should not allow bad requests that Request for large number of resource through.
-//          In the case it makes through, we will fail after timeout
+//
+//	resources requested is beyond the capability of the system. for this we will rely on configuration
+//	and hence input gates. We should not allow bad requests that Request for large number of resource through.
+//	In the case it makes through, we will fail after timeout
 func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 	// Search over the difference conditions in the status object.  Note that the 'Pending' this function is
 	// demystifying is the 'phase' of the pod status. This is different than the PodReady condition type also used below
