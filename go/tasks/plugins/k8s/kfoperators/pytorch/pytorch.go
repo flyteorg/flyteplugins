@@ -66,6 +66,17 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
 
+	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
+
+	if podTemplate != nil {
+		basePodSpec := podTemplate.Template.Spec.DeepCopy()
+		mergedPodSpec, err := flytek8s.MergePodSpecs(basePodSpec, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
+		if err != nil {
+			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
+		}
+		podSpec = mergedPodSpec
+	}
+
 	common.OverrideDefaultContainerName(taskCtx, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
 
 	workers := pytorchTaskExtraArgs.GetWorkers()
