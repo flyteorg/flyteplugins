@@ -144,10 +144,10 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) error {
+func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
 	err := mergo.Merge(podTemplatePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// merge template Containers
@@ -175,7 +175,7 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 			} else {
 				err := mergo.Merge(mergedContainer, primaryContainerTemplate, mergo.WithOverride, mergo.WithAppendSlice)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
@@ -187,7 +187,7 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 		} else {
 			err := mergo.Merge(mergedContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			mergedContainers = append(mergedContainers, *mergedContainer)
@@ -197,7 +197,8 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 
 	// update Pod fields
 	podTemplatePodSpec.Containers = mergedContainers
-	return nil
+
+	return podTemplatePodSpec, nil
 }
 
 func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
@@ -212,13 +213,13 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 		// merge template PodSpec
 		basePodSpec := podTemplate.Template.Spec.DeepCopy()
 
-		err := MergePodSpecs(basePodSpec, podSpec, primaryContainerName)
+		mergedPodSpec, err := MergePodSpecs(basePodSpec, podSpec, primaryContainerName)
 		if err != nil {
 			return nil, err
 		}
 
 		pod.ObjectMeta = podTemplate.Template.ObjectMeta
-		pod.Spec = *basePodSpec
+		pod.Spec = *mergedPodSpec
 
 	} else {
 		pod.Spec = *podSpec
