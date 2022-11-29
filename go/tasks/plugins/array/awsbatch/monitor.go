@@ -3,9 +3,9 @@ package awsbatch
 import (
 	"context"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/errors"
-
 	core2 "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
