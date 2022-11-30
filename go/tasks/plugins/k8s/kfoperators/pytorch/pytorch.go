@@ -24,6 +24,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const defaultContainerTemplateName = kubeflowv1.PytorchJobDefaultContainerName
+const primaryContainerTemplateName = "primary"
+
 type pytorchOperatorResourceHandler struct {
 }
 
@@ -70,7 +73,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 
 	if podTemplate != nil {
 		basePodSpec := podTemplate.Template.Spec.DeepCopy()
-		mergedPodSpec, err := flytek8s.MergePodSpecs(basePodSpec, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
+		mergedPodSpec, err := flytek8s.MergePodSpecs(basePodSpec, podSpec, primaryContainerTemplateName, defaultContainerTemplateName)
 		if err != nil {
 			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
 		}
