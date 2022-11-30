@@ -24,6 +24,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const defaultContainerTemplateName = kubeflowv1.TFJobDefaultContainerName
+const primaryContainerTemplateName = "primary"
+
 type tensorflowOperatorResourceHandler struct {
 }
 
@@ -64,6 +67,16 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
+	}
+
+	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
+
+	if podTemplate != nil {
+		mergedPodSpec, err := flytek8s.MergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerTemplateName, defaultContainerTemplateName)
+		if err != nil {
+			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
+		}
+		podSpec = mergedPodSpec
 	}
 
 	common.OverrideDefaultContainerName(taskCtx, podSpec, kubeflowv1.TFJobDefaultContainerName)

@@ -21,6 +21,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const defaultContainerTemplateName = kubeflowv1.MPIJobDefaultContainerName
+const primaryContainerTemplateName = "primary"
+
 type mpiOperatorResourceHandler struct {
 }
 
@@ -65,6 +68,16 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
+	}
+
+	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
+
+	if podTemplate != nil {
+		mergedPodSpec, err := flytek8s.MergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerTemplateName, defaultContainerTemplateName)
+		if err != nil {
+			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
+		}
+		podSpec = mergedPodSpec
 	}
 
 	// workersPodSpec is deepCopy of podSpec submitted by flyte
