@@ -150,7 +150,10 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 		return nil, errors.New("podTemplatePodSpec and podSpec cannot be nil.")
 	}
 
-	err := mergo.Merge(podTemplatePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
+	var podTemplatePodSpecCopy *v1.PodSpec
+	podTemplatePodSpecCopy = podTemplatePodSpec.DeepCopy()
+
+	err := mergo.Merge(podTemplatePodSpecCopy, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 	if err != nil {
 		return nil, err
 	}
@@ -158,11 +161,11 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 	// merge template Containers
 	var mergedContainers []v1.Container
 	var defaultContainerTemplate, primaryContainerTemplate *v1.Container
-	for i := 0; i < len(podTemplatePodSpec.Containers); i++ {
-		if podTemplatePodSpec.Containers[i].Name == defaultContainerTemplateName {
-			defaultContainerTemplate = &podTemplatePodSpec.Containers[i]
-		} else if podTemplatePodSpec.Containers[i].Name == primaryContainerTemplateName {
-			primaryContainerTemplate = &podTemplatePodSpec.Containers[i]
+	for i := 0; i < len(podTemplatePodSpecCopy.Containers); i++ {
+		if podTemplatePodSpecCopy.Containers[i].Name == defaultContainerTemplateName {
+			defaultContainerTemplate = &podTemplatePodSpecCopy.Containers[i]
+		} else if podTemplatePodSpecCopy.Containers[i].Name == primaryContainerTemplateName {
+			primaryContainerTemplate = &podTemplatePodSpecCopy.Containers[i]
 		}
 	}
 
@@ -201,9 +204,9 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 	}
 
 	// update Pod fields
-	podTemplatePodSpec.Containers = mergedContainers
+	podTemplatePodSpecCopy.Containers = mergedContainers
 
-	return podTemplatePodSpec, nil
+	return podTemplatePodSpecCopy, nil
 }
 
 func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
@@ -216,9 +219,7 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 
 	if podTemplate != nil {
 		// merge template PodSpec
-		basePodSpec := podTemplate.Template.Spec.DeepCopy()
-
-		mergedPodSpec, err := MergePodSpecs(basePodSpec, podSpec, primaryContainerName, defaultContainerTemplateName)
+		mergedPodSpec, err := MergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerName, defaultContainerTemplateName)
 		if err != nil {
 			return nil, err
 		}

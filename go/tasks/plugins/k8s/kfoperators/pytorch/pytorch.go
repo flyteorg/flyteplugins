@@ -72,8 +72,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
 
 	if podTemplate != nil {
-		basePodSpec := podTemplate.Template.Spec.DeepCopy()
-		mergedPodSpec, err := flytek8s.MergePodSpecs(basePodSpec, podSpec, primaryContainerTemplateName, defaultContainerTemplateName)
+		mergedPodSpec, err := flytek8s.MergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerTemplateName, defaultContainerTemplateName)
 		if err != nil {
 			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
 		}
