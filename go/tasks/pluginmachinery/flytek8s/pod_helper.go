@@ -147,11 +147,10 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 
 func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string, defaultContainerName string) (*v1.PodSpec, error) {
 	if podTemplatePodSpec == nil || podSpec == nil {
-		return nil, errors.New("podTemplatePodSpec and podSpec cannot be nil.")
+		return nil, errors.New("podTemplatePodSpec and podSpec cannot be nil")
 	}
 
-	var podTemplatePodSpecCopy *v1.PodSpec
-	podTemplatePodSpecCopy = podTemplatePodSpec.DeepCopy()
+	var podTemplatePodSpecCopy *v1.PodSpec = podTemplatePodSpec.DeepCopy()
 
 	err := mergo.Merge(podTemplatePodSpecCopy, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 	if err != nil {
