@@ -2,6 +2,7 @@ package flytek8s
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -145,6 +146,10 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 }
 
 func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
+	if podTemplatePodSpec == nil || podSpec == nil {
+		return nil, errors.New("podTemplatePodSpec and podSpec cannot be nil.")
+	}
+
 	err := mergo.Merge(podTemplatePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
 	if err != nil {
 		return nil, err
