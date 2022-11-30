@@ -48,7 +48,7 @@ var (
 
 // Config is config for 'snowflake' plugin
 type Config struct {
-	// WebAPI defines config for the base WebAPI plugin
+	// WeCreateTaskInfobAPI defines config for the base WebAPI plugin
 	WebAPI webapi.PluginConfig `json:"webApi" pflag:",Defines config for the base WebAPI plugin."`
 
 	// ResourceConstraints defines resource constraints on how many executions to be created per project/overall at any given time
