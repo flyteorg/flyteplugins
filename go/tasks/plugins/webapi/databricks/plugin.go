@@ -10,8 +10,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/ghodss/yaml"
+
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
@@ -44,25 +47,18 @@ type Plugin struct {
 
 type ResourceWrapper struct {
 	StatusCode int
+	JobID      string
 	Message    string
 }
 
 type ResourceMetaWrapper struct {
-	QueryID string
-	Account string
-	Token   string
+	RunID              string
+	DatabricksInstance string
+	Token              string
 }
 
 func (p Plugin) GetConfig() webapi.PluginConfig {
 	return GetConfig().WebAPI
-}
-
-type QueryInfo struct {
-	Account   string
-	Warehouse string
-	Schema    string
-	Database  string
-	Statement string
 }
 
 func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionContextReader) (
@@ -74,7 +70,7 @@ func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionCo
 
 func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextReader) (webapi.ResourceMeta,
 	webapi.Resource, error) {
-	task, err := taskCtx.TaskReader().Read(ctx)
+	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,11 +79,15 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-	config := task.GetConfig()
 
-	outputs, err := template.Render(ctx, []string{
-		task.GetSql().Statement,
-	}, template.Parameters{
+	container := taskTemplate.GetContainer()
+	sparkJob := plugins.SparkJob{}
+	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &sparkJob)
+	if err != nil {
+		return nil, nil, errors.Wrapf(pluginErrors.BadTaskSpecification, err, "invalid TaskSpecification [%v], failed to unmarshal", taskTemplate.GetCustom())
+	}
+
+	modifiedArgs, err := template.Render(ctx, container.GetArgs(), template.Parameters{
 		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
 		Inputs:           taskCtx.InputReader(),
 		OutputPath:       taskCtx.OutputWriter(),
@@ -96,25 +96,14 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-	queryInfo := QueryInfo{
-		Account:   config["account"],
-		Warehouse: config["warehouse"],
-		Schema:    config["schema"],
-		Database:  config["database"],
-		Statement: outputs[0],
-	}
 
-	if len(queryInfo.Warehouse) == 0 {
-		queryInfo.Warehouse = p.cfg.DefaultCluster
-	}
-	if len(queryInfo.Account) == 0 {
-		return nil, nil, errors.Errorf(errors2.BadTaskSpecification, "Account must not be empty.")
-	}
-	if len(queryInfo.Database) == 0 {
-		return nil, nil, errors.Errorf(errors2.BadTaskSpecification, "Database must not be empty.")
-	}
-	req, err := buildRequest(post, queryInfo, p.cfg.databricksEndpoint,
-		config["account"], token, "", false)
+	databricksJob := make(map[string]interface{})
+	_ = yaml.Unmarshal([]byte(sparkJob.DatabricksConf), &databricksJob)
+
+	databricksJob["spark_python_task"] = map[string]interface{}{"python_file": "dbfs:///FileStore/tables/entrypoint-1.py", "parameters": modifiedArgs}
+
+	req, err := buildRequest(post, databricksJob, p.cfg.databricksEndpoint,
+		p.cfg.DatabricksInstance, token, "", false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,25 +117,20 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
-	if data["statementHandle"] == "" {
+	if data["run_id"] == "" {
 		return nil, nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err,
 			"Unable to fetch statementHandle from http response")
 	}
-	if data["message"] == "" {
-		return nil, nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err,
-			"Unable to fetch message from http response")
-	}
-	queryID := fmt.Sprintf("%v", data["statementHandle"])
-	message := fmt.Sprintf("%v", data["message"])
+	runID := fmt.Sprintf("%v", data["run_id"])
 
-	return &ResourceMetaWrapper{queryID, queryInfo.Account, token},
-		&ResourceWrapper{StatusCode: resp.StatusCode, Message: message}, nil
+	return &ResourceMetaWrapper{runID, p.cfg.DatabricksInstance, token},
+		&ResourceWrapper{StatusCode: resp.StatusCode}, nil
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	req, err := buildRequest(get, QueryInfo{}, p.cfg.databricksEndpoint,
-		exec.Account, exec.Token, exec.QueryID, false)
+	req, err := buildRequest(get, nil, p.cfg.databricksEndpoint,
+		p.cfg.DatabricksInstance, exec.Token, exec.RunID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -159,17 +143,19 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, err
 	}
-	message := fmt.Sprintf("%v", data["message"])
+	message := fmt.Sprintf("%v", data["state_message"])
+	jobID := fmt.Sprintf("%v", data["job_id"])
 	return &ResourceWrapper{
 		StatusCode: resp.StatusCode,
+		JobID:      jobID,
 		Message:    message,
 	}, nil
 }
 
 func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	req, err := buildRequest(post, QueryInfo{}, p.cfg.databricksEndpoint,
-		exec.Account, exec.Token, exec.QueryID, true)
+	req, err := buildRequest(post, nil, p.cfg.databricksEndpoint,
+		p.cfg.DatabricksInstance, exec.Token, exec.RunID, true)
 	if err != nil {
 		return err
 	}
@@ -186,14 +172,15 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 	statusCode := taskCtx.Resource().(*ResourceWrapper).StatusCode
+	jobID := taskCtx.Resource().(*ResourceWrapper).JobID
 	if statusCode == 0 {
 		return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "No Status field set.")
 	}
 
-	taskInfo := createTaskInfo(exec.QueryID, exec.Account)
+	taskInfo := createTaskInfo(exec.RunID, jobID, exec.DatabricksInstance)
 	switch statusCode {
 	case http.StatusAccepted:
-		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, createTaskInfo(exec.QueryID, exec.Account)), nil
+		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 	case http.StatusOK:
 		return pluginsCore.PhaseInfoSuccess(taskInfo), nil
 	case http.StatusUnprocessableEntity:
@@ -202,40 +189,45 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", statusCode)
 }
 
-func buildRequest(method string, queryInfo QueryInfo, snowflakeEndpoint string, account string, token string,
-	queryID string, isCancel bool) (*http.Request, error) {
-	var snowflakeURL string
+func buildRequest(
+	method string,
+	databricksJob map[string]interface{},
+	databricksEndpoint string,
+	databricksInstance string,
+	token string,
+	runID string,
+	isCancel bool,
+) (*http.Request, error) {
+	var databricksURL string
 	// for mocking/testing purposes
-	if snowflakeEndpoint == "" {
-		snowflakeURL = "https://" + account + ".snowflakecomputing.com/api/v2/statements"
+	if databricksEndpoint == "" {
+		databricksURL = "https://" + databricksInstance + ".cloud.databricks.com/api/2.0/jobs/runs"
 	} else {
-		snowflakeURL = snowflakeEndpoint + "/api/v2/statements"
+		databricksURL = databricksEndpoint + "/api/2.0/jobs/runs"
 	}
 
 	var data []byte
-	if method == post && !isCancel {
-		snowflakeURL += "?async=true"
-		data = []byte(fmt.Sprintf(`{
-		  "statement": "%v",
-		  "database": "%v",
-		  "schema": "%v",
-		  "warehouse": "%v"
-		}`, queryInfo.Statement, queryInfo.Database, queryInfo.Schema, queryInfo.Warehouse))
-	} else {
-		snowflakeURL += "/" + queryID
-	}
 	if isCancel {
-		snowflakeURL += "/cancel"
+		databricksURL += "/cancel"
+		data = []byte(fmt.Sprintf("{ run_id: %v }", runID))
+	} else if method == post {
+		databricksURL += "/submit"
+		mJson, err := json.Marshal(databricksJob)
+		if err != nil {
+			fmt.Println(err.Error())
+			return nil, err
+		}
+		data = []byte(string(mJson))
+	} else {
+		databricksURL += "/get?run_id=" + runID
 	}
 
-	req, err := http.NewRequest(method, snowflakeURL, bytes.NewBuffer(data))
+	req, err := http.NewRequest(method, databricksURL, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
-	req.Header.Add("X-Snowflake-Authorization-Token-Type", "KEYPAIR_JWT")
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
 	return req, nil
 }
 
@@ -252,26 +244,27 @@ func buildResponse(response *http.Response) (map[string]interface{}, error) {
 	return data, nil
 }
 
-func createTaskInfo(queryID string, account string) *core.TaskInfo {
+func createTaskInfo(runID, jobID, databricksInstance string) *core.TaskInfo {
 	timeNow := time.Now()
 
 	return &core.TaskInfo{
 		OccurredAt: &timeNow,
 		Logs: []*flyteIdlCore.TaskLog{
 			{
-				Uri: fmt.Sprintf("https://%v.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=%v",
-					account,
-					queryID),
-				Name: "Snowflake Console",
+				Uri: fmt.Sprintf("https://%v.cloud.databricks.com/#job/%v/run/%v",
+					databricksInstance,
+					jobID,
+					runID),
+				Name: "Databricks Console",
 			},
 		},
 	}
 }
 
-func newSnowflakeJobTaskPlugin() webapi.PluginEntry {
+func newDatabricksJobTaskPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
-		ID:                 "snowflake",
-		SupportedTaskTypes: []core.TaskType{"snowflake"},
+		ID:                 "databricks",
+		SupportedTaskTypes: []core.TaskType{"spark"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
 				metricScope: iCtx.MetricsScope(),
@@ -286,5 +279,5 @@ func init() {
 	gob.Register(ResourceMetaWrapper{})
 	gob.Register(ResourceWrapper{})
 
-	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newSnowflakeJobTaskPlugin())
+	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newDatabricksJobTaskPlugin())
 }

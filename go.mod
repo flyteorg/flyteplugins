@@ -13,6 +13,7 @@ require (
 	github.com/coocood/freecache v1.1.1
 	github.com/flyteorg/flyteidl v1.1.10
 	github.com/flyteorg/flytestdlib v1.0.0
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/golang-lru v0.5.4
@@ -70,7 +71,6 @@ require (
 	github.com/flyteorg/stow v0.3.3 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
@@ -132,3 +132,5 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+
+replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.2.8-0.20221201191455-7ee8e7373490

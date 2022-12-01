@@ -58,6 +58,7 @@ type Config struct {
 
 	TokenKey string `json:"databricksTokenKey" pflag:",Name of the key where to find Databricks token in the secret manager."`
 
+	DatabricksInstance string `json:"databricksInstance" pflag:",Databricks workspace instance name."`
 	// databricksEndpoint overrides databricks instance endpoint, only for testing
 	databricksEndpoint string
 }
