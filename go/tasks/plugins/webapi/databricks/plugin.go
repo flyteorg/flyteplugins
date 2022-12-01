@@ -218,10 +218,12 @@ func buildRequest(
 			return nil, err
 		}
 		data = []byte(string(mJson))
+		fmt.Printf("mJson mJson mJson %v\n", mJson)
 	} else {
 		databricksURL += "/get?run_id=" + runID
 	}
 
+	fmt.Printf("kevin databricksURL %v\n", databricksURL)
 	req, err := http.NewRequest(method, databricksURL, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
