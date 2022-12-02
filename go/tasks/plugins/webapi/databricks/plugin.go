@@ -155,9 +155,10 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, err
 	}
-	message := fmt.Sprintf("%v", data["state_message"])
+	fmt.Printf("data data data %v", data)
+	message := fmt.Sprintf("%v", data["state"].(map[string]string)["state_message"])
 	jobID := fmt.Sprintf("%v", data["job_id"])
-	lifeCycleState := fmt.Sprintf("%v", data["life_cycle_state"])
+	lifeCycleState := fmt.Sprintf("%v", data["state"].(map[string]string)["life_cycle_state"])
 	return &ResourceWrapper{
 		StatusCode:     resp.StatusCode,
 		JobID:          jobID,
