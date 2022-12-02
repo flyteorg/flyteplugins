@@ -144,6 +144,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	req, err := buildRequest(get, nil, p.cfg.databricksEndpoint,
 		p.cfg.DatabricksInstance, exec.Token, exec.RunID, false)
 	if err != nil {
+		logger.Info(ctx, "Failed to build databricks job request [%v]", err)
 		return nil, err
 	}
 	resp, err := p.client.Do(req)
@@ -232,6 +233,8 @@ func buildRequest(
 	}
 
 	var data []byte
+	var req *http.Request
+	var err error
 	if isCancel {
 		databricksURL += "/cancel"
 		data = []byte(fmt.Sprintf("{ run_id: %v }", runID))
@@ -247,7 +250,11 @@ func buildRequest(
 		databricksURL += "/get?run_id=" + runID
 	}
 
-	req, err := http.NewRequest(method, databricksURL, bytes.NewBuffer(data))
+	if data == nil {
+		req, err = http.NewRequest(method, databricksURL, nil)
+	} else {
+		req, err = http.NewRequest(method, databricksURL, bytes.NewBuffer(data))
+	}
 	if err != nil {
 		return nil, err
 	}
