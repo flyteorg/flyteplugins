@@ -119,15 +119,12 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Printf("req req req %v\n", req)
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	data, err := buildResponse(resp)
-	fmt.Printf("Response Response Response %v\n", resp)
-	fmt.Printf("Response Response Response %v\n", data)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -158,8 +155,6 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Response Response Response %v\n", resp)
-	fmt.Printf("Response Response Response %v\n", data)
 	message := fmt.Sprintf("%v", data["state_message"])
 	jobID := fmt.Sprintf("%v", data["job_id"])
 	lifeCycleState := fmt.Sprintf("%v", data["life_cycle_state"])
@@ -243,17 +238,14 @@ func buildRequest(
 			return nil, err
 		}
 		data = []byte(string(mJson))
-		fmt.Printf("mJson mJson mJson %v\n", string(mJson))
 	} else {
 		databricksURL += "/get?run_id=" + runID
 	}
 
-	fmt.Printf("kevin databricksURL %v\n", databricksURL)
 	req, err := http.NewRequest(method, databricksURL, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("kevin token token %v\n", token)
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
 	return req, nil
