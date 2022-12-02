@@ -204,11 +204,12 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	case http.StatusAccepted:
 		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 	case http.StatusOK:
-		if lifeCycleState == "TERMINATED" {
-			return pluginsCore.PhaseInfoSuccess(taskInfo), nil
-		} else {
-			return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
-		}
+		//if lifeCycleState == "TERMINATED" {
+		//	return pluginsCore.PhaseInfoSuccess(taskInfo), nil
+		//} else {
+		//	return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
+		//}
+		return pluginsCore.PhaseInfoSuccess(taskInfo), nil
 	case http.StatusUnprocessableEntity:
 		return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), "phaseReason", taskInfo), nil
 	}
