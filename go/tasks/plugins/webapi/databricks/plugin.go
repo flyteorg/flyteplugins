@@ -156,7 +156,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("data data data %v", data)
+	logger.Info(ctx, "data data data %v", data)
 	message := fmt.Sprintf("%v", data["state"].(map[string]string)["state_message"])
 	jobID := fmt.Sprintf("%v", data["job_id"])
 	lifeCycleState := fmt.Sprintf("%v", data["state"].(map[string]string)["life_cycle_state"])
@@ -185,7 +185,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	return nil
 }
 
-func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
+func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 	statusCode := taskCtx.Resource().(*ResourceWrapper).StatusCode
 	jobID := taskCtx.Resource().(*ResourceWrapper).JobID
@@ -194,6 +194,9 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	if statusCode == 0 {
 		return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "No Status field set.")
 	}
+
+	logger.Info(ctx, "statusCode statusCode %v", statusCode)
+	logger.Info(ctx, "lifeCycleState lifeCycleState lifeCycleState %v", lifeCycleState)
 
 	taskInfo := createTaskInfo(exec.RunID, jobID, exec.DatabricksInstance)
 	switch statusCode {
