@@ -113,6 +113,8 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	}
 	defer resp.Body.Close()
 	data, err := buildResponse(resp)
+	fmt.Printf("Response Response Response %v\n", resp)
+	fmt.Printf("Response Response Response %v\n", data)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -143,6 +145,8 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("Response Response Response %v\n", resp)
+	fmt.Printf("Response Response Response %v\n", data)
 	message := fmt.Sprintf("%v", data["state_message"])
 	jobID := fmt.Sprintf("%v", data["job_id"])
 	return &ResourceWrapper{
@@ -218,7 +222,7 @@ func buildRequest(
 			return nil, err
 		}
 		data = []byte(string(mJson))
-		fmt.Printf("mJson mJson mJson %v\n", mJson)
+		fmt.Printf("mJson mJson mJson %v\n", string(mJson))
 	} else {
 		databricksURL += "/get?run_id=" + runID
 	}
