@@ -107,6 +107,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
+	fmt.Printf("req req req %v\n", req)
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, nil, err
@@ -232,6 +233,7 @@ func buildRequest(
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("kevin token token %v\n", token)
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/json")
 	return req, nil
