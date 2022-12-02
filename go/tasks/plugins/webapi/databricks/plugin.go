@@ -3,6 +3,7 @@ package databricks
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -10,14 +11,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
-	"github.com/ghodss/yaml"
-
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -97,8 +96,20 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
+	decodeBytes, err := base64.StdEncoding.DecodeString(sparkJob.DatabricksConf)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode runtimeEnv: %v: %v", sparkJob.DatabricksConf, err)
+	}
+
 	databricksJob := make(map[string]interface{})
-	_ = yaml.Unmarshal([]byte(sparkJob.DatabricksConf), &databricksJob)
+	err = json.Unmarshal(decodeBytes, &databricksJob)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal runtimeEnv: %v: %v", decodeBytes, err)
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
 
 	databricksJob["spark_python_task"] = map[string]interface{}{"python_file": "dbfs:///FileStore/tables/entrypoint-1.py", "parameters": modifiedArgs}
 
