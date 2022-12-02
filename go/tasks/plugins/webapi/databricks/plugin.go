@@ -112,7 +112,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
-	databricksJob["spark_python_task"] = map[string]interface{}{"python_file": "dbfs:///FileStore/tables/entrypoint-1.py", "parameters": modifiedArgs}
+	databricksJob["spark_python_task"] = map[string]interface{}{"python_file": "dbfs:///FileStore/tables/entrypoint-2.py", "parameters": modifiedArgs}
 
 	req, err := buildRequest(post, databricksJob, p.cfg.databricksEndpoint,
 		p.cfg.DatabricksInstance, token, "", false)
