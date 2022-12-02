@@ -148,6 +148,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	}
 	resp, err := p.client.Do(req)
 	if err != nil {
+		logger.Info(ctx, "Failed to get databricks job status [%v]", resp)
 		return nil, err
 	}
 	defer resp.Body.Close()
