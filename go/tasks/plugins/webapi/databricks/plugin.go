@@ -45,9 +45,10 @@ type Plugin struct {
 }
 
 type ResourceWrapper struct {
-	StatusCode int
-	JobID      string
-	Message    string
+	StatusCode     int
+	LifeCycleState string
+	JobID          string
+	Message        string
 }
 
 type ResourceMetaWrapper struct {
@@ -98,13 +99,13 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	decodeBytes, err := base64.StdEncoding.DecodeString(sparkJob.DatabricksConf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode runtimeEnv: %v: %v", sparkJob.DatabricksConf, err)
+		return nil, nil, fmt.Errorf("failed to decode databricksJob: %v: %v", sparkJob.DatabricksConf, err)
 	}
 
 	databricksJob := make(map[string]interface{})
 	err = json.Unmarshal(decodeBytes, &databricksJob)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal runtimeEnv: %v: %v", decodeBytes, err)
+		return nil, nil, fmt.Errorf("failed to unmarshal databricksJob: %v: %v", decodeBytes, err)
 	}
 
 	if err != nil {
@@ -161,10 +162,12 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	fmt.Printf("Response Response Response %v\n", data)
 	message := fmt.Sprintf("%v", data["state_message"])
 	jobID := fmt.Sprintf("%v", data["job_id"])
+	lifeCycleState := fmt.Sprintf("%v", data["life_cycle_state"])
 	return &ResourceWrapper{
-		StatusCode: resp.StatusCode,
-		JobID:      jobID,
-		Message:    message,
+		StatusCode:     resp.StatusCode,
+		JobID:          jobID,
+		LifeCycleState: lifeCycleState,
+		Message:        message,
 	}, nil
 }
 
@@ -189,6 +192,8 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 	statusCode := taskCtx.Resource().(*ResourceWrapper).StatusCode
 	jobID := taskCtx.Resource().(*ResourceWrapper).JobID
+	lifeCycleState := taskCtx.Resource().(*ResourceWrapper).LifeCycleState
+
 	if statusCode == 0 {
 		return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "No Status field set.")
 	}
@@ -198,7 +203,11 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	case http.StatusAccepted:
 		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 	case http.StatusOK:
-		return pluginsCore.PhaseInfoSuccess(taskInfo), nil
+		if lifeCycleState == "TERMINATED" {
+			return pluginsCore.PhaseInfoSuccess(taskInfo), nil
+		} else {
+			return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
+		}
 	case http.StatusUnprocessableEntity:
 		return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), "phaseReason", taskInfo), nil
 	}

@@ -59,6 +59,8 @@ type Config struct {
 	TokenKey string `json:"databricksTokenKey" pflag:",Name of the key where to find Databricks token in the secret manager."`
 
 	DatabricksInstance string `json:"databricksInstance" pflag:",Databricks workspace instance name."`
+
+	EntrypointFile string `json:"entrypointFile" pflag:",A URL of the entrypoint file. DBFS and cloud storage (s3:/, gcs:/, adls:/, etc) locations are supported."`
 	// databricksEndpoint overrides databricks instance endpoint, only for testing
 	databricksEndpoint string
 }
