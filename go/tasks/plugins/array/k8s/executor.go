@@ -90,12 +90,8 @@ func (e Executor) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (c
 
 		nextPhase, _ := nextState.GetPhase()
 		if err == nil && nextPhase != arrayCore.PhaseStart {
-			// TODO @hamersaw
-			// we need to do this here because if cached items are all found we automatically transition to PhaseAssembleFinalOutput
-			// so we need to ensure that we report subtask status' in all cases
-
-			// we wait for PhasePreLaunch to InitializeExternalResources because then the array job
-			// configuration has been validated and all of the metadata necessary to report subtask
+			// we wait to transition out of PhaseStart to InitializeExternalResources because then the array
+			// job configuration has then been validated and all of the metadata necessary to report subtask
 			// status (ie. cache hit / etc) is available.
 			externalResources, err = arrayCore.InitializeExternalResources(ctx, tCtx, nextState,
 				func(tCtx core.TaskExecutionContext, childIndex int) string {
