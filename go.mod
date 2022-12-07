@@ -13,7 +13,6 @@ require (
 	github.com/coocood/freecache v1.1.1
 	github.com/flyteorg/flyteidl v1.2.3
 	github.com/flyteorg/flytestdlib v1.0.11
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/golang-lru v0.5.4
@@ -72,6 +71,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/flyteorg/stow v0.3.6 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect

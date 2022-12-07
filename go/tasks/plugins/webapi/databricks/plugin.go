@@ -252,12 +252,12 @@ func buildRequest(
 		data = []byte(fmt.Sprintf("{ run_id: %v }", runID))
 	} else if method == post {
 		databricksURL += "/submit"
-		mJson, err := json.Marshal(databricksJob)
+		mJSON, err := json.Marshal(databricksJob)
 		if err != nil {
 			fmt.Println(err.Error())
 			return nil, err
 		}
-		data = []byte(string(mJson))
+		data = []byte(string(mJSON))
 	} else {
 		databricksURL += "/get?run_id=" + runID
 	}
