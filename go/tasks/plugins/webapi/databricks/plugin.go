@@ -47,6 +47,7 @@ type Plugin struct {
 type ResourceWrapper struct {
 	StatusCode     int
 	LifeCycleState string
+	ResultState    string
 	JobID          string
 	Message        string
 }
@@ -144,12 +145,12 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	req, err := buildRequest(get, nil, p.cfg.databricksEndpoint,
 		p.cfg.DatabricksInstance, exec.Token, exec.RunID, false)
 	if err != nil {
-		logger.Info(ctx, "Failed to build databricks job request [%v]", err)
+		logger.Errorf(ctx, "Failed to build databricks job request [%v]", err)
 		return nil, err
 	}
 	resp, err := p.client.Do(req)
 	if err != nil {
-		logger.Info(ctx, "Failed to get databricks job status [%v]", resp)
+		logger.Errorf(ctx, "Failed to get databricks job status [%v]", resp)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -157,20 +158,22 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, err
 	}
-	logger.Info(ctx, "data data data %v", data)
-	message := fmt.Sprintf("%v", data["state"].(map[string]string)["state_message"])
-	jobID := fmt.Sprintf("%v", data["job_id"])
-	lifeCycleState := fmt.Sprintf("%v", data["state"].(map[string]string)["life_cycle_state"])
+	jobState := data["state"].(map[string]interface{})
+	message := fmt.Sprintf("%s", jobState["state_message"])
+	jobID := fmt.Sprintf("%.0f", data["job_id"])
+	lifeCycleState := fmt.Sprintf("%s", jobState["life_cycle_state"])
+	resultState := fmt.Sprintf("%s", jobState["result_state"])
 	return &ResourceWrapper{
 		StatusCode:     resp.StatusCode,
 		JobID:          jobID,
 		LifeCycleState: lifeCycleState,
+		ResultState:    resultState,
 		Message:        message,
 	}, nil
 }
 
 func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error {
-	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
+	exec := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 	req, err := buildRequest(post, nil, p.cfg.databricksEndpoint,
 		p.cfg.DatabricksInstance, exec.Token, exec.RunID, true)
 	if err != nil {
@@ -188,30 +191,38 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 
 func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	statusCode := taskCtx.Resource().(*ResourceWrapper).StatusCode
-	jobID := taskCtx.Resource().(*ResourceWrapper).JobID
-	lifeCycleState := taskCtx.Resource().(*ResourceWrapper).LifeCycleState
+	resource := taskCtx.Resource().(*ResourceWrapper)
+	message := resource.Message
+	statusCode := resource.StatusCode
+	jobID := resource.JobID
+	lifeCycleState := resource.LifeCycleState
+	resultState := resource.ResultState
 
 	if statusCode == 0 {
 		return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "No Status field set.")
 	}
 
-	logger.Info(ctx, "statusCode statusCode %v", statusCode)
-	logger.Info(ctx, "lifeCycleState lifeCycleState lifeCycleState %v", lifeCycleState)
-
 	taskInfo := createTaskInfo(exec.RunID, jobID, exec.DatabricksInstance)
 	switch statusCode {
+	// Job response format. https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit
 	case http.StatusAccepted:
 		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 	case http.StatusOK:
-		//if lifeCycleState == "TERMINATED" {
-		//	return pluginsCore.PhaseInfoSuccess(taskInfo), nil
-		//} else {
-		//	return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
-		//}
-		return pluginsCore.PhaseInfoSuccess(taskInfo), nil
-	case http.StatusUnprocessableEntity:
-		return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), "phaseReason", taskInfo), nil
+		if lifeCycleState == "TERMINATED" {
+			if resultState == "SUCCESS" {
+				return pluginsCore.PhaseInfoSuccess(taskInfo), nil
+			} else {
+				return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), message, taskInfo), nil
+			}
+		} else {
+			return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
+		}
+	case http.StatusBadRequest:
+		fallthrough
+	case http.StatusInternalServerError:
+		fallthrough
+	case http.StatusUnauthorized:
+		return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), message, taskInfo), nil
 	}
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", statusCode)
 }
@@ -228,9 +239,9 @@ func buildRequest(
 	var databricksURL string
 	// for mocking/testing purposes
 	if databricksEndpoint == "" {
-		databricksURL = "https://" + databricksInstance + ".cloud.databricks.com/api/2.0/jobs/runs"
+		databricksURL = fmt.Sprintf("https://%v.cloud.databricks.com/api/2.0/jobs/runs", databricksInstance)
 	} else {
-		databricksURL = databricksEndpoint + "/api/2.0/jobs/runs"
+		databricksURL = fmt.Sprintf("%v/api/2.0/jobs/runs", databricksEndpoint)
 	}
 
 	var data []byte
@@ -284,7 +295,7 @@ func createTaskInfo(runID, jobID, databricksInstance string) *core.TaskInfo {
 		OccurredAt: &timeNow,
 		Logs: []*flyteIdlCore.TaskLog{
 			{
-				Uri: fmt.Sprintf("https://%v.cloud.databricks.com/#job/%v/run/%v",
+				Uri: fmt.Sprintf("https://%s.cloud.databricks.com/#job/%s/run/%s",
 					databricksInstance,
 					jobID,
 					runID),
