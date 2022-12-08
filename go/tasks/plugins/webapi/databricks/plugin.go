@@ -214,9 +214,8 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 		if lifeCycleState == "TERMINATED" {
 			if resultState == "SUCCESS" {
 				return pluginsCore.PhaseInfoSuccess(taskInfo), nil
-			} else {
-				return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), message, taskInfo), nil
 			}
+			return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), message, taskInfo), nil
 		}
 		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 	case http.StatusBadRequest:
