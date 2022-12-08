@@ -217,9 +217,8 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 			} else {
 				return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), message, taskInfo), nil
 			}
-		} else {
-			return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 		}
+		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 	case http.StatusBadRequest:
 		fallthrough
 	case http.StatusInternalServerError:
