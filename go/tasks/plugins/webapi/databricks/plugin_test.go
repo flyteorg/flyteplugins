@@ -53,10 +53,10 @@ func TestPlugin(t *testing.T) {
 
 func TestCreateTaskInfo(t *testing.T) {
 	t.Run("create task info", func(t *testing.T) {
-		taskInfo := createTaskInfo("d5493e36", "test-account")
+		taskInfo := createTaskInfo("run-id", "job-id", "test-account")
 
 		assert.Equal(t, 1, len(taskInfo.Logs))
-		assert.Equal(t, taskInfo.Logs[0].Uri, "https://test-account.snowflakecomputing.com/console#/monitoring/queries/detail?queryId=d5493e36")
+		assert.Equal(t, taskInfo.Logs[0].Uri, "https://test-account.cloud.databricks.com/#job/job-id/run/run-id")
 		assert.Equal(t, taskInfo.Logs[0].Name, "Snowflake Console")
 	})
 }

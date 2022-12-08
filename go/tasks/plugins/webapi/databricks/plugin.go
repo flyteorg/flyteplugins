@@ -113,6 +113,9 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
+	if _, ok := databricksJob["new_cluster"]; ok {
+		databricksJob["new_cluster"].(map[string]interface{})["docker_image"] = map[string]string{"url": container.Image}
+	}
 	databricksJob["spark_python_task"] = map[string]interface{}{"python_file": p.cfg.EntrypointFile, "parameters": modifiedArgs}
 
 	req, err := buildRequest(post, databricksJob, p.cfg.databricksEndpoint,
