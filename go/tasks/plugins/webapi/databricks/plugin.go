@@ -109,10 +109,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to unmarshal databricksJob: %v: %v", decodeBytes, err)
 	}
 
-	if err != nil {
-		return nil, nil, err
-	}
-
 	if _, ok := databricksJob["new_cluster"]; ok {
 		databricksJob["new_cluster"].(map[string]interface{})["docker_image"] = map[string]string{"url": container.Image}
 	}
@@ -123,6 +119,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
+
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, nil, err
@@ -132,7 +129,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if data["run_id"] == "" {
 		return nil, nil, pluginErrors.Wrapf(pluginErrors.RuntimeFailure, err,
 			"Unable to fetch statementHandle from http response")
