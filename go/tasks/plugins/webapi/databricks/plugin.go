@@ -251,7 +251,6 @@ func buildRequest(
 		databricksURL += "/submit"
 		mJSON, err := json.Marshal(databricksJob)
 		if err != nil {
-			fmt.Println(err.Error())
 			return nil, err
 		}
 		data = []byte(string(mJSON))

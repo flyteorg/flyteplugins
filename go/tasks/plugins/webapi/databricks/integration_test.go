@@ -70,7 +70,6 @@ func newFakeDatabricksServer() *httptest.Server {
 	runID := "065168461"
 	jobID := "019e7546"
 	return httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println(request.URL.Path)
 		if request.URL.Path == "/api/2.0/jobs/runs/submit" && request.Method == "POST" {
 			writer.WriteHeader(202)
 			bytes := []byte(fmt.Sprintf(`{
