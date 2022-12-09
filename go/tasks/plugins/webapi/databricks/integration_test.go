@@ -3,12 +3,13 @@ package databricks
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/flyteorg/flytestdlib/utils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flytestdlib/utils"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	coreIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
