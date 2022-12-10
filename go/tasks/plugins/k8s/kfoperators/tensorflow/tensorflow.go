@@ -70,12 +70,15 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 
 	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
 
+	objectMeta := metav1.ObjectMeta{}
+
 	if podTemplate != nil {
 		mergedPodSpec, err := flytek8s.MergePodSpecs(&podTemplate.Template.Spec, podSpec, kubeflowv1.TFJobDefaultContainerName)
 		if err != nil {
 			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
 		}
 		podSpec = mergedPodSpec
+		objectMeta = podTemplate.Template.ObjectMeta
 	}
 
 	workers := tensorflowTaskExtraArgs.GetWorkers()
@@ -87,14 +90,16 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 			kubeflowv1.TFJobReplicaTypePS: {
 				Replicas: &psReplicas,
 				Template: v1.PodTemplateSpec{
-					Spec: *podSpec,
+					ObjectMeta: objectMeta,
+					Spec:       *podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
 			},
 			kubeflowv1.TFJobReplicaTypeChief: {
 				Replicas: &chiefReplicas,
 				Template: v1.PodTemplateSpec{
-					Spec: *podSpec,
+					ObjectMeta: objectMeta,
+					Spec:       *podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
 			},

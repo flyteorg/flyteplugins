@@ -70,12 +70,15 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 
 	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
 
+	objectMeta := metav1.ObjectMeta{}
+
 	if podTemplate != nil {
 		mergedPodSpec, err := flytek8s.MergePodSpecs(&podTemplate.Template.Spec, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
 		if err != nil {
 			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
 		}
 		podSpec = mergedPodSpec
+		objectMeta = podTemplate.Template.ObjectMeta
 	}
 
 	workers := pytorchTaskExtraArgs.GetWorkers()
@@ -84,14 +87,16 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		PyTorchReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{
 			kubeflowv1.PyTorchJobReplicaTypeMaster: {
 				Template: v1.PodTemplateSpec{
-					Spec: *podSpec,
+					ObjectMeta: objectMeta,
+					Spec:       *podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
 			},
 			kubeflowv1.PyTorchJobReplicaTypeWorker: {
 				Replicas: &workers,
 				Template: v1.PodTemplateSpec{
-					Spec: *podSpec,
+					ObjectMeta: objectMeta,
+					Spec:       *podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
 			},
