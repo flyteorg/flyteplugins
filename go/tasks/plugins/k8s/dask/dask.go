@@ -105,9 +105,9 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 	}, nil
 }
 
-func createResourceList(pb_resources []*core.Resources_ResourceEntry) (v1.ResourceList, error) {
+func createResourceList(pbResources []*core.Resources_ResourceEntry) (v1.ResourceList, error) {
 	resourceList := v1.ResourceList{}
-	for _, resourceEntry := range pb_resources {
+	for _, resourceEntry := range pbResources {
 		resourceName, ok := resourceMapping[resourceEntry.GetName()]
 		if !ok {
 			return nil, errors.Errorf(errors.BadTaskSpecification, fmt.Sprintf("Could not tranlate resource with name %s to k8s resource", resourceEntry.GetName()))
@@ -121,32 +121,32 @@ func createResourceList(pb_resources []*core.Resources_ResourceEntry) (v1.Resour
 	return resourceList, nil
 }
 
-func convertProtobufResourcesToK8sResources(pb_resources *core.Resources) (*v1.ResourceRequirements, error) {
+func convertProtobufResourcesToK8sResources(pbResources *core.Resources) (*v1.ResourceRequirements, error) {
 	var err error
 
-	k8s_requests := v1.ResourceList{}
-	if pb_resources.GetRequests() != nil {
-		k8s_requests, err = createResourceList(pb_resources.GetRequests())
+	k8sRequests := v1.ResourceList{}
+	if pbResources.GetRequests() != nil {
+		k8sRequests, err = createResourceList(pbResources.GetRequests())
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	k8s_limits := v1.ResourceList{}
-	if pb_resources.GetLimits() != nil {
-		k8s_limits, err = createResourceList(pb_resources.GetLimits())
+	k8sLimits := v1.ResourceList{}
+	if pbResources.GetLimits() != nil {
+		k8sLimits, err = createResourceList(pbResources.GetLimits())
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if len(k8s_requests) == 0 && len(k8s_limits) == 0 {
+	if len(k8sRequests) == 0 && len(k8sLimits) == 0 {
 		return nil, nil
 	}
 
 	return &v1.ResourceRequirements{
-		Requests: k8s_requests,
-		Limits:   k8s_limits,
+		Requests: k8sRequests,
+		Limits:   k8sLimits,
 	}, nil
 }
 

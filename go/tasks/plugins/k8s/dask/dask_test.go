@@ -58,10 +58,10 @@ func dummyDaskJob(status daskAPI.JobStatus) *daskAPI.DaskJob {
 		},
 		Status: daskAPI.DaskJobStatus{
 			ClusterName:      "dask-cluster-name",
-			EndTime:          metav1.Time{time.Now()},
+			EndTime:          metav1.Time{Time: time.Now()},
 			JobRunnerPodName: "job-runner-pod-name",
 			JobStatus:        status,
-			StartTime:        metav1.Time{time.Now()},
+			StartTime:        metav1.Time{Time: time.Now()},
 		},
 	}
 }
