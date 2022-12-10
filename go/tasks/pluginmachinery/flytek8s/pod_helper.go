@@ -145,7 +145,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string, defaultContainerName string) (*v1.PodSpec, error) {
+func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
 	if podTemplatePodSpec == nil || podSpec == nil {
 		return nil, errors.New("podTemplatePodSpec and podSpec cannot be nil")
 	}
@@ -218,7 +218,7 @@ func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryC
 
 	if podTemplate != nil {
 		// merge template PodSpec
-		mergedPodSpec, err := MergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerName, defaultContainerTemplateName)
+		mergedPodSpec, err := MergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerName)
 		if err != nil {
 			return nil, err
 		}

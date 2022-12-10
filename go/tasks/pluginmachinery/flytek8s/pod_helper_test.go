@@ -1017,13 +1017,13 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 func TestMergePodSpecs(t *testing.T) {
 	var priority int32 = 1
 
-	podSpec1, _ := MergePodSpecs(nil, nil, "defaultname", "primaryname")
+	podSpec1, _ := MergePodSpecs(nil, nil, "foo")
 	assert.Nil(t, podSpec1)
 
-	podSpec2, _ := MergePodSpecs(&v1.PodSpec{}, nil, "defaultname", "primaryname")
+	podSpec2, _ := MergePodSpecs(&v1.PodSpec{}, nil, "foo")
 	assert.Nil(t, podSpec2)
 
-	podSpec3, _ := MergePodSpecs(nil, &v1.PodSpec{}, "defaultname", "primaryname")
+	podSpec3, _ := MergePodSpecs(nil, &v1.PodSpec{}, "foo")
 	assert.Nil(t, podSpec3)
 
 	podSpec := v1.PodSpec{
@@ -1077,7 +1077,7 @@ func TestMergePodSpecs(t *testing.T) {
 		},
 	}
 
-	mergedPodSpec, err := MergePodSpecs(&podTemplateSpec, &podSpec, "foo", "default")
+	mergedPodSpec, err := MergePodSpecs(&podTemplateSpec, &podSpec, "foo")
 	assert.Nil(t, err)
 
 	// validate a PodTemplate-only field
