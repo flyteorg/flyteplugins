@@ -233,6 +233,7 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 
 	return &daskAPI.SchedulerSpec{
 		Spec: v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyNever,
 			Containers: []v1.Container{
 				{
 					Name:      "scheduler",
@@ -299,6 +300,7 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 	return &daskAPI.DaskJobSpec{
 		Job: daskAPI.JobSpec{
 			Spec: v1.PodSpec{
+				RestartPolicy: v1.RestartPolicyNever,
 				Containers: []v1.Container{
 					jobContainer,
 				},

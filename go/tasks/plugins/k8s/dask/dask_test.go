@@ -185,6 +185,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	// Job
 	jobSpec := daskJob.Spec.Job.Spec
 	assert.Equal(t, testAnnotations, daskJob.ObjectMeta.GetAnnotations())
+	assert.Equal(t, v1.RestartPolicyNever, jobSpec.RestartPolicy)
 	assert.Equal(t, "job-runner", jobSpec.Containers[0].Name)
 	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
 	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
@@ -209,6 +210,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 			Protocol:      "TCP",
 		},
 	}
+	assert.Equal(t, v1.RestartPolicyNever, schedulerSpec.RestartPolicy)
 	assert.Equal(t, defaultTestImage, schedulerSpec.Containers[0].Image)
 	assert.Equal(t, testPlatformResources, schedulerSpec.Containers[0].Resources)
 	assert.Equal(t, []string{"dask-scheduler"}, schedulerSpec.Containers[0].Args)
