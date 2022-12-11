@@ -63,7 +63,7 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		}
 	}
 
-	var defaultResources *v1.ResourceRequirements
+	defaultResources := executionMetadata.GetPlatformResources()
 	if executionMetadata.GetOverrides() != nil && executionMetadata.GetOverrides().GetResources() != nil {
 		defaultResources = executionMetadata.GetOverrides().GetResources()
 	}
@@ -290,6 +290,7 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 		jobContainer.Image = jobPodSpec.GetImage()
 	}
 
+	jobContainer.Resources = *defaults.Resources
 	if jobPodSpec.GetResources() != nil {
 		resources, err := flytek8s.ToK8sResourceRequirements(jobPodSpec.GetResources())
 		if err != nil {

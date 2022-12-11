@@ -184,7 +184,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, "job-runner", jobSpec.Containers[0].Name)
 	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
 	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
-	assert.Equal(t, v1.ResourceRequirements{}, jobSpec.Containers[0].Resources)
+	assert.Equal(t, testPlatformResources, jobSpec.Containers[0].Resources)
 	// Flyte adds more environment variables to the driver
 	assert.Contains(t, jobSpec.Containers[0].Env, testEnvVars[0])
 
@@ -206,7 +206,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 		},
 	}
 	assert.Equal(t, defaultTestImage, schedulerSpec.Containers[0].Image)
-	assert.Equal(t, v1.ResourceRequirements{}, schedulerSpec.Containers[0].Resources)
+	assert.Equal(t, testPlatformResources, schedulerSpec.Containers[0].Resources)
 	assert.Equal(t, []string{"dask-scheduler"}, schedulerSpec.Containers[0].Args)
 	assert.Equal(t, expectedPorts, schedulerSpec.Containers[0].Ports)
 	assert.Equal(t, testEnvVars, schedulerSpec.Containers[0].Env)
@@ -240,15 +240,17 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, "dask-worker", workerSpec.Containers[0].Name)
 	assert.Equal(t, v1.PullIfNotPresent, workerSpec.Containers[0].ImagePullPolicy)
 	assert.Equal(t, defaultTestImage, workerSpec.Containers[0].Image)
-	assert.Equal(t, v1.ResourceRequirements{}, workerSpec.Containers[0].Resources)
+	assert.Equal(t, testPlatformResources, workerSpec.Containers[0].Resources)
 	assert.Equal(t, testEnvVars, workerSpec.Containers[0].Env)
 	assert.Equal(t, []string{
 		"dask-worker",
 		"--name",
 		"$(DASK_WORKER_NAME)",
+		"--nthreads",
+		"5", 
+		"--memory-limit",
+		"17G",
 	}, workerSpec.Containers[0].Args)
-	assert.NotContains(t, workerSpec.Containers[0].Args, "--nthreads")
-	assert.NotContains(t, workerSpec.Containers[0].Args, "--memory-limit")
 }
 
 func TestBuildResourceDaskCustomImages(t *testing.T) {
