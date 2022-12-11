@@ -88,6 +88,14 @@ func dummpyDaskCustomObj(customImage string, resources *core.Resources, namespac
 }
 
 func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resources, namespace string) *core.TaskTemplate {
+	// In a real usecase, resources will always be filled, but might be empty
+	if resources == nil {
+		resources = &core.Resources{
+			Requests: []*core.Resources_ResourceEntry{},
+			Limits: []*core.Resources_ResourceEntry{},
+		}
+	}
+
 	daskJob := dummpyDaskCustomObj(customImage, resources, namespace)
 	daskJobJSON, err := utils.MarshalToString(daskJob)
 	if err != nil {

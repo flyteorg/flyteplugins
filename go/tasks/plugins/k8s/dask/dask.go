@@ -170,7 +170,8 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 
 	var err error
 	resources := defaults.Resources
-	if cluster.GetResources() != nil {
+	clusterResources := cluster.GetResources()
+	if len(clusterResources.Requests) >= 1 || len(clusterResources.Limits) >= 1 {
 		resources, err = flytek8s.ToK8sResourceRequirements(cluster.GetResources())
 		if err != nil {
 			return nil, err
@@ -225,7 +226,9 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 
 	var err error
 	resources := defaults.Resources
-	if cluster.GetResources() != nil {
+
+	clusterResources := cluster.GetResources()
+	if len(clusterResources.Requests) >= 1 || len(clusterResources.Limits) >= 1 {
 		resources, err = flytek8s.ToK8sResourceRequirements(cluster.GetResources())
 		if err != nil {
 			return nil, err
@@ -291,7 +294,8 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 	}
 
 	jobContainer.Resources = *defaults.Resources
-	if jobPodSpec.GetResources() != nil {
+	jobPodResources := jobPodSpec.GetResources()
+	if len(jobPodResources.Requests) >= 1 || len(jobPodResources.Limits) >= 1 {
 		resources, err := flytek8s.ToK8sResourceRequirements(jobPodSpec.GetResources())
 		if err != nil {
 			return nil, err
