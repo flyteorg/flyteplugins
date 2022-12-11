@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -27,13 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var resourceMapping = map[core.Resources_ResourceName]v1.ResourceName{
-	core.Resources_CPU:               v1.ResourceCPU,
-	core.Resources_EPHEMERAL_STORAGE: v1.ResourceEphemeralStorage,
-	core.Resources_GPU:               resourceNvidiaGPU,
-	core.Resources_MEMORY:            v1.ResourceMemory,
-	core.Resources_STORAGE:           v1.ResourceEphemeralStorage,
-}
 
 const (
 	daskTaskType        = "dask"
@@ -105,50 +97,6 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 	}, nil
 }
 
-func createResourceList(pbResources []*core.Resources_ResourceEntry) (v1.ResourceList, error) {
-	resourceList := v1.ResourceList{}
-	for _, resourceEntry := range pbResources {
-		resourceName, ok := resourceMapping[resourceEntry.GetName()]
-		if !ok {
-			return nil, errors.Errorf(errors.BadTaskSpecification, fmt.Sprintf("Could not tranlate resource with name %s to k8s resource", resourceEntry.GetName()))
-		}
-		quantity, err := resource.ParseQuantity(resourceEntry.GetValue())
-		if err != nil {
-			return nil, errors.Errorf(errors.BadTaskSpecification, fmt.Sprintf("Could not parse %s as k8s resource", resourceEntry.GetValue()))
-		}
-		resourceList[resourceName] = quantity
-	}
-	return resourceList, nil
-}
-
-func convertProtobufResourcesToK8sResources(pbResources *core.Resources) (*v1.ResourceRequirements, error) {
-	var err error
-
-	k8sRequests := v1.ResourceList{}
-	if pbResources.GetRequests() != nil {
-		k8sRequests, err = createResourceList(pbResources.GetRequests())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	k8sLimits := v1.ResourceList{}
-	if pbResources.GetLimits() != nil {
-		k8sLimits, err = createResourceList(pbResources.GetLimits())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(k8sRequests) == 0 && len(k8sLimits) == 0 {
-		return nil, nil
-	}
-
-	return &v1.ResourceRequirements{
-		Requests: k8sRequests,
-		Limits:   k8sLimits,
-	}, nil
-}
 
 type daskResourceHandler struct {
 }
@@ -223,7 +171,7 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 	var err error
 	resources := defaults.Resources
 	if cluster.GetResources() != nil {
-		resources, err = convertProtobufResourcesToK8sResources(cluster.GetResources())
+		resources, err = flytek8s.ToK8sResourceRequirements(cluster.GetResources())
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +226,7 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 	var err error
 	resources := defaults.Resources
 	if cluster.GetResources() != nil {
-		resources, err = convertProtobufResourcesToK8sResources(cluster.GetResources())
+		resources, err = flytek8s.ToK8sResourceRequirements(cluster.GetResources())
 		if err != nil {
 			return nil, err
 		}
@@ -343,7 +291,7 @@ func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec,
 	}
 
 	if jobPodSpec.GetResources() != nil {
-		resources, err := convertProtobufResourcesToK8sResources(jobPodSpec.GetResources())
+		resources, err := flytek8s.ToK8sResourceRequirements(jobPodSpec.GetResources())
 		if err != nil {
 			return nil, err
 		}

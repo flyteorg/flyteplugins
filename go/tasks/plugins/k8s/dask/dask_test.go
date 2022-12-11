@@ -8,6 +8,7 @@ import (
 	daskAPI "github.com/bstadlbauer/dask-k8s-operator-go-client/pkg/apis/kubernetes.dask.org/v1"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -331,7 +332,7 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 			},
 		},
 	}
-	expectedResources, _ := convertProtobufResourcesToK8sResources(&protobufResources)
+	expectedResources, _ := flytek8s.ToK8sResourceRequirements(&protobufResources)
 
 	flyteWorkflowResources := v1.ResourceRequirements{
 		Requests: v1.ResourceList{
