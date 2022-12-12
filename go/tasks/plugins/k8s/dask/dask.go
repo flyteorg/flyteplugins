@@ -26,10 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-
 const (
 	daskTaskType        = "dask"
-	resourceNvidiaGPU   = "nvidia.com/gpu"
 	KindDaskJob         = "DaskJob"
 	PrimaryContainerKey = "primary_container_name"
 )
@@ -94,7 +92,6 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		Annotations: executionMetadata.GetAnnotations(),
 	}, nil
 }
-
 
 type daskResourceHandler struct {
 }

@@ -26,9 +26,9 @@ import (
 )
 
 const (
-	defaultTestImage  = "image://"
-	testNWorkers      = 10
-	testTaskID        = "some-acceptable-name"
+	defaultTestImage = "image://"
+	testNWorkers     = 10
+	testTaskID       = "some-acceptable-name"
 )
 
 var (
@@ -90,7 +90,7 @@ func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resour
 	if resources == nil {
 		resources = &core.Resources{
 			Requests: []*core.Resources_ResourceEntry{},
-			Limits: []*core.Resources_ResourceEntry{},
+			Limits:   []*core.Resources_ResourceEntry{},
 		}
 	}
 
@@ -253,7 +253,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 		"--name",
 		"$(DASK_WORKER_NAME)",
 		"--nthreads",
-		"5", 
+		"5",
 		"--memory-limit",
 		"17G",
 	}, workerSpec.Containers[0].Args)
