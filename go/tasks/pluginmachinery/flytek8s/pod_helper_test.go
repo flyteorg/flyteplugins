@@ -1103,7 +1103,7 @@ func TestMergePodSpecs(t *testing.T) {
 
 }
 
-func TestBuildPodWithSpec2(t *testing.T) {
+func TestBuildPodWithSpec(t *testing.T) {
 	podSpec := v1.PodSpec{
 		Containers: []v1.Container{
 			v1.Container{
@@ -1150,90 +1150,4 @@ func TestBuildPodWithSpec2(t *testing.T) {
 	// Test that template object metadata is copied
 	assert.Contains(t, pod.ObjectMeta.Labels, "fooKey")
 	assert.Equal(t, pod.ObjectMeta.Labels["fooKey"], "barVal")
-}
-
-func TestBuildPodWithSpec(t *testing.T) {
-	var priority int32 = 1
-	podSpec := v1.PodSpec{
-		Containers: []v1.Container{
-			v1.Container{
-				Name: "foo",
-			},
-			v1.Container{
-				Name: "bar",
-			},
-		},
-		NodeSelector: map[string]string{
-			"baz": "bar",
-		},
-		Priority:      &priority,
-		SchedulerName: "overrideScheduler",
-		Tolerations: []v1.Toleration{
-			v1.Toleration{
-				Key: "bar",
-			},
-			v1.Toleration{
-				Key: "baz",
-			},
-		},
-	}
-
-	pod, err := BuildPodWithSpec(nil, &podSpec, "foo")
-	assert.Nil(t, err)
-	assert.True(t, reflect.DeepEqual(pod.Spec, podSpec))
-
-	defaultContainerTemplate := v1.Container{
-		Name:                   defaultContainerTemplateName,
-		TerminationMessagePath: "/dev/default-termination-log",
-	}
-
-	primaryContainerTemplate := v1.Container{
-		Name:                   primaryContainerTemplateName,
-		TerminationMessagePath: "/dev/primary-termination-log",
-	}
-
-	podTemplate := v1.PodTemplate{
-		Template: v1.PodTemplateSpec{
-			Spec: v1.PodSpec{
-				Containers: []v1.Container{
-					defaultContainerTemplate,
-					primaryContainerTemplate,
-				},
-				HostNetwork: true,
-				NodeSelector: map[string]string{
-					"foo": "bar",
-				},
-				SchedulerName: "defaultScheduler",
-				Tolerations: []v1.Toleration{
-					v1.Toleration{
-						Key: "foo",
-					},
-				},
-			},
-		},
-	}
-
-	pod, err = BuildPodWithSpec(&podTemplate, &podSpec, "foo")
-	assert.Nil(t, err)
-
-	// validate a PodTemplate-only field
-	assert.Equal(t, podTemplate.Template.Spec.HostNetwork, pod.Spec.HostNetwork)
-	// validate a PodSpec-only field
-	assert.Equal(t, podSpec.Priority, pod.Spec.Priority)
-	// validate an overwritten PodTemplate field
-	assert.Equal(t, podSpec.SchedulerName, pod.Spec.SchedulerName)
-	// validate a merged map
-	assert.Equal(t, len(podTemplate.Template.Spec.NodeSelector)+len(podSpec.NodeSelector), len(pod.Spec.NodeSelector))
-	// validate an appended array
-	assert.Equal(t, len(podTemplate.Template.Spec.Tolerations)+len(podSpec.Tolerations), len(pod.Spec.Tolerations))
-
-	// validate primary container
-	primaryContainer := pod.Spec.Containers[0]
-	assert.Equal(t, podSpec.Containers[0].Name, primaryContainer.Name)
-	assert.Equal(t, primaryContainerTemplate.TerminationMessagePath, primaryContainer.TerminationMessagePath)
-
-	// validate default container
-	defaultContainer := pod.Spec.Containers[1]
-	assert.Equal(t, podSpec.Containers[1].Name, defaultContainer.Name)
-	assert.Equal(t, defaultContainerTemplate.TerminationMessagePath, defaultContainer.TerminationMessagePath)
 }
