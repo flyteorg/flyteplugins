@@ -134,7 +134,7 @@ func TestLaunchSubTasks(t *testing.T) {
 			JobDefinitionArn: "arn",
 		}
 
-		newState, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{MaxArrayJobSize: 10}, currentState, getAwsBatchExecutorMetrics(promutils.NewTestScope()))
+		newState, err := LaunchSubTasks(context.TODO(), tCtx, batchClient, &config.Config{MaxArrayJobSize: 10}, currentState, getAwsBatchExecutorMetrics(promutils.NewTestScope()), 1)
 		assert.NoError(t, err)
 		assertEqual(t, expectedState, newState)
 	})

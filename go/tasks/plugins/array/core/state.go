@@ -271,7 +271,7 @@ func SummaryToPhase(ctx context.Context, minSuccesses int64, summary arraystatus
 	}
 
 	// No chance to reach the required success numbers. If any subtasks are running we let them
-	// complete, so results may be writen to cache if enabled, before failing.
+	// complete, so results may be written to cache if enabled, before failing.
 	if totalSuccesses+totalWaitingForResources+totalRetryableFailures < minSuccesses && totalRunning == 0 {
 		logger.Infof(ctx, "Array failed early because total failures > minSuccesses[%v]. Snapshot totalRunning[%v] + totalSuccesses[%v] + totalWaitingForResource[%v] + totalRetryableFailures[%v]",
 			minSuccesses, totalRunning, totalSuccesses, totalWaitingForResources, totalRetryableFailures)
