@@ -269,7 +269,6 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	for idx, phaseIdx := range state.ArrayStatus.Detailed.GetItems() {
 		phase := core.Phases[phaseIdx]
 		if !phase.IsSuccess() {
-			// TODO @hamersaw - prove that this is wrong!
 			// tasksToCache is built on the originalArraySize and ArrayStatus.Detailed is the executionArraySize
 			originalIdx := arrayCore.CalculateOriginalIndex(idx, state.GetIndexesToCache())
 			tasksToCache.Clear(uint(originalIdx))
