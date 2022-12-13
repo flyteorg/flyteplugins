@@ -3,7 +3,6 @@ package databricks
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -28,9 +27,10 @@ import (
 )
 
 const (
-	ErrSystem errors.ErrorCode = "System"
-	post      string           = "POST"
-	get       string           = "GET"
+	ErrSystem           errors.ErrorCode = "System"
+	post                string           = "POST"
+	get                 string           = "GET"
+	databricksEndpoints string           = "/api/2.0/jobs/runs"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -98,15 +98,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
-	decodeBytes, err := base64.StdEncoding.DecodeString(sparkJob.DatabricksConf)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode databricksJob: %v: %v", sparkJob.DatabricksConf, err)
-	}
-
 	databricksJob := make(map[string]interface{})
-	err = json.Unmarshal(decodeBytes, &databricksJob)
+	err = utils.UnmarshalStructToObj(sparkJob.DatabricksConf, &databricksJob)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal databricksJob: %v: %v", decodeBytes, err)
+		return nil, nil, fmt.Errorf("failed to unmarshal databricksJob: %v: %v", sparkJob.DatabricksConf, err)
 	}
 
 	if _, ok := databricksJob["new_cluster"]; ok {
@@ -227,7 +222,7 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 func buildRequest(
 	method string,
 	databricksJob map[string]interface{},
-	databricksEndpoint string,
+	databricksAccount string,
 	databricksInstance string,
 	token string,
 	runID string,
@@ -235,10 +230,10 @@ func buildRequest(
 ) (*http.Request, error) {
 	var databricksURL string
 	// for mocking/testing purposes
-	if databricksEndpoint == "" {
-		databricksURL = fmt.Sprintf("https://%v.cloud.databricks.com/api/2.0/jobs/runs", databricksInstance)
+	if databricksAccount == "" {
+		databricksURL = fmt.Sprintf("https://%v.cloud.databricks.com%v", databricksInstance, databricksEndpoints)
 	} else {
-		databricksURL = fmt.Sprintf("%v/api/2.0/jobs/runs", databricksEndpoint)
+		databricksURL = fmt.Sprintf("%v%v", databricksAccount, databricksEndpoints)
 	}
 
 	var data []byte

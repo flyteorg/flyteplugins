@@ -45,7 +45,19 @@ func TestEndToEnd(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("run a spark job", func(t *testing.T) {
-		sparkJob := plugins.SparkJob{DatabricksConf: "eyJydW5fbmFtZSI6ICJmbHl0ZWtpdCBkYXRhYnJpY2tzIHBsdWdpbiBleGFtcGxlIiwgIm5ld19jbHVzdGVyIjogeyJzcGFya192ZXJzaW9uIjogIjExLjAueC1zY2FsYTIuMTIiLCAibm9kZV90eXBlX2lkIjogInIzLnhsYXJnZSIsICJhd3NfYXR0cmlidXRlcyI6IHsiYXZhaWxhYmlsaXR5IjogIk9OX0RFTUFORCIsICJpbnN0YW5jZV9wcm9maWxlX2FybiI6ICJhcm46YXdzOmlhbTo6NTkwMzc1MjY0NDYwOmluc3RhbmNlLXByb2ZpbGUvZGF0YWJyaWNrcy1zMy1yb2xlIn0sICJudW1fd29ya2VycyI6IDR9LCAidGltZW91dF9zZWNvbmRzIjogMzYwMCwgIm1heF9yZXRyaWVzIjogMX0="}
+		databricksConfDict := map[string]interface{}{
+			"name": "flytekit databricks plugin example",
+			"new_cluster": map[string]string{
+				"spark_version": "11.0.x-scala2.12",
+				"node_type_id":  "r3.xlarge",
+				"num_workers":   "4",
+			},
+			"timeout_seconds": 3600,
+			"max_retries":     1,
+		}
+		databricksConfig, err := utils.MarshalObjToStruct(databricksConfDict)
+		assert.NoError(t, err)
+		sparkJob := plugins.SparkJob{DatabricksConf: databricksConfig}
 		st, err := utils.MarshalPbToStruct(&sparkJob)
 		assert.NoError(t, err)
 		inputs, _ := coreutils.MakeLiteralMap(map[string]interface{}{"x": 1})
@@ -70,7 +82,7 @@ func newFakeDatabricksServer() *httptest.Server {
 	runID := "065168461"
 	jobID := "019e7546"
 	return httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == "/api/2.0/jobs/runs/submit" && request.Method == "POST" {
+		if request.URL.Path == fmt.Sprintf("%v/submit", databricksEndpoints) && request.Method == post {
 			writer.WriteHeader(202)
 			bytes := []byte(fmt.Sprintf(`{
 			  "run_id": "%v"
@@ -79,7 +91,7 @@ func newFakeDatabricksServer() *httptest.Server {
 			return
 		}
 
-		if request.URL.Path == "/api/2.0/jobs/runs/get" && request.Method == "GET" {
+		if request.URL.Path == fmt.Sprintf("%v/get", databricksEndpoints) && request.Method == get {
 			writer.WriteHeader(200)
 			bytes := []byte(fmt.Sprintf(`{
 			  "job_id": "%v",
@@ -89,7 +101,7 @@ func newFakeDatabricksServer() *httptest.Server {
 			return
 		}
 
-		if request.URL.Path == "/api/2.0/jobs/runs/cancel" && request.Method == "POST" {
+		if request.URL.Path == fmt.Sprintf("%v/cancel", databricksEndpoints) && request.Method == post {
 			writer.WriteHeader(200)
 			return
 		}

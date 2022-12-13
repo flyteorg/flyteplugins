@@ -10,6 +10,9 @@ import (
 )
 
 var (
+	defaultCluster = "COMPUTE_CLUSTER"
+	tokenKey       = "FLYTE_DATABRICKS_API_TOKEN"
+
 	defaultConfig = Config{
 		WebAPI: webapi.PluginConfig{
 			ResourceQuotas: map[core.ResourceNamespace]int{
@@ -39,8 +42,8 @@ var (
 				Value: 50,
 			},
 		},
-		DefaultCluster: "COMPUTE_CLUSTER",
-		TokenKey:       "FLYTE_DATABRICKS_API_TOKEN",
+		DefaultCluster: defaultCluster,
+		TokenKey:       tokenKey,
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("databricks", &defaultConfig)
