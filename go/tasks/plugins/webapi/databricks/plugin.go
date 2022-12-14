@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -204,6 +205,10 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	case http.StatusOK:
 		if lifeCycleState == "TERMINATED" {
 			if resultState == "SUCCESS" {
+				outputReader := ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
+				if err := taskCtx.OutputWriter().Put(ctx, outputReader); err != nil {
+					pluginsCore.PhaseInfoFailure(string(rune(statusCode)), "failed to persist output", taskInfo)
+				}
 				return pluginsCore.PhaseInfoSuccess(taskInfo), nil
 			}
 			return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), message, taskInfo), nil
