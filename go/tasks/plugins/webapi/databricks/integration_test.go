@@ -44,7 +44,7 @@ func TestEndToEnd(t *testing.T) {
 	plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext())
 	assert.NoError(t, err)
 
-	t.Run("run a spark job", func(t *testing.T) {
+	t.Run("run a databricks job", func(t *testing.T) {
 		databricksConfDict := map[string]interface{}{
 			"name": "flytekit databricks plugin example",
 			"new_cluster": map[string]string{

@@ -89,6 +89,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, errors.Wrapf(pluginErrors.BadTaskSpecification, err, "invalid TaskSpecification [%v], failed to unmarshal", taskTemplate.GetCustom())
 	}
 
+	// override the default token in propeller
+	if len(sparkJob.DatabricksToken) != 0 {
+		token = sparkJob.DatabricksToken
+	}
 	modifiedArgs, err := template.Render(ctx, container.GetArgs(), template.Parameters{
 		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
 		Inputs:           taskCtx.InputReader(),
@@ -205,9 +209,8 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	case http.StatusOK:
 		if lifeCycleState == "TERMINATED" {
 			if resultState == "SUCCESS" {
-				outputReader := ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
-				if err := taskCtx.OutputWriter().Put(ctx, outputReader); err != nil {
-					pluginsCore.PhaseInfoFailure(string(rune(statusCode)), "failed to persist output", taskInfo)
+				if err := writeOutput(ctx, taskCtx); err != nil {
+					pluginsCore.PhaseInfoFailure(string(rune(statusCode)), "failed to write output", taskInfo)
 				}
 				return pluginsCore.PhaseInfoSuccess(taskInfo), nil
 			}
@@ -222,6 +225,20 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 		return pluginsCore.PhaseInfoFailure(string(rune(statusCode)), message, taskInfo), nil
 	}
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", statusCode)
+}
+
+func writeOutput(ctx context.Context, taskCtx webapi.StatusContext) error {
+	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return err
+	}
+	if taskTemplate.Interface == nil || taskTemplate.Interface.Outputs == nil || taskTemplate.Interface.Outputs.Variables == nil {
+		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
+		return nil
+	}
+
+	outputReader := ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
+	return taskCtx.OutputWriter().Put(ctx, outputReader)
 }
 
 func buildRequest(
