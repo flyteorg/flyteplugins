@@ -29,10 +29,17 @@ import (
 )
 
 const (
-	ErrSystem     errors.ErrorCode = "System"
-	post          string           = "POST"
-	get           string           = "GET"
-	databricksAPI string           = "/api/2.0/jobs/runs"
+	ErrSystem       errors.ErrorCode = "System"
+	post            string           = "POST"
+	get             string           = "GET"
+	databricksAPI   string           = "/api/2.0/jobs/runs"
+	newCluster      string           = "new_cluster"
+	dockerImage     string           = "docker_image"
+	sparkConfig     string           = "spark_conf"
+	sparkPythonTask string           = "spark_python_task"
+	pythonFile      string           = "python_file"
+	parameters      string           = "parameters"
+	url             string           = "url"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -110,10 +117,13 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to unmarshal databricksJob: %v: %v", sparkJob.DatabricksConf, err)
 	}
 
-	if _, ok := databricksJob["new_cluster"]; ok {
-		databricksJob["new_cluster"].(map[string]interface{})["docker_image"] = map[string]string{"url": container.Image}
+	if _, ok := databricksJob[newCluster]; ok {
+		databricksJob[newCluster].(map[string]interface{})[dockerImage] = map[string]string{url: container.Image}
+		if len(sparkJob.SparkConf) != 0 {
+			databricksJob[newCluster].(map[string]interface{})[sparkConfig] = sparkJob.SparkConf
+		}
 	}
-	databricksJob["spark_python_task"] = map[string]interface{}{"python_file": p.cfg.EntrypointFile, "parameters": modifiedArgs}
+	databricksJob[sparkPythonTask] = map[string]interface{}{pythonFile: p.cfg.EntrypointFile, parameters: modifiedArgs}
 
 	req, err := buildRequest(post, databricksJob, p.cfg.databricksEndpoint,
 		p.cfg.DatabricksInstance, token, "", false)
