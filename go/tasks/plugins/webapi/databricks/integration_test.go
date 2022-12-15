@@ -82,7 +82,7 @@ func newFakeDatabricksServer() *httptest.Server {
 	runID := "065168461"
 	jobID := "019e7546"
 	return httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == fmt.Sprintf("%v/submit", databricksEndpoints) && request.Method == post {
+		if request.URL.Path == fmt.Sprintf("%v/submit", databricksAPI) && request.Method == post {
 			writer.WriteHeader(202)
 			bytes := []byte(fmt.Sprintf(`{
 			  "run_id": "%v"
@@ -91,7 +91,7 @@ func newFakeDatabricksServer() *httptest.Server {
 			return
 		}
 
-		if request.URL.Path == fmt.Sprintf("%v/get", databricksEndpoints) && request.Method == get {
+		if request.URL.Path == fmt.Sprintf("%v/get", databricksAPI) && request.Method == get {
 			writer.WriteHeader(200)
 			bytes := []byte(fmt.Sprintf(`{
 			  "job_id": "%v",
@@ -101,7 +101,7 @@ func newFakeDatabricksServer() *httptest.Server {
 			return
 		}
 
-		if request.URL.Path == fmt.Sprintf("%v/cancel", databricksEndpoints) && request.Method == post {
+		if request.URL.Path == fmt.Sprintf("%v/cancel", databricksAPI) && request.Method == post {
 			writer.WriteHeader(200)
 			return
 		}

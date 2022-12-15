@@ -19,7 +19,8 @@ type MockClient struct {
 }
 
 var (
-	MockDo func(req *http.Request) (*http.Response, error)
+	MockDo       func(req *http.Request) (*http.Response, error)
+	testInstance = "test-account.cloud.databricks.com"
 )
 
 func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
@@ -53,7 +54,7 @@ func TestPlugin(t *testing.T) {
 
 func TestCreateTaskInfo(t *testing.T) {
 	t.Run("create task info", func(t *testing.T) {
-		taskInfo := createTaskInfo("run-id", "job-id", "test-account")
+		taskInfo := createTaskInfo("run-id", "job-id", testInstance)
 
 		assert.Equal(t, 1, len(taskInfo.Logs))
 		assert.Equal(t, taskInfo.Logs[0].Uri, "https://test-account.cloud.databricks.com/#job/job-id/run/run-id")
@@ -62,13 +63,12 @@ func TestCreateTaskInfo(t *testing.T) {
 }
 
 func TestBuildRequest(t *testing.T) {
-	account := "test-account"
 	token := "test-token"
 	runID := "019e70eb"
 	databricksEndpoint := ""
-	databricksURL := "https://" + account + ".cloud.databricks.com/api/2.0/jobs/runs"
+	databricksURL := "https://" + testInstance + "/api/2.0/jobs/runs"
 	t.Run("build http request for submitting a snowflake query", func(t *testing.T) {
-		req, err := buildRequest(post, nil, databricksEndpoint, account, token, runID, false)
+		req, err := buildRequest(post, nil, databricksEndpoint, testInstance, token, runID, false)
 		header := http.Header{}
 		header.Add("Authorization", "Bearer "+token)
 		header.Add("Content-Type", "application/json")
@@ -79,14 +79,14 @@ func TestBuildRequest(t *testing.T) {
 		assert.Equal(t, post, req.Method)
 	})
 	t.Run("Get a databricks spark job status", func(t *testing.T) {
-		req, err := buildRequest(get, nil, databricksEndpoint, account, token, runID, false)
+		req, err := buildRequest(get, nil, databricksEndpoint, testInstance, token, runID, false)
 
 		assert.NoError(t, err)
 		assert.Equal(t, databricksURL+"/get?run_id="+runID, req.URL.String())
 		assert.Equal(t, get, req.Method)
 	})
 	t.Run("Cancel a spark job", func(t *testing.T) {
-		req, err := buildRequest(post, nil, databricksEndpoint, account, token, runID, true)
+		req, err := buildRequest(post, nil, databricksEndpoint, testInstance, token, runID, true)
 
 		assert.NoError(t, err)
 		assert.Equal(t, databricksURL+"/cancel", req.URL.String())

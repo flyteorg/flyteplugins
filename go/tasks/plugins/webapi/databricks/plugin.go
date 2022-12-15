@@ -28,10 +28,10 @@ import (
 )
 
 const (
-	ErrSystem           errors.ErrorCode = "System"
-	post                string           = "POST"
-	get                 string           = "GET"
-	databricksEndpoints string           = "/api/2.0/jobs/runs"
+	ErrSystem     errors.ErrorCode = "System"
+	post          string           = "POST"
+	get           string           = "GET"
+	databricksAPI string           = "/api/2.0/jobs/runs"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -244,7 +244,7 @@ func writeOutput(ctx context.Context, taskCtx webapi.StatusContext) error {
 func buildRequest(
 	method string,
 	databricksJob map[string]interface{},
-	databricksAccount string,
+	databricksEndpoint string,
 	databricksInstance string,
 	token string,
 	runID string,
@@ -252,10 +252,10 @@ func buildRequest(
 ) (*http.Request, error) {
 	var databricksURL string
 	// for mocking/testing purposes
-	if databricksAccount == "" {
-		databricksURL = fmt.Sprintf("https://%v.cloud.databricks.com%v", databricksInstance, databricksEndpoints)
+	if databricksEndpoint == "" {
+		databricksURL = fmt.Sprintf("https://%v%v", databricksInstance, databricksAPI)
 	} else {
-		databricksURL = fmt.Sprintf("%v%v", databricksAccount, databricksEndpoints)
+		databricksURL = fmt.Sprintf("%v%v", databricksEndpoint, databricksAPI)
 	}
 
 	var data []byte
@@ -308,7 +308,7 @@ func createTaskInfo(runID, jobID, databricksInstance string) *core.TaskInfo {
 		OccurredAt: &timeNow,
 		Logs: []*flyteIdlCore.TaskLog{
 			{
-				Uri: fmt.Sprintf("https://%s.cloud.databricks.com/#job/%s/run/%s",
+				Uri: fmt.Sprintf("https://%s/#job/%s/run/%s",
 					databricksInstance,
 					jobID,
 					runID),

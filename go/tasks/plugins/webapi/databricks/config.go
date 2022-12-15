@@ -11,7 +11,7 @@ import (
 
 var (
 	defaultCluster = "COMPUTE_CLUSTER"
-	tokenKey       = "FLYTE_DATABRICKS_API_TOKEN"
+	tokenKey       = "FLYTE_DATABRICKS_API_TOKEN" // nolint: gosec
 
 	defaultConfig = Config{
 		WebAPI: webapi.PluginConfig{
