@@ -33,11 +33,11 @@ const (
 )
 
 type defaults struct {
-	Image       string
-	Container   v1.Container
-	Resources   *v1.ResourceRequirements
-	Env         []v1.EnvVar
-	Annotations map[string]string
+	Image              string
+	JobRunnerContainer v1.Container
+	Resources          *v1.ResourceRequirements
+	Env                []v1.EnvVar
+	Annotations        map[string]string
 }
 
 func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate core.TaskTemplate) (*defaults, error) {
@@ -65,12 +65,12 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		defaultResources = executionMetadata.GetOverrides().GetResources()
 	}
 
-	// The default container will be used to run the job (i.e. within the driver pod)
-	defaultContainer := v1.Container{
-		Name:  "job-runner",
-		Image: defaultImage,
-		Args:  defaultContainerSpec.GetArgs(),
-		Env:   envVars,
+	jobRunnerContainer := v1.Container{
+		Name:      "job-runner",
+		Image:     defaultImage,
+		Args:      defaultContainerSpec.GetArgs(),
+		Env:       envVars,
+		Resources: *defaultResources,
 	}
 
 	templateParameters := template.Parameters{
@@ -79,17 +79,17 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		OutputPath:       taskCtx.OutputWriter(),
 		Task:             taskCtx.TaskReader(),
 	}
-	err := flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, flytek8s.ResourceCustomizationModeAssignResources, &defaultContainer)
+	err := flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters, flytek8s.ResourceCustomizationModeAssignResources, &jobRunnerContainer)
 	if err != nil {
 		return nil, err
 	}
 
 	return &defaults{
-		Image:       defaultImage,
-		Container:   defaultContainer,
-		Resources:   defaultResources,
-		Env:         envVars,
-		Annotations: executionMetadata.GetAnnotations(),
+		Image:              defaultImage,
+		JobRunnerContainer: jobRunnerContainer,
+		Resources:          defaultResources,
+		Env:                envVars,
+		Annotations:        executionMetadata.GetAnnotations(),
 	}, nil
 }
 
@@ -125,15 +125,15 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		return nil, errors.Wrapf(errors.BadTaskSpecification, err, "invalid TaskSpecification [%v], failed to unmarshal", taskTemplate.GetCustom())
 	}
 
-	workerSpec, err := createWorkerSpec(*daskJob.Cluster, *defaults)
+	workerSpec, err := createWorkerSpec(*daskJob.Workers, *defaults)
 	if err != nil {
 		return nil, err
 	}
-	schedulerSpec, err := createSchedulerSpec(*daskJob.Cluster, clusterName, *defaults)
+	schedulerSpec, err := createSchedulerSpec(*daskJob.Scheduler, clusterName, *defaults)
 	if err != nil {
 		return nil, err
 	}
-	jobSpec, err := createJobSpec(*daskJob.JobPodSpec, *workerSpec, *schedulerSpec, *defaults)
+	jobSpec, err := createJobSpec(*workerSpec, *schedulerSpec, *defaults)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	return job, nil
 }
 
-func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.WorkerSpec, error) {
+func createWorkerSpec(cluster plugins.WorkerGroup, defaults defaults) (*daskAPI.WorkerSpec, error) {
 	image := defaults.Image
 	if cluster.GetImage() != "" {
 		image = cluster.GetImage()
@@ -192,7 +192,7 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 	}
 
 	return &daskAPI.WorkerSpec{
-		Replicas: int(cluster.GetNWorkers()),
+		Replicas: int(cluster.GetNumberOfWorkers()),
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
@@ -208,7 +208,7 @@ func createWorkerSpec(cluster plugins.DaskCluster, defaults defaults) (*daskAPI.
 	}, nil
 }
 
-func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaults defaults) (*daskAPI.SchedulerSpec, error) {
+func createSchedulerSpec(cluster plugins.Scheduler, clusterName string, defaults defaults) (*daskAPI.SchedulerSpec, error) {
 	schedulerImage := defaults.Image
 	if cluster.GetImage() != "" {
 		schedulerImage = cluster.GetImage()
@@ -277,22 +277,8 @@ func createSchedulerSpec(cluster plugins.DaskCluster, clusterName string, defaul
 	}, nil
 }
 
-func createJobSpec(jobPodSpec plugins.JobPodSpec, workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec, defaults defaults) (*daskAPI.DaskJobSpec, error) {
-	jobContainer := defaults.Container
-
-	if jobPodSpec.GetImage() != "" {
-		jobContainer.Image = jobPodSpec.GetImage()
-	}
-
-	jobContainer.Resources = *defaults.Resources
-	jobPodResources := jobPodSpec.GetResources()
-	if len(jobPodResources.Requests) >= 1 || len(jobPodResources.Limits) >= 1 {
-		resources, err := flytek8s.ToK8sResourceRequirements(jobPodSpec.GetResources())
-		if err != nil {
-			return nil, err
-		}
-		jobContainer.Resources = *resources
-	}
+func createJobSpec(workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec, defaults defaults) (*daskAPI.DaskJobSpec, error) {
+	jobContainer := defaults.JobRunnerContainer
 
 	return &daskAPI.DaskJobSpec{
 		Job: daskAPI.JobSpec{

@@ -67,20 +67,20 @@ func dummyDaskJob(status daskAPI.JobStatus) *daskAPI.DaskJob {
 }
 
 func dummpyDaskCustomObj(customImage string, resources *core.Resources) *plugins.DaskJob {
-	jobPodSpec := plugins.JobPodSpec{
+	scheduler := plugins.Scheduler{
 		Image:     customImage,
 		Resources: resources,
 	}
 
-	cluster := plugins.DaskCluster{
+	workers := plugins.WorkerGroup{
+		NumberOfWorkers:  10,
 		Image:     customImage,
-		NWorkers:  10,
 		Resources: resources,
 	}
 
 	daskJob := plugins.DaskJob{
-		JobPodSpec: &jobPodSpec,
-		Cluster:    &cluster,
+		Scheduler: &scheduler,
+		Workers:    &workers,
 	}
 	return &daskJob
 }
@@ -273,7 +273,7 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 
 	// Job
 	jobSpec := daskJob.Spec.Job.Spec
-	assert.Equal(t, customImage, jobSpec.Containers[0].Image)
+	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
 
 	// Scheduler
 	schedulerSpec := daskJob.Spec.Cluster.Spec.Scheduler.Spec
@@ -363,7 +363,7 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 
 	// Job
 	jobSpec := daskJob.Spec.Job.Spec
-	assert.Equal(t, *expectedResources, jobSpec.Containers[0].Resources)
+	assert.Equal(t, flyteWorkflowResources, jobSpec.Containers[0].Resources)
 
 	// Scheduler
 	schedulerSpec := daskJob.Spec.Cluster.Spec.Scheduler.Spec
