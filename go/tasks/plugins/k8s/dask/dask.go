@@ -15,6 +15,7 @@ import (
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -38,6 +39,7 @@ type defaults struct {
 	Resources          *v1.ResourceRequirements
 	Env                []v1.EnvVar
 	Annotations        map[string]string
+	IsInterruptible    bool
 }
 
 func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate core.TaskTemplate) (*defaults, error) {
@@ -53,10 +55,10 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		return nil, errors.Errorf(errors.BadTaskSpecification, "task is missing a default image")
 	}
 
-	envVars := []v1.EnvVar{}
+	defaultEnvVars := []v1.EnvVar{}
 	if taskTemplate.GetContainer().GetEnv() != nil {
 		for _, keyValuePair := range taskTemplate.GetContainer().GetEnv() {
-			envVars = append(envVars, v1.EnvVar{Name: keyValuePair.Key, Value: keyValuePair.Value})
+			defaultEnvVars = append(defaultEnvVars, v1.EnvVar{Name: keyValuePair.Key, Value: keyValuePair.Value})
 		}
 	}
 
@@ -69,7 +71,7 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		Name:      "job-runner",
 		Image:     defaultImage,
 		Args:      defaultContainerSpec.GetArgs(),
-		Env:       envVars,
+		Env:       defaultEnvVars,
 		Resources: *defaultResources,
 	}
 
@@ -88,8 +90,9 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		Image:              defaultImage,
 		JobRunnerContainer: jobRunnerContainer,
 		Resources:          defaultResources,
-		Env:                envVars,
+		Env:                defaultEnvVars,
 		Annotations:        executionMetadata.GetAnnotations(),
+		IsInterruptible:    executionMetadata.IsInterruptible(),
 	}, nil
 }
 
@@ -191,20 +194,29 @@ func createWorkerSpec(cluster plugins.WorkerGroup, defaults defaults) (*daskAPI.
 		}
 	}
 
-	return &daskAPI.WorkerSpec{
-		Replicas: int(cluster.GetNumberOfWorkers()),
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:            "dask-worker",
-					Image:           image,
-					ImagePullPolicy: v1.PullIfNotPresent,
-					Args:            workerArgs,
-					Resources:       *resources,
-					Env:             defaults.Env,
-				},
+	wokerSpec := v1.PodSpec{
+		Affinity:		 &v1.Affinity{},
+		Containers: []v1.Container{
+			{
+				Name:            "dask-worker",
+				Image:           image,
+				ImagePullPolicy: v1.PullIfNotPresent,
+				Args:            workerArgs,
+				Resources:       *resources,
+				Env:             defaults.Env,
 			},
 		},
+	}
+
+	if defaults.IsInterruptible {
+		wokerSpec.Tolerations = append(wokerSpec.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
+		wokerSpec.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
+	}
+	flytek8s.ApplyInterruptibleNodeSelectorRequirement(defaults.IsInterruptible, wokerSpec.Affinity)
+
+	return &daskAPI.WorkerSpec{
+		Replicas: int(cluster.GetNumberOfWorkers()),
+		Spec: wokerSpec,
 	}, nil
 }
 

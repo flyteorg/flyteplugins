@@ -9,6 +9,7 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	pluginIOMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -123,7 +124,7 @@ func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resour
 	}
 }
 
-func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.ResourceRequirements) pluginsCore.TaskExecutionContext {
+func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.ResourceRequirements, isInterruptible bool) pluginsCore.TaskExecutionContext {
 	taskCtx := &mocks.TaskExecutionContext{}
 
 	inputReader := &pluginIOMocks.InputReader{}
@@ -162,7 +163,7 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
 	taskExecutionMetadata.OnGetPlatformResources().Return(&testPlatformResources)
 	taskExecutionMetadata.OnGetMaxAttempts().Return(uint32(1))
-	taskExecutionMetadata.OnIsInterruptible().Return(true)
+	taskExecutionMetadata.OnIsInterruptible().Return(isInterruptible)
 	overrides := &mocks.TaskOverrides{}
 	overrides.OnGetResources().Return(resources)
 	taskExecutionMetadata.OnGetOverrides().Return(overrides)
@@ -175,12 +176,21 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 
 	taskTemplate := dummyDaskTaskTemplate(taskName, "", nil)
-	taskContext := dummyDaskTaskContext(taskTemplate, nil)
+	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
 	daskJob, ok := resource.(*daskAPI.DaskJob)
 	assert.True(t, ok)
+
+	var defaultTolerations []v1.Toleration
+	var defaultNodeSelector map[string]string
+	var defaultAffinity *v1.Affinity
+	defaultWorkerAffinity := v1.Affinity{
+		NodeAffinity: nil,
+		PodAffinity: nil,
+		PodAntiAffinity: nil,
+	}
 
 	// Job
 	jobSpec := daskJob.Spec.Job.Spec
@@ -190,6 +200,10 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, defaultTestImage, jobSpec.Containers[0].Image)
 	assert.Equal(t, testArgs, jobSpec.Containers[0].Args)
 	assert.Equal(t, testPlatformResources, jobSpec.Containers[0].Resources)
+	assert.Equal(t, defaultTolerations, jobSpec.Tolerations)
+	assert.Equal(t, defaultNodeSelector, jobSpec.NodeSelector)
+	assert.Equal(t, defaultAffinity, jobSpec.Affinity)
+
 	// Flyte adds more environment variables to the driver
 	assert.Contains(t, jobSpec.Containers[0].Env, testEnvVars[0])
 
@@ -216,6 +230,9 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, []string{"dask-scheduler"}, schedulerSpec.Containers[0].Args)
 	assert.Equal(t, expectedPorts, schedulerSpec.Containers[0].Ports)
 	assert.Equal(t, testEnvVars, schedulerSpec.Containers[0].Env)
+	assert.Equal(t, defaultTolerations, schedulerSpec.Tolerations)
+	assert.Equal(t, defaultNodeSelector, schedulerSpec.NodeSelector)
+	assert.Equal(t, defaultAffinity, schedulerSpec.Affinity)
 
 	schedulerServiceSpec := daskJob.Spec.Cluster.Spec.Scheduler.Service
 	expectedSelector := map[string]string{
@@ -248,6 +265,9 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, defaultTestImage, workerSpec.Containers[0].Image)
 	assert.Equal(t, testPlatformResources, workerSpec.Containers[0].Resources)
 	assert.Equal(t, testEnvVars, workerSpec.Containers[0].Env)
+	assert.Equal(t, defaultTolerations, workerSpec.Tolerations)
+	assert.Equal(t, defaultNodeSelector, workerSpec.NodeSelector)
+	assert.Equal(t, &defaultWorkerAffinity, workerSpec.Affinity)
 	assert.Equal(t, []string{
 		"dask-worker",
 		"--name",
@@ -264,7 +284,7 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("test-build-resource", customImage, nil)
-	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
+	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
@@ -297,7 +317,7 @@ func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil)
-	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources)
+	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
@@ -354,7 +374,7 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", &protobufResources)
-	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources)
+	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, resource)
@@ -378,6 +398,73 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	assert.Contains(t, workerSpec.Containers[0].Args, "15G")
 }
 
+
+func TestBuildResourceDaskInterruptible(t *testing.T) {
+	var defaultNodeSelector map[string]string
+	var defaultAffinity *v1.Affinity
+	var defaultTolerations []v1.Toleration
+
+	interruptibleNodeSelector := map[string]string{
+		"x/interruptible": "true",
+	}
+	interruptibleNodeSelectorRequirement := &v1.NodeSelectorRequirement{
+		Key:      "x/interruptible",
+		Operator: v1.NodeSelectorOpIn,
+		Values:   []string{"true"},
+	}
+	interruptibleTolerations := []v1.Toleration{
+		{
+			Key:      "x/flyte",
+			Value:    "interruptible",
+			Operator: "Equal",
+			Effect:   "NoSchedule",
+		},
+	}
+
+	
+	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
+		InterruptibleNodeSelector: interruptibleNodeSelector,
+		InterruptibleNodeSelectorRequirement:    interruptibleNodeSelectorRequirement,
+		InterruptibleTolerations: interruptibleTolerations,
+	}))
+
+
+	taskName := "test-build-resource"
+	daskResourceHandler := daskResourceHandler{}
+
+	taskTemplate := dummyDaskTaskTemplate(taskName, "", nil)
+	taskContext := dummyDaskTaskContext(taskTemplate, nil, true)
+	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	assert.Nil(t, err)
+	assert.NotNil(t, resource)
+	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.True(t, ok)
+
+	// Job pod - should not be interruptible
+	jobSpec := daskJob.Spec.Job.Spec
+	assert.Equal(t, defaultTolerations, jobSpec.Tolerations)
+	assert.Equal(t, defaultNodeSelector, jobSpec.NodeSelector)
+	assert.Equal(t, defaultAffinity, jobSpec.Affinity)
+
+	// Scheduler - should not bt interruptible
+	schedulerSpec := daskJob.Spec.Cluster.Spec.Scheduler.Spec
+	assert.Equal(t, defaultTolerations, schedulerSpec.Tolerations)
+	assert.Equal(t, defaultNodeSelector, schedulerSpec.NodeSelector)
+	assert.Equal(t, defaultAffinity, schedulerSpec.Affinity)
+
+	// Default Workers - Should be interruptible
+	workerSpec := daskJob.Spec.Cluster.Spec.Worker.Spec
+	assert.Equal(t, interruptibleTolerations, workerSpec.Tolerations)
+	assert.Equal(t, interruptibleNodeSelector, workerSpec.NodeSelector)
+	assert.Equal(
+		t,
+		workerSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0],
+		*interruptibleNodeSelectorRequirement,
+	)
+}
+
+
+
 func TestGetPropertiesDask(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	expected := k8s.PluginProperties{}
@@ -394,7 +481,7 @@ func TestBuildIdentityResourceDask(t *testing.T) {
 	}
 
 	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil)
-	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{})
+	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 	identityResources, err := daskResourceHandler.BuildIdentityResource(context.TODO(), taskContext.TaskExecutionMetadata())
 	if err != nil {
 		panic(err)
