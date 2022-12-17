@@ -63,7 +63,7 @@ type Config struct {
 
 	DatabricksInstance string `json:"databricksInstance" pflag:",Databricks workspace instance name."`
 
-	EntrypointFile string `json:"entrypointFile" pflag:",A URL of the entrypoint file. DBFS and cloud storage (s3:/, gcs:/, adls:/, etc) locations are supported."`
+	EntrypointFile string `json:"entrypointFile" pflag:",A URL of the entrypoint file. DBFS and cloud storage (s3://, gcs://, adls://, etc) locations are supported."`
 	// databricksEndpoint overrides databricks instance endpoint, only for testing
 	databricksEndpoint string
 }
