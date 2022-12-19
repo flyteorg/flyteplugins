@@ -57,7 +57,7 @@ func TestEndToEnd(t *testing.T) {
 		}
 		databricksConfig, err := utils.MarshalObjToStruct(databricksConfDict)
 		assert.NoError(t, err)
-		sparkJob := plugins.SparkJob{DatabricksConf: databricksConfig}
+		sparkJob := plugins.SparkJob{DatabricksConf: databricksConfig, DatabricksToken: "token", SparkConf: map[string]string{"spark.driver.bindAddress": "127.0.0.1"}}
 		st, err := utils.MarshalPbToStruct(&sparkJob)
 		assert.NoError(t, err)
 		inputs, _ := coreutils.MakeLiteralMap(map[string]interface{}{"x": 1})
@@ -73,7 +73,6 @@ func TestEndToEnd(t *testing.T) {
 		}
 
 		phase := tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)
-
 		assert.Equal(t, true, phase.Phase().IsSuccess())
 	})
 }
