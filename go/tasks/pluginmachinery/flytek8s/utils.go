@@ -16,7 +16,6 @@ func ToK8sEnvVar(env []*core.KeyValuePair) []v1.EnvVar {
 	return envVars
 }
 
-
 // TODO we should modify the container resources to contain a map of enum values?
 // Also we should probably create tolerations / taints, but we could do that as a post process
 func ToK8sResourceList(resources []*core.Resources_ResourceEntry) (v1.ResourceList, error) {
@@ -53,7 +52,6 @@ func ToK8sResourceList(resources []*core.Resources_ResourceEntry) (v1.ResourceLi
 	return k8sResources, nil
 }
 
-
 func ToK8sResourceRequirements(resources *core.Resources) (*v1.ResourceRequirements, error) {
 	res := &v1.ResourceRequirements{}
 	if resources == nil {
@@ -71,7 +69,6 @@ func ToK8sResourceRequirements(resources *core.Resources) (*v1.ResourceRequireme
 	res.Requests = req
 	return res, nil
 }
-
 
 func GetServiceAccountNameFromTaskExecutionMetadata(taskExecutionMetadata pluginmachinery_core.TaskExecutionMetadata) string {
 	var serviceAccount string

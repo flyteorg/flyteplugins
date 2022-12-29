@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestToK8sEnvVar(t *testing.T) {
 	e := ToK8sEnvVar([]*core.KeyValuePair{
 		{Key: "k1", Value: "v1"},
@@ -27,7 +26,6 @@ func TestToK8sEnvVar(t *testing.T) {
 	e = ToK8sEnvVar(nil)
 	assert.Empty(t, e)
 }
-
 
 func TestToK8sResourceList(t *testing.T) {
 	{
@@ -118,7 +116,6 @@ func TestToK8sResourceRequirements(t *testing.T) {
 		assert.Error(t, err)
 	}
 }
-
 
 func TestGetServiceAccountNameFromTaskExecutionMetadata(t *testing.T) {
 	mockTaskExecMetadata := mocks.TaskExecutionMetadata{}

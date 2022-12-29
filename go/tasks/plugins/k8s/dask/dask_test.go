@@ -74,19 +74,19 @@ func dummpyDaskCustomObj(customImage string, resources *core.Resources) *plugins
 	}
 
 	workers := plugins.DaskWorkerGroup{
-		NumberOfWorkers:  10,
-		Image:     customImage,
-		Resources: resources,
+		NumberOfWorkers: 10,
+		Image:           customImage,
+		Resources:       resources,
 	}
 
 	daskJob := plugins.DaskJob{
 		Scheduler: &scheduler,
-		Workers:    &workers,
+		Workers:   &workers,
 	}
 	return &daskJob
 }
 
-func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resources) *core.TaskTemplate {
+func dummyDaskTaskTemplate(customImage string, resources *core.Resources) *core.TaskTemplate {
 	// In a real usecase, resources will always be filled, but might be empty
 	if resources == nil {
 		resources = &core.Resources{
@@ -111,7 +111,7 @@ func dummyDaskTaskTemplate(id string, customImage string, resources *core.Resour
 		envVars = append(envVars, &core.KeyValuePair{Key: envVar.Name, Value: envVar.Value})
 	}
 	return &core.TaskTemplate{
-		Id:   &core.Identifier{Name: id},
+		Id:   &core.Identifier{Name: "test-build-resource"},
 		Type: daskTaskType,
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
@@ -172,10 +172,9 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 }
 
 func TestBuildResourceDaskHappyPath(t *testing.T) {
-	taskName := "test-build-resource"
 	daskResourceHandler := daskResourceHandler{}
 
-	taskTemplate := dummyDaskTaskTemplate(taskName, "", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -187,8 +186,8 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	var defaultNodeSelector map[string]string
 	var defaultAffinity *v1.Affinity
 	defaultWorkerAffinity := v1.Affinity{
-		NodeAffinity: nil,
-		PodAffinity: nil,
+		NodeAffinity:    nil,
+		PodAffinity:     nil,
 		PodAntiAffinity: nil,
 	}
 
@@ -283,7 +282,7 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 	customImage := "customImage"
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", customImage, nil)
+	taskTemplate := dummyDaskTaskTemplate(customImage, nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -316,7 +315,7 @@ func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 	}
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -373,7 +372,7 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	}
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", &protobufResources)
+	taskTemplate := dummyDaskTaskTemplate("", &protobufResources)
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -398,7 +397,6 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	assert.Contains(t, workerSpec.Containers[0].Args, "15G")
 }
 
-
 func TestBuildResourceDaskInterruptible(t *testing.T) {
 	var defaultNodeSelector map[string]string
 	var defaultAffinity *v1.Affinity
@@ -421,18 +419,15 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 		},
 	}
 
-	
 	assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{
-		InterruptibleNodeSelector: interruptibleNodeSelector,
-		InterruptibleNodeSelectorRequirement:    interruptibleNodeSelectorRequirement,
-		InterruptibleTolerations: interruptibleTolerations,
+		InterruptibleNodeSelector:            interruptibleNodeSelector,
+		InterruptibleNodeSelectorRequirement: interruptibleNodeSelectorRequirement,
+		InterruptibleTolerations:             interruptibleTolerations,
 	}))
 
-
-	taskName := "test-build-resource"
 	daskResourceHandler := daskResourceHandler{}
 
-	taskTemplate := dummyDaskTaskTemplate(taskName, "", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, true)
 	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -463,8 +458,6 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 	)
 }
 
-
-
 func TestGetPropertiesDask(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	expected := k8s.PluginProperties{}
@@ -480,7 +473,7 @@ func TestBuildIdentityResourceDask(t *testing.T) {
 		},
 	}
 
-	taskTemplate := dummyDaskTaskTemplate("test-build-resource", "", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 	identityResources, err := daskResourceHandler.BuildIdentityResource(context.TODO(), taskContext.TaskExecutionMetadata())
 	if err != nil {

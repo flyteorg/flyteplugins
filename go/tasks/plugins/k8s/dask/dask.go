@@ -136,10 +136,7 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	if err != nil {
 		return nil, err
 	}
-	jobSpec, err := createJobSpec(*workerSpec, *schedulerSpec, *defaults)
-	if err != nil {
-		return nil, err
-	}
+	jobSpec := createJobSpec(*workerSpec, *schedulerSpec, *defaults)
 
 	job := &daskAPI.DaskJob{
 		TypeMeta: metav1.TypeMeta{
@@ -195,7 +192,7 @@ func createWorkerSpec(cluster plugins.DaskWorkerGroup, defaults defaults) (*dask
 	}
 
 	wokerSpec := v1.PodSpec{
-		Affinity:		 &v1.Affinity{},
+		Affinity: &v1.Affinity{},
 		Containers: []v1.Container{
 			{
 				Name:            "dask-worker",
@@ -216,7 +213,7 @@ func createWorkerSpec(cluster plugins.DaskWorkerGroup, defaults defaults) (*dask
 
 	return &daskAPI.WorkerSpec{
 		Replicas: int(cluster.GetNumberOfWorkers()),
-		Spec: wokerSpec,
+		Spec:     wokerSpec,
 	}, nil
 }
 
@@ -289,15 +286,13 @@ func createSchedulerSpec(cluster plugins.DaskScheduler, clusterName string, defa
 	}, nil
 }
 
-func createJobSpec(workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec, defaults defaults) (*daskAPI.DaskJobSpec, error) {
-	jobContainer := defaults.JobRunnerContainer
-
+func createJobSpec(workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec, defaults defaults) *daskAPI.DaskJobSpec {
 	return &daskAPI.DaskJobSpec{
 		Job: daskAPI.JobSpec{
 			Spec: v1.PodSpec{
 				RestartPolicy: v1.RestartPolicyNever,
 				Containers: []v1.Container{
-					jobContainer,
+					defaults.JobRunnerContainer,
 				},
 			},
 		},
@@ -310,7 +305,7 @@ func createJobSpec(workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.Schedule
 				Scheduler: schedulerSpec,
 			},
 		},
-	}, nil
+	}
 }
 
 func (p daskResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, r client.Object) (pluginsCore.PhaseInfo, error) {
