@@ -68,12 +68,12 @@ func dummyDaskJob(status daskAPI.JobStatus) *daskAPI.DaskJob {
 }
 
 func dummpyDaskCustomObj(customImage string, resources *core.Resources) *plugins.DaskJob {
-	scheduler := plugins.Scheduler{
+	scheduler := plugins.DaskScheduler{
 		Image:     customImage,
 		Resources: resources,
 	}
 
-	workers := plugins.WorkerGroup{
+	workers := plugins.DaskWorkerGroup{
 		NumberOfWorkers:  10,
 		Image:     customImage,
 		Resources: resources,

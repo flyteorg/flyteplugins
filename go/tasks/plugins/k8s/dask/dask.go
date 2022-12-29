@@ -155,7 +155,7 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	return job, nil
 }
 
-func createWorkerSpec(cluster plugins.WorkerGroup, defaults defaults) (*daskAPI.WorkerSpec, error) {
+func createWorkerSpec(cluster plugins.DaskWorkerGroup, defaults defaults) (*daskAPI.WorkerSpec, error) {
 	image := defaults.Image
 	if cluster.GetImage() != "" {
 		image = cluster.GetImage()
@@ -220,7 +220,7 @@ func createWorkerSpec(cluster plugins.WorkerGroup, defaults defaults) (*daskAPI.
 	}, nil
 }
 
-func createSchedulerSpec(cluster plugins.Scheduler, clusterName string, defaults defaults) (*daskAPI.SchedulerSpec, error) {
+func createSchedulerSpec(cluster plugins.DaskScheduler, clusterName string, defaults defaults) (*daskAPI.SchedulerSpec, error) {
 	schedulerImage := defaults.Image
 	if cluster.GetImage() != "" {
 		schedulerImage = cluster.GetImage()
