@@ -508,10 +508,8 @@ func DemystifyFailure(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 
 func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
 	var lastTransitionTime v12.Time
-	// TODO @hamersaw - do we want to look at InitContainerStatuses?
 	containerStatuses := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
 	for _, containerStatus := range containerStatuses {
-		// TODO @hamersaw - is ths right?
 		if r := containerStatus.State.Running; r != nil {
 			if r.StartedAt.Unix() > lastTransitionTime.Unix() {
 				lastTransitionTime = r.StartedAt
@@ -528,4 +526,17 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
 	}
 
 	return lastTransitionTime
+}
+
+func GetReportedAt(pod *v1.Pod) v12.Time {
+	var reportedAt v12.Time
+	for _, condition := range pod.Status.Conditions {
+		if condition.Reason == "PodCompleted" && condition.Type == v1.PodReady && condition.Status == v1.ConditionFalse {
+			if condition.LastTransitionTime.Unix() > reportedAt.Unix() {
+				reportedAt = condition.LastTransitionTime
+			}
+		}
+	}
+
+	return reportedAt
 }
