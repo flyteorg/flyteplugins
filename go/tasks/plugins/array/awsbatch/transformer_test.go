@@ -238,5 +238,9 @@ func Test_getEnvVarsForTask(t *testing.T) {
 			Name:  "MyKey",
 			Value: "MyVal",
 		},
+		{
+			Name:  "FLYTE_FAIL_ON_ERROR",
+			Value: "true",
+		},
 	}, envVars)
 }
