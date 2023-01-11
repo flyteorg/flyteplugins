@@ -130,8 +130,8 @@ func TestArrayJobToBatchInput(t *testing.T) {
 		ContainerOverrides: &batch.ContainerOverrides{
 			Command: []*string{ref("cmd"), ref("/inputs/prefix")},
 			Environment: []*batch.KeyValuePair{
+				{Name: ref(failOnError), Value: refStr("true")},
 				{Name: refStr("BATCH_JOB_ARRAY_INDEX_VAR_NAME"), Value: refStr("AWS_BATCH_JOB_ARRAY_INDEX")},
-				{Name: ref(failOnError), Value: refStr("True")},
 			},
 			Memory: refInt(1074),
 			Vcpus:  refInt(1),
