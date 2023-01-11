@@ -147,7 +147,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 
 // TODO @hamersaw - document
 func MergePodSpecWithDefaultPodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext,
-		podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, *metav1.ObjectMeta, error) {
+	podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, *metav1.ObjectMeta, error) {
 
 	// attempt to retrieve default PodTemplate
 	podTemplate, err := getPodTemplate(ctx, tCtx)

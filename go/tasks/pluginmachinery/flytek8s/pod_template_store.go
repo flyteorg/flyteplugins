@@ -13,7 +13,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// TODO @hamersaw - do not export
 var DefaultPodTemplateStore PodTemplateStore = NewPodTemplateStore()
 
 // PodTemplateStore maintains a thread-safe mapping of active PodTemplates with their associated
@@ -76,7 +75,7 @@ func GetPodTemplateUpdatesHandler(store *PodTemplateStore) cache.ResourceEventHa
 		},
 		DeleteFunc: func(obj interface{}) {
 			if podTemplate, ok := obj.(*v1.PodTemplate); ok {
-				if value, ok := store.Load(podTemplate.Name); ok{
+				if value, ok := store.Load(podTemplate.Name); ok {
 					podTemplates := value.(*sync.Map)
 					podTemplates.Delete(podTemplate.Namespace)
 					logger.Debugf(context.Background(), "deleted PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
