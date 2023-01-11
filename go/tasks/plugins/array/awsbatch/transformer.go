@@ -136,7 +136,7 @@ func getEnvVarsForTask(ctx context.Context, execID pluginCore.TaskExecutionID, c
 	for key, value := range defaultEnvVars {
 		m[key] = value
 	}
-
+	m[failOnError] = "true"
 	finalEnvVars := make([]v1.EnvVar, 0, len(m))
 	for key, val := range m {
 		finalEnvVars = append(finalEnvVars, v1.EnvVar{
@@ -144,7 +144,6 @@ func getEnvVarsForTask(ctx context.Context, execID pluginCore.TaskExecutionID, c
 			Value: val,
 		})
 	}
-	finalEnvVars = append(finalEnvVars, v1.EnvVar{Name: failOnError, Value: "true"})
 	return finalEnvVars
 }
 
