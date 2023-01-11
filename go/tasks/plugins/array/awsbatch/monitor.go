@@ -145,14 +145,6 @@ func CheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionContext, job
 	// Based on the summary produced above, deduce the overall phase of the task.
 	phase := arrayCore.SummaryToPhase(ctx, currentState.GetOriginalMinSuccesses()-currentState.GetOriginalArraySize()+int64(currentState.GetExecutionArraySize()), newArrayStatus.Summary)
 
-	if job.Status.Phase.IsSuccess() && phase == arrayCore.PhaseCheckingSubTaskExecutions {
-		// In some cases, batch job succeed, but all subtasks failed.
-		// The reason for this is that Flytekit catches the exception and writes error.pb to the bucket.
-		// Flyte gets status of the subtask from error.pb in the bucket,
-		// while AWS batch gets it from the return code of subtask.
-		phase = arrayCore.PhasePermanentFailure
-	}
-
 	if phase != arrayCore.PhaseCheckingSubTaskExecutions {
 		metrics.SubTasksSucceeded.Add(ctx, float64(newArrayStatus.Summary[core.PhaseSuccess]))
 		totalFailed := newArrayStatus.Summary[core.PhasePermanentFailure] + newArrayStatus.Summary[core.PhaseRetryableFailure]
