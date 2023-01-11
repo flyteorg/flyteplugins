@@ -25,6 +25,7 @@ import (
 const (
 	ArrayJobIndex       = "BATCH_JOB_ARRAY_INDEX_VAR_NAME"
 	arrayJobIDFormatter = "%v:%v"
+	failOnError         = "FLYTE_FAIL_ON_ERROR"
 )
 
 const assignResources = true
@@ -118,7 +119,7 @@ func UpdateBatchInputForArray(_ context.Context, batchInput *batch.SubmitJobInpu
 		envVars = append(envVars, &batch.KeyValuePair{Name: refStr(ArrayJobIndex), Value: refStr("FAKE_JOB_ARRAY_INDEX")},
 			&batch.KeyValuePair{Name: refStr("FAKE_JOB_ARRAY_INDEX"), Value: refStr("0")})
 	}
-	envVars = append(envVars, &batch.KeyValuePair{Name: refStr("FLYTE_FAIL_ON_ERROR"), Value: refStr("True")})
+	envVars = append(envVars, &batch.KeyValuePair{Name: refStr(failOnError), Value: refStr("True")})
 	batchInput.ArrayProperties = arrayProps
 	batchInput.ContainerOverrides.Environment = envVars
 
