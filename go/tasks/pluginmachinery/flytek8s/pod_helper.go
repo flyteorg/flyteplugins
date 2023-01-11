@@ -146,7 +146,9 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 }
 
 // TODO @hamersaw - document
-func BuildFlytePodComponents(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, *metav1.ObjectMeta, error) {
+func MergePodSpecWithDefaultPodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext,
+		podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, *metav1.ObjectMeta, error) {
+
 	// attempt to retrieve default PodTemplate
 	podTemplate, err := getPodTemplate(ctx, tCtx)
 	if err != nil {
@@ -157,7 +159,7 @@ func BuildFlytePodComponents(ctx context.Context, tCtx pluginsCore.TaskExecution
 	}
 
 	// merge podSpec with podTemplate
-	mergedPodSpec, err := mergePodSpecs(podTemplate, podSpec, primaryContainerName)
+	mergedPodSpec, err := mergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -166,13 +168,13 @@ func BuildFlytePodComponents(ctx context.Context, tCtx pluginsCore.TaskExecution
 }
 
 // TODO @hamersaw - document
-func mergePodSpecs(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
-	if podTemplate == nil || podSpec == nil {
+func mergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
+	if podTemplatePodSpec == nil || podSpec == nil {
 		return nil, errors.New("podTemplate and podSpec cannot be nil")
 	}
 
 	// merge PodTemplate PodSpec with podSpec
-	var basePodSpec *v1.PodSpec = podTemplate.Template.Spec.DeepCopy()
+	var basePodSpec *v1.PodSpec = podTemplatePodSpec.DeepCopy()
 	if err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
 		return nil, err
 	}

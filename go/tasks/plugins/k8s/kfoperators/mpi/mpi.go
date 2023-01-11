@@ -69,7 +69,7 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 
 	common.OverrideDefaultContainerName(taskCtx, podSpec, kubeflowv1.MPIJobDefaultContainerName)
 
-	podSpec, objectMeta, err := flytek8s.BuildFlytePodComponents(ctx, taskCtx, podSpec, kubeflowv1.MPIJobDefaultContainerName)
+	podSpec, objectMeta, err := flytek8s.MergePodSpecWithDefaultPodTemplate(ctx, taskCtx, podSpec, kubeflowv1.MPIJobDefaultContainerName)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
 	}

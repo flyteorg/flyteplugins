@@ -5,29 +5,27 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
-	config1 "github.com/flyteorg/flytestdlib/config"
-	"github.com/flyteorg/flytestdlib/config/viper"
-
-	"github.com/flyteorg/flytestdlib/storage"
-	"github.com/stretchr/testify/mock"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+
+	config1 "github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/config/viper"
+	"github.com/flyteorg/flytestdlib/storage"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.TaskExecutionMetadata {
@@ -35,7 +33,7 @@ func dummyTaskExecutionMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	taskExecutionMetadata.On("GetNamespace").Return("test-namespace")
 	taskExecutionMetadata.On("GetAnnotations").Return(map[string]string{"annotation-1": "val1"})
 	taskExecutionMetadata.On("GetLabels").Return(map[string]string{"label-1": "val1"})
-	taskExecutionMetadata.On("GetOwnerReference").Return(metaV1.OwnerReference{
+	taskExecutionMetadata.On("GetOwnerReference").Return(metav1.OwnerReference{
 		Kind: "node",
 		Name: "blah",
 	})
@@ -756,7 +754,7 @@ func TestDemystifyPending(t *testing.T) {
 
 	t.Run("CreateContainerErrorWithinGracePeriod", func(t *testing.T) {
 		s2 := *s.DeepCopy()
-		s2.Conditions[0].LastTransitionTime = metaV1.Now()
+		s2.Conditions[0].LastTransitionTime = metav1.Now()
 		s2.ContainerStatuses = []v1.ContainerStatus{
 			{
 				Ready: false,
@@ -775,7 +773,7 @@ func TestDemystifyPending(t *testing.T) {
 
 	t.Run("CreateContainerErrorOutsideGracePeriod", func(t *testing.T) {
 		s2 := *s.DeepCopy()
-		s2.Conditions[0].LastTransitionTime.Time = metaV1.Now().Add(-config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)
+		s2.Conditions[0].LastTransitionTime.Time = metav1.Now().Add(-config.GetK8sPluginConfig().CreateContainerErrorGracePeriod.Duration)
 		s2.ContainerStatuses = []v1.ContainerStatus{
 			{
 				Ready: false,
@@ -968,7 +966,7 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 				Name: primaryContainerName,
 				State: v1.ContainerState{
 					Running: &v1.ContainerStateRunning{
-						StartedAt: metaV1.Now(),
+						StartedAt: metav1.Now(),
 					},
 				},
 			},
@@ -1014,16 +1012,65 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 	})
 }
 
+/*func TestBuildPodWithSpec(t *testing.T) {
+	podSpec := v1.PodSpec{
+		Containers: []v1.Container{
+			v1.Container{
+				Name: "foo",
+			},
+			v1.Container{
+				Name: "bar",
+			},
+		},
+	}
+
+	pod, err := BuildPodWithSpec(nil, &podSpec, "foo")
+	assert.Nil(t, err)
+	assert.True(t, reflect.DeepEqual(pod.Spec, podSpec))
+
+	primaryContainerTemplate := v1.Container{
+		Name:                   primaryContainerTemplateName,
+		TerminationMessagePath: "/dev/primary-termination-log",
+	}
+
+	podTemplate := v1.PodTemplate{
+		Template: v1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					"fooKey": "barVal",
+				},
+			},
+			Spec: v1.PodSpec{
+				Containers: []v1.Container{
+					primaryContainerTemplate,
+				},
+			},
+		},
+	}
+
+	pod, err = BuildPodWithSpec(&podTemplate, &podSpec, "foo")
+	assert.Nil(t, err)
+
+	// Test that template podSpec is merged
+	primaryContainer := pod.Spec.Containers[0]
+	assert.Equal(t, podSpec.Containers[0].Name, primaryContainer.Name)
+	assert.Equal(t, primaryContainerTemplate.TerminationMessagePath, primaryContainer.TerminationMessagePath)
+
+	// Test that template object metadata is copied
+	assert.Contains(t, pod.ObjectMeta.Labels, "fooKey")
+	assert.Equal(t, pod.ObjectMeta.Labels["fooKey"], "barVal")
+}*/
+
 func TestMergePodSpecs(t *testing.T) {
 	var priority int32 = 1
 
-	podSpec1, _ := MergePodSpecs(nil, nil, "foo")
+	podSpec1, _ := mergePodSpecs(nil, nil, "foo")
 	assert.Nil(t, podSpec1)
 
-	podSpec2, _ := MergePodSpecs(&v1.PodSpec{}, nil, "foo")
+	podSpec2, _ := mergePodSpecs(&v1.PodSpec{}, nil, "foo")
 	assert.Nil(t, podSpec2)
 
-	podSpec3, _ := MergePodSpecs(nil, &v1.PodSpec{}, "foo")
+	podSpec3, _ := mergePodSpecs(nil, &v1.PodSpec{}, "foo")
 	assert.Nil(t, podSpec3)
 
 	podSpec := v1.PodSpec{
@@ -1077,7 +1124,7 @@ func TestMergePodSpecs(t *testing.T) {
 		},
 	}
 
-	mergedPodSpec, err := MergePodSpecs(&podTemplateSpec, &podSpec, "foo")
+	mergedPodSpec, err := mergePodSpecs(&podTemplateSpec, &podSpec, "foo")
 	assert.Nil(t, err)
 
 	// validate a PodTemplate-only field
@@ -1100,54 +1147,4 @@ func TestMergePodSpecs(t *testing.T) {
 	defaultContainer := mergedPodSpec.Containers[1]
 	assert.Equal(t, podSpec.Containers[1].Name, defaultContainer.Name)
 	assert.Equal(t, defaultContainerTemplate.TerminationMessagePath, defaultContainer.TerminationMessagePath)
-
-}
-
-func TestBuildPodWithSpec(t *testing.T) {
-	podSpec := v1.PodSpec{
-		Containers: []v1.Container{
-			v1.Container{
-				Name: "foo",
-			},
-			v1.Container{
-				Name: "bar",
-			},
-		},
-	}
-
-	pod, err := BuildPodWithSpec(nil, &podSpec, "foo")
-	assert.Nil(t, err)
-	assert.True(t, reflect.DeepEqual(pod.Spec, podSpec))
-
-	primaryContainerTemplate := v1.Container{
-		Name:                   primaryContainerTemplateName,
-		TerminationMessagePath: "/dev/primary-termination-log",
-	}
-
-	podTemplate := v1.PodTemplate{
-		Template: v1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					"fooKey": "barVal",
-				},
-			},
-			Spec: v1.PodSpec{
-				Containers: []v1.Container{
-					primaryContainerTemplate,
-				},
-			},
-		},
-	}
-
-	pod, err = BuildPodWithSpec(&podTemplate, &podSpec, "foo")
-	assert.Nil(t, err)
-
-	// Test that template podSpec is merged
-	primaryContainer := pod.Spec.Containers[0]
-	assert.Equal(t, podSpec.Containers[0].Name, primaryContainer.Name)
-	assert.Equal(t, primaryContainerTemplate.TerminationMessagePath, primaryContainer.TerminationMessagePath)
-
-	// Test that template object metadata is copied
-	assert.Contains(t, pod.ObjectMeta.Labels, "fooKey")
-	assert.Equal(t, pod.ObjectMeta.Labels["fooKey"], "barVal")
 }

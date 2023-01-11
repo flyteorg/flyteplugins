@@ -2,7 +2,6 @@ package flytek8s
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -33,28 +32,8 @@ func NewPodTemplateStore() PodTemplateStore {
 // TODO @hamersaw - update docs
 // LoadOrDefault returns the PodTemplate associated with the given namespace. If one does not exist
 // it attempts to retrieve the one associated with the defaultNamespace parameter.
-func (p *PodTemplateStore) LoadOrDefaultName(namespace string, podTemplateName string) *v1.PodTemplate {
-	fmt.Println("HAMERSAW - searching for '%s:%s'", namespace, podTemplateName)
+func (p *PodTemplateStore) LoadOrDefault(namespace string, podTemplateName string) *v1.PodTemplate {
 	if value, ok := p.Load(podTemplateName); ok {
-		fmt.Println("HAMERSAW - found name '%s'", podTemplateName)
-		podTemplates := value.(*sync.Map)
-		if podTemplate, ok := podTemplates.Load(namespace); ok {
-			fmt.Println("HAMERSAW - found namespace '%s'", namespace)
-			return podTemplate.(*v1.PodTemplate)
-		}
-
-		if podTemplate, ok := podTemplates.Load(p.defaultNamespace); ok {
-			fmt.Println("HAMERSAW - found namespace '%s'", p.defaultNamespace)
-			return podTemplate.(*v1.PodTemplate)
-		}
-	}
-
-	return nil
-}
-
-// TODO @hamersaw - remove
-func (p *PodTemplateStore) LoadOrDefault(namespace string) *v1.PodTemplate {
-	if value, ok := p.Load(p.defaultPodTemplateName); ok {
 		podTemplates := value.(*sync.Map)
 		if podTemplate, ok := podTemplates.Load(namespace); ok {
 			return podTemplate.(*v1.PodTemplate)
@@ -70,7 +49,6 @@ func (p *PodTemplateStore) LoadOrDefault(namespace string) *v1.PodTemplate {
 
 // SetDefaults sets the default namespace and PodTemplate name for the PodTemplateStore.
 func (p *PodTemplateStore) SetDefaults(namespace string, podTemplateName string) {
-	fmt.Println("HAMERSAW - setting defaults '%s:%s'", namespace, podTemplateName)
 	p.defaultNamespace = namespace
 	p.defaultPodTemplateName = podTemplateName
 }
@@ -85,43 +63,26 @@ func GetPodTemplateUpdatesHandler(store *PodTemplateStore) cache.ResourceEventHa
 				value, _ := store.LoadOrStore(podTemplate.Name, &sync.Map{})
 				podTemplates := value.(*sync.Map)
 				podTemplates.Store(podTemplate.Namespace, podTemplate)
-				logger.Debugf(context.Background(), "added pod template '%s:%s'", podTemplate.Namespace, podTemplate.Name)
-				// TODO @hamersaw - add logger message
+				logger.Debugf(context.Background(), "registered PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
 			}
-			
-			/*podTemplate, ok := obj.(*v1.PodTemplate)
-			if ok && podTemplate.Name == podTemplateName {
-				store.Store(podTemplate.Namespace, podTemplate)
-			}*/
 		},
 		UpdateFunc: func(old, new interface{}) {
 			if podTemplate, ok := new.(*v1.PodTemplate); ok {
 				value, _ := store.LoadOrStore(podTemplate.Name, &sync.Map{})
 				podTemplates := value.(*sync.Map)
 				podTemplates.Store(podTemplate.Namespace, podTemplate)
-				logger.Debugf(context.Background(), "added pod template '%s:%s'", podTemplate.Namespace, podTemplate.Name)
-				// TODO @hamersaw - add logger message
+				logger.Debugf(context.Background(), "registered PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
 			}
-
-			/*podTemplate, ok := new.(*v1.PodTemplate)
-			if ok && podTemplate.Name == podTemplateName {
-				store.Store(podTemplate.Namespace, podTemplate)
-			}*/
 		},
 		DeleteFunc: func(obj interface{}) {
 			if podTemplate, ok := obj.(*v1.PodTemplate); ok {
 				if value, ok := store.Load(podTemplate.Name); ok{
-					podTemplates := value.(sync.Map)
+					podTemplates := value.(*sync.Map)
 					podTemplates.Delete(podTemplate.Namespace)
-					// TODO @hamersaw - add logger message
+					logger.Debugf(context.Background(), "deleted PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
 					// TODO - doc: specifically not deleting empty maps from store because then there may be race conditions
 				}
 			}
-
-			/*podTemplate, ok := obj.(*v1.PodTemplate)
-			if ok && podTemplate.Name == podTemplateName {
-				store.Delete(podTemplate.Namespace)
-			}*/
 		},
 	}
 }
@@ -138,7 +99,7 @@ func getPodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) 
 	var podTemplate *v1.PodTemplate
 	if taskTemplate.GetPodTemplateName() != "" {
 		// retrieve PodTemplate by name from PodTemplateStore
-		podTemplate = DefaultPodTemplateStore.LoadOrDefaultName(tCtx.TaskExecutionMetadata().GetNamespace(), taskTemplate.GetPodTemplateName())
+		podTemplate = DefaultPodTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), taskTemplate.GetPodTemplateName())
 	} else if taskTemplate.GetPodTemplate() != nil {
 		// parse PodTemplate from struct
 		podTemplate = &v1.PodTemplate{}
@@ -150,7 +111,7 @@ func getPodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) 
 		}
 	} else {
 		// check for default PodTemplate
-		podTemplate = DefaultPodTemplateStore.LoadOrDefaultName(tCtx.TaskExecutionMetadata().GetNamespace(), DefaultPodTemplateStore.defaultPodTemplateName)
+		podTemplate = DefaultPodTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), DefaultPodTemplateStore.defaultPodTemplateName)
 	}
 
 	return podTemplate, nil
