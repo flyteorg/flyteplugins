@@ -43,8 +43,7 @@ type plugin struct {
 	podBuilders       map[string]podBuilder
 }
 
-func (plugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (
-	client.Object, error) {
+func (plugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (client.Object, error) {
 	return flytek8s.BuildIdentityPod(), nil
 }
 
@@ -62,6 +61,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		builder = p.defaultPodBuilder
 	}
 
+	// construct initial podSpec
 	podSpec, err := builder.buildPodSpec(ctx, task, taskCtx)
 	if err != nil {
 		return nil, err
@@ -69,16 +69,20 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 
 	podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
-	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
+	// merge podSpec with configuration PodTemplate
 	primaryContainerName, err := builder.getPrimaryContainerName(task, taskCtx)
 	if err != nil {
 		return nil, err
 	}
 
-	pod, err := flytek8s.BuildPodWithSpec(podTemplate, podSpec, primaryContainerName)
+	podSpec, objectMeta, err := flytek8s.BuildFlytePodComponents(ctx, taskCtx, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, err
 	}
+
+	pod := flytek8s.BuildIdentityPod()
+	pod.ObjectMeta = *objectMeta
+	pod.Spec = *podSpec
 
 	// update pod metadata
 	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {

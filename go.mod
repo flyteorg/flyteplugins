@@ -133,3 +133,5 @@ require (
 )
 
 replace github.com/aws/amazon-sagemaker-operator-for-k8s => github.com/aws/amazon-sagemaker-operator-for-k8s v1.0.1-0.20210303003444-0fb33b1fd49d
+
+replace github.com/flyteorg/flyteidl => github.com/flyteorg/flyteidl v1.3.2-0.20230111105522-a8c3cebf0469

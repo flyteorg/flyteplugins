@@ -17,7 +17,7 @@ import (
 	"github.com/imdario/mergo"
 
 	v1 "k8s.io/api/core/v1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const PodKind = "pod"
@@ -145,26 +145,46 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
-	if podTemplatePodSpec == nil || podSpec == nil {
-		return nil, errors.New("podTemplatePodSpec and podSpec cannot be nil")
+// TODO @hamersaw - document
+func BuildFlytePodComponents(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, *metav1.ObjectMeta, error) {
+	// attempt to retrieve default PodTemplate
+	podTemplate, err := getPodTemplate(ctx, tCtx)
+	if err != nil {
+		return nil, nil, err
+	} else if podTemplate == nil {
+		// if no PodTemplate to merge as base -> return
+		return podSpec, &metav1.ObjectMeta{}, nil
 	}
 
-	var podTemplatePodSpecCopy *v1.PodSpec = podTemplatePodSpec.DeepCopy()
-
-	err := mergo.Merge(podTemplatePodSpecCopy, podSpec, mergo.WithOverride, mergo.WithAppendSlice)
+	// merge podSpec with podTemplate
+	mergedPodSpec, err := mergePodSpecs(podTemplate, podSpec, primaryContainerName)
 	if err != nil {
+		return nil, nil, err
+	}
+
+	return mergedPodSpec, &podTemplate.Template.ObjectMeta, nil
+}
+
+// TODO @hamersaw - document
+func mergePodSpecs(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
+	if podTemplate == nil || podSpec == nil {
+		return nil, errors.New("podTemplate and podSpec cannot be nil")
+	}
+
+	// merge PodTemplate PodSpec with podSpec
+	var basePodSpec *v1.PodSpec = podTemplate.Template.Spec.DeepCopy()
+	if err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
 		return nil, err
 	}
 
 	// merge template Containers
 	var mergedContainers []v1.Container
 	var defaultContainerTemplate, primaryContainerTemplate *v1.Container
-	for i := 0; i < len(podTemplatePodSpecCopy.Containers); i++ {
-		if podTemplatePodSpecCopy.Containers[i].Name == defaultContainerTemplateName {
-			defaultContainerTemplate = &podTemplatePodSpecCopy.Containers[i]
-		} else if podTemplatePodSpecCopy.Containers[i].Name == primaryContainerTemplateName {
-			primaryContainerTemplate = &podTemplatePodSpecCopy.Containers[i]
+	for i := 0; i < len(basePodSpec.Containers); i++ {
+		if basePodSpec.Containers[i].Name == defaultContainerTemplateName {
+			defaultContainerTemplate = &basePodSpec.Containers[i]
+		} else if basePodSpec.Containers[i].Name == primaryContainerTemplateName {
+			primaryContainerTemplate = &basePodSpec.Containers[i]
 		}
 	}
 
@@ -187,10 +207,9 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 			}
 		}
 
-		// if applicable merge with existing container # TODO test
+		// if applicable merge with existing container
 		if mergedContainer == nil {
 			mergedContainers = append(mergedContainers, container)
-
 		} else {
 			err := mergo.Merge(mergedContainer, container, mergo.WithOverride, mergo.WithAppendSlice)
 			if err != nil {
@@ -199,43 +218,15 @@ func MergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryC
 
 			mergedContainers = append(mergedContainers, *mergedContainer)
 		}
-
 	}
 
-	// update Pod fields
-	podTemplatePodSpecCopy.Containers = mergedContainers
-
-	return podTemplatePodSpecCopy, nil
-}
-
-func BuildPodWithSpec(podTemplate *v1.PodTemplate, podSpec *v1.PodSpec, primaryContainerName string) (*v1.Pod, error) {
-	pod := v1.Pod{
-		TypeMeta: v12.TypeMeta{
-			Kind:       PodKind,
-			APIVersion: v1.SchemeGroupVersion.String(),
-		},
-	}
-
-	if podTemplate != nil {
-		// merge template PodSpec
-		mergedPodSpec, err := MergePodSpecs(&podTemplate.Template.Spec, podSpec, primaryContainerName)
-		if err != nil {
-			return nil, err
-		}
-
-		pod.ObjectMeta = podTemplate.Template.ObjectMeta
-		pod.Spec = *mergedPodSpec
-
-	} else {
-		pod.Spec = *podSpec
-	}
-
-	return &pod, nil
+	basePodSpec.Containers = mergedContainers
+	return basePodSpec, nil
 }
 
 func BuildIdentityPod() *v1.Pod {
 	return &v1.Pod{
-		TypeMeta: v12.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       PodKind,
 			APIVersion: v1.SchemeGroupVersion.String(),
 		},
@@ -506,8 +497,8 @@ func DemystifyFailure(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 	return pluginsCore.PhaseInfoRetryableFailure(code, message, &info), nil
 }
 
-func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
-	var lastTransitionTime v12.Time
+func GetLastTransitionOccurredAt(pod *v1.Pod) metav1.Time {
+	var lastTransitionTime metav1.Time
 	containerStatuses := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
 	for _, containerStatus := range containerStatuses {
 		if r := containerStatus.LastTerminationState.Running; r != nil {
@@ -522,7 +513,7 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) v12.Time {
 	}
 
 	if lastTransitionTime.IsZero() {
-		lastTransitionTime = v12.NewTime(time.Now())
+		lastTransitionTime = metav1.NewTime(time.Now())
 	}
 
 	return lastTransitionTime
