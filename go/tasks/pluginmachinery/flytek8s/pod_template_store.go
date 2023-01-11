@@ -100,10 +100,10 @@ func getPodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) 
 	if taskTemplate.GetPodTemplateName() != "" {
 		// retrieve PodTemplate by name from PodTemplateStore
 		podTemplate = DefaultPodTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), taskTemplate.GetPodTemplateName())
-	} else if taskTemplate.GetPodTemplate() != nil {
+	} else if taskTemplate.GetPodTemplateStruct() != nil {
 		// parse PodTemplate from struct
 		podTemplate = &v1.PodTemplate{}
-		err := utils.UnmarshalStructToObj(taskTemplate.GetPodTemplate(), podTemplate)
+		err := utils.UnmarshalStructToObj(taskTemplate.GetPodTemplateStruct(), podTemplate)
 		if err != nil {
 			return nil, err
 			//return nil, errors.Errorf(errors.BadTaskSpecification,
