@@ -26,12 +26,12 @@ func NewPodTemplateStore() PodTemplateStore {
 	}
 }
 
-// TODO @hamersaw - doc
+// Delete removes the specified PodTemplate from the store.
 func (p *PodTemplateStore) Delete(podTemplate *v1.PodTemplate) {
 	if value, ok := p.Load(podTemplate.Name); ok {
 		podTemplates := value.(*sync.Map)
 		podTemplates.Delete(podTemplate.Namespace)
-		logger.Debugf(context.Background(), "deleted PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
+		logger.Debugf(context.Background(), "deleted PodTemplate '%s:%s' from store", podTemplate.Namespace, podTemplate.Name)
 
 		// we specifically are not deleting empty maps from the store because this may introduce race
 		// conditions where a PodTemplate is being added to the 2nd dimension map while the top level map
@@ -61,12 +61,12 @@ func (p *PodTemplateStore) SetDefaultNamespace(namespace string) {
 	p.defaultNamespace = namespace
 }
 
-// TODO @hamersaw - doc
+// Store loads the specified PodTemplate into the store.
 func (p *PodTemplateStore) Store(podTemplate *v1.PodTemplate) {
 	value, _ := p.LoadOrStore(podTemplate.Name, &sync.Map{})
 	podTemplates := value.(*sync.Map)
 	podTemplates.Store(podTemplate.Namespace, podTemplate)
-	logger.Debugf(context.Background(), "registered PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
+	logger.Debugf(context.Background(), "registered PodTemplate '%s:%s' in store", podTemplate.Namespace, podTemplate.Name)
 }
 
 // GetPodTemplateUpdatesHandler returns a new ResourceEventHandler which adds / removes
