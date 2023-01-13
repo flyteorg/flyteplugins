@@ -15,13 +15,15 @@ var DefaultPodTemplateStore PodTemplateStore = NewPodTemplateStore()
 // PodTemplateStore maintains a thread-safe mapping of active PodTemplates with their associated
 // namespaces.
 type PodTemplateStore struct {
-	sync.Map
+	*sync.Map
 	defaultNamespace string
 }
 
 // NewPodTemplateStore initializes a new PodTemplateStore
 func NewPodTemplateStore() PodTemplateStore {
-	return PodTemplateStore{}
+	return PodTemplateStore{
+		Map: &sync.Map{},
+	}
 }
 
 // TODO @hamersaw - doc

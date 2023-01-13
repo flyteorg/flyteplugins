@@ -1019,7 +1019,7 @@ func TestGetPodTemplate(t *testing.T) {
 
 	podTemplate := v1.PodTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
+			Name:      "foo",
 			Namespace: "bar",
 		},
 	}
@@ -1081,7 +1081,7 @@ func TestGetPodTemplate(t *testing.T) {
 
 		task := &core.TaskTemplate{
 			Type: "test",
-			PodTemplate: &core.TaskTemplate_PodTemplateStruct {
+			PodTemplate: &core.TaskTemplate_PodTemplateStruct{
 				PodTemplateStruct: podTemplateStruct,
 			},
 		}
@@ -1196,7 +1196,7 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 					Args:    []string{"{{.Input}}"},
 				},
 			},
-			PodTemplate: &core.TaskTemplate_PodTemplateStruct {
+			PodTemplate: &core.TaskTemplate_PodTemplateStruct{
 				PodTemplateStruct: podTemplateStruct,
 			},
 		}
