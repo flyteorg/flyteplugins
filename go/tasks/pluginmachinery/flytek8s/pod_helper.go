@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	pluginserrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
@@ -153,9 +154,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 func getBasePodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, podTemplateStore PodTemplateStore) (*v1.PodTemplate, error) {
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return nil, err
-		//return nil, errors.Errorf(errors.BadTaskSpecification,
-		//	"TaskSpecification cannot be read, Err: [%v]", err.Error())
+		return nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "TaskSpecification cannot be read, Err: [%v]", err.Error())
 	}
 
 	var podTemplate *v1.PodTemplate
@@ -167,9 +166,8 @@ func getBasePodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionConte
 		podTemplate = &v1.PodTemplate{}
 		err := utils.UnmarshalStructToObj(taskTemplate.GetPodTemplateStruct(), podTemplate)
 		if err != nil {
-			return nil, err
-			//return nil, errors.Errorf(errors.BadTaskSpecification,
-			//	"invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
+			return nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
+				"invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetPodTemplateStruct(), err.Error())
 		}
 	} else {
 		// check for default PodTemplate
@@ -210,19 +208,19 @@ func mergePodSpecs(basePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContaine
 	}
 
 	// merge PodTemplate PodSpec with podSpec
-	var basePodSpec *v1.PodSpec = basePodSpec.DeepCopy()
-	if err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
+	var mergedPodSpec *v1.PodSpec = basePodSpec.DeepCopy()
+	if err := mergo.Merge(mergedPodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
 		return nil, err
 	}
 
 	// merge template Containers
 	var mergedContainers []v1.Container
 	var defaultContainerTemplate, primaryContainerTemplate *v1.Container
-	for i := 0; i < len(basePodSpec.Containers); i++ {
-		if basePodSpec.Containers[i].Name == defaultContainerTemplateName {
-			defaultContainerTemplate = &basePodSpec.Containers[i]
-		} else if basePodSpec.Containers[i].Name == primaryContainerTemplateName {
-			primaryContainerTemplate = &basePodSpec.Containers[i]
+	for i := 0; i < len(mergedPodSpec.Containers); i++ {
+		if mergedPodSpec.Containers[i].Name == defaultContainerTemplateName {
+			defaultContainerTemplate = &mergedPodSpec.Containers[i]
+		} else if mergedPodSpec.Containers[i].Name == primaryContainerTemplateName {
+			primaryContainerTemplate = &mergedPodSpec.Containers[i]
 		}
 	}
 
@@ -258,8 +256,8 @@ func mergePodSpecs(basePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContaine
 		}
 	}
 
-	basePodSpec.Containers = mergedContainers
-	return basePodSpec, nil
+	mergedPodSpec.Containers = mergedContainers
+	return mergedPodSpec, nil
 }
 
 func BuildIdentityPod() *v1.Pod {
