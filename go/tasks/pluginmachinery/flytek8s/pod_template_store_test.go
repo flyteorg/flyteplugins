@@ -35,7 +35,7 @@ func TestPodTemplateStore(t *testing.T) {
 	}
 
 	store := NewPodTemplateStore()
-	store.SetDefaults(podTemplate.Namespace, podTemplate.Name)
+	store.SetDefaultNamespace(podTemplate.Namespace)
 
 	kubeClient := fake.NewSimpleClientset()
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, 30*time.Second)

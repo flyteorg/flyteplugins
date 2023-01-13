@@ -24,6 +24,19 @@ func NewPodTemplateStore() PodTemplateStore {
 	return PodTemplateStore{}
 }
 
+// TODO @hamersaw - doc
+func (p *PodTemplateStore) Delete(podTemplate *v1.PodTemplate) {
+	if value, ok := p.Load(podTemplate.Name); ok {
+		podTemplates := value.(*sync.Map)
+		podTemplates.Delete(podTemplate.Namespace)
+		logger.Debugf(context.Background(), "deleted PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
+
+		// we specifically are not deleting empty maps from the store because this may introduce race
+		// conditions where a PodTemplate is being added to the 2nd dimension map while the top level map
+		// is concurrently being deleted.
+	}
+}
+
 // LoadOrDefault returns the PodTemplate with the specified name in the given namespace. If one
 // does not exist it attempts to retrieve the one associated with the defaultNamespace.
 func (p *PodTemplateStore) LoadOrDefault(namespace string, podTemplateName string) *v1.PodTemplate {
@@ -46,37 +59,31 @@ func (p *PodTemplateStore) SetDefaultNamespace(namespace string) {
 	p.defaultNamespace = namespace
 }
 
+// TODO @hamersaw - doc
+func (p *PodTemplateStore) Store(podTemplate *v1.PodTemplate) {
+	value, _ := p.LoadOrStore(podTemplate.Name, &sync.Map{})
+	podTemplates := value.(*sync.Map)
+	podTemplates.Store(podTemplate.Namespace, podTemplate)
+	logger.Debugf(context.Background(), "registered PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
+}
+
 // GetPodTemplateUpdatesHandler returns a new ResourceEventHandler which adds / removes
 // PodTemplates to / from the provided PodTemplateStore.
 func GetPodTemplateUpdatesHandler(store *PodTemplateStore) cache.ResourceEventHandler {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if podTemplate, ok := obj.(*v1.PodTemplate); ok {
-				value, _ := store.LoadOrStore(podTemplate.Name, &sync.Map{})
-				podTemplates := value.(*sync.Map)
-				podTemplates.Store(podTemplate.Namespace, podTemplate)
-				logger.Debugf(context.Background(), "registered PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
+				store.Store(podTemplate)
 			}
 		},
 		UpdateFunc: func(old, new interface{}) {
 			if podTemplate, ok := new.(*v1.PodTemplate); ok {
-				value, _ := store.LoadOrStore(podTemplate.Name, &sync.Map{})
-				podTemplates := value.(*sync.Map)
-				podTemplates.Store(podTemplate.Namespace, podTemplate)
-				logger.Debugf(context.Background(), "updated PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
+				store.Store(podTemplate)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			if podTemplate, ok := obj.(*v1.PodTemplate); ok {
-				if value, ok := store.Load(podTemplate.Name); ok {
-					podTemplates := value.(*sync.Map)
-					podTemplates.Delete(podTemplate.Namespace)
-					logger.Debugf(context.Background(), "deleted PodTemplate '%s:%s'", podTemplate.Namespace, podTemplate.Name)
-
-					// we specifically are not deleting empty maps from the store because this may introduce race
-					// conditions where a PodTemplate is being added to the 2nd dimension map while the top level map
-					// is concurrently being deleted.
-				}
+				store.Delete(podTemplate)
 			}
 		},
 	}
