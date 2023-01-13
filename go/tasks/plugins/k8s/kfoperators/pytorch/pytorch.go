@@ -68,7 +68,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 
 	common.OverrideDefaultContainerName(taskCtx, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
 
-	podSpec, objectMeta, err := flytek8s.MergePodSpecWithDefaultPodTemplate(ctx, taskCtx, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
+	podSpec, objectMeta, err := flytek8s.MergePodSpecWithBasePodTemplate(ctx, taskCtx, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
 	}

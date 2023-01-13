@@ -145,12 +145,46 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	return pod, nil
 }
 
-// TODO @hamersaw - document
-func MergePodSpecWithDefaultPodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext,
+// getBasePodTemplate attempts to retrieve the PodTemplate to use as the base for k8s Pod configuration. This value can
+// come from on of the following:
+// (1) PodTemplate name in the TaskTemplate: This name is then looked up in the PodTemplateStore.
+// (2) PodTemplate in the TaskTemplate: This is a JSON marshalled PodTemplate definition.
+// (3) Default PodTemplate name from configuration: This name is then looked up in the PodTemplateStore.
+func getBasePodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, podTemplateStore PodTemplateStore) (*v1.PodTemplate, error) {
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return nil, err
+		//return nil, errors.Errorf(errors.BadTaskSpecification,
+		//	"TaskSpecification cannot be read, Err: [%v]", err.Error())
+	}
+
+	var podTemplate *v1.PodTemplate
+	if len(taskTemplate.GetPodTemplateName()) > 0 {
+		// retrieve PodTemplate by name from PodTemplateStore
+		podTemplate = podTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), taskTemplate.GetPodTemplateName())
+	} else if taskTemplate.GetPodTemplateStruct() != nil {
+		// parse PodTemplate from struct
+		podTemplate = &v1.PodTemplate{}
+		err := utils.UnmarshalStructToObj(taskTemplate.GetPodTemplateStruct(), podTemplate)
+		if err != nil {
+			return nil, err
+			//return nil, errors.Errorf(errors.BadTaskSpecification,
+			//	"invalid TaskSpecification [%v], Err: [%v]", task.GetCustom(), err.Error())
+		}
+	} else {
+		// check for default PodTemplate
+		podTemplate = podTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), config.GetK8sPluginConfig().DefaultPodTemplateName)
+	}
+
+	return podTemplate, nil
+}
+
+// MergePodSpecWithBasePodTemplate attempts to merge the provided PodSpec with the base PodTemplate for this task.
+func MergePodSpecWithBasePodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext,
 	podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, *metav1.ObjectMeta, error) {
 
-	// attempt to retrieve default PodTemplate
-	podTemplate, err := getPodTemplate(ctx, tCtx)
+	// attempt to retrieve base PodTemplate
+	podTemplate, err := getBasePodTemplate(ctx, tCtx, DefaultPodTemplateStore)
 	if err != nil {
 		return nil, nil, err
 	} else if podTemplate == nil {
@@ -167,14 +201,16 @@ func MergePodSpecWithDefaultPodTemplate(ctx context.Context, tCtx pluginsCore.Ta
 	return mergedPodSpec, &podTemplate.Template.ObjectMeta, nil
 }
 
-// TODO @hamersaw - document
-func mergePodSpecs(podTemplatePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
-	if podTemplatePodSpec == nil || podSpec == nil {
-		return nil, errors.New("podTemplate and podSpec cannot be nil")
+// mergePodSpecs merges the two provided PodSpecs. This process uses the first as the base configuration, where values
+// set by the first PodSpec are overwritten by the second in the return value. Additionally, this function applies
+// container-level configuration from the basePodSpec.
+func mergePodSpecs(basePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContainerName string) (*v1.PodSpec, error) {
+	if basePodSpec == nil || podSpec == nil {
+		return nil, errors.New("neither the basePodSpec or the podSpec can be nil")
 	}
 
 	// merge PodTemplate PodSpec with podSpec
-	var basePodSpec *v1.PodSpec = podTemplatePodSpec.DeepCopy()
+	var basePodSpec *v1.PodSpec = basePodSpec.DeepCopy()
 	if err := mergo.Merge(basePodSpec, podSpec, mergo.WithOverride, mergo.WithAppendSlice); err != nil {
 		return nil, err
 	}

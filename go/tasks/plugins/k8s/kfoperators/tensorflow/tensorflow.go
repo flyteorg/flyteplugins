@@ -68,7 +68,7 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 
 	common.OverrideDefaultContainerName(taskCtx, podSpec, kubeflowv1.TFJobDefaultContainerName)
 
-	podSpec, objectMeta, err := flytek8s.MergePodSpecWithDefaultPodTemplate(ctx, taskCtx, podSpec, kubeflowv1.TFJobDefaultContainerName)
+	podSpec, objectMeta, err := flytek8s.MergePodSpecWithBasePodTemplate(ctx, taskCtx, podSpec, kubeflowv1.TFJobDefaultContainerName)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
 	}

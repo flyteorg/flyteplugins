@@ -75,7 +75,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		return nil, err
 	}
 
-	podSpec, objectMeta, err := flytek8s.MergePodSpecWithDefaultPodTemplate(ctx, taskCtx, podSpec, primaryContainerName)
+	podSpec, objectMeta, err := flytek8s.MergePodSpecWithBasePodTemplate(ctx, taskCtx, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, err
 	}
