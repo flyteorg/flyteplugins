@@ -161,6 +161,9 @@ func getBasePodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionConte
 	if len(taskTemplate.GetPodTemplateName()) > 0 {
 		// retrieve PodTemplate by name from PodTemplateStore
 		podTemplate = podTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), taskTemplate.GetPodTemplateName())
+		if podTemplate == nil {
+			return nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "PodTemplate '%s' does not exist", taskTemplate.GetPodTemplateName())
+		}
 	} else if taskTemplate.GetPodTemplateStruct() != nil {
 		// parse PodTemplate from struct
 		podTemplate = &v1.PodTemplate{}

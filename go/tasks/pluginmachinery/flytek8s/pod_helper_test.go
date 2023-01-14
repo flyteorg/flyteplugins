@@ -1047,7 +1047,7 @@ func TestGetPodTemplate(t *testing.T) {
 		assert.Nil(t, basePodTemplate)
 	})
 
-	t.Run("PodTemplateFromTaskTemplateName", func(t *testing.T) {
+	t.Run("PodTemplateFromTaskTemplateNameExists", func(t *testing.T) {
 		// initialize TaskExecutionContext
 		task := &core.TaskTemplate{
 			Type: "test",
@@ -1072,6 +1072,32 @@ func TestGetPodTemplate(t *testing.T) {
 		basePodTemplate, err := getBasePodTemplate(ctx, tCtx, store)
 		assert.Nil(t, err)
 		assert.True(t, reflect.DeepEqual(podTemplate, *basePodTemplate))
+	})
+
+	t.Run("PodTemplateFromTaskTemplateNameDoesNotExist", func(t *testing.T) {
+		// initialize TaskExecutionContext
+		task := &core.TaskTemplate{
+			Type: "test",
+			PodTemplate: &core.TaskTemplate_PodTemplateName{
+				PodTemplateName: "foo",
+			},
+		}
+
+		taskReader := &pluginsCoreMock.TaskReader{}
+		taskReader.On("Read", mock.Anything).Return(task, nil)
+
+		tCtx := &pluginsCoreMock.TaskExecutionContext{}
+		tCtx.OnTaskExecutionMetadata().Return(dummyTaskExecutionMetadata(&v1.ResourceRequirements{}))
+		tCtx.OnTaskReader().Return(taskReader)
+
+		// initialize PodTemplateStore
+		store := NewPodTemplateStore()
+		store.SetDefaultNamespace(podTemplate.Namespace)
+
+		// validate base PodTemplate
+		basePodTemplate, err := getBasePodTemplate(ctx, tCtx, store)
+		assert.NotNil(t, err)
+		assert.Nil(t, basePodTemplate)
 	})
 
 	t.Run("PodTemplateFromTaskTemplateStruct", func(t *testing.T) {
