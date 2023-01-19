@@ -185,7 +185,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error {
 	logger.Errorf(ctx, "taskCtx [%v]", taskCtx)
 	logger.Errorf(ctx, "taskCtx.ResourceMeta() [%v]", taskCtx.ResourceMeta())
-	exec := taskCtx.ResourceMeta().(ResourceMetaWrapper)
+	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 	req, err := buildRequest(post, nil, p.cfg.databricksEndpoint,
 		p.cfg.DatabricksInstance, exec.Token, exec.RunID, true)
 	if err != nil {
