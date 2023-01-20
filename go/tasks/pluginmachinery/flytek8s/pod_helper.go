@@ -148,9 +148,8 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 
 // getBasePodTemplate attempts to retrieve the PodTemplate to use as the base for k8s Pod configuration. This value can
 // come from on of the following:
-// (1) PodTemplate name in the TaskTemplate: This name is then looked up in the PodTemplateStore.
-// (2) PodTemplate in the TaskTemplate: This is a JSON marshalled PodTemplate definition.
-// (3) Default PodTemplate name from configuration: This name is then looked up in the PodTemplateStore.
+// (1) PodTemplate name in the TaskMetadata: This name is then looked up in the PodTemplateStore.
+// (2) Default PodTemplate name from configuration: This name is then looked up in the PodTemplateStore.
 func getBasePodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, podTemplateStore PodTemplateStore) (*v1.PodTemplate, error) {
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
@@ -158,19 +157,11 @@ func getBasePodTemplate(ctx context.Context, tCtx pluginsCore.TaskExecutionConte
 	}
 
 	var podTemplate *v1.PodTemplate
-	if len(taskTemplate.GetPodTemplateName()) > 0 {
+	if taskTemplate.Metadata != nil && len(taskTemplate.Metadata.PodTemplateName) > 0 {
 		// retrieve PodTemplate by name from PodTemplateStore
-		podTemplate = podTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), taskTemplate.GetPodTemplateName())
+		podTemplate = podTemplateStore.LoadOrDefault(tCtx.TaskExecutionMetadata().GetNamespace(), taskTemplate.Metadata.PodTemplateName)
 		if podTemplate == nil {
-			return nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "PodTemplate '%s' does not exist", taskTemplate.GetPodTemplateName())
-		}
-	} else if taskTemplate.GetPodTemplateStruct() != nil {
-		// parse PodTemplate from struct
-		podTemplate = &v1.PodTemplate{}
-		err := utils.UnmarshalStructToObj(taskTemplate.GetPodTemplateStruct(), podTemplate)
-		if err != nil {
-			return nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetPodTemplateStruct(), err.Error())
+			return nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "PodTemplate '%s' does not exist", taskTemplate.Metadata.PodTemplateName)
 		}
 	} else {
 		// check for default PodTemplate

@@ -16,7 +16,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 
 	config1 "github.com/flyteorg/flytestdlib/config"
 	"github.com/flyteorg/flytestdlib/config/viper"
@@ -1050,10 +1049,10 @@ func TestGetPodTemplate(t *testing.T) {
 	t.Run("PodTemplateFromTaskTemplateNameExists", func(t *testing.T) {
 		// initialize TaskExecutionContext
 		task := &core.TaskTemplate{
-			Type: "test",
-			PodTemplate: &core.TaskTemplate_PodTemplateName{
+			Metadata: &core.TaskMetadata{
 				PodTemplateName: "foo",
 			},
+			Type: "test",
 		}
 
 		taskReader := &pluginsCoreMock.TaskReader{}
@@ -1078,7 +1077,7 @@ func TestGetPodTemplate(t *testing.T) {
 		// initialize TaskExecutionContext
 		task := &core.TaskTemplate{
 			Type: "test",
-			PodTemplate: &core.TaskTemplate_PodTemplateName{
+			Metadata: &core.TaskMetadata{
 				PodTemplateName: "foo",
 			},
 		}
@@ -1098,36 +1097,6 @@ func TestGetPodTemplate(t *testing.T) {
 		basePodTemplate, err := getBasePodTemplate(ctx, tCtx, store)
 		assert.NotNil(t, err)
 		assert.Nil(t, basePodTemplate)
-	})
-
-	t.Run("PodTemplateFromTaskTemplateStruct", func(t *testing.T) {
-		// initialize TaskExecutionContext
-		podTemplateStruct, err := utils.MarshalObjToStruct(podTemplate)
-		assert.Nil(t, err)
-
-		task := &core.TaskTemplate{
-			Type: "test",
-			PodTemplate: &core.TaskTemplate_PodTemplateStruct{
-				PodTemplateStruct: podTemplateStruct,
-			},
-		}
-
-		taskReader := &pluginsCoreMock.TaskReader{}
-		taskReader.On("Read", mock.Anything).Return(task, nil)
-
-		tCtx := &pluginsCoreMock.TaskExecutionContext{}
-		tCtx.OnTaskExecutionMetadata().Return(dummyTaskExecutionMetadata(&v1.ResourceRequirements{}))
-		tCtx.OnTaskReader().Return(taskReader)
-
-		// initialize PodTemplateStore
-		store := NewPodTemplateStore()
-		store.SetDefaultNamespace(podTemplate.Namespace)
-		store.Store(&podTemplate)
-
-		// validate base PodTemplate
-		basePodTemplate, err := getBasePodTemplate(ctx, tCtx, store)
-		assert.Nil(t, err)
-		assert.True(t, reflect.DeepEqual(podTemplate, *basePodTemplate))
 	})
 
 	t.Run("PodTemplateFromDefaultPodTemplate", func(t *testing.T) {
@@ -1197,6 +1166,10 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 		}
 
 		podTemplate := v1.PodTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "fooTemplate",
+				Namespace: "test-namespace",
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -1211,20 +1184,19 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 			},
 		}
 
-		podTemplateStruct, err := utils.MarshalObjToStruct(podTemplate)
-		assert.Nil(t, err)
+		DefaultPodTemplateStore.Store(&podTemplate)
 
 		task := &core.TaskTemplate{
-			Type: "test",
+			Metadata: &core.TaskMetadata{
+				PodTemplateName: "fooTemplate",
+			},
 			Target: &core.TaskTemplate_Container{
 				Container: &core.Container{
 					Command: []string{"command"},
 					Args:    []string{"{{.Input}}"},
 				},
 			},
-			PodTemplate: &core.TaskTemplate_PodTemplateStruct{
-				PodTemplateStruct: podTemplateStruct,
-			},
+			Type: "test",
 		}
 
 		taskReader := &pluginsCoreMock.TaskReader{}
@@ -1237,12 +1209,12 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 		resultPodSpec, resultObjectMeta, err := MergePodSpecWithBasePodTemplate(context.TODO(), tCtx, &podSpec, "foo")
 		assert.Nil(t, err)
 
-		// Test that template podSpec is merged
+		// test that template podSpec is merged
 		primaryContainer := resultPodSpec.Containers[0]
 		assert.Equal(t, podSpec.Containers[0].Name, primaryContainer.Name)
 		assert.Equal(t, primaryContainerTemplate.TerminationMessagePath, primaryContainer.TerminationMessagePath)
 
-		// Test that template object metadata is copied
+		// test that template object metadata is copied
 		assert.Contains(t, resultObjectMeta.Labels, "fooKey")
 		assert.Equal(t, resultObjectMeta.Labels["fooKey"], "barVal")
 	})
