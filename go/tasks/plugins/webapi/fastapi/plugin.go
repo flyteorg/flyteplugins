@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -30,7 +28,7 @@ const (
 	postMethod   string           = "POST"
 	getMethod    string           = "GET"
 	deleteMethod string           = "DELETE"
-	pluginAPI    string           = "/plugins/v1/bigquery/v1"
+	pluginAPI    string           = "plugins/v1/dummy"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -47,12 +45,12 @@ type Plugin struct {
 type ResourceWrapper struct {
 	StatusCode int
 	State      string
-	JobID      string
 }
 
 type ResourceMetaWrapper struct {
-	Token string
-	JobID string
+	OutputPrefix string
+	Token        string
+	JobID        string
 }
 
 func (p Plugin) GetConfig() webapi.PluginConfig {
@@ -68,23 +66,29 @@ func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionCo
 
 func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextReader) (webapi.ResourceMeta,
 	webapi.Resource, error) {
-	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
+	taskTemplatePath, err := taskCtx.TaskReader().Path(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	token, err := taskCtx.SecretManager().Get(ctx, p.cfg.TokenKey)
-	if err != nil {
-		return nil, nil, err
+	// TODO: Read fast api server access token
+	//token, err := taskCtx.SecretManager().Get(ctx, p.cfg.TokenKey)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+
+	body := map[string]string{
+		"inputs_path":        taskCtx.InputReader().GetInputPath().String(),
+		"task_template_path": taskTemplatePath.String(),
 	}
 
-	mJSON, err := json.Marshal(taskTemplate)
+	mJSON, err := json.Marshal(body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal post data: %v: %v", taskTemplate, err)
+		return nil, nil, fmt.Errorf("failed to marshal data: %v: %v", body, err)
 	}
 
-	postData := []byte(string(mJSON))
-	req, err := buildRequest(postMethod, postData, p.cfg.fastApiEndpoint, token, "")
+	postDataJson := []byte(string(mJSON))
+	req, err := buildRequest(postMethod, postDataJson, p.cfg.fastApiEndpoint, "token", "")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -104,15 +108,30 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 			"Unable to extract job_id from http response")
 	}
 
-	jobID := fmt.Sprintf("%.0f", data["job_id"])
+	jobID := fmt.Sprintf("%s", data["job_id"])
 
-	return &ResourceMetaWrapper{Token: token, JobID: jobID}, &ResourceWrapper{JobID: jobID}, nil
+	return &ResourceMetaWrapper{
+		OutputPrefix: taskCtx.OutputWriter().GetOutputPrefixPath().String(),
+		JobID:        jobID,
+		Token:        "",
+	}, &ResourceWrapper{StatusCode: resp.StatusCode}, nil
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 
-	req, err := buildRequest(getMethod, nil, p.cfg.fastApiEndpoint, exec.Token, exec.JobID)
+	body := map[string]string{
+		"output_prefix": exec.OutputPrefix,
+		"job_id":        exec.JobID,
+	}
+
+	mJSON, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal data: %v: %v", body, err)
+	}
+
+	getDataJson := []byte(string(mJSON))
+	req, err := buildRequest(getMethod, getDataJson, p.cfg.fastApiEndpoint, exec.Token, exec.JobID)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to build fast api job request [%v]", err)
 		return nil, err
@@ -128,11 +147,9 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		return nil, err
 	}
 
-	jobID := fmt.Sprintf("%.0f", data["job_id"])
 	state := fmt.Sprintf("%s", data["state"])
 	return &ResourceWrapper{
 		StatusCode: resp.StatusCode,
-		JobID:      jobID,
 		State:      state,
 	}, nil
 }
@@ -157,7 +174,6 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	resource := taskCtx.Resource().(*ResourceWrapper)
 	statusCode := resource.StatusCode
 	state := resource.State
-	// jobID := resource.JobID
 
 	if statusCode == 0 {
 		return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "No Status field set.")
@@ -175,8 +191,8 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 		switch state {
 		case "succeeded":
 			return pluginsCore.PhaseInfoSuccess(taskInfo), nil
-		//case "pending":
-		//	return core.PhaseInfoQueuedWithTaskInfo(pluginsCore.DefaultPhaseVersion, message, taskInfo), nil
+		case "failed":
+			return core.PhaseInfoFailure(string(rune(statusCode)), "failed to run the job", taskInfo), nil
 		default:
 			return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 		}
@@ -190,30 +206,16 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", statusCode)
 }
 
-func writeOutput(ctx context.Context, taskCtx webapi.StatusContext) error {
-	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
-	if err != nil {
-		return err
-	}
-	if taskTemplate.Interface == nil || taskTemplate.Interface.Outputs == nil || taskTemplate.Interface.Outputs.Variables == nil {
-		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
-		return nil
-	}
-
-	outputReader := ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
-	return taskCtx.OutputWriter().Put(ctx, outputReader)
-}
-
 func buildRequest(method string, data []byte, fastAPIEndpoint string, token string, jobID string) (*http.Request, error) {
 	var fastAPIURL string
 	// for mocking/testing purposes
 	if fastAPIEndpoint == "" {
-		fastAPIURL = fmt.Sprintf("http://backend-plugin-service:8000%v", pluginAPI)
+		fastAPIURL = fmt.Sprintf("http://127.0.0.1:8000/%v", pluginAPI)
 	} else {
 		fastAPIURL = fmt.Sprintf("%v%v", fastAPIEndpoint, pluginAPI)
 	}
 
-	if method == deleteMethod || method == getMethod {
+	if method == deleteMethod {
 		fastAPIURL = fmt.Sprintf("%v/?job_id=%v", fastAPIURL, jobID)
 	}
 
@@ -267,7 +269,7 @@ func createTaskInfo(runID, jobID, databricksInstance string) *core.TaskInfo {
 func newFastAPIPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
 		ID:                 "fastapi",
-		SupportedTaskTypes: []core.TaskType{"bigquery", "snowflake", "spark"},
+		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task", "snowflake", "spark"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
 				metricScope: iCtx.MetricsScope(),
