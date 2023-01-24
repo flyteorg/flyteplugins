@@ -22,7 +22,8 @@ type containerPodBuilder struct {
 }
 
 func (containerPodBuilder) buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error) {
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
+	//podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx) // TODO @hamersaw -remove
+	podSpec, _, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, err
 	}

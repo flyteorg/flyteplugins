@@ -3,18 +3,19 @@ package flytek8s
 import (
 	"context"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/errors"
+	pluginscore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+
 	"github.com/flyteorg/flytestdlib/logger"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
-	"k8s.io/apimachinery/pkg/util/validation"
-
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/rand"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/errors"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 const resourceGPU = "gpu"
@@ -193,17 +194,40 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	return resources
 }
 
+func BuildK8sContainer(ctx context.Context, taskContainer *core.Container, taskExecMetadata pluginscore.TaskExecutionMetadata) (*v1.Container, error) {
+	// TODO - @hamersaw - build base container
+
+	// Make the container name the same as the pod name, unless it violates K8s naming conventions
+	// Container names are subject to the DNS-1123 standard
+	containerName := taskExecMetadata.GetTaskExecutionID().GetGeneratedName()
+	if errs := validation.IsDNS1123Label(containerName); len(errs) > 0 {
+		containerName = rand.String(4)
+	}
+
+	container := &v1.Container{
+		Name:                     containerName,
+		Image:                    taskContainer.GetImage(),
+		Args:                     taskContainer.GetArgs(),
+		Command:                  taskContainer.GetCommand(),
+		Env:                      ToK8sEnvVar(taskContainer.GetEnv()),
+		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+	}
+
+	return container, nil
+}
+
 // ToK8sContainer transforms a task template target of type core.Container into a bare-bones kubernetes container, which
 // can be further modified with flyte-specific customizations specified by various static and run-time attributes.
-func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *core.TypedInterface, parameters template.Parameters) (*v1.Container, error) {
+func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *core.TypedInterface, taskExecMetadata pluginscore.TaskExecutionMetadata) (*v1.Container, error) {
+//func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *core.TypedInterface, parameters template.Parameters) (*v1.Container, error) {
 	// Perform preliminary validations
-	if parameters.TaskExecMetadata.GetOverrides() == nil {
+	if taskExecMetadata.GetOverrides() == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "platform/compiler error, overrides not set for task")
 	}
-	if parameters.TaskExecMetadata.GetOverrides() == nil || parameters.TaskExecMetadata.GetOverrides().GetResources() == nil {
+	if taskExecMetadata.GetOverrides() == nil || taskExecMetadata.GetOverrides().GetResources() == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
 	}
-	// Make the container name the same as the pod name, unless it violates K8s naming conventions
+	/*// Make the container name the same as the pod name, unless it violates K8s naming conventions
 	// Container names are subject to the DNS-1123 standard
 	containerName := parameters.TaskExecMetadata.GetTaskExecutionID().GetGeneratedName()
 	if errs := validation.IsDNS1123Label(containerName); len(errs) > 0 {
@@ -216,7 +240,13 @@ func ToK8sContainer(ctx context.Context, taskContainer *core.Container, iFace *c
 		Command:                  taskContainer.GetCommand(),
 		Env:                      ToK8sEnvVar(taskContainer.GetEnv()),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+	}*/
+	container, err := BuildK8sContainer(ctx, taskContainer, taskExecMetadata)
+	if err != nil {
+		return nil, err
 	}
+
+	// TODO @hamersaw - should be abstract this?!? right now it's duplicated in the ToK8sPod
 	if err := AddCoPilotToContainer(ctx, config.GetK8sPluginConfig().CoPilot, container, iFace, taskContainer.DataConfig); err != nil {
 		return nil, err
 	}

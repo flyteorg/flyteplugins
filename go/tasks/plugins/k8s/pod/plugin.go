@@ -5,7 +5,7 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/errors"
+	//"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -48,7 +48,7 @@ func (plugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecuti
 }
 
 func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
-	// read TaskTemplate
+	/*// read TaskTemplate
 	task, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification,
@@ -87,7 +87,19 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	// update pod metadata
 	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
 		return nil, err
+	}*/
+
+	podSpec, objectMeta, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
+	if err != nil {
+		return nil, err
 	}
+
+	// TODO @hamersaw - make sure we don't need this
+	//podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
+
+	pod := flytek8s.BuildIdentityPod()
+	pod.ObjectMeta = *objectMeta
+	pod.Spec = *podSpec
 
 	return pod, nil
 }

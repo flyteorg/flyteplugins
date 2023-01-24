@@ -69,7 +69,8 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		OutputPath:       taskCtx.OutputWriter(),
 		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
 	}
-	container, err := flytek8s.ToK8sContainer(ctx, taskTemplate.GetContainer(), taskTemplate.Interface, templateParameters)
+	//container, err := flytek8s.ToK8sContainer(ctx, taskTemplate.GetContainer(), taskTemplate.Interface, templateParameters) // TODO @hamersaw - remove
+	container, err := flytek8s.ToK8sContainer(ctx, taskTemplate.GetContainer(), taskTemplate.Interface, templateParameters.TaskExecMetadata)
 	if err != nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "Unable to create container spec: [%v]", err.Error())
 	}
