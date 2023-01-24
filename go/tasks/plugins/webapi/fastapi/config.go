@@ -57,8 +57,6 @@ type Config struct {
 
 	TokenKey string `json:"fastApiTokenKey" pflag:",Name of the key where to find Fast API access token in the secret manager."`
 
-	DatabricksInstance string `json:"databricksInstance" pflag:",Databricks workspace instance name."`
-
 	// fastApiEndpoint overrides fastapi server endpoint, only for testing
 	fastApiEndpoint string
 }

@@ -210,7 +210,7 @@ func buildRequest(method string, data []byte, fastAPIEndpoint string, token stri
 	var fastAPIURL string
 	// for mocking/testing purposes
 	if fastAPIEndpoint == "" {
-		fastAPIURL = fmt.Sprintf("http://127.0.0.1:8000/%v", pluginAPI)
+		fastAPIURL = fmt.Sprintf("http://backend-plugin-system.flyte.svc.cluster.local:8000/%v", pluginAPI)
 	} else {
 		fastAPIURL = fmt.Sprintf("%v%v", fastAPIEndpoint, pluginAPI)
 	}
