@@ -1179,8 +1179,8 @@ func TestMergeWithBasePodTemplate(t *testing.T) {
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"fooKey": "bazVal",
-						"barKey": "bazVal",
+						"fooKey": "bazValue",
+						"barKey": "bazValue",
 					},
 				},
 				Spec: v1.PodSpec{
@@ -1223,9 +1223,9 @@ func TestMergeWithBasePodTemplate(t *testing.T) {
 
 		// test that template object metadata is copied
 		assert.Contains(t, resultObjectMeta.Labels, "fooKey")
-		assert.Equal(t, resultObjectMeta.Labels["fooKey"], "barVal")
+		assert.Equal(t, resultObjectMeta.Labels["fooKey"], "barValue")
 		assert.Contains(t, resultObjectMeta.Labels, "barKey")
-		assert.Equal(t, resultObjectMeta.Labels["fooKey"], "bazVal")
+		assert.Equal(t, resultObjectMeta.Labels["barKey"], "bazValue")
 	})
 }
 

@@ -269,7 +269,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 			return nil, nil, err
 		}
 
-		resourceRequests = append(resourceRequests, container.Resources)
+		resourceRequests = append(resourceRequests, podSpec.Containers[index].Resources)
 		if container.Name == primaryContainerName {
 			primaryContainer = &podSpec.Containers[index]
 		}

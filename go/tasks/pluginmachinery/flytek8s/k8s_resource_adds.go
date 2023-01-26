@@ -2,7 +2,6 @@ package flytek8s
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -152,7 +151,6 @@ func GetPodTolerations(interruptible bool, resourceRequirements ...v1.ResourceRe
 	}
 
 	// 2. Get the tolerations for interruptible pods
-	fmt.Printf("HAMERSAW - %v\n", config.GetK8sPluginConfig().InterruptibleTolerations)
 	if interruptible {
 		tolerations = append(tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
 	}

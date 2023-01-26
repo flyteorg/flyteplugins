@@ -488,14 +488,8 @@ func TestBuildSidecarResource(t *testing.T) {
 
 	assert.Equal(t, "service-account", res.(*v1.Pod).Spec.ServiceAccountName)
 
-	assert.Len(t, res.(*v1.Pod).Spec.Tolerations, 1)
-	for _, tol := range res.(*v1.Pod).Spec.Tolerations {
-		if tol.Key == "my toleration key" {
-			assert.Equal(t, tol.Value, "my toleration value")
-		} else {
-			t.Fatalf("unexpected toleration [%+v]", tol)
-		}
-	}
+	checkTolerations(t, res, tolGPU)
+
 	// Assert resource requirements are correctly set
 	expectedCPURequest := resource.MustParse("2048m")
 	assert.Equal(t, expectedCPURequest.Value(), res.(*v1.Pod).Spec.Containers[0].Resources.Requests.Cpu().Value())
