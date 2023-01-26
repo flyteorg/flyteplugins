@@ -248,10 +248,10 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 
 	// add flyte resource customizations to containers
 	templateParameters := template.Parameters{
-		TaskExecMetadata: tCtx.TaskExecutionMetadata(),
 		Inputs:           tCtx.InputReader(),
 		OutputPath:       tCtx.OutputWriter(),
 		Task:             tCtx.TaskReader(),
+		TaskExecMetadata: tCtx.TaskExecutionMetadata(),
 	}
 
 	resourceRequests := make([]v1.ResourceRequirements, 0, len(podSpec.Containers))

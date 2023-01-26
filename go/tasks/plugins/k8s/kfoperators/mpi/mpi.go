@@ -62,18 +62,6 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	launcherReplicas := mpiTaskExtraArgs.GetNumLauncherReplicas()
 	slots := mpiTaskExtraArgs.GetSlots()
 
-	// TODO @hamersaw - remove
-	/*podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
-	if err != nil {
-		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
-	}
-
-	common.OverrideDefaultContainerName(taskCtx, podSpec, kubeflowv1.MPIJobDefaultContainerName)
-
-	podSpec, objectMeta, err := flytek8s.MergePodSpecWithBasePodTemplate(ctx, taskCtx, podSpec, kubeflowv1.MPIJobDefaultContainerName)
-	if err != nil {
-		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
-	}*/
 	podSpec, objectMeta, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())

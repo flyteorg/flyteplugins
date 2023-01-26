@@ -388,16 +388,11 @@ func TestToK8sContainer(t *testing.T) {
 	mockTaskExecMetadata.OnGetTaskExecutionID().Return(&mockTaskExecutionID)
 	mockTaskExecMetadata.OnGetPlatformResources().Return(&v1.ResourceRequirements{})
 
-	/*templateParameters := template.Parameters{
-		TaskExecMetadata: &mockTaskExecMetadata,
-	}*/
-
 	tCtx := &mocks.TaskExecutionContext{}
 	tCtx.OnTaskExecutionMetadata().Return(&mockTaskExecMetadata)
 	tCtx.OnInputReader().Return(inputReader)
 	tCtx.OnTaskReader().Return(taskReader)
 	tCtx.OnOutputWriter().Return(outputWriter)
-	//return tCtx
 
 	cfg := config.GetK8sPluginConfig()
 	allow := false
@@ -406,7 +401,6 @@ func TestToK8sContainer(t *testing.T) {
 	}
 	assert.NoError(t, config.SetK8sPluginConfig(cfg))
 
-	//container, err := ToK8sContainer(context.TODO(), taskContainer, nil, templateParameters)
 	container, err := ToK8sContainer(context.TODO(), tCtx)
 	assert.NoError(t, err)
 	assert.Equal(t, container.Image, "myimage")
