@@ -162,7 +162,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 
 		// update annotations and labels
 		objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, sidecarJob.Annotations)
-		objectMeta.Labels = utils.UnionMaps(objectMeta.Annotations, sidecarJob.Labels)
+		objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, sidecarJob.Labels)
 		objectMeta.Annotations[primaryContainerKey] = primaryContainerName
 	} else if taskTemplate.Type == "sidecar" && taskTemplate.TaskTypeVersion == 1 {
 		// handles pod tasks that marshal the pod spec to the task custom.
@@ -185,9 +185,9 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 		}
 
 		// update annotations and labels
-		if taskTemplate.GetK8SPod().Metadata != nil {
+		if taskTemplate.GetK8SPod() != nil && taskTemplate.GetK8SPod().Metadata != nil {
 			objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Annotations)
-			objectMeta.Labels = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Labels)
+			objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, taskTemplate.GetK8SPod().Metadata.Labels)
 		}
 		objectMeta.Annotations[primaryContainerKey] = primaryContainerName
 	} else if taskTemplate.GetK8SPod() != nil {
@@ -218,7 +218,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 		// update annotations and labels
 		if taskTemplate.GetK8SPod().Metadata != nil {
 			objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Annotations)
-			objectMeta.Labels = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Labels)
+			objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, taskTemplate.GetK8SPod().Metadata.Labels)
 		}
 		objectMeta.Annotations[primaryContainerKey] = primaryContainerName
 	} else {
@@ -276,7 +276,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	}
 
 	if primaryContainer == nil {
-		return nil, nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "invalid Sidecar task, primary container [%s] not defined", primaryContainerName)
+		return nil, nil, pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "invalid TaskSpecification, primary container [%s] not defined", primaryContainerName)
 	}
 
 	// add copilot configuration to primaryContainer and PodSpec (if necessary)

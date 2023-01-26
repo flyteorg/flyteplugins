@@ -226,7 +226,7 @@ func ToK8sContainer(ctx context.Context, tCtx pluginscore.TaskExecutionContext) 
 	}
 
 	// validate arguments
-	if taskTemplate.GetContainer == nil {
+	if taskTemplate.GetContainer() == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "unable to create container with no definition in TaskTemplate")
 	}
 	if tCtx.TaskExecutionMetadata().GetOverrides() == nil || tCtx.TaskExecutionMetadata().GetOverrides().GetResources() == nil {

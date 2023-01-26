@@ -324,7 +324,7 @@ func toK8sPodInterruptible(t *testing.T) {
 		},
 	})
 
-	p, err := ToK8sPodSpec(ctx, x)
+	p, _, err := ToK8sPodSpec(ctx, x)
 	assert.NoError(t, err)
 	assert.Len(t, p.Tolerations, 2)
 	assert.Equal(t, "x/flyte", p.Tolerations[1].Key)
@@ -391,7 +391,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 1)
 	})
@@ -408,7 +408,7 @@ func TestToK8sPod(t *testing.T) {
 			},
 		})
 
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.Equal(t, len(p.Tolerations), 0)
 		assert.Equal(t, "some-acceptable-name", p.Containers[0].Name)
@@ -435,7 +435,7 @@ func TestToK8sPod(t *testing.T) {
 			DefaultMemoryRequest: resource.MustParse("1024Mi"),
 		}))
 
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(p.NodeSelector))
 		assert.Equal(t, "myScheduler", p.SchedulerName)
@@ -452,7 +452,7 @@ func TestToK8sPod(t *testing.T) {
 		}))
 
 		x := dummyExecContext(&v1.ResourceRequirements{})
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.NotNil(t, p.SecurityContext)
 		assert.Equal(t, *p.SecurityContext.RunAsGroup, v)
@@ -464,7 +464,7 @@ func TestToK8sPod(t *testing.T) {
 			EnableHostNetworkingPod: &enabled,
 		}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.True(t, p.HostNetwork)
 	})
@@ -475,7 +475,7 @@ func TestToK8sPod(t *testing.T) {
 			EnableHostNetworkingPod: &enabled,
 		}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.False(t, p.HostNetwork)
 	})
@@ -483,7 +483,7 @@ func TestToK8sPod(t *testing.T) {
 	t.Run("skipSettingHostNetwork", func(t *testing.T) {
 		assert.NoError(t, config.SetK8sPluginConfig(&config.K8sPluginConfig{}))
 		x := dummyExecContext(&v1.ResourceRequirements{})
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.False(t, p.HostNetwork)
 	})
@@ -517,7 +517,7 @@ func TestToK8sPod(t *testing.T) {
 		}))
 
 		x := dummyExecContext(&v1.ResourceRequirements{})
-		p, err := ToK8sPodSpec(ctx, x)
+		p, _, err := ToK8sPodSpec(ctx, x)
 		assert.NoError(t, err)
 		assert.NotNil(t, p.DNSConfig)
 		assert.Equal(t, []string{"8.8.8.8", "8.8.4.4"}, p.DNSConfig.Nameservers)
@@ -1129,7 +1129,7 @@ func TestGetPodTemplate(t *testing.T) {
 	})
 }
 
-func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
+func TestMergeWithBasePodTemplate(t *testing.T) {
 	podSpec := v1.PodSpec{
 		Containers: []v1.Container{
 			v1.Container{
@@ -1138,6 +1138,12 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 			v1.Container{
 				Name: "bar",
 			},
+		},
+	}
+
+	objectMeta := metav1.ObjectMeta{
+		Labels: map[string]string{
+			"fooKey": "barValue",
 		},
 	}
 
@@ -1153,10 +1159,10 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 		tCtx.OnTaskExecutionMetadata().Return(dummyTaskExecutionMetadata(&v1.ResourceRequirements{}))
 		tCtx.OnTaskReader().Return(taskReader)
 
-		resultPodSpec, resultObjectMeta, err := MergePodSpecWithBasePodTemplate(context.TODO(), tCtx, &podSpec, "foo")
+		resultPodSpec, resultObjectMeta, err := MergeWithBasePodTemplate(context.TODO(), tCtx, &podSpec, &objectMeta, "foo")
 		assert.Nil(t, err)
 		assert.True(t, reflect.DeepEqual(podSpec, *resultPodSpec))
-		assert.True(t, reflect.DeepEqual(metav1.ObjectMeta{}, *resultObjectMeta))
+		assert.True(t, reflect.DeepEqual(objectMeta, *resultObjectMeta))
 	})
 
 	t.Run("BasePodTemplateExists", func(t *testing.T) {
@@ -1173,7 +1179,8 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"fooKey": "barVal",
+						"fooKey": "bazVal",
+						"barKey": "bazVal",
 					},
 				},
 				Spec: v1.PodSpec{
@@ -1206,7 +1213,7 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 		tCtx.OnTaskExecutionMetadata().Return(dummyTaskExecutionMetadata(&v1.ResourceRequirements{}))
 		tCtx.OnTaskReader().Return(taskReader)
 
-		resultPodSpec, resultObjectMeta, err := MergePodSpecWithBasePodTemplate(context.TODO(), tCtx, &podSpec, "foo")
+		resultPodSpec, resultObjectMeta, err := MergeWithBasePodTemplate(context.TODO(), tCtx, &podSpec, &objectMeta, "foo")
 		assert.Nil(t, err)
 
 		// test that template podSpec is merged
@@ -1217,6 +1224,8 @@ func TestMergePodSpecWithBasePodTemplate(t *testing.T) {
 		// test that template object metadata is copied
 		assert.Contains(t, resultObjectMeta.Labels, "fooKey")
 		assert.Equal(t, resultObjectMeta.Labels["fooKey"], "barVal")
+		assert.Contains(t, resultObjectMeta.Labels, "barKey")
+		assert.Equal(t, resultObjectMeta.Labels["fooKey"], "bazVal")
 	})
 }
 
