@@ -7,9 +7,6 @@ import (
 	"strings"
 	"time"
 
-	//"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
-	//"github.com/flyteorg/flytestdlib/logger"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
