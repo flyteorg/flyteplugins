@@ -9,25 +9,27 @@ import (
 	"path"
 	"testing"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	errors2 "github.com/flyteorg/flyteplugins/go/tasks/errors"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
+	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
-
-	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	pluginsCoreMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	pluginsIOMock "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const ResourceNvidiaGPU = "nvidia.com/gpu"
@@ -40,7 +42,7 @@ var sidecarResourceRequirements = &v1.ResourceRequirements{
 	},
 }
 
-func getSidecarTaskTemplateForTest(sideCarJob sidecarJob) *core.TaskTemplate {
+func getSidecarTaskTemplateForTest(sideCarJob flytek8s.SidecarJob) *core.TaskTemplate {
 	sidecarJSON, err := json.Marshal(&sideCarJob)
 	if err != nil {
 		panic(err)
@@ -202,7 +204,7 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 		Type:            SidecarTaskType,
 		TaskTypeVersion: 2,
 		Config: map[string]string{
-			PrimaryContainerKey: "primary container",
+			flytek8s.PrimaryContainerKey: "primary container",
 		},
 		Target: &core.TaskTemplate_K8SPod{
 			K8SPod: &core.K8SPod{
@@ -245,8 +247,8 @@ func TestBuildSidecarResource_TaskType2(t *testing.T) {
 	res, err := DefaultPodPlugin.BuildResource(context.TODO(), taskCtx)
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{
-		PrimaryContainerKey: "primary container",
-		"anno":              "bar",
+		flytek8s.PrimaryContainerKey: "primary container",
+		"anno":                       "bar",
 	}, res.GetAnnotations())
 	assert.EqualValues(t, map[string]string{
 		"label": "foo",
@@ -286,7 +288,7 @@ func TestBuildSidecarResource_TaskType2_Invalid_Spec(t *testing.T) {
 		Type:            SidecarTaskType,
 		TaskTypeVersion: 2,
 		Config: map[string]string{
-			PrimaryContainerKey: "primary container",
+			flytek8s.PrimaryContainerKey: "primary container",
 		},
 		Target: &core.TaskTemplate_K8SPod{
 			K8SPod: &core.K8SPod{
@@ -325,7 +327,7 @@ func TestBuildSidecarResource_TaskType1(t *testing.T) {
 		Custom:          structObj,
 		TaskTypeVersion: 1,
 		Config: map[string]string{
-			PrimaryContainerKey: "primary container",
+			flytek8s.PrimaryContainerKey: "primary container",
 		},
 	}
 
@@ -354,7 +356,7 @@ func TestBuildSidecarResource_TaskType1(t *testing.T) {
 	res, err := DefaultPodPlugin.BuildResource(context.TODO(), taskCtx)
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{
-		PrimaryContainerKey: "primary container",
+		flytek8s.PrimaryContainerKey: "primary container",
 	}, res.GetAnnotations())
 	assert.EqualValues(t, map[string]string{}, res.GetLabels())
 
@@ -471,8 +473,8 @@ func TestBuildSidecarResource(t *testing.T) {
 	res, err := DefaultPodPlugin.BuildResource(context.TODO(), taskCtx)
 	assert.Nil(t, err)
 	assert.EqualValues(t, map[string]string{
-		PrimaryContainerKey: "a container",
-		"a1":                "a1",
+		flytek8s.PrimaryContainerKey: "a container",
+		"a1":                         "a1",
 	}, res.GetAnnotations())
 
 	assert.EqualValues(t, map[string]string{
@@ -504,7 +506,7 @@ func TestBuildSidecarResource(t *testing.T) {
 }
 
 func TestBuildSidecarReosurceMissingAnnotationsAndLabels(t *testing.T) {
-	sideCarJob := sidecarJob{
+	sideCarJob := flytek8s.SidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{
@@ -525,7 +527,7 @@ func TestBuildSidecarReosurceMissingAnnotationsAndLabels(t *testing.T) {
 }
 
 func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
-	sideCarJob := sidecarJob{
+	sideCarJob := flytek8s.SidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{
@@ -544,7 +546,7 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 }
 
 func TestGetTaskSidecarStatus(t *testing.T) {
-	sideCarJob := sidecarJob{
+	sideCarJob := flytek8s.SidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{
@@ -571,7 +573,7 @@ func TestGetTaskSidecarStatus(t *testing.T) {
 			},
 		}
 		res.SetAnnotations(map[string]string{
-			PrimaryContainerKey: "PrimaryContainer",
+			flytek8s.PrimaryContainerKey: "PrimaryContainer",
 		})
 		taskCtx := getDummySidecarTaskContext(task, sidecarResourceRequirements)
 		phaseInfo, err := DefaultPodPlugin.GetTaskPhase(context.TODO(), taskCtx, res)
@@ -598,7 +600,7 @@ func TestDemystifiedSidecarStatus_PrimaryFailed(t *testing.T) {
 		},
 	}
 	res.SetAnnotations(map[string]string{
-		PrimaryContainerKey: "Primary",
+		flytek8s.PrimaryContainerKey: "Primary",
 	})
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, sidecarResourceRequirements)
 	phaseInfo, err := DefaultPodPlugin.GetTaskPhase(context.TODO(), taskCtx, res)
@@ -623,7 +625,7 @@ func TestDemystifiedSidecarStatus_PrimarySucceeded(t *testing.T) {
 		},
 	}
 	res.SetAnnotations(map[string]string{
-		PrimaryContainerKey: "Primary",
+		flytek8s.PrimaryContainerKey: "Primary",
 	})
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, sidecarResourceRequirements)
 	phaseInfo, err := DefaultPodPlugin.GetTaskPhase(context.TODO(), taskCtx, res)
@@ -648,7 +650,7 @@ func TestDemystifiedSidecarStatus_PrimaryRunning(t *testing.T) {
 		},
 	}
 	res.SetAnnotations(map[string]string{
-		PrimaryContainerKey: "Primary",
+		flytek8s.PrimaryContainerKey: "Primary",
 	})
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, sidecarResourceRequirements)
 	phaseInfo, err := DefaultPodPlugin.GetTaskPhase(context.TODO(), taskCtx, res)
@@ -668,7 +670,7 @@ func TestDemystifiedSidecarStatus_PrimaryMissing(t *testing.T) {
 		},
 	}
 	res.SetAnnotations(map[string]string{
-		PrimaryContainerKey: "Primary",
+		flytek8s.PrimaryContainerKey: "Primary",
 	})
 	taskCtx := getDummySidecarTaskContext(&core.TaskTemplate{}, sidecarResourceRequirements)
 	phaseInfo, err := DefaultPodPlugin.GetTaskPhase(context.TODO(), taskCtx, res)

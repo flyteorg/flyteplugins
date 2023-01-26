@@ -3,9 +3,6 @@ package pod
 import (
 	"context"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
-	//"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -19,28 +16,16 @@ import (
 )
 
 const (
-	podTaskType         = "pod"
-	PrimaryContainerKey = "primary_container_name"
+	ContainerTaskType    = "container"
+	podTaskType          = "pod"
+	PythonTaskType       = "python-task"
+	RawContainerTaskType = "raw-container"
+	SidecarTaskType      = "sidecar"
 )
 
-var (
-	DefaultPodPlugin = plugin{
-		defaultPodBuilder: containerPodBuilder{},
-		podBuilders: map[string]podBuilder{
-			SidecarTaskType: sidecarPodBuilder{},
-		},
-	}
-)
-
-type podBuilder interface {
-	buildPodSpec(ctx context.Context, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, error)
-	getPrimaryContainerName(task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) (string, error)
-	updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error
-}
+var DefaultPodPlugin = plugin{}
 
 type plugin struct {
-	defaultPodBuilder podBuilder
-	podBuilders       map[string]podBuilder
 }
 
 func (plugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecutionMetadata) (client.Object, error) {
@@ -48,54 +33,12 @@ func (plugin) BuildIdentityResource(_ context.Context, _ pluginsCore.TaskExecuti
 }
 
 func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
-	/*// read TaskTemplate
-	task, err := taskCtx.TaskReader().Read(ctx)
-	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification,
-			"TaskSpecification cannot be read, Err: [%v]", err.Error())
-	}
-
-	// initialize PodBuilder
-	builder, exists := p.podBuilders[task.Type]
-	if !exists {
-		builder = p.defaultPodBuilder
-	}
-
-	// construct initial podSpec
-	podSpec, err := builder.buildPodSpec(ctx, task, taskCtx)
-	if err != nil {
-		return nil, err
-	}
-
-	podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
-
-	// merge podSpec with configuration PodTemplate
-	primaryContainerName, err := builder.getPrimaryContainerName(task, taskCtx)
-	if err != nil {
-		return nil, err
-	}
-
-	podSpec, objectMeta, err := flytek8s.MergePodSpecWithBasePodTemplate(ctx, taskCtx, podSpec, primaryContainerName)
-	if err != nil {
-		return nil, err
-	}
-
-	pod := flytek8s.BuildIdentityPod()
-	pod.ObjectMeta = *objectMeta
-	pod.Spec = *podSpec
-
-	// update pod metadata
-	if err = builder.updatePodMetadata(ctx, pod, task, taskCtx); err != nil {
-		return nil, err
-	}*/
-
 	podSpec, objectMeta, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO @hamersaw - make sure we don't need this
-	//podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
+	podSpec.ServiceAccountName = flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 
 	pod := flytek8s.BuildIdentityPod()
 	pod.ObjectMeta = *objectMeta
@@ -142,7 +85,7 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		return pluginsCore.PhaseInfoUndefined, nil
 	}
 
-	primaryContainerName, exists := r.GetAnnotations()[PrimaryContainerKey]
+	primaryContainerName, exists := r.GetAnnotations()[flytek8s.PrimaryContainerKey]
 	if !exists {
 		// if the primary container annotation dos not exist, then the task requires all containers
 		// to succeed to declare success. therefore, if the pod is not in one of the above states we

@@ -27,14 +27,15 @@ const PodKind = "pod"
 const OOMKilled = "OOMKilled"
 const Interrupted = "Interrupted"
 const SIGKILL = 137
+
 const defaultContainerTemplateName = "default"
 const primaryContainerTemplateName = "primary"
-const primaryContainerKey = "primary_container_name"
+const PrimaryContainerKey = "primary_container_name"
 
 // Why, you might wonder do we recreate the generated go struct generated from the plugins.SidecarJob proto? Because
 // although we unmarshal the task custom json, the PodSpec itself is not generated from a proto definition,
 // but a proper go struct defined in k8s libraries. Therefore we only unmarshal the sidecar as a json, rather than jsonpb.
-type sidecarJob struct {
+type SidecarJob struct {
 	PodSpec              *v1.PodSpec
 	PrimaryContainerName string
 	Annotations          map[string]string
@@ -145,7 +146,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 		}
 	} else if taskTemplate.Type == "sidecar" && taskTemplate.TaskTypeVersion == 0 {
 		// handles pod tasks when they are defined as Sidecar tasks and marshal the podspec using k8s proto.
-		sidecarJob := sidecarJob{}
+		sidecarJob := SidecarJob{}
 		err := utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &sidecarJob)
 		if err != nil {
 			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
@@ -163,7 +164,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 		// update annotations and labels
 		objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, sidecarJob.Annotations)
 		objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, sidecarJob.Labels)
-		objectMeta.Annotations[primaryContainerKey] = primaryContainerName
+		objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
 	} else if taskTemplate.Type == "sidecar" && taskTemplate.TaskTypeVersion == 1 {
 		// handles pod tasks that marshal the pod spec to the task custom.
 		err := utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &podSpec)
@@ -175,13 +176,13 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 		// get primary container name
 		if len(taskTemplate.GetConfig()) == 0 {
 			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
+				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", PrimaryContainerKey)
 		}
 
 		var ok bool
-		if primaryContainerName, ok = taskTemplate.GetConfig()[primaryContainerKey]; !ok {
+		if primaryContainerName, ok = taskTemplate.GetConfig()[PrimaryContainerKey]; !ok {
 			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, taskTemplate.GetConfig())
+				"invalid TaskSpecification, config missing [%s] key in [%v]", PrimaryContainerKey, taskTemplate.GetConfig())
 		}
 
 		// update annotations and labels
@@ -189,7 +190,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 			objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Annotations)
 			objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, taskTemplate.GetK8SPod().Metadata.Labels)
 		}
-		objectMeta.Annotations[primaryContainerKey] = primaryContainerName
+		objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
 	} else if taskTemplate.GetK8SPod() != nil {
 		// handles pod tasks that marshal the pod spec to the k8s_pod task target.
 		if taskTemplate.GetK8SPod().PodSpec == nil {
@@ -206,13 +207,13 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 		// get primary container name
 		if len(taskTemplate.GetConfig()) == 0 {
 			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", primaryContainerKey)
+				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", PrimaryContainerKey)
 		}
 
 		var ok bool
-		if primaryContainerName, ok = taskTemplate.GetConfig()[primaryContainerKey]; !ok {
+		if primaryContainerName, ok = taskTemplate.GetConfig()[PrimaryContainerKey]; !ok {
 			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config missing [%s] key in [%v]", primaryContainerKey, taskTemplate.GetConfig())
+				"invalid TaskSpecification, config missing [%s] key in [%v]", PrimaryContainerKey, taskTemplate.GetConfig())
 		}
 
 		// update annotations and labels
@@ -220,7 +221,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 			objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Annotations)
 			objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, taskTemplate.GetK8SPod().Metadata.Labels)
 		}
-		objectMeta.Annotations[primaryContainerKey] = primaryContainerName
+		objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
 	} else {
 		return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
 			"invalid TaskSpecification, unable to determine Pod configuration")
@@ -257,7 +258,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	var primaryContainer *v1.Container
 	for index, container := range podSpec.Containers {
 		var resourceMode = ResourceCustomizationModeAssignResources
-		if containerName, ok := objectMeta.Annotations[primaryContainerKey]; ok {
+		if containerName, ok := objectMeta.Annotations[PrimaryContainerKey]; ok {
 			if container.Name == containerName {
 				resourceMode = ResourceCustomizationModeMergeExistingResources
 			} else {
