@@ -126,7 +126,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 	var podSpec *v1.PodSpec
 	objectMeta := metav1.ObjectMeta{
 		Annotations: make(map[string]string),
-		Labels: make(map[string]string),
+		Labels:      make(map[string]string),
 	}
 	primaryContainerName := ""
 
@@ -256,7 +256,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	resourceRequests := make([]v1.ResourceRequirements, 0, len(podSpec.Containers))
 	var primaryContainer *v1.Container
 	for index, container := range podSpec.Containers {
-		var resourceMode = ResourceCustomizationModeAssignResources 
+		var resourceMode = ResourceCustomizationModeAssignResources
 		if containerName, ok := objectMeta.Annotations[primaryContainerKey]; ok {
 			if container.Name == containerName {
 				resourceMode = ResourceCustomizationModeMergeExistingResources
@@ -286,7 +286,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 			return nil, nil, err
 		}
 
-		if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, podSpec, taskTemplate.GetInterface(), 
+		if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, podSpec, taskTemplate.GetInterface(),
 			tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), taskTemplate.GetContainer().GetDataConfig()); err != nil {
 			return nil, nil, err
 		}

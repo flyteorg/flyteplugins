@@ -251,7 +251,7 @@ func ToK8sContainer(ctx context.Context, tCtx pluginscore.TaskExecutionContext) 
 		Task:             tCtx.TaskReader(),
 	}
 
-	if err := AddFlyteCustomizationsToContainer(ctx, templateParameters, ResourceCustomizationModeAssignResources , container); err != nil {
+	if err := AddFlyteCustomizationsToContainer(ctx, templateParameters, ResourceCustomizationModeAssignResources, container); err != nil {
 		return nil, err
 	}
 
