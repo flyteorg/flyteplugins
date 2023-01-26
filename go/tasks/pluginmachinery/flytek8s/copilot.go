@@ -24,8 +24,6 @@ const (
 	flyteInitContainerName    = "downloader"
 )
 
-var pTraceCapability = v1.Capability("SYS_PTRACE")
-
 func FlyteCoPilotContainer(name string, cfg config.FlyteCoPilotConfig, args []string, volumeMounts ...v1.VolumeMount) (v1.Container, error) {
 	cpu, err := resource.ParseQuantity(cfg.CPU)
 	if err != nil {
@@ -88,7 +86,8 @@ func CopilotCommandArgs(storageConfig *storage.Config) []string {
 	}...)
 }
 
-func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference, startTimeout time.Duration, iface *core.TypedInterface) ([]string, error) {
+func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storage.DataReference,
+	startTimeout time.Duration, finishTimeout time.Duration, iface *core.TypedInterface) ([]string, error) {
 	if iface == nil {
 		return nil, fmt.Errorf("interface is required for CoPilot Sidecar")
 	}
@@ -96,7 +95,7 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal given core.TypedInterface")
 	}
-	return []string{
+	command := []string{
 		"sidecar",
 		"--start-timeout",
 		startTimeout.String(),
@@ -108,7 +107,12 @@ func SidecarCommandArgs(fromLocalPath string, outputPrefix, rawOutputPath storag
 		fromLocalPath,
 		"--interface",
 		base64.StdEncoding.EncodeToString(b),
-	}, nil
+	}
+	// Keep backward compatibility here since older version of copilot doesn't have this flag.
+	if finishTimeout.String() != time.Duration(0).String() {
+		command = append(command, "--finish-timeout", finishTimeout.String())
+	}
+	return command, nil
 }
 
 func DownloadCommandArgs(fromInputsPath, outputPrefix storage.DataReference, toLocalPath string, format core.DataLoadingConfig_LiteralMapFormat, inputInterface *core.VariableMap) ([]string, error) {
@@ -166,13 +170,6 @@ func AddCoPilotToContainer(ctx context.Context, cfg config.FlyteCoPilotConfig, c
 		return nil
 	}
 	logger.Infof(ctx, "Enabling CoPilot on main container [%s]", c.Name)
-	if c.SecurityContext == nil {
-		c.SecurityContext = &v1.SecurityContext{}
-	}
-	if c.SecurityContext.Capabilities == nil {
-		c.SecurityContext.Capabilities = &v1.Capabilities{}
-	}
-	c.SecurityContext.Capabilities.Add = append(c.SecurityContext.Capabilities.Add, pTraceCapability)
 
 	if iFace != nil {
 		if iFace.Inputs != nil {
@@ -207,8 +204,6 @@ func AddCoPilotToPod(ctx context.Context, cfg config.FlyteCoPilotConfig, coPilot
 	}
 
 	logger.Infof(ctx, "CoPilot Enabled for task [%s]", taskExecMetadata.GetTaskExecutionID().GetID().TaskId.Name)
-	shareProcessNamespaceEnabled := true
-	coPilotPod.ShareProcessNamespace = &shareProcessNamespaceEnabled
 	if iFace != nil {
 		if iFace.Inputs != nil {
 			inPath := cfg.DefaultInputDataPath
@@ -258,7 +253,7 @@ func AddCoPilotToPod(ctx context.Context, cfg config.FlyteCoPilotConfig, coPilot
 			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, size))
 
 			// Lets add the Inputs init container
-			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, iFace)
+			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, cfg.FinishTimeout.Duration, iFace)
 			if err != nil {
 				return err
 			}

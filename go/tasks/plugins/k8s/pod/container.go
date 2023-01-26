@@ -39,5 +39,11 @@ func (containerPodBuilder) getPrimaryContainerName(task *core.TaskTemplate, task
 }
 
 func (containerPodBuilder) updatePodMetadata(ctx context.Context, pod *v1.Pod, task *core.TaskTemplate, taskCtx pluginsCore.TaskExecutionContext) error {
+	pilot := task.GetContainer().GetDataConfig()
+	if pilot == nil || !pilot.Enabled || task.Interface.Outputs == nil {
+		return nil
+	}
+	pod.Annotations = make(map[string]string)
+	pod.Annotations[RawContainerName] = pod.Spec.Containers[0].Name
 	return nil
 }

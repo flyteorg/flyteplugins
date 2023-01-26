@@ -51,6 +51,7 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 
 	tID := &pluginsCoreMock.TaskExecutionID{}
 	tID.On("GetID").Return(core.TaskExecutionIdentifier{
+		TaskId: &core.Identifier{Name: "flyte"},
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
 				Name:    "my_name",
@@ -69,17 +70,7 @@ func dummyContainerTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.
 	return taskMetadata
 }
 
-func dummyContainerTaskContext(resources *v1.ResourceRequirements, command []string, args []string) pluginsCore.TaskExecutionContext {
-	task := &core.TaskTemplate{
-		Type: "test",
-		Target: &core.TaskTemplate_Container{
-			Container: &core.Container{
-				Command: command,
-				Args:    args,
-			},
-		},
-	}
-
+func dummyContainerTaskContext(resources *v1.ResourceRequirements, template *core.TaskTemplate, command []string, args []string) pluginsCore.TaskExecutionContext {
 	dummyTaskMetadata := dummyContainerTaskMetadata(resources)
 	taskCtx := &pluginsCoreMock.TaskExecutionContext{}
 	inputReader := &pluginsIOMock.InputReader{}
@@ -98,7 +89,7 @@ func dummyContainerTaskContext(resources *v1.ResourceRequirements, command []str
 	taskCtx.OnOutputWriter().Return(outputReader)
 
 	taskReader := &pluginsCoreMock.TaskReader{}
-	taskReader.OnReadMatch(mock.Anything).Return(task, nil)
+	taskReader.OnReadMatch(mock.Anything).Return(template, nil)
 	taskCtx.OnTaskReader().Return(taskReader)
 
 	taskCtx.OnTaskExecutionMetadata().Return(dummyTaskMetadata)
@@ -118,25 +109,63 @@ func TestContainerTaskExecutor_BuildIdentityResource(t *testing.T) {
 func TestContainerTaskExecutor_BuildResource(t *testing.T) {
 	command := []string{"command"}
 	args := []string{"{{.Input}}"}
-	taskCtx := dummyContainerTaskContext(containerResourceRequirements, command, args)
+	task := &core.TaskTemplate{
+		Type: "test",
+		Target: &core.TaskTemplate_Container{
+			Container: &core.Container{
+				Command:    command,
+				Args:       args,
+				DataConfig: &core.DataLoadingConfig{Enabled: true},
+			},
+		},
+		Interface: &core.TypedInterface{Outputs: &core.VariableMap{}},
+	}
 
-	r, err := DefaultPodPlugin.BuildResource(context.TODO(), taskCtx)
-	assert.NoError(t, err)
-	assert.NotNil(t, r)
-	j, ok := r.(*v1.Pod)
-	assert.True(t, ok)
+	t.Run("Enable copilot", func(t *testing.T) {
+		taskCtx := dummyContainerTaskContext(containerResourceRequirements, task, command, args)
+		r, err := DefaultPodPlugin.BuildResource(context.TODO(), taskCtx)
+		assert.NoError(t, err)
+		assert.NotNil(t, r)
+		j, ok := r.(*v1.Pod)
+		assert.True(t, ok)
 
-	assert.NotEmpty(t, j.Spec.Containers)
-	assert.Equal(t, containerResourceRequirements.Limits[v1.ResourceCPU], j.Spec.Containers[0].Resources.Limits[v1.ResourceCPU])
+		assert.NotEmpty(t, j.Spec.Containers)
+		assert.Equal(t, containerResourceRequirements.Limits[v1.ResourceCPU], j.Spec.Containers[0].Resources.Limits[v1.ResourceCPU])
 
-	// TODO: Once configurable, test when setting storage is supported on the cluster vs not.
-	storageRes := j.Spec.Containers[0].Resources.Limits[v1.ResourceStorage]
-	assert.Equal(t, int64(0), (&storageRes).Value())
+		// TODO: Once configurable, test when setting storage is supported on the cluster vs not.
+		storageRes := j.Spec.Containers[0].Resources.Limits[v1.ResourceStorage]
+		assert.Equal(t, int64(0), (&storageRes).Value())
 
-	assert.Equal(t, command, j.Spec.Containers[0].Command)
-	assert.Equal(t, []string{"test-data-reference"}, j.Spec.Containers[0].Args)
+		assert.Equal(t, command, j.Spec.Containers[0].Command)
+		assert.Equal(t, []string{"test-data-reference"}, j.Spec.Containers[0].Args)
 
-	assert.Equal(t, "service-account", j.Spec.ServiceAccountName)
+		assert.Equal(t, "service-account", j.Spec.ServiceAccountName)
+		assert.NotNil(t, j.Annotations)
+	})
+
+	t.Run("Disable copilot", func(t *testing.T) {
+		task.GetContainer().DataConfig.Enabled = false
+		taskCtx := dummyContainerTaskContext(containerResourceRequirements, task, command, args)
+		r, err := DefaultPodPlugin.BuildResource(context.TODO(), taskCtx)
+		assert.NoError(t, err)
+		assert.NotNil(t, r)
+		j, ok := r.(*v1.Pod)
+		assert.True(t, ok)
+
+		assert.NotEmpty(t, j.Spec.Containers)
+		assert.Equal(t, containerResourceRequirements.Limits[v1.ResourceCPU], j.Spec.Containers[0].Resources.Limits[v1.ResourceCPU])
+
+		// TODO: Once configurable, test when setting storage is supported on the cluster vs not.
+		storageRes := j.Spec.Containers[0].Resources.Limits[v1.ResourceStorage]
+		assert.Equal(t, int64(0), (&storageRes).Value())
+
+		assert.Equal(t, command, j.Spec.Containers[0].Command)
+		assert.Equal(t, []string{"test-data-reference"}, j.Spec.Containers[0].Args)
+
+		assert.Equal(t, "service-account", j.Spec.ServiceAccountName)
+		assert.Nil(t, j.Annotations)
+	})
+
 }
 
 func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
@@ -190,6 +219,18 @@ func TestContainerTaskExecutor_GetTaskStatus(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, phaseInfo)
 		assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
+	})
+
+	t.Run("raw container failed", func(t *testing.T) {
+		pod := &v1.Pod{
+			Status: v1.PodStatus{},
+		}
+		pod.Annotations = map[string]string{RawContainerName: "raw-container"}
+		pod.Status.ContainerStatuses = []v1.ContainerStatus{{Name: pod.Annotations[RawContainerName], State: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{ExitCode: 1}}}}
+		phaseInfo, err := DefaultPodPlugin.GetTaskPhase(ctx, nil, pod)
+		assert.NoError(t, err)
+		assert.NotNil(t, phaseInfo)
+		assert.Equal(t, pluginsCore.PhaseRetryableFailure, phaseInfo.Phase())
 	})
 }
 

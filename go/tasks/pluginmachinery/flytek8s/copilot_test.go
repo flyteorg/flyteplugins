@@ -143,7 +143,7 @@ func TestDownloadCommandArgs(t *testing.T) {
 }
 
 func TestSidecarCommandArgs(t *testing.T) {
-	_, err := SidecarCommandArgs("", "", "", time.Second*10, nil)
+	_, err := SidecarCommandArgs("", "", "", time.Second*10, time.Duration(0), nil)
 	assert.Error(t, err)
 
 	iFace := &core.TypedInterface{
@@ -154,15 +154,18 @@ func TestSidecarCommandArgs(t *testing.T) {
 			},
 		},
 	}
-	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, iFace)
+	d, err := SidecarCommandArgs("/from", "s3://output-meta", "s3://raw-output", time.Second*10, time.Second*10, iFace)
 	assert.NoError(t, err)
-	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "<interface>"}
+	expected := []string{"sidecar", "--start-timeout", "10s", "--to-raw-output", "s3://raw-output", "--to-output-prefix", "s3://output-meta", "--from-local-dir", "/from", "--interface", "<interface>", "--finish-timeout", "10s"}
 	if assert.Len(t, d, len(expected)) {
-		for i := 0; i < len(expected)-1; i++ {
+		for i := 0; i < len(expected)-3; i++ {
+			assert.Equal(t, expected[i], d[i])
+		}
+		for i := len(expected) - 2; i < len(expected); i++ {
 			assert.Equal(t, expected[i], d[i])
 		}
 		// We cannot compare the last one, as the interface is a map the order is not guaranteed.
-		ifaceB64 := d[len(expected)-1]
+		ifaceB64 := d[len(expected)-3]
 		serIFaceBytes, err := base64.StdEncoding.DecodeString(ifaceB64)
 		if assert.NoError(t, err) {
 			if2 := &core.TypedInterface{}
@@ -218,34 +221,6 @@ func assertContainerHasVolumeMounts(t *testing.T, cfg config.FlyteCoPilotConfig,
 	} else {
 		assert.Len(t, c.VolumeMounts, 0)
 	}
-}
-
-func assertContainerHasPTrace(t *testing.T, c *v1.Container) {
-	assert.NotNil(t, c.SecurityContext)
-	assert.NotNil(t, c.SecurityContext.Capabilities)
-	assert.NotNil(t, c.SecurityContext.Capabilities.Add)
-	capFound := false
-	for _, cap := range c.SecurityContext.Capabilities.Add {
-		if cap == pTraceCapability {
-			capFound = true
-		}
-	}
-	assert.True(t, capFound, "ptrace not found?")
-}
-
-func assertPodHasSNPS(t *testing.T, pod *v1.PodSpec) {
-	assert.NotNil(t, pod.ShareProcessNamespace)
-	assert.True(t, *pod.ShareProcessNamespace)
-
-	found := false
-	for _, c := range pod.Containers {
-		if c.Name == "test" {
-			found = true
-			cntr := c
-			assertContainerHasPTrace(t, &cntr)
-		}
-	}
-	assert.False(t, found, "user container absent?")
 }
 
 func assertPodHasCoPilot(t *testing.T, cfg config.FlyteCoPilotConfig, pilot *core.DataLoadingConfig, iFace *core.TypedInterface, pod *v1.PodSpec) {
@@ -360,7 +335,6 @@ func TestAddCoPilotToContainer(t *testing.T) {
 		pilot := &core.DataLoadingConfig{Enabled: true}
 		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, nil, pilot))
 		assertContainerHasVolumeMounts(t, cfg, pilot, nil, &c)
-		assertContainerHasPTrace(t, &c)
 	})
 
 	t.Run("happy-iface-empty-config", func(t *testing.T) {
@@ -381,7 +355,6 @@ func TestAddCoPilotToContainer(t *testing.T) {
 		}
 		pilot := &core.DataLoadingConfig{Enabled: true}
 		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
-		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
 
@@ -407,7 +380,6 @@ func TestAddCoPilotToContainer(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
-		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
 
@@ -428,7 +400,6 @@ func TestAddCoPilotToContainer(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
-		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
 
@@ -448,7 +419,6 @@ func TestAddCoPilotToContainer(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToContainer(ctx, cfg, &c, iface, pilot))
-		assertContainerHasPTrace(t, &c)
 		assertContainerHasVolumeMounts(t, cfg, pilot, iface, &c)
 	})
 }
@@ -534,7 +504,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, iface, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, iface, &pod)
 	})
 
@@ -546,7 +515,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, nil, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, nil, &pod)
 	})
 
@@ -566,7 +534,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, iface, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, iface, &pod)
 	})
 
@@ -585,7 +552,6 @@ func TestAddCoPilotToPod(t *testing.T) {
 			OutputPath: "out",
 		}
 		assert.NoError(t, AddCoPilotToPod(ctx, cfg, &pod, iface, taskMetadata, inputPaths, opath, pilot))
-		assertPodHasSNPS(t, &pod)
 		assertPodHasCoPilot(t, cfg, pilot, iface, &pod)
 	})
 

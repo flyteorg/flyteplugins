@@ -60,8 +60,7 @@ func NewSubTaskExecutionContext(ctx context.Context, tCtx pluginsCore.TaskExecut
 	}
 
 	// construct TaskTemplate
-	subtaskTemplate := &core.TaskTemplate{}
-	*subtaskTemplate = *taskTemplate
+	subtaskTemplate := taskTemplate
 
 	subtaskTemplate.TaskTypeVersion = 2
 	if subtaskTemplate.GetContainer() != nil {

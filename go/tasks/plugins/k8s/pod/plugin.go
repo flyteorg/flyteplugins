@@ -21,6 +21,7 @@ import (
 const (
 	podTaskType         = "pod"
 	PrimaryContainerKey = "primary_container_name"
+	RawContainerName    = "raw_container_name"
 )
 
 var (
@@ -124,6 +125,19 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		return pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable"), nil
 	case v1.PodUnknown:
 		return pluginsCore.PhaseInfoUndefined, nil
+	}
+
+	RawContainerName, exists := r.GetAnnotations()[RawContainerName]
+	if exists {
+		// we declare the task as "failure" If raw container fail, but the rawContainer
+		// task requires all containers (raw container and sidecar) to succeed to declare success
+		for _, s := range pod.Status.ContainerStatuses {
+			if s.Name == RawContainerName {
+				if s.State.Terminated != nil && s.State.Terminated.ExitCode != 0 {
+					return pluginsCore.PhaseInfoRetryableFailure(s.State.Terminated.Reason, s.State.Terminated.Message, &info), nil
+				}
+			}
+		}
 	}
 
 	primaryContainerName, exists := r.GetAnnotations()[PrimaryContainerKey]
