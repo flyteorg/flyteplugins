@@ -28,7 +28,7 @@ type Key struct {
 	Identifier     core.Identifier
 	CacheVersion   string
 	TypedInterface core.TypedInterface
-	InputReader    io.InputReader
+	Inputs         *core.LiteralMap
 }
 
 func (k Key) String() string {

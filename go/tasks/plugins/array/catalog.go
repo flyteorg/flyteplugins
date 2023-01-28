@@ -59,7 +59,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	}
 
 	var arrayJobSize int64
-	var inputReaders []io.InputReader
+	var inputMaps []*idlCore.LiteralMap
 
 	// Save this in the state
 	if taskTemplate.TaskTypeVersion == 0 {
@@ -67,15 +67,14 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		arrayJobSize = arrayJob.Size
 		state = state.SetOriginalMinSuccesses(arrayJob.GetMinSuccesses())
 
-		// build input readers
-		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
+		inputMaps, err = GetRemoteInputs(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), int(arrayJobSize))
 		if err != nil {
 			return state, err
 		}
 	} else {
 		inputs, err := tCtx.InputReader().Get(ctx)
 		if err != nil {
-			return state, errors.Errorf(errors.MetadataAccessFailed, "Could not read inputs and therefore failed to determine array job size")
+			return state, errors.Errorf(errors.MetadataAccessFailed, "Could not read inputMaps and therefore failed to determine array job size")
 		}
 
 		size := -1
@@ -91,9 +90,9 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		if size < 0 {
 			// Something is wrong, we should have inferred the array size when it is not specified by the size of the
-			// input collection (for any input value). Non-collection type inputs are not currently supported for
+			// input collection (for any input value). Non-collection type inputMaps are not currently supported for
 			// taskTypeVersion > 0.
-			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputs")
+			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputMaps")
 		}
 
 		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccessRatio()) * float64(size))
@@ -105,8 +104,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		arrayJobSize = int64(size)
 
-		// build input readers
-		inputReaders = ConstructStaticInputReaders(tCtx.InputReader(), literalCollection.Literals, discoveredInputName)
+		// build inputs list for array task
+		inputMaps = ConstructStaticInputMaps(literalCollection.Literals, discoveredInputName)
 	}
 
 	if arrayJobSize > maxArrayJobSize {
@@ -147,8 +146,8 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, err
 	}
 
-	// build work items from inputs and outputs
-	workItems, err := ConstructCatalogReaderWorkItems(ctx, tCtx.TaskReader(), inputReaders, outputWriters)
+	// build work items from inputMaps and outputs
+	workItems, err := ConstructCatalogReaderWorkItems(ctx, tCtx.TaskReader(), inputMaps, outputWriters)
 	if err != nil {
 		return state, err
 	}
@@ -227,11 +226,11 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		return state.SetPhase(phaseOnSuccess, versionOnSuccess).SetReason("Task is not discoverable."), nil
 	}
 
-	var inputReaders []io.InputReader
+	var inputMaps []*idlCore.LiteralMap
 	arrayJobSize := int(state.GetOriginalArraySize())
 	if taskTemplate.TaskTypeVersion == 0 {
 		// input readers
-		inputReaders, err = ConstructRemoteFileInputReaders(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), arrayJobSize)
+		inputMaps, err = GetRemoteInputs(ctx, tCtx.DataStore(), tCtx.InputReader().GetInputPrefixPath(), arrayJobSize)
 		if err != nil {
 			return nil, err
 		}
@@ -251,7 +250,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 		}
 
 		// build input readers
-		inputReaders = ConstructStaticInputReaders(tCtx.InputReader(), literalCollection.Literals, discoveredInputName)
+		inputMaps = ConstructStaticInputMaps(literalCollection.Literals, discoveredInputName)
 	}
 
 	// output reader
@@ -275,7 +274,7 @@ func WriteToDiscovery(ctx context.Context, tCtx core.TaskExecutionContext, state
 	// Create catalog put items, but only put the ones that were not originally cached (as read from the catalog results bitset)
 	catalogWriterItems, err := ConstructCatalogUploadRequests(*tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID().TaskId,
 		tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), taskTemplate.Metadata.DiscoveryVersion,
-		iface, &tasksToCache, inputReaders, outputReaders)
+		iface, &tasksToCache, inputMaps, outputReaders)
 
 	if err != nil {
 		return nil, err
@@ -327,16 +326,16 @@ func WriteToCatalog(ctx context.Context, ownerSignal core.SignalAsync, catalogCl
 
 func ConstructCatalogUploadRequests(keyID idlCore.Identifier, taskExecID idlCore.TaskExecutionIdentifier,
 	cacheVersion string, taskInterface idlCore.TypedInterface, whichTasksToCache *bitarray.BitSet,
-	inputReaders []io.InputReader, outputReaders []io.OutputReader) ([]catalog.UploadRequest, error) {
+	inputMaps []*idlCore.LiteralMap, outputReaders []io.OutputReader) ([]catalog.UploadRequest, error) {
 
-	writerWorkItems := make([]catalog.UploadRequest, 0, len(inputReaders))
+	writerWorkItems := make([]catalog.UploadRequest, 0, len(inputMaps))
 
-	if len(inputReaders) != len(outputReaders) {
+	if len(inputMaps) != len(outputReaders) {
 		return nil, errors.Errorf(arrayCore.ErrorInternalMismatch, "Length different building catalog writer items %d %d",
-			len(inputReaders), len(outputReaders))
+			len(inputMaps), len(outputReaders))
 	}
 
-	for idx, input := range inputReaders {
+	for idx, inputMap := range inputMaps {
 		if !whichTasksToCache.IsSet(uint(idx)) {
 			continue
 		}
@@ -344,7 +343,7 @@ func ConstructCatalogUploadRequests(keyID idlCore.Identifier, taskExecID idlCore
 		wi := catalog.UploadRequest{
 			Key: catalog.Key{
 				Identifier:     keyID,
-				InputReader:    input,
+				Inputs:         inputMap,
 				CacheVersion:   cacheVersion,
 				TypedInterface: taskInterface,
 			},
@@ -417,7 +416,7 @@ func makeSingularTaskInterface(varMap *idlCore.VariableMap) *idlCore.VariableMap
 
 }
 
-func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskReader, inputs []io.InputReader,
+func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskReader, inputMaps []*idlCore.LiteralMap,
 	outputs []io.OutputWriter) ([]catalog.DownloadRequest, error) {
 
 	t, err := taskReader.Read(ctx)
@@ -425,18 +424,18 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 		return nil, err
 	}
 
-	workItems := make([]catalog.DownloadRequest, 0, len(inputs))
+	workItems := make([]catalog.DownloadRequest, 0, len(inputMaps))
 
 	iface := *t.Interface
 	iface.Outputs = makeSingularTaskInterface(iface.Outputs)
 
-	for idx, inputReader := range inputs {
+	for idx, inputMap := range inputMaps {
 		// TODO: Check if Identifier or Interface are empty and return err
 		item := catalog.DownloadRequest{
 			Key: catalog.Key{
 				Identifier:     *t.Id,
 				CacheVersion:   t.GetMetadata().DiscoveryVersion,
-				InputReader:    inputReader,
+				Inputs:         inputMap,
 				TypedInterface: iface,
 			},
 			Target: outputs[idx],
@@ -447,36 +446,37 @@ func ConstructCatalogReaderWorkItems(ctx context.Context, taskReader core.TaskRe
 	return workItems, nil
 }
 
-// ConstructStaticInputReaders constructs input readers that comply with the io.InputReader interface but have their
-// inputs already populated.
-func ConstructStaticInputReaders(inputPaths io.InputFilePaths, inputs []*idlCore.Literal, inputName string) []io.InputReader {
-	inputReaders := make([]io.InputReader, 0, len(inputs))
+// ConstructStaticInputMaps constructs input maps for an array task.
+func ConstructStaticInputMaps(inputs []*idlCore.Literal, inputName string) []*idlCore.LiteralMap {
+	inputMaps := make([]*idlCore.LiteralMap, 0, len(inputs))
 	for i := 0; i < len(inputs); i++ {
-		inputReaders = append(inputReaders, NewStaticInputReader(inputPaths, &idlCore.LiteralMap{
+		inputMaps = append(inputMaps, &idlCore.LiteralMap{
 			Literals: map[string]*idlCore.Literal{
 				inputName: inputs[i],
 			},
-		}))
+		})
 	}
 
-	return inputReaders
+	return inputMaps
 }
 
-func ConstructRemoteFileInputReaders(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
-	size int) ([]io.InputReader, error) {
-
-	inputReaders := make([]io.InputReader, 0, size)
+func GetRemoteInputs(ctx context.Context, dataStore *storage.DataStore, inputPrefix storage.DataReference,
+	size int) ([]*idlCore.LiteralMap, error) {
+	inputs := make([]*idlCore.LiteralMap, 0, size)
 	for i := 0; i < size; i++ {
 		indexedInputLocation, err := dataStore.ConstructReference(ctx, inputPrefix, strconv.Itoa(i))
 		if err != nil {
-			return inputReaders, err
+			return inputs, err
 		}
 
 		inputReader := ioutils.NewRemoteFileInputReader(ctx, dataStore, ioutils.NewInputFilePaths(ctx, dataStore, indexedInputLocation))
-		inputReaders = append(inputReaders, inputReader)
+		indexedInput, err := inputReader.Get(ctx)
+		if err != nil {
+			return inputs, err
+		}
+		inputs = append(inputs, indexedInput)
 	}
-
-	return inputReaders, nil
+	return inputs, nil
 }
 
 func ConstructOutputWriters(ctx context.Context, dataStore *storage.DataStore, outputPrefix, baseOutputSandbox storage.DataReference,
