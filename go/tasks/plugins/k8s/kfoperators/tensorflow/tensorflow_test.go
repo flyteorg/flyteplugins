@@ -373,7 +373,7 @@ func TestGetProperties(t *testing.T) {
 }
 
 func TestZeroReplicas(t *testing.T) {
-	// if the number of replicas is zero, the field should not be created or the client might complain.
+	// if the number of replicas is zero, the field should not be created because the api client might complain.
 
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
