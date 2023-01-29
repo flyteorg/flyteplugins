@@ -70,7 +70,7 @@ func dummyTensorFlowCustomObj(workers int32, psReplicas int32, chiefReplicas int
 	}
 }
 
-func dummySparkTaskTemplate(id string, tensorflowCustomObj *plugins.DistributedTensorflowTrainingTask) *core.TaskTemplate {
+func dummyTensorFlowTaskTemplate(id string, tensorflowCustomObj *plugins.DistributedTensorflowTrainingTask) *core.TaskTemplate {
 
 	tfObjJSON, err := utils.MarshalToString(tensorflowCustomObj)
 	if err != nil {
@@ -251,7 +251,7 @@ func dummyTensorFlowJobResource(tensorflowResourceHandler tensorflowOperatorReso
 	}
 
 	tfObj := dummyTensorFlowCustomObj(workers, psReplicas, chiefReplicas)
-	taskTemplate := dummySparkTaskTemplate("the job", tfObj)
+	taskTemplate := dummyTensorFlowTaskTemplate("the job", tfObj)
 	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
 	if err != nil {
 		panic(err)
@@ -277,7 +277,7 @@ func TestBuildResourceTensorFlow(t *testing.T) {
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
 	tfObj := dummyTensorFlowCustomObj(100, 50, 1)
-	taskTemplate := dummySparkTaskTemplate("the job", tfObj)
+	taskTemplate := dummyTensorFlowTaskTemplate("the job", tfObj)
 
 	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
 	assert.NoError(t, err)
@@ -370,4 +370,23 @@ func TestGetProperties(t *testing.T) {
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 	expected := k8s.PluginProperties{}
 	assert.Equal(t, expected, tensorflowResourceHandler.GetProperties())
+}
+
+func TestZeroReplicas(t *testing.T) {
+	// if the number of replicas is zero, the field should not be created or the client might complain.
+
+	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
+
+	tfObj := dummyTensorFlowCustomObj(10, 0, 0)
+	taskTemplate := dummyTensorFlowTaskTemplate("the job", tfObj)
+
+	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
+	assert.NoError(t, err)
+	assert.NotNil(t, resource)
+
+	tensorflowJob, ok := resource.(*kubeflowv1.TFJob)
+	assert.True(t, ok)
+
+	assert.NotContains(t, tensorflowJob.Spec.TFReplicaSpecs, kubeflowv1.TFJobReplicaTypePS)
+	assert.NotContains(t, tensorflowJob.Spec.TFReplicaSpecs, kubeflowv1.TFJobReplicaTypeChief)
 }

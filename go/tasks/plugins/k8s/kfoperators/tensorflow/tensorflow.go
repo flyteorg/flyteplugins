@@ -86,31 +86,27 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 	chiefReplicas := tensorflowTaskExtraArgs.GetChiefReplicas()
 
 	jobSpec := kubeflowv1.TFJobSpec{
-		TFReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{
-			kubeflowv1.TFJobReplicaTypePS: {
-				Replicas: &psReplicas,
+		TFReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{},
+	}
+
+	for _, t := range []struct {
+		replicaNum  *int32
+		replicaType commonOp.ReplicaType
+	}{
+		{&workers, kubeflowv1.TFJobReplicaTypeWorker},
+		{&psReplicas, kubeflowv1.TFJobReplicaTypePS},
+		{&chiefReplicas, kubeflowv1.TFJobReplicaTypeChief},
+	} {
+		if *t.replicaNum > 0 {
+			jobSpec.TFReplicaSpecs[t.replicaType] = &commonOp.ReplicaSpec{
+				Replicas: t.replicaNum,
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: objectMeta,
 					Spec:       *podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
-			},
-			kubeflowv1.TFJobReplicaTypeChief: {
-				Replicas: &chiefReplicas,
-				Template: v1.PodTemplateSpec{
-					ObjectMeta: objectMeta,
-					Spec:       *podSpec,
-				},
-				RestartPolicy: commonOp.RestartPolicyNever,
-			},
-			kubeflowv1.TFJobReplicaTypeWorker: {
-				Replicas: &workers,
-				Template: v1.PodTemplateSpec{
-					Spec: *podSpec,
-				},
-				RestartPolicy: commonOp.RestartPolicyNever,
-			},
-		},
+			}
+		}
 	}
 
 	job := &kubeflowv1.TFJob{
