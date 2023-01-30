@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	pluginserrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
@@ -121,8 +119,12 @@ func UpdatePod(taskExecutionMetadata pluginsCore.TaskExecutionMetadata,
 
 // BuildRawPod constructs a PodSpec and ObjectMeta based on the definition passed by the TaskExecutionContext. This
 // definition does not include any configuration injected by Flyte.
-func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecutionMetadata pluginsCore.TaskExecutionMetadata) (
-	*v1.PodSpec, *metav1.ObjectMeta, string, error) {
+func BuildRawPod(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, *metav1.ObjectMeta, string, error) {
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
+		return nil, nil, "", err
+	}
 
 	var podSpec *v1.PodSpec
 	objectMeta := metav1.ObjectMeta{
@@ -133,7 +135,7 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 
 	if taskTemplate.GetContainer() != nil {
 		// handles tasks defined by a single container
-		c, err := BuildRawContainer(ctx, taskTemplate.GetContainer(), taskExecutionMetadata)
+		c, err := ToK8sContainer(ctx, tCtx)
 		if err != nil {
 			return nil, nil, "", err
 		}
@@ -205,15 +207,16 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 		}
 
 		// get primary container name
-		if len(taskTemplate.GetConfig()) == 0 {
-			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", PrimaryContainerKey)
-		}
-
 		var ok bool
-		if primaryContainerName, ok = taskTemplate.GetConfig()[PrimaryContainerKey]; !ok {
-			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config missing [%s] key in [%v]", PrimaryContainerKey, taskTemplate.GetConfig())
+		if primaryContainerName, ok = taskTemplate.GetConfig()[PrimaryContainerKey]; ok {
+			objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
+		} else {
+			if len(podSpec.Containers) > 1 {
+				logger.Debugf(ctx, "%d containers detected in pod definition. declaring first (ie. '%s') as primary.",
+					len(podSpec.Containers), podSpec.Containers[0].Name)
+			}
+
+			primaryContainerName = podSpec.Containers[0].Name
 		}
 
 		// update annotations and labels
@@ -221,7 +224,6 @@ func BuildRawPod(ctx context.Context, taskTemplate *core.TaskTemplate, taskExecu
 			objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Annotations)
 			objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, taskTemplate.GetK8SPod().Metadata.Labels)
 		}
-		objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
 	} else {
 		return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
 			"invalid TaskSpecification, unable to determine Pod configuration")
@@ -241,7 +243,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	}
 
 	// build raw PodSpec and ObjectMeta
-	podSpec, objectMeta, primaryContainerName, err := BuildRawPod(ctx, taskTemplate, tCtx.TaskExecutionMetadata())
+	podSpec, objectMeta, primaryContainerName, err := BuildRawPod(ctx, tCtx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -257,13 +259,9 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	resourceRequests := make([]v1.ResourceRequirements, 0, len(podSpec.Containers))
 	var primaryContainer *v1.Container
 	for index, container := range podSpec.Containers {
-		var resourceMode = ResourceCustomizationModeAssignResources
-		if containerName, ok := objectMeta.Annotations[PrimaryContainerKey]; ok {
-			if container.Name == containerName {
-				resourceMode = ResourceCustomizationModeMergeExistingResources
-			} else {
-				resourceMode = ResourceCustomizationModeEnsureExistingResourcesInRange
-			}
+		var resourceMode = ResourceCustomizationModeEnsureExistingResourcesInRange
+		if container.Name == primaryContainerName {
+			resourceMode = ResourceCustomizationModeMergeExistingResources
 		}
 
 		if err := AddFlyteCustomizationsToContainer(ctx, templateParameters, resourceMode, &podSpec.Containers[index]); err != nil {
