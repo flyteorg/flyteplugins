@@ -131,6 +131,7 @@ func TestExecutor_Handle(t *testing.T) {
 		Type: storage.TypeMemory,
 	}, promutils.NewTestScope())
 	assert.NoError(t, err)
+	assert.NoError(t, dataStore.WriteProtobuf(ctx, storage.DataReference("/inputs.pb/0/inputs.pb"), storage.Options{}, &core.LiteralMap{}))
 
 	inputReader := &mocks2.InputReader{}
 	inputReader.OnGetInputPrefixPath().Return("/inputs.pb")

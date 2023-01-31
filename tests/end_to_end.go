@@ -76,6 +76,8 @@ func RunPluginEndToEndTest(t *testing.T, executor pluginCore.Plugin, template *i
 
 	basePrefix := storage.DataReference("fake://bucket/prefix/" + execID)
 	assert.NoError(t, ds.WriteProtobuf(ctx, basePrefix+"/inputs.pb", storage.Options{}, inputs))
+	assert.NoError(t, ds.WriteProtobuf(ctx, basePrefix+"/0/inputs.pb", storage.Options{}, inputs))
+	assert.NoError(t, ds.WriteProtobuf(ctx, basePrefix+"/1/inputs.pb", storage.Options{}, inputs))
 
 	tr := &coreMocks.TaskReader{}
 	tr.OnRead(ctx).Return(template, nil)

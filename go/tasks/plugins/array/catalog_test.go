@@ -62,14 +62,6 @@ func runDetermineDiscoverabilityTest(t testing.TB, taskTemplate *core.TaskTempla
 	tr := &pluginMocks.TaskReader{}
 	tr.OnRead(ctx).Return(taskTemplate, nil)
 
-	ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
-	assert.NoError(t, err)
-
-	cat := &catalogMocks.AsyncClient{}
-	cat.OnDownloadMatch(mock.Anything, mock.Anything).Return(future, nil)
-
-	ir := &ioMocks.InputReader{}
-	ir.OnGetInputPrefixPath().Return("/prefix/")
 	dummyInputLiteral := &core.Literal{
 		Value: &core.Literal_Scalar{
 			Scalar: &core.Scalar{
@@ -83,7 +75,7 @@ func runDetermineDiscoverabilityTest(t testing.TB, taskTemplate *core.TaskTempla
 			},
 		},
 	}
-	ir.On("Get", mock.Anything).Return(&core.LiteralMap{
+	inputs := &core.LiteralMap{
 		Literals: map[string]*core.Literal{
 			"foo": {
 				Value: &core.Literal_Collection{
@@ -95,7 +87,20 @@ func runDetermineDiscoverabilityTest(t testing.TB, taskTemplate *core.TaskTempla
 				},
 			},
 		},
-	}, nil)
+	}
+
+	ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+	assert.NoError(t, err)
+	err = ds.WriteProtobuf(ctx, storage.DataReference("/prefix/0/inputs.pb"), storage.Options{}, inputs)
+	assert.NoError(t, err)
+
+	cat := &catalogMocks.AsyncClient{}
+	cat.OnDownloadMatch(mock.Anything, mock.Anything).Return(future, nil)
+
+	ir := &ioMocks.InputReader{}
+	ir.OnGetInputPrefixPath().Return("/prefix/")
+
+	ir.On("Get", mock.Anything).Return(inputs, nil)
 
 	ow := &ioMocks.OutputWriter{}
 	ow.OnGetOutputPrefixPath().Return("/prefix/")
