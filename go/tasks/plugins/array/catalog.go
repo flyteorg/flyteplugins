@@ -74,7 +74,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 	} else {
 		inputs, err := tCtx.InputReader().Get(ctx)
 		if err != nil {
-			return state, errors.Errorf(errors.MetadataAccessFailed, "Could not read inputMaps and therefore failed to determine array job size")
+			return state, errors.Errorf(errors.MetadataAccessFailed, "Could not read inputs and therefore failed to determine array job size")
 		}
 
 		size := -1
@@ -90,9 +90,9 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 
 		if size < 0 {
 			// Something is wrong, we should have inferred the array size when it is not specified by the size of the
-			// input collection (for any input value). Non-collection type inputMaps are not currently supported for
+			// input collection (for any input value). Non-collection type inputs are not currently supported for
 			// taskTypeVersion > 0.
-			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputMaps")
+			return state, errors.Errorf(errors.BadTaskSpecification, "Unable to determine array size from inputs")
 		}
 
 		minSuccesses := math.Ceil(float64(arrayJob.GetMinSuccessRatio()) * float64(size))
@@ -146,7 +146,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 		return state, err
 	}
 
-	// build work items from inputMaps and outputs
+	// build work items from inputs and outputs
 	workItems, err := ConstructCatalogReaderWorkItems(ctx, tCtx.TaskReader(), inputMaps, outputWriters)
 	if err != nil {
 		return state, err

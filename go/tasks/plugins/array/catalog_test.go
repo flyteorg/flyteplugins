@@ -3,7 +3,12 @@ package array
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/flyteorg/flyteidl/clients/go/coreutils"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -330,5 +335,90 @@ func TestDiscoverabilityTaskType1(t *testing.T) {
 			IndexesToCache:       toCache,
 			Reason:               "Task is not discoverable.",
 		}, 3, nil)
+	})
+}
+
+func TestConstructCatalogUploadRequests(t *testing.T) {
+	keyID := core.Identifier{}
+	taskExecID := core.TaskExecutionIdentifier{}
+	cacheVersion := "0.1.0"
+	taskInterface := core.TypedInterface{}
+
+	t.Run("unequal input and output items lengths", func(t *testing.T) {
+		_, err := ConstructCatalogUploadRequests(keyID, taskExecID, cacheVersion, taskInterface,
+			&bitarray.BitSet{}, []*core.LiteralMap{
+				{
+					Literals: map[string]*core.Literal{},
+				},
+				{
+					Literals: map[string]*core.Literal{},
+				},
+			}, make([]io.OutputReader, 0))
+		errCode, found := stdErrors.GetErrorCode(err)
+		assert.True(t, found)
+		assert.Equal(t, errCode, arrayCore.ErrorInternalMismatch)
+	})
+	t.Run("work items include inputs", func(t *testing.T) {
+		whichTasksToCache := &bitarray.BitSet{}
+		idx := uint(0)
+		whichTasksToCache.Set(idx)
+		inputs := &core.LiteralMap{
+			Literals: map[string]*core.Literal{
+				"foo": coreutils.MustMakeLiteral(map[string]interface{}{
+					"x": []interface{}{5},
+				}),
+			},
+		}
+		ow := &ioMocks.OutputReader{}
+		req, err := ConstructCatalogUploadRequests(keyID, taskExecID, cacheVersion, taskInterface,
+			whichTasksToCache, []*core.LiteralMap{
+				inputs,
+			}, []io.OutputReader{
+				ow,
+			})
+		assert.NoError(t, err)
+		assert.Len(t, req, 1)
+		assert.True(t, proto.Equal(req[0].Key.Inputs, inputs))
+	})
+}
+
+func TestGetRemoteInputs(t *testing.T) {
+	ctx := context.TODO()
+	inputPrefix := "fake://bucket/exec"
+	size := 2
+	t.Run("happy case", func(t *testing.T) {
+		ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+		expectedInputs := []*core.LiteralMap{
+			&core.LiteralMap{
+				Literals: map[string]*core.Literal{
+					"0": coreutils.MustMakeLiteral(0),
+				},
+			},
+			&core.LiteralMap{
+				Literals: map[string]*core.Literal{
+					"1": coreutils.MustMakeLiteral(1),
+				},
+			},
+		}
+		for i := 0; i < size; i++ {
+			err = ds.WriteProtobuf(ctx, storage.DataReference(inputPrefix+fmt.Sprintf("/%d", i)+"/inputs.pb"), storage.Options{},
+				expectedInputs[i])
+			assert.NoError(t, err)
+		}
+		inputs, err := GetRemoteInputs(ctx, ds, storage.DataReference(inputPrefix), size)
+		assert.NoError(t, err)
+		assert.Len(t, inputs, size)
+		for idx, input := range inputs {
+			assert.True(t, proto.Equal(input, expectedInputs[idx]))
+		}
+	})
+	t.Run("fail to get inputs", func(t *testing.T) {
+		ds, err := storage.NewDataStore(&storage.Config{Type: storage.TypeMemory}, promutils.NewTestScope())
+		assert.NoError(t, err)
+		_, err = GetRemoteInputs(ctx, ds, storage.DataReference(inputPrefix), size)
+		errCode, found := stdErrors.GetErrorCode(err)
+		assert.True(t, found)
+		assert.Equal(t, errCode, ioutils.ErrFailedRead)
 	})
 }
