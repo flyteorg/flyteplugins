@@ -372,21 +372,51 @@ func TestGetProperties(t *testing.T) {
 	assert.Equal(t, expected, tensorflowResourceHandler.GetProperties())
 }
 
-func TestZeroReplicas(t *testing.T) {
-	// if the number of replicas is zero, the field should not be created because the api client might complain.
+func TestReplicaCounts(t *testing.T) {
+	for _, test := range []struct {
+		name               string
+		chiefReplicaCount  int32
+		psReplicaCount     int32
+		workerReplicaCount int32
+		expectError        bool
+		contains           []commonOp.ReplicaType
+		notContains        []commonOp.ReplicaType
+	}{
+		{"NoWorkers", 1, 1, 0, true, nil, nil},
+		{"NoChiefOrPS", 0, 0, 1, true, nil, nil},
+		{"SingleChief", 1, 0, 1, false,
+			[]commonOp.ReplicaType{kubeflowv1.TFJobReplicaTypeChief, kubeflowv1.TFJobReplicaTypeWorker},
+			[]commonOp.ReplicaType{kubeflowv1.TFJobReplicaTypePS}},
+		{"SinglePS", 0, 1, 1, false,
+			[]commonOp.ReplicaType{kubeflowv1.TFJobReplicaTypePS, kubeflowv1.TFJobReplicaTypeWorker},
+			[]commonOp.ReplicaType{kubeflowv1.TFJobReplicaTypeChief}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
-	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
+			tfObj := dummyTensorFlowCustomObj(test.workerReplicaCount, test.psReplicaCount, test.chiefReplicaCount)
+			taskTemplate := dummyTensorFlowTaskTemplate("the job", tfObj)
 
-	tfObj := dummyTensorFlowCustomObj(10, 0, 0)
-	taskTemplate := dummyTensorFlowTaskTemplate("the job", tfObj)
+			resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
+			if test.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, resource)
+				return
+			}
 
-	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
-	assert.NoError(t, err)
-	assert.NotNil(t, resource)
+			assert.NoError(t, err)
+			assert.NotNil(t, resource)
 
-	tensorflowJob, ok := resource.(*kubeflowv1.TFJob)
-	assert.True(t, ok)
+			job, ok := resource.(*kubeflowv1.TFJob)
+			assert.True(t, ok)
 
-	assert.NotContains(t, tensorflowJob.Spec.TFReplicaSpecs, kubeflowv1.TFJobReplicaTypePS)
-	assert.NotContains(t, tensorflowJob.Spec.TFReplicaSpecs, kubeflowv1.TFJobReplicaTypeChief)
+			assert.Len(t, job.Spec.TFReplicaSpecs, len(test.contains))
+			for _, replicaType := range test.contains {
+				assert.Contains(t, job.Spec.TFReplicaSpecs, replicaType)
+			}
+			for _, replicaType := range test.notContains {
+				assert.NotContains(t, job.Spec.TFReplicaSpecs, replicaType)
+			}
+		})
+	}
 }
