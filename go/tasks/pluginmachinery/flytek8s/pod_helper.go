@@ -30,16 +30,6 @@ const defaultContainerTemplateName = "default"
 const primaryContainerTemplateName = "primary"
 const PrimaryContainerKey = "primary_container_name"
 
-// Why, you might wonder do we recreate the generated go struct generated from the plugins.SidecarJob proto? Because
-// although we unmarshal the task custom json, the PodSpec itself is not generated from a proto definition,
-// but a proper go struct defined in k8s libraries. Therefore we only unmarshal the sidecar as a json, rather than jsonpb.
-type SidecarJob struct {
-	PodSpec              *v1.PodSpec
-	PrimaryContainerName string
-	Annotations          map[string]string
-	Labels               map[string]string
-}
-
 // ApplyInterruptibleNodeSelectorRequirement configures the node selector requirement of the node-affinity using the configuration specified.
 func ApplyInterruptibleNodeSelectorRequirement(interruptible bool, affinity *v1.Affinity) {
 	// Determine node selector terms to add to node affinity
@@ -146,53 +136,6 @@ func BuildRawPod(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v
 				*c,
 			},
 		}
-	} else if taskTemplate.Type == "sidecar" && taskTemplate.TaskTypeVersion == 0 {
-		// handles pod tasks when they are defined as Sidecar tasks and marshal the podspec using k8s proto.
-		sidecarJob := SidecarJob{}
-		err := utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &sidecarJob)
-		if err != nil {
-			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
-		}
-
-		if sidecarJob.PodSpec == nil {
-			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification, "invalid TaskSpecification, nil PodSpec [%v]", taskTemplate.GetCustom())
-		}
-
-		podSpec = sidecarJob.PodSpec
-
-		// get primary container name
-		primaryContainerName = sidecarJob.PrimaryContainerName
-
-		// update annotations and labels
-		objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, sidecarJob.Annotations)
-		objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, sidecarJob.Labels)
-		objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
-	} else if taskTemplate.Type == "sidecar" && taskTemplate.TaskTypeVersion == 1 {
-		// handles pod tasks that marshal the pod spec to the task custom.
-		err := utils.UnmarshalStructToObj(taskTemplate.GetCustom(), &podSpec)
-		if err != nil {
-			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"Unable to unmarshal task custom [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
-		}
-
-		// get primary container name
-		if len(taskTemplate.GetConfig()) == 0 {
-			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config needs to be non-empty and include missing [%s] key", PrimaryContainerKey)
-		}
-
-		var ok bool
-		if primaryContainerName, ok = taskTemplate.GetConfig()[PrimaryContainerKey]; !ok {
-			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
-				"invalid TaskSpecification, config missing [%s] key in [%v]", PrimaryContainerKey, taskTemplate.GetConfig())
-		}
-
-		// update annotations and labels
-		if taskTemplate.GetK8SPod() != nil && taskTemplate.GetK8SPod().Metadata != nil {
-			objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, taskTemplate.GetK8SPod().Metadata.Annotations)
-			objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, taskTemplate.GetK8SPod().Metadata.Labels)
-		}
-		objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
 	} else if taskTemplate.GetK8SPod() != nil {
 		// handles pod tasks that marshal the pod spec to the k8s_pod task target.
 		if taskTemplate.GetK8SPod().PodSpec == nil {
@@ -208,15 +151,9 @@ func BuildRawPod(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v
 
 		// get primary container name
 		var ok bool
-		if primaryContainerName, ok = taskTemplate.GetConfig()[PrimaryContainerKey]; ok {
-			objectMeta.Annotations[PrimaryContainerKey] = primaryContainerName
-		} else {
-			if len(podSpec.Containers) > 1 {
-				logger.Debugf(ctx, "%d containers detected in pod definition. declaring first (ie. '%s') as primary.",
-					len(podSpec.Containers), podSpec.Containers[0].Name)
-			}
-
-			primaryContainerName = podSpec.Containers[0].Name
+		if primaryContainerName, ok = taskTemplate.GetConfig()[PrimaryContainerKey]; !ok {
+			return nil, nil, "", pluginserrors.Errorf(pluginserrors.BadTaskSpecification,
+				"invalid TaskSpecification, config missing [%s] key in [%v]", PrimaryContainerKey, taskTemplate.GetConfig())
 		}
 
 		// update annotations and labels
@@ -232,19 +169,13 @@ func BuildRawPod(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v
 	return podSpec, &objectMeta, primaryContainerName, nil
 }
 
-// ToK8sPodSpec builds a PodSpec and ObjectMeta based on the definition passed by the TaskExecutionContext. This
-// includes applying all Flyte configuration including k8s plugin, resource requests, injecting copilot containers, and
-// merging with the configuration PodTemplate (if exists).
-func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, *metav1.ObjectMeta, error) {
+// ApplyFlytePodConfiguration updates the PodSpec and ObjectMeta with various Flyte configuration. This includes
+// applying default k8s configuration, resource requests, injecting copilot containers, and merging with the
+// configuration PodTemplate (if exists).
+func ApplyFlytePodConfiguration(ctx context.Context, tCtx pluginsCore.TaskExecutionContext, podSpec *v1.PodSpec, objectMeta *metav1.ObjectMeta, primaryContainerName string) (*v1.PodSpec, *metav1.ObjectMeta, error) {
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	if err != nil {
 		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
-		return nil, nil, err
-	}
-
-	// build raw PodSpec and ObjectMeta
-	podSpec, objectMeta, primaryContainerName, err := BuildRawPod(ctx, tCtx)
-	if err != nil {
 		return nil, nil, err
 	}
 
@@ -299,6 +230,24 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 
 	// merge PodSpec and ObjectMeta with configuration pod template (if exists)
 	podSpec, objectMeta, err = MergeWithBasePodTemplate(ctx, tCtx, podSpec, objectMeta, primaryContainerName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return podSpec, objectMeta, nil
+}
+
+// ToK8sPodSpec builds a PodSpec and ObjectMeta based on the definition passed by the TaskExecutionContext. This
+// involves parsing the raw PodSpec definition and applying all Flyte configuration options.
+func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v1.PodSpec, *metav1.ObjectMeta, error) {
+	// build raw PodSpec and ObjectMeta
+	podSpec, objectMeta, primaryContainerName, err := BuildRawPod(ctx, tCtx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// add flyte configuration
+	podSpec, objectMeta, err = ApplyFlytePodConfiguration(ctx, tCtx, podSpec, objectMeta, primaryContainerName)
 	if err != nil {
 		return nil, nil, err
 	}

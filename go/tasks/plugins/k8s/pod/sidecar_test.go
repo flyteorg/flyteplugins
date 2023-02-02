@@ -42,7 +42,7 @@ var sidecarResourceRequirements = &v1.ResourceRequirements{
 	},
 }
 
-func getSidecarTaskTemplateForTest(sideCarJob flytek8s.SidecarJob) *core.TaskTemplate {
+func getSidecarTaskTemplateForTest(sideCarJob sidecarJob) *core.TaskTemplate {
 	sidecarJSON, err := json.Marshal(&sideCarJob)
 	if err != nil {
 		panic(err)
@@ -506,7 +506,7 @@ func TestBuildSidecarResource(t *testing.T) {
 }
 
 func TestBuildSidecarReosurceMissingAnnotationsAndLabels(t *testing.T) {
-	sideCarJob := flytek8s.SidecarJob{
+	sideCarJob := sidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{
@@ -527,7 +527,7 @@ func TestBuildSidecarReosurceMissingAnnotationsAndLabels(t *testing.T) {
 }
 
 func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
-	sideCarJob := flytek8s.SidecarJob{
+	sideCarJob := sidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{
@@ -546,7 +546,7 @@ func TestBuildSidecarResourceMissingPrimary(t *testing.T) {
 }
 
 func TestGetTaskSidecarStatus(t *testing.T) {
-	sideCarJob := flytek8s.SidecarJob{
+	sideCarJob := sidecarJob{
 		PrimaryContainerName: "PrimaryContainer",
 		PodSpec: &v1.PodSpec{
 			Containers: []v1.Container{
