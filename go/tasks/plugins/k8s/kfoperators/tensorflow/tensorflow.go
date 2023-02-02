@@ -96,7 +96,7 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 			jobSpec.TFReplicaSpecs[t.replicaType] = &commonOp.ReplicaSpec{
 				Replicas: t.replicaNum,
 				Template: v1.PodTemplateSpec{
-					ObjectMeta: objectMeta,
+					ObjectMeta: *objectMeta,
 					Spec:       t.podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
