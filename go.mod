@@ -1,6 +1,6 @@
 module github.com/flyteorg/flyteplugins
 
-go 1.18
+go 1.19
 
 require (
 	github.com/GoogleCloudPlatform/spark-on-k8s-operator v0.0.0-20200723154620-6f35a1152625
