@@ -15,8 +15,7 @@ func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionCo
 	state *State) (newState *State, phaseInfo core.PhaseInfo, err error) {
 	rMeta, r, err := p.Create(ctx, tCtx)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to create resource. Error: %v", err)
-		return state, core.PhaseInfoFailure("Failed to create resource", err.Error(), nil), nil
+		return nil, core.PhaseInfo{}, err
 	}
 
 	// If the plugin also returned the created resource, check to see if it's already in a terminal state.
