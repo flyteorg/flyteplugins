@@ -118,11 +118,13 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
-	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
+	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
+	resource := taskCtx.Resource().(*ResourceWrapper)
 
 	body := map[string]string{
-		"output_prefix": exec.OutputPrefix,
-		"job_id":        exec.JobID,
+		"output_prefix": metadata.OutputPrefix,
+		"job_id":        metadata.JobID,
+		"prev_state":    resource.State,
 	}
 
 	mJSON, err := json.Marshal(body)
@@ -131,7 +133,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	}
 
 	getDataJson := []byte(string(mJSON))
-	req, err := buildRequest(getMethod, getDataJson, p.cfg.fastApiEndpoint, exec.Token, exec.JobID)
+	req, err := buildRequest(getMethod, getDataJson, p.cfg.fastApiEndpoint, metadata.Token, metadata.JobID)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to build fast api job request [%v]", err)
 		return nil, err
