@@ -163,7 +163,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	if taskCtx.ResourceMeta() == nil {
 		return nil
 	}
-	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
+	exec := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 	req, err := buildRequest(deleteMethod, nil, p.cfg.fastApiEndpoint, exec.Token, exec.JobID)
 	if err != nil {
 		return err
