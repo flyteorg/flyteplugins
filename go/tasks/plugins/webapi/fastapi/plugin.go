@@ -119,7 +119,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
-	resource := taskCtx.Resource().(ResourceWrapper)
+	var resource ResourceWrapper
+	if taskCtx.Resource() != nil {
+		resource = taskCtx.Resource().(ResourceWrapper)
+	}
 
 	body := map[string]string{
 		"output_prefix": metadata.OutputPrefix,
@@ -172,7 +175,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	return nil
 }
 
-func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
+func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
 	resource := taskCtx.Resource().(*ResourceWrapper)
 	statusCode := resource.StatusCode
 	state := resource.State
