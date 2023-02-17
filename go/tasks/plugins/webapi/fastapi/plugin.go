@@ -118,7 +118,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
-	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
+	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 	var resource ResourceWrapper
 	if taskCtx.Resource() != nil {
 		resource = taskCtx.Resource().(ResourceWrapper)
@@ -160,7 +160,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 }
 
 func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error {
-	exec := taskCtx.ResourceMeta().(ResourceMetaWrapper)
+	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 	req, err := buildRequest(deleteMethod, nil, p.cfg.fastApiEndpoint, exec.Token, exec.JobID)
 	if err != nil {
 		return err
