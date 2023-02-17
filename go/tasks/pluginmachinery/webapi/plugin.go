@@ -81,7 +81,7 @@ type TaskExecutionContext interface {
 
 type GetContext interface {
 	ResourceMeta() ResourceMeta
-	Resource() Resource
+	// Resource() Resource
 }
 
 type DeleteContext interface {
