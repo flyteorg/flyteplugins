@@ -119,15 +119,16 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	var resource ResourceWrapper
+	state := "running"
 	if taskCtx.Resource() != nil {
-		resource = taskCtx.Resource().(ResourceWrapper)
+		resource := taskCtx.Resource().(*ResourceWrapper)
+		state = resource.State
 	}
 
 	body := map[string]string{
 		"output_prefix": metadata.OutputPrefix,
 		"job_id":        metadata.JobID,
-		"prev_state":    resource.State,
+		"prev_state":    state,
 	}
 
 	mJSON, err := json.Marshal(body)
