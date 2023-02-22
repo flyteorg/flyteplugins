@@ -40,6 +40,9 @@ type Config struct {
 
 	// NodeIPAddress the IP address of the head node. By default, this is pod ip address.
 	NodeIPAddress string `json:"nodeIPAddress,omitempty"`
+
+	// Remote Ray Cluster Config
+	RemoteClusterConfig ClusterConfig `json:"remoteClusterConfig" pflag:"Configuration of remote K8s cluster for array jobs"`
 }
 
 func GetConfig() *Config {
