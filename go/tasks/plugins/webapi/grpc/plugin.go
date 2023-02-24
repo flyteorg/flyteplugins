@@ -88,8 +88,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	defer conn.Close()
 
 	client := service.NewBackendPluginServiceClient(conn)
+	t := taskTemplate.Type
 	taskTemplate.Type = "dummy"
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
+	taskTemplate.Type = t
 	if err != nil {
 		return nil, nil, err
 	}
@@ -98,7 +100,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		OutputPrefix: outputPrefix,
 		JobID:        res.JobId,
 		Token:        "",
-		TaskType:     taskTemplate.Type,
+		TaskType:     t,
 	}, &ResourceWrapper{State: service.State_RUNNING}, nil
 }
 
