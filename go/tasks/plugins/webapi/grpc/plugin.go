@@ -80,6 +80,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	var opts []grpc.DialOption
 	// conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
+	opts = append(opts, grpc.WithInsecure())
 	conn, err := grpc.Dial("backend-plugin-system-grpc.flyte.svc.cluster.local:8000", opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect backend plugin system")
@@ -109,6 +110,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	}
 
 	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
 	conn, err := grpc.Dial("backend-plugin-system-grpc.flyte.svc.cluster.local:8000", opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect backend plugin system")
@@ -131,6 +133,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 
 	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
 	conn, err := grpc.Dial("backend-plugin-system-grpc.flyte.svc.cluster.local:8000", opts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect backend plugin system")
