@@ -89,7 +89,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	client := service.NewBackendPluginServiceClient(conn)
 	t := taskTemplate.Type
-	taskTemplate.Type = "dummy"
+	taskTemplate.Type = "dummy" // Dummy plugin used to test performance
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
 	taskTemplate.Type = t
 	if err != nil {
@@ -100,7 +100,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		OutputPrefix: outputPrefix,
 		JobID:        res.JobId,
 		Token:        "",
-		TaskType:     t,
+		TaskType:     "dummy",
 	}, &ResourceWrapper{State: service.State_RUNNING}, nil
 }
 
