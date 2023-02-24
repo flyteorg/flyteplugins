@@ -674,8 +674,8 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) metav1.Time {
 	return lastTransitionTime
 }
 
-func GetReportedAt(pod *v1.Pod) v12.Time {
-	var reportedAt v12.Time
+func GetReportedAt(pod *v1.Pod) metav1.Time {
+	var reportedAt metav1.Time
 	for _, condition := range pod.Status.Conditions {
 		if condition.Reason == "PodCompleted" && condition.Type == v1.PodReady && condition.Status == v1.ConditionFalse {
 			if condition.LastTransitionTime.Unix() > reportedAt.Unix() {
