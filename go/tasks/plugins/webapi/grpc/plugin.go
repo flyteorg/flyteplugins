@@ -88,6 +88,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	defer conn.Close()
 
 	client := service.NewBackendPluginServiceClient(conn)
+	taskTemplate.Type = "dummy"
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
 	if err != nil {
 		return nil, nil, err
