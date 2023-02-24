@@ -130,6 +130,7 @@ func TestArrayJobToBatchInput(t *testing.T) {
 		ContainerOverrides: &batch.ContainerOverrides{
 			Command: []*string{ref("cmd"), ref("/inputs/prefix")},
 			Environment: []*batch.KeyValuePair{
+				{Name: ref(failOnError), Value: refStr("true")},
 				{Name: refStr("BATCH_JOB_ARRAY_INDEX_VAR_NAME"), Value: refStr("AWS_BATCH_JOB_ARRAY_INDEX")},
 			},
 			Memory: refInt(1074),
@@ -232,10 +233,14 @@ func Test_getEnvVarsForTask(t *testing.T) {
 		"MyKey": "MyVal",
 	})
 
-	assert.Equal(t, []v12.EnvVar{
-		{
-			Name:  "MyKey",
-			Value: "MyVal",
-		},
-	}, envVars)
+	expected := map[string]string{
+		"FLYTE_FAIL_ON_ERROR": "true",
+		"MyKey":               "MyVal",
+	}
+
+	assert.Len(t, envVars, len(expected))
+	for _, envVar := range envVars {
+		assert.Contains(t, expected, envVar.Name)
+		assert.Equal(t, expected[envVar.Name], envVar.Value)
+	}
 }
