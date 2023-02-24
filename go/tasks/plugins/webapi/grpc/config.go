@@ -41,7 +41,8 @@ var (
 				Value: 50,
 			},
 		},
-		TokenKey: tokenKey,
+		TokenKey:     tokenKey,
+		grpcEndpoint: "backend-plugin-system-grpc.flyte.svc.cluster.local:8000",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("grpc", &defaultConfig)
