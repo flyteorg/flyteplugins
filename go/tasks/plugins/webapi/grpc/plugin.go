@@ -89,7 +89,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	client := service.NewBackendPluginServiceClient(conn)
 	t := taskTemplate.Type
-	taskTemplate.Type = "dummy" // Dummy plugin used to test performance
+	taskTemplate.Type = "dummy" // Dummy plugin is used to test performance
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
 	taskTemplate.Type = t
 	if err != nil {
@@ -122,6 +122,9 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 
 	client := service.NewBackendPluginServiceClient(conn)
 	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID, OutputPrefix: metadata.OutputPrefix, PrevState: prevState})
+	if err != nil {
+		return nil, err
+	}
 
 	return &ResourceWrapper{
 		State:   res.State,

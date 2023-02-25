@@ -17,6 +17,7 @@ type Metrics struct {
 	ResourceWaitTime        prometheus.Summary
 	SucceededUnmarshalState labeled.StopWatch
 	FailedUnmarshalState    labeled.Counter
+	NumberOfTasks           labeled.Gauge
 }
 
 var (
@@ -40,5 +41,6 @@ func newMetrics(scope promutils.Scope) Metrics {
 			time.Millisecond, scope),
 		FailedUnmarshalState: labeled.NewCounter("unmarshal_state_failed",
 			"Failed to unmarshal state", scope, labeled.EmitUnlabeledMetric),
+		NumberOfTasks: labeled.NewGauge("number_of_tasks", "number of running tasks", scope, labeled.EmitUnlabeledMetric),
 	}
 }
