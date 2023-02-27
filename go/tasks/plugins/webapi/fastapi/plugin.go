@@ -6,15 +6,12 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"time"
-
-	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flytestdlib/errors"
 	"github.com/flyteorg/flytestdlib/logger"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
@@ -70,12 +67,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// TODO: Read fast api server access token
-	//token, err := taskCtx.SecretManager().Get(ctx, p.cfg.TokenKey)
-	//if err != nil {
-	//	return nil, nil, err
-	//}
 
 	body := map[string]string{
 		"inputs_path":        taskCtx.InputReader().GetInputPath().String(),
@@ -188,8 +179,6 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 		return core.PhaseInfoUndefined, errors.Errorf(ErrSystem, "No Status field set.")
 	}
 
-	// TODO: Add task link
-	// taskInfo := createTaskInfo(exec.RunID, jobID, exec.DatabricksInstance)
 	taskInfo := &core.TaskInfo{}
 	message := ""
 
@@ -256,23 +245,6 @@ func buildResponse(response *http.Response) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return data, nil
-}
-
-func createTaskInfo(runID, jobID, databricksInstance string) *core.TaskInfo {
-	timeNow := time.Now()
-
-	return &core.TaskInfo{
-		OccurredAt: &timeNow,
-		Logs: []*flyteIdlCore.TaskLog{
-			{
-				Uri: fmt.Sprintf("https://%s/#job/%s/run/%s",
-					databricksInstance,
-					jobID,
-					runID),
-				Name: "FastAPI Console",
-			},
-		},
-	}
 }
 
 func newFastAPIPlugin() webapi.PluginEntry {

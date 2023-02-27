@@ -1,45 +1,22 @@
 package grpc
 
 import (
-	"bytes"
 	"context"
 	"encoding/gob"
-	"encoding/json"
 	"fmt"
-	"google.golang.org/grpc"
-	"io/ioutil"
-	"net/http"
-	"time"
-
-	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
-	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flytestdlib/errors"
-	"github.com/flyteorg/flytestdlib/promutils"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"google.golang.org/grpc"
 )
-
-const (
-	ErrSystem    errors.ErrorCode = "System"
-	postMethod   string           = "POST"
-	getMethod    string           = "GET"
-	deleteMethod string           = "DELETE"
-	pluginAPI    string           = "plugins/v1/dummy"
-)
-
-// for mocking/testing purposes, and we'll override this method
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
 
 type Plugin struct {
 	metricScope promutils.Scope
 	cfg         *Config
-	client      HTTPClient
 }
 
 type ResourceWrapper struct {
@@ -81,7 +58,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	var opts []grpc.DialOption
 	// conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
 	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial("backend-plugin-system-grpc.flyte.svc.cluster.local:8000", opts...)
+	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect backend plugin system")
 	}
@@ -114,7 +91,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial("backend-plugin-system-grpc.flyte.svc.cluster.local:8000", opts...)
+	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect backend plugin system")
 	}
@@ -140,7 +117,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial("backend-plugin-system-grpc.flyte.svc.cluster.local:8000", opts...)
+	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect backend plugin system")
 	}
@@ -152,9 +129,6 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 
 func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
 	resource := taskCtx.Resource().(*ResourceWrapper)
-
-	// TODO: Add task link
-	// taskInfo := createTaskInfo(exec.RunID, jobID, exec.DatabricksInstance)
 	taskInfo := &core.TaskInfo{}
 
 	switch resource.State {
@@ -168,66 +142,6 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.Message)
 }
 
-func buildRequest(method string, data []byte, fastAPIEndpoint string, token string, jobID string) (*http.Request, error) {
-	var fastAPIURL string
-	// for mocking/testing purposes
-	if fastAPIEndpoint == "" {
-		fastAPIURL = fmt.Sprintf("http://backend-plugin-system.flyte.svc.cluster.local:8000/%v", pluginAPI)
-	} else {
-		fastAPIURL = fmt.Sprintf("%v%v", fastAPIEndpoint, pluginAPI)
-	}
-
-	if method == deleteMethod {
-		fastAPIURL = fmt.Sprintf("%v/?job_id=%v", fastAPIURL, jobID)
-	}
-
-	var req *http.Request
-	var err error
-	if data == nil {
-		req, err = http.NewRequest(method, fastAPIURL, nil)
-	} else {
-		req, err = http.NewRequest(method, fastAPIURL, bytes.NewBuffer(data))
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: authentication support
-	req.Header.Add("Authorization", "Bearer "+token)
-	req.Header.Add("Content-Type", "application/json")
-	return req, nil
-}
-
-func buildResponse(response *http.Response) (map[string]interface{}, error) {
-	responseBody, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	var data map[string]interface{}
-	err = json.Unmarshal(responseBody, &data)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func createTaskInfo(runID, jobID, databricksInstance string) *core.TaskInfo {
-	timeNow := time.Now()
-
-	return &core.TaskInfo{
-		OccurredAt: &timeNow,
-		Logs: []*flyteIdlCore.TaskLog{
-			{
-				Uri: fmt.Sprintf("https://%s/#job/%s/run/%s",
-					databricksInstance,
-					jobID,
-					runID),
-				Name: "FastAPI Console",
-			},
-		},
-	}
-}
-
 func newGrpcPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
 		ID:                 "grpc",
@@ -236,7 +150,6 @@ func newGrpcPlugin() webapi.PluginEntry {
 			return &Plugin{
 				metricScope: iCtx.MetricsScope(),
 				cfg:         GetConfig(),
-				client:      &http.Client{},
 			}, nil
 		},
 	}

@@ -4,25 +4,16 @@ import (
 	"context"
 	"encoding/gob"
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"math/rand"
 	"net/http"
-	"time"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flytestdlib/errors"
-
 	"github.com/flyteorg/flytestdlib/promutils"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
-)
-
-const (
-	ErrSystem errors.ErrorCode = "System"
-	post      string           = "POST"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -65,17 +56,11 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
-	// Sending requests and deserialization times
-	time.Sleep(10 * time.Millisecond)
-
 	return &ResourceMetaWrapper{RunID: "runID", Token: "token"},
 		&ResourceWrapper{StatusCode: 200}, nil
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
-	// Sending requests and deserialization times
-	time.Sleep(10 * time.Millisecond)
-
 	return &ResourceWrapper{
 		StatusCode: 200,
 		JobID:      "jobID",

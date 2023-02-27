@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	tokenKey = "FLYTE_GRPC_TOKEN" // nolint: gosec
+	grpcTokenKey = "FLYTE_GRPC_TOKEN" // nolint: gosec
 
 	defaultConfig = Config{
 		WebAPI: webapi.PluginConfig{
@@ -41,7 +41,7 @@ var (
 				Value: 50,
 			},
 		},
-		TokenKey:     tokenKey,
+		GrpcTokenKey: grpcTokenKey,
 		grpcEndpoint: "backend-plugin-system-grpc.flyte.svc.cluster.local:8000",
 	}
 
@@ -56,7 +56,7 @@ type Config struct {
 	// ResourceConstraints defines resource constraints on how many executions to be created per project/overall at any given time
 	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 
-	TokenKey string `json:"grpcTokenKey" pflag:",Name of the key where to find grpc access token in the secret manager."`
+	GrpcTokenKey string `json:"grpcTokenKey" pflag:",Name of the key where to find grpc access token in the secret manager."`
 
 	// grpcEndpoint overrides grpc server endpoint, only for testing
 	grpcEndpoint string
