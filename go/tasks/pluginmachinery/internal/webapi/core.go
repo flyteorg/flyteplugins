@@ -101,7 +101,6 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	c.metrics.NumberOfTasks.Dec(ctx)
 
 	logger.Infof(ctx, "request latency [%v]", elapsed)
-	totalRequest--
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
