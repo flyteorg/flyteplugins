@@ -56,7 +56,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
 	var opts []grpc.DialOption
-	// conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
 	opts = append(opts, grpc.WithInsecure())
 	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
 	if err != nil {

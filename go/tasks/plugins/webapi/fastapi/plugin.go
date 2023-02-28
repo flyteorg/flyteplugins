@@ -78,8 +78,8 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to marshal data: %v: %v", body, err)
 	}
 
-	postDataJson := []byte(string(mJSON))
-	req, err := buildRequest(postMethod, postDataJson, p.cfg.fastApiEndpoint, "token", "")
+	postDataJSON := []byte(string(mJSON))
+	req, err := buildRequest(postMethod, postDataJSON, p.cfg.fastApiEndpoint, "token", "")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,8 +127,8 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		return nil, fmt.Errorf("failed to marshal data: %v: %v", body, err)
 	}
 
-	getDataJson := []byte(string(mJSON))
-	req, err := buildRequest(getMethod, getDataJson, p.cfg.fastApiEndpoint, metadata.Token, metadata.JobID)
+	getDataJSON := []byte(string(mJSON))
+	req, err := buildRequest(getMethod, getDataJSON, p.cfg.fastApiEndpoint, metadata.Token, metadata.JobID)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to build fast api job request [%v]", err)
 		return nil, err

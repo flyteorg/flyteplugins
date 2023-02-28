@@ -57,8 +57,8 @@ type Config struct {
 
 	TokenKey string `json:"fastApiTokenKey" pflag:",Name of the key where to find Fast API access token in the secret manager."`
 
-	// fastApiEndpoint overrides fastapi server endpoint, only for testing
-	fastApiEndpoint string
+	// fastAPIEndpoint overrides fastapi server endpoint, only for testing
+	fastAPIEndpoint string
 }
 
 func GetConfig() *Config {
