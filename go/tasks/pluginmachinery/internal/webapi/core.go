@@ -100,7 +100,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	}
 	c.metrics.NumberOfTasks.Dec(ctx)
 	logger.Infof(ctx, "number of requests [%v]", c.metrics.NumberOfTasks)
-	logger.Infof(ctx, "request latency [%v]", time.Since(start).Round(time.Millisecond).String())
+	logger.Infof(ctx, "request latency [%v]", time.Since(start).Round(time.Microsecond).String())
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
