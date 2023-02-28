@@ -33,8 +33,6 @@ const (
 	maxQPS             = 100000
 )
 
-var totalRequest int
-
 type CorePlugin struct {
 	id             string
 	p              webapi.AsyncPlugin
@@ -102,7 +100,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 		return core.UnknownTransition, err
 	}
 	c.metrics.NumberOfTasks.Dec(ctx)
-	logger.Infof(ctx, "number of request [%v]", totalRequest)
+
 	logger.Infof(ctx, "request latency [%v]", elapsed)
 	totalRequest--
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
