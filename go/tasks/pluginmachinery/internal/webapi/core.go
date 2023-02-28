@@ -70,7 +70,6 @@ func (c CorePlugin) GetProperties() core.PluginProperties {
 
 func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	c.metrics.NumberOfTasks.Inc(ctx)
-	totalRequest++
 	elapsed := time.Since(time.Now())
 	incomingState, err := c.unmarshalState(ctx, tCtx.PluginStateReader())
 	if err != nil {
