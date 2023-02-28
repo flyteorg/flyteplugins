@@ -118,7 +118,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	opts = append(opts, grpc.WithInsecure())
 	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
 	if err != nil {
-		return fmt.Errorf("failed to connect backend plugin system")
+		return fmt.Errorf("failed to  connect backend plugin system")
 	}
 	defer conn.Close()
 	client := service.NewBackendPluginServiceClient(conn)
