@@ -79,7 +79,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	}
 
 	postDataJSON := []byte(string(mJSON))
-	req, err := buildRequest(postMethod, postDataJSON, p.cfg.fastApiEndpoint, "token", "")
+	req, err := buildRequest(postMethod, postDataJSON, p.cfg.fastAPIEndpoint, "token", "")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,7 +128,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	}
 
 	getDataJSON := []byte(string(mJSON))
-	req, err := buildRequest(getMethod, getDataJSON, p.cfg.fastApiEndpoint, metadata.Token, metadata.JobID)
+	req, err := buildRequest(getMethod, getDataJSON, p.cfg.fastAPIEndpoint, metadata.Token, metadata.JobID)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to build fast api job request [%v]", err)
 		return nil, err
@@ -156,7 +156,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 		return nil
 	}
 	exec := taskCtx.ResourceMeta().(ResourceMetaWrapper)
-	req, err := buildRequest(deleteMethod, nil, p.cfg.fastApiEndpoint, exec.Token, exec.JobID)
+	req, err := buildRequest(deleteMethod, nil, p.cfg.fastAPIEndpoint, exec.Token, exec.JobID)
 	if err != nil {
 		return err
 	}
