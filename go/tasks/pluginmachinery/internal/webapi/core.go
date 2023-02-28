@@ -33,6 +33,8 @@ const (
 	maxQPS             = 100000
 )
 
+var totalRequest int
+
 type CorePlugin struct {
 	id             string
 	p              webapi.AsyncPlugin
@@ -70,6 +72,8 @@ func (c CorePlugin) GetProperties() core.PluginProperties {
 
 func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	c.metrics.NumberOfTasks.Inc(ctx)
+	totalRequest++
+	elapsed := time.Since(time.Now())
 	incomingState, err := c.unmarshalState(ctx, tCtx.PluginStateReader())
 	if err != nil {
 		return core.UnknownTransition, err
@@ -98,6 +102,9 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 		return core.UnknownTransition, err
 	}
 	c.metrics.NumberOfTasks.Dec(ctx)
+	logger.Infof(ctx, "number of request [%v]", totalRequest)
+	logger.Infof(ctx, "request latency [%v]", elapsed)
+	totalRequest--
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
