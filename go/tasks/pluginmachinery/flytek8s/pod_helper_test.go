@@ -1315,4 +1315,22 @@ func TestMergePodSpecs(t *testing.T) {
 	defaultContainer := mergedPodSpec.Containers[1]
 	assert.Equal(t, podSpec.Containers[1].Name, defaultContainer.Name)
 	assert.Equal(t, defaultContainerTemplate.TerminationMessagePath, defaultContainer.TerminationMessagePath)
+
+	// validate container content is not duplicated
+	podSpec = v1.PodSpec{
+		Containers: []v1.Container{
+			v1.Container{
+				Name: "primary",
+				VolumeMounts: []v1.VolumeMount{
+					{
+						Name:      "nccl",
+						MountPath: "abc",
+					},
+				},
+			},
+		},
+	}
+	mergedPodSpec, err = mergePodSpecs(&podTemplateSpec, &podSpec, "primary")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(mergedPodSpec.Containers[0].VolumeMounts))
 }
