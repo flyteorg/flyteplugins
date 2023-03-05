@@ -327,7 +327,6 @@ func mergePodSpecs(basePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContaine
 	}
 
 	// extract defaultContainerTemplate and primaryContainerTemplate
-	var mergedContainers []v1.Container
 	var defaultContainerTemplate, primaryContainerTemplate *v1.Container
 	for i := 0; i < len(basePodSpec.Containers); i++ {
 		if basePodSpec.Containers[i].Name == defaultContainerTemplateName {
@@ -343,6 +342,8 @@ func mergePodSpecs(basePodSpec *v1.PodSpec, podSpec *v1.PodSpec, primaryContaine
 		return nil, err
 	}
 
+	// merge PodTemplate containers
+	var mergedContainers []v1.Container
 	for _, container := range podSpec.Containers {
 		// if applicable start with defaultContainerTemplate
 		var mergedContainer *v1.Container
