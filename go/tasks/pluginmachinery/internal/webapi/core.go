@@ -70,7 +70,6 @@ func (c CorePlugin) GetProperties() core.PluginProperties {
 
 func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
 	c.metrics.NumberOfTasks.Inc(ctx)
-	start := time.Now()
 	incomingState, err := c.unmarshalState(ctx, tCtx.PluginStateReader())
 	if err != nil {
 		return core.UnknownTransition, err
@@ -100,7 +99,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	}
 	c.metrics.NumberOfTasks.Dec(ctx)
 	logger.Infof(ctx, "number of requests [%v]", c.metrics.NumberOfTasks)
-	logger.Infof(ctx, "request latency [%v]", time.Since(start).Round(time.Microsecond).String())
+	// logger.Infof(ctx, "request latency [%v]", time.Since(start).Round(time.Microsecond).String())
 	logger.Infof(ctx, "phaseInfo [%v]", phaseInfo)
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }

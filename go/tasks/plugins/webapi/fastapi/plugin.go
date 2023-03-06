@@ -12,6 +12,7 @@ import (
 	"github.com/flyteorg/flytestdlib/logger"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 
@@ -84,7 +85,9 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
+	start := time.Now()
 	resp, err := p.client.Do(req)
+	logger.Infof(ctx, "fastapi create request latency [%v]", time.Since(start).Round(time.Microsecond).String())
 	if err != nil {
 		return nil, nil, err
 	}
