@@ -10,8 +10,10 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"google.golang.org/grpc"
+	"time"
 )
 
 type Plugin struct {
@@ -62,11 +64,12 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to connect backend plugin system")
 	}
 	defer conn.Close()
-
 	client := service.NewBackendPluginServiceClient(conn)
 	t := taskTemplate.Type
 	taskTemplate.Type = "dummy" // Dummy plugin is used to test performance
+	start := time.Now()
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
+	logger.Infof(ctx, "grpc create request latency [%v]", time.Since(start).Round(time.Microsecond).String())
 	taskTemplate.Type = t
 	if err != nil {
 		return nil, nil, err
