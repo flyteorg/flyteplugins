@@ -227,6 +227,7 @@ func ApplyFlytePodConfiguration(ctx context.Context, tCtx pluginsCore.TaskExecut
 
 		if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, podSpec, taskTemplate.GetInterface(),
 			tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), taskTemplate.GetContainer().GetDataConfig()); err != nil {
+			logger.Infof(ctx, "kevin copilot error [%v]", err)
 			return nil, nil, err
 		}
 	}
