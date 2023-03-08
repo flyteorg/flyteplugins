@@ -164,6 +164,7 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
 	pod := o.(*v1.Pod)
 	if err != nil {
+		logger.Infof(ctx, "build resource with err [%v]", err)
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
