@@ -132,9 +132,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	pod.ObjectMeta = *objectMeta
 	pod.Spec = *podSpec
 
-	if taskTemplate.Type == rawContainerTaskType {
-		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
-	}
+	pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
 
 	return pod, nil
 }
