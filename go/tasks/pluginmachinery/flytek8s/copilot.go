@@ -258,12 +258,16 @@ func AddCoPilotToPod(ctx context.Context, cfg config.FlyteCoPilotConfig, coPilot
 			coPilotPod.Volumes = append(coPilotPod.Volumes, DataVolume(cfg.OutputVolumeName, size))
 
 			// Lets add the Inputs init container
+			logger.Infof(ctx, "SidecarCommandArgs SidecarCommandArgs")
 			args, err := SidecarCommandArgs(outPath, outputPaths.GetOutputPrefixPath(), outputPaths.GetRawOutputPrefix(), cfg.StartTimeout.Duration, iFace)
 			if err != nil {
+				logger.Infof(ctx, "SidecarCommandArgs [%s]", err)
 				return err
 			}
+			logger.Infof(ctx, "FlyteCoPilotContainer FlyteCoPilotContainer")
 			sidecar, err := FlyteCoPilotContainer(flyteSidecarContainerName, cfg, args, outputsVolumeMount)
 			if err != nil {
+				logger.Infof(ctx, "FlyteCoPilotContainer [%s]", err)
 				return err
 			}
 			coPilotPod.Containers = append(coPilotPod.Containers, sidecar)
