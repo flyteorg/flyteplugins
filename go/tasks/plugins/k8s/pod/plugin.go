@@ -111,6 +111,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		var err error
 		podSpec, objectMeta, primaryContainerName, err = flytek8s.BuildRawPod(ctx, taskCtx)
 		if err != nil {
+			logger.Infof(ctx, "kevin3 err [%v]", err)
 			return nil, err
 		}
 	}
