@@ -133,6 +133,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	pod := flytek8s.BuildIdentityPod()
 	pod.ObjectMeta = *objectMeta
 	pod.Spec = *podSpec
+	pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
 
 	return pod, nil
 }
