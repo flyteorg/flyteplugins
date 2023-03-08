@@ -182,11 +182,6 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	sidecarIndex, err := getSidecarContainerIndex(pod)
-	if err != nil {
-		return pluginsCore.PhaseInfoUndefined, err
-	}
-
 	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, v1.EnvVar{
 		Name: FlyteK8sArrayIndexVarName,
 		// Use the OriginalIndex which represents the position of the subtask in the original user's map task before
@@ -194,9 +189,14 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 		Value: strconv.Itoa(stCtx.originalIndex),
 	})
 
-	for i, arg := range pod.Spec.Containers[sidecarIndex].Args {
-		if arg == "--to-output-prefix" {
-			pod.Spec.Containers[sidecarIndex].Args[i+1] = fmt.Sprintf("%s/%s", pod.Spec.Containers[sidecarIndex].Args[i+1], strconv.Itoa(stCtx.originalIndex))
+	for sidecarIndex, container := range pod.Spec.Containers {
+		if container.Name == flytek8s.FlyteCopilotSidecar {
+			for i, arg := range pod.Spec.Containers[sidecarIndex].Args {
+				if arg == "--to-output-prefix" {
+					pod.Spec.Containers[sidecarIndex].Args[i+1] = fmt.Sprintf("%s/%s", pod.Spec.Containers[sidecarIndex].Args[i+1], strconv.Itoa(stCtx.originalIndex))
+				}
+			}
+			break
 		}
 	}
 
@@ -355,16 +355,6 @@ func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 		}
 	}
 	return -1, stdErrors.Errorf(ErrBuildPodTemplate, "Couldn't find any container matching the primary container key when building an array job with a K8sPod spec target")
-}
-
-// getTaskContainerIndex returns the index of the primary container in a k8s pod.
-func getSidecarContainerIndex(pod *v1.Pod) (int, error) {
-	for idx, container := range pod.Spec.Containers {
-		if container.Name == flytek8s.FlyteCopilotSidecar {
-			return idx, nil
-		}
-	}
-	return -1, stdErrors.Errorf(ErrBuildPodTemplate, "Couldn't find any container matching the flyte-copilot-sidecar key when building an array job with a K8sPod spec target")
 }
 
 // isK8sObjectNotExists returns true if the error is one which describes a non existent k8s object.

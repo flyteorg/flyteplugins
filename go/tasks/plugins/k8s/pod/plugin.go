@@ -111,7 +111,6 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 		var err error
 		podSpec, objectMeta, primaryContainerName, err = flytek8s.BuildRawPod(ctx, taskCtx)
 		if err != nil {
-			logger.Infof(ctx, "kevin3 err [%v]", err)
 			return nil, err
 		}
 	}
@@ -119,7 +118,6 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	// update podSpec and objectMeta with Flyte customizations
 	podSpec, objectMeta, err = flytek8s.ApplyFlytePodConfiguration(ctx, taskCtx, podSpec, objectMeta, primaryContainerName)
 	if err != nil {
-		logger.Infof(ctx, "kevin4 err [%v]", err)
 		return nil, err
 	}
 
@@ -133,7 +131,10 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	pod := flytek8s.BuildIdentityPod()
 	pod.ObjectMeta = *objectMeta
 	pod.Spec = *podSpec
-	pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
+
+	if taskTemplate.Type == rawContainerTaskType {
+		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
+	}
 
 	return pod, nil
 }
