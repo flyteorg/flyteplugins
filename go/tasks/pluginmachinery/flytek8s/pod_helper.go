@@ -241,6 +241,7 @@ func ApplyFlytePodConfiguration(ctx context.Context, tCtx pluginsCore.TaskExecut
 	// merge PodSpec and ObjectMeta with configuration pod template (if exists)
 	podSpec, objectMeta, err = MergeWithBasePodTemplate(ctx, tCtx, podSpec, objectMeta, primaryContainerName)
 	if err != nil {
+		logger.Infof(ctx, "kevin1 copilot error [%v]", err)
 		return nil, nil, err
 	}
 
@@ -259,6 +260,7 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	// add flyte configuration
 	podSpec, objectMeta, err = ApplyFlytePodConfiguration(ctx, tCtx, podSpec, objectMeta, primaryContainerName)
 	if err != nil {
+		logger.Infof(ctx, "kevin2 copilot error [%v]", err)
 		return nil, nil, err
 	}
 
