@@ -119,6 +119,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	// update podSpec and objectMeta with Flyte customizations
 	podSpec, objectMeta, err = flytek8s.ApplyFlytePodConfiguration(ctx, taskCtx, podSpec, objectMeta, primaryContainerName)
 	if err != nil {
+		logger.Infof(ctx, "kevin4 err [%v]", err)
 		return nil, err
 	}
 
