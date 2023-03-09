@@ -189,7 +189,10 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
 	}
 
+	// When the copilot is running, we should wait until the data is uploaded by the copilot.
 	copilotContainerName, exists := r.GetAnnotations()[flytek8s.FlyteCopilotName]
+	logger.Infof(ctx, "copilotContainerName copilotContainerName [%v]", copilotContainerName)
+	logger.Infof(ctx, "exists exists [%v]", exists)
 	if exists {
 		copilotContainerPhase := flytek8s.DetermineContainerPhase(copilotContainerName, pod.Status.ContainerStatuses, &info)
 		if copilotContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
