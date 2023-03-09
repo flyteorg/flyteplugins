@@ -160,15 +160,18 @@ func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCor
 
 // launchSubtask creates a k8s pod defined by the SubTaskExecutionContext and Config.
 func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
+	logger.Infof(ctx, "BuildResource BuildResource")
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
 	pod := o.(*v1.Pod)
 	if err != nil {
+		logger.Infof(ctx, "build resource with err [%v]", err)
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), pod)
 
 	// inject maptask specific container environment variables
+	logger.Infof(ctx, "pod.Spec.Containers pod.Spec.Containers")
 	if len(pod.Spec.Containers) == 0 {
 		return pluginsCore.PhaseInfoUndefined, stdErrors.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
 	}
@@ -184,6 +187,17 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 		// compacting indexes caused by catalog-cache-check.
 		Value: strconv.Itoa(stCtx.originalIndex),
 	})
+
+	for sidecarIndex, container := range pod.Spec.Containers {
+		if container.Name == config.GetK8sPluginConfig().CoPilot.NamePrefix+flytek8s.Sidecar {
+			for i, arg := range pod.Spec.Containers[sidecarIndex].Args {
+				if arg == "--to-output-prefix" {
+					pod.Spec.Containers[sidecarIndex].Args[i+1] = fmt.Sprintf("%s/%s", pod.Spec.Containers[sidecarIndex].Args[i+1], strconv.Itoa(stCtx.originalIndex))
+				}
+			}
+			break
+		}
+	}
 
 	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, arrayJobEnvVars...)
 
