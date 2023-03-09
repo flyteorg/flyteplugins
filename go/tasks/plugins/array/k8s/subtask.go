@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"regexp"
 	"strconv"
 	"strings"
@@ -160,18 +161,15 @@ func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCor
 
 // launchSubtask creates a k8s pod defined by the SubTaskExecutionContext and Config.
 func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
-	logger.Infof(ctx, "BuildResource BuildResource")
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
 	pod := o.(*v1.Pod)
 	if err != nil {
-		logger.Infof(ctx, "build resource with err [%v]", err)
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
 	addMetadata(stCtx, cfg, config.GetK8sPluginConfig(), pod)
 
 	// inject maptask specific container environment variables
-	logger.Infof(ctx, "pod.Spec.Containers pod.Spec.Containers")
 	if len(pod.Spec.Containers) == 0 {
 		return pluginsCore.PhaseInfoUndefined, stdErrors.Wrapf(ErrReplaceCmdTemplate, err, "No containers found in podSpec.")
 	}

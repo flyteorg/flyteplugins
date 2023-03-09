@@ -2,10 +2,8 @@ package pod
 
 import (
 	"context"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-	"github.com/flyteorg/flytestdlib/logger"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
@@ -146,8 +144,6 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 
 	// When the copilot is running, we should wait until the data is uploaded by the copilot.
 	copilotContainerName, exists := r.GetAnnotations()[flytek8s.FlyteCopilotName]
-	logger.Infof(ctx, "copilotContainerName copilotContainerName [%v]", copilotContainerName)
-	logger.Infof(ctx, "exists exists [%v]", exists)
 	if exists {
 		copilotContainerPhase := flytek8s.DetermineContainerPhase(copilotContainerName, pod.Status.ContainerStatuses, &info)
 		if copilotContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
