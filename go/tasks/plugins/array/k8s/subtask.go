@@ -190,7 +190,7 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 	})
 
 	for sidecarIndex, container := range pod.Spec.Containers {
-		if container.Name == flytek8s.FlyteCopilotSidecar {
+		if container.Name == config.GetK8sPluginConfig().CoPilot.NamePrefix+flytek8s.Sidecar {
 			for i, arg := range pod.Spec.Containers[sidecarIndex].Args {
 				if arg == "--to-output-prefix" {
 					pod.Spec.Containers[sidecarIndex].Args[i+1] = fmt.Sprintf("%s/%s", pod.Spec.Containers[sidecarIndex].Args[i+1], strconv.Itoa(stCtx.originalIndex))

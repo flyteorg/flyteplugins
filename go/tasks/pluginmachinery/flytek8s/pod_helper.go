@@ -32,7 +32,7 @@ const defaultContainerTemplateName = "default"
 const primaryContainerTemplateName = "primary"
 const PrimaryContainerKey = "primary_container_name"
 const FlyteCopilotName = "flyte_copilot_name"
-const FlyteCopilotSidecar = "flyte-copilot-sidecar"
+const Sidecar = "sidecar"
 
 // ApplyInterruptibleNodeSelectorRequirement configures the node selector requirement of the node-affinity using the configuration specified.
 func ApplyInterruptibleNodeSelectorRequirement(interruptible bool, affinity *v1.Affinity) {
@@ -261,7 +261,6 @@ func ToK8sPodSpec(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*
 	// add flyte configuration
 	podSpec, objectMeta, err = ApplyFlytePodConfiguration(ctx, tCtx, podSpec, objectMeta, primaryContainerName)
 	if err != nil {
-		logger.Infof(ctx, "kevin2 copilot error [%v]", err)
 		return nil, nil, err
 	}
 

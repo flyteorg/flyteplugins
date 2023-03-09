@@ -2,6 +2,7 @@ package pod
 
 import (
 	"context"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	pluginserrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
@@ -134,7 +135,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 
 	if taskTemplate.GetContainer().DataConfig != nil && taskTemplate.GetContainer().DataConfig.Enabled {
 		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
-		pod.Annotations[flytek8s.FlyteCopilotName] = flytek8s.FlyteCopilotSidecar
+		pod.Annotations[flytek8s.FlyteCopilotName] = config.GetK8sPluginConfig().CoPilot.NamePrefix + flytek8s.Sidecar
 	}
 
 	return pod, nil
