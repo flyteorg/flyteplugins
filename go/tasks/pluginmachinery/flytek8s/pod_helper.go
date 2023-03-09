@@ -31,6 +31,7 @@ const SIGKILL = 137
 const defaultContainerTemplateName = "default"
 const primaryContainerTemplateName = "primary"
 const PrimaryContainerKey = "primary_container_name"
+const FlyteCopilotName = "flyte_copilot_name"
 const FlyteCopilotSidecar = "flyte-copilot-sidecar"
 
 // ApplyInterruptibleNodeSelectorRequirement configures the node selector requirement of the node-affinity using the configuration specified.
@@ -242,7 +243,6 @@ func ApplyFlytePodConfiguration(ctx context.Context, tCtx pluginsCore.TaskExecut
 	// merge PodSpec and ObjectMeta with configuration pod template (if exists)
 	podSpec, objectMeta, err = MergeWithBasePodTemplate(ctx, tCtx, podSpec, objectMeta, primaryContainerName)
 	if err != nil {
-		logger.Infof(ctx, "kevin1 copilot error [%v]", err)
 		return nil, nil, err
 	}
 
@@ -553,10 +553,10 @@ func DemystifySuccess(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 	return pluginsCore.PhaseInfoSuccess(&info), nil
 }
 
-// DeterminePrimaryContainerPhase as the name suggests, given all the containers, will return a pluginsCore.PhaseInfo object
+// DetermineContainerPhase as the name suggests, given all the containers, will return a pluginsCore.PhaseInfo object
 // corresponding to the phase of the primaryContainer which is identified using the provided name.
 // This is useful in case of sidecars or pod jobs, where Flyte will monitor successful exit of a single container.
-func DeterminePrimaryContainerPhase(primaryContainerName string, statuses []v1.ContainerStatus, info *pluginsCore.TaskInfo) pluginsCore.PhaseInfo {
+func DetermineContainerPhase(primaryContainerName string, statuses []v1.ContainerStatus, info *pluginsCore.TaskInfo) pluginsCore.PhaseInfo {
 	for _, s := range statuses {
 		if s.Name == primaryContainerName {
 			if s.State.Waiting != nil || s.State.Running != nil {

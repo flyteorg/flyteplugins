@@ -132,7 +132,10 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	pod.ObjectMeta = *objectMeta
 	pod.Spec = *podSpec
 
-	pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
+	if taskTemplate.GetContainer().DataConfig != nil && taskTemplate.GetContainer().DataConfig.Enabled {
+		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
+		pod.Annotations[flytek8s.FlyteCopilotName] = flytek8s.FlyteCopilotSidecar
+	}
 
 	return pod, nil
 }
@@ -186,8 +189,16 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
 	}
 
+	copilotContainerName, exists := r.GetAnnotations()[flytek8s.FlyteCopilotName]
+	if exists {
+		copilotContainerPhase := flytek8s.DetermineContainerPhase(copilotContainerName, pod.Status.ContainerStatuses, &info)
+		if copilotContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
+			return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, copilotContainerPhase.Info()), nil
+		}
+	}
+
 	// if the primary container annotation exists, we use the status of the specified container
-	primaryContainerPhase := flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
+	primaryContainerPhase := flytek8s.DetermineContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
 	if primaryContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, primaryContainerPhase.Info()), nil
 	}
