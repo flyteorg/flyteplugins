@@ -133,7 +133,7 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	pod.ObjectMeta = *objectMeta
 	pod.Spec = *podSpec
 
-	if taskTemplate.GetContainer().DataConfig != nil && taskTemplate.GetContainer().DataConfig.Enabled {
+	if taskTemplate.GetContainer() != nil && taskTemplate.GetContainer().DataConfig != nil && taskTemplate.GetContainer().DataConfig.Enabled {
 		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
 		pod.Annotations[flytek8s.FlyteCopilotName] = config.GetK8sPluginConfig().CoPilot.NamePrefix + flytek8s.Sidecar
 	}
