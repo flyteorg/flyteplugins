@@ -42,7 +42,7 @@ var (
 			},
 		},
 		GrpcTokenKey: grpcTokenKey,
-		grpcEndpoint: "backend-plugin-system-grpc.flyte.svc.cluster.local:8000",
+		GrpcEndpoint: "backend-plugin-system-grpc.flyte.svc.cluster.local:8000",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("grpc", &defaultConfig)
@@ -58,8 +58,7 @@ type Config struct {
 
 	GrpcTokenKey string `json:"grpcTokenKey" pflag:",Name of the key where to find grpc access token in the secret manager."`
 
-	// grpcEndpoint overrides grpc server endpoint, only for testing
-	grpcEndpoint string
+	GrpcEndpoint string `json:"grpcEndpoint" pflag:",The grpc endpoint of flyteplugins service."`
 }
 
 func GetConfig() *Config {

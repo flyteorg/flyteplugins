@@ -55,7 +55,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
-	conn, err := getGrpcClient(p.cfg.grpcEndpoint)
+	conn, err := getGrpcClient(p.cfg.GrpcEndpoint)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
@@ -83,7 +83,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		prevState = resource.State
 	}
 
-	conn, err := getGrpcClient(p.cfg.grpcEndpoint)
+	conn, err := getGrpcClient(p.cfg.GrpcEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
@@ -107,7 +107,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	}
 	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 
-	conn, err := getGrpcClient(p.cfg.grpcEndpoint)
+	conn, err := getGrpcClient(p.cfg.GrpcEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to connect flyteplugins service")
 	}
@@ -134,7 +134,7 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 
 func newGrpcPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
-		ID:                 "grpc",
+		ID:                 "flyteplugins-service",
 		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task", "snowflake", "spark"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
