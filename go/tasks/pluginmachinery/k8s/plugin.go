@@ -68,6 +68,16 @@ type PluginContext interface {
 
 	// Returns a handle to the Task's execution metadata.
 	TaskExecutionMetadata() pluginsCore.TaskExecutionMetadata
+
+	// Returns a reader that retrieves previously stored plugin internal state. the state itself is immutable
+	PluginStateReader() pluginsCore.PluginStateReader
+}
+
+// TODO @hamersaw docs
+type PluginState struct {
+	Phase        pluginsCore.Phase
+	PhaseVersion uint32
+	Reason       string
 }
 
 // Defines a simplified interface to author plugins for k8s resources.

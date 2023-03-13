@@ -2,6 +2,7 @@ package pod
 
 import (
 	"context"
+	"fmt"
 
 	pluginserrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
@@ -145,6 +146,12 @@ func (p plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContex
 }
 
 func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin, logSuffix string) (pluginsCore.PhaseInfo, error) {
+	pluginState := k8s.PluginState{}
+	_, err := pluginContext.PluginStateReader().Get(&pluginState)
+	if err != nil {
+		fmt.Printf("HAMERSAW - err %+v\n", err)
+	}
+
 	pod := r.(*v1.Pod)
 
 	transitionOccurredAt := flytek8s.GetLastTransitionOccurredAt(pod).Time
@@ -160,18 +167,44 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		info.Logs = taskLogs
 	}
 
+	phaseInfo := pluginsCore.PhaseInfoUndefined
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
-		return flytek8s.DemystifySuccess(pod.Status, info)
+		//return flytek8s.DemystifySuccess(pod.Status, info)
+		phaseInfo, err = flytek8s.DemystifySuccess(pod.Status, info)
 	case v1.PodFailed:
-		return flytek8s.DemystifyFailure(pod.Status, info)
+		//return flytek8s.DemystifyFailure(pod.Status, info)
+		phaseInfo, err = flytek8s.DemystifyFailure(pod.Status, info)
 	case v1.PodPending:
-		return flytek8s.DemystifyPending(pod.Status)
+		//return flytek8s.DemystifyPending(pod.Status)
+		phaseInfo, err = flytek8s.DemystifyPending(pod.Status)
 	case v1.PodReasonUnschedulable:
-		return pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable"), nil
+		//return pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable"), nil
+		phaseInfo = pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable")
 	case v1.PodUnknown:
 		return pluginsCore.PhaseInfoUndefined, nil
 	}
+
+	if err != nil {
+		return pluginsCore.PhaseInfoUndefined, err
+	} else if phaseInfo.Phase() != pluginsCore.PhaseUndefined {
+		// we evaluated one of the previous phases
+		if phaseInfo.Phase() == pluginState.Phase {
+			if phaseInfo.Version() <= pluginState.PhaseVersion && phaseInfo.Reason() != pluginState.Reason {
+				// if we executed one of the previous phases and the Reason has changed and the PhaseVersion has not
+				// we need to increment the PhaseVersion so that the updated Reason is sent to admin
+				phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion+1)
+			} else {
+				// to stop an event from being sent - we ensure the version is the smae
+				phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion)
+			}
+		}
+
+		return phaseInfo, err
+	}
+
+	// TODO @hamersaw - unable to detect reason updates to "RUNNING" state unless we also track changes to logs
+	// because DefaultPhaseVersion+1 will only increment to 1, if we use previousVersion+1 then we will always send an event
 
 	primaryContainerName, exists := r.GetAnnotations()[flytek8s.PrimaryContainerKey]
 	if !exists {
