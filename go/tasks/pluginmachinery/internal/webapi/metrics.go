@@ -17,7 +17,6 @@ type Metrics struct {
 	ResourceWaitTime        prometheus.Summary
 	SucceededUnmarshalState labeled.StopWatch
 	FailedUnmarshalState    labeled.Counter
-	NumberOfTasks           labeled.Gauge
 }
 
 var (
