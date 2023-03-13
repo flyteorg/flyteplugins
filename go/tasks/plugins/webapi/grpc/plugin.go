@@ -55,13 +55,13 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
-	conn, err := getGrpcClient(p.cfg.GrpcEndpoint)
+	conn, err := getGrpcConn(p.cfg.GrpcEndpoint)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
 	defer conn.Close()
 
-	client := service.NewBackendPluginServiceClient(conn)
+	client := p.getClient(conn)
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
 	if err != nil {
 		return nil, nil, err
@@ -83,13 +83,13 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		prevState = resource.State
 	}
 
-	conn, err := getGrpcClient(p.cfg.GrpcEndpoint)
+	conn, err := getGrpcConn(p.cfg.GrpcEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
 	defer conn.Close()
 
-	client := service.NewBackendPluginServiceClient(conn)
+	client := p.getClient(conn)
 	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID, OutputPrefix: metadata.OutputPrefix, PrevState: prevState})
 	if err != nil {
 		return nil, err
@@ -107,12 +107,12 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	}
 	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 
-	conn, err := getGrpcClient(p.cfg.GrpcEndpoint)
+	conn, err := getGrpcConn(p.cfg.GrpcEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to connect flyteplugins service")
 	}
 	defer conn.Close()
-	client := service.NewBackendPluginServiceClient(conn)
+	client := p.getClient(conn)
 	_, err = client.DeleteTask(ctx, &service.TaskDeleteRequest{TaskType: metadata.TaskType, JobId: metadata.JobID})
 	return err
 }
@@ -132,10 +132,15 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.Message)
 }
 
+func (p Plugin) getClient(conn *grpc.ClientConn) service.BackendPluginServiceClient {
+	// for mocking/testing purposes
+	return service.NewBackendPluginServiceClient(conn)
+}
+
 func newGrpcPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
 		ID:                 "flyteplugins-service",
-		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task", "snowflake", "spark"},
+		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
 				metricScope: iCtx.MetricsScope(),
@@ -145,7 +150,7 @@ func newGrpcPlugin() webapi.PluginEntry {
 	}
 }
 
-func getGrpcClient(endpoint string) (*grpc.ClientConn, error) {
+func getGrpcConn(endpoint string) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
 	return grpc.Dial(endpoint, opts...)

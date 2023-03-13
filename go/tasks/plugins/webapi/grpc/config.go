@@ -42,10 +42,10 @@ var (
 			},
 		},
 		GrpcTokenKey: grpcTokenKey,
-		GrpcEndpoint: "backend-plugin-system-grpc.flyte.svc.cluster.local:8000",
+		GrpcEndpoint: "flyteplugins-service.flyte.svc.cluster.local:8000",
 	}
 
-	configSection = pluginsConfig.MustRegisterSubSection("grpc", &defaultConfig)
+	configSection = pluginsConfig.MustRegisterSubSection("flyteplugins-service", &defaultConfig)
 )
 
 // Config is config for 'databricks' plugin
