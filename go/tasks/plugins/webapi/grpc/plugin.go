@@ -10,10 +10,8 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
-	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"google.golang.org/grpc"
-	"time"
 )
 
 type Plugin struct {
@@ -57,20 +55,14 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
+	conn, err := getGrpcClient(p.cfg.grpcEndpoint)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect backend plugin system")
+		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
 	defer conn.Close()
+
 	client := service.NewBackendPluginServiceClient(conn)
-	t := taskTemplate.Type
-	taskTemplate.Type = "dummy" // Dummy plugin is used to test performance
-	start := time.Now()
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
-	logger.Infof(ctx, "grpc create request latency [%v]", time.Since(start).Round(time.Microsecond).String())
-	taskTemplate.Type = t
 	if err != nil {
 		return nil, nil, err
 	}
@@ -79,7 +71,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		OutputPrefix: outputPrefix,
 		JobID:        res.JobId,
 		Token:        "",
-		TaskType:     "dummy",
+		TaskType:     taskTemplate.Type,
 	}, &ResourceWrapper{State: service.State_RUNNING}, nil
 }
 
@@ -91,11 +83,9 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		prevState = resource.State
 	}
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
+	conn, err := getGrpcClient(p.cfg.grpcEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect backend plugin system")
+		return nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
 	defer conn.Close()
 
@@ -117,11 +107,9 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	}
 	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial(p.cfg.grpcEndpoint, opts...)
+	conn, err := getGrpcClient(p.cfg.grpcEndpoint)
 	if err != nil {
-		return fmt.Errorf("failed to connect backend plugin system")
+		return fmt.Errorf("failed to connect flyteplugins service")
 	}
 	defer conn.Close()
 	client := service.NewBackendPluginServiceClient(conn)
@@ -155,6 +143,12 @@ func newGrpcPlugin() webapi.PluginEntry {
 			}, nil
 		},
 	}
+}
+
+func getGrpcClient(endpoint string) (*grpc.ClientConn, error) {
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
+	return grpc.Dial(endpoint, opts...)
 }
 
 func init() {
