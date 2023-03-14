@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 
+	flyteIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -26,6 +28,7 @@ type Plugin struct {
 type ResourceWrapper struct {
 	State   service.State
 	Message string
+	Outputs *flyteIdl.LiteralMap
 }
 
 type ResourceMetaWrapper struct {
@@ -104,6 +107,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	return &ResourceWrapper{
 		State:   res.State,
 		Message: res.Message,
+		Outputs: res.Outputs,
 	}, nil
 }
 
@@ -124,7 +128,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	return err
 }
 
-func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
+func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
 	resource := taskCtx.Resource().(*ResourceWrapper)
 	taskInfo := &core.TaskInfo{}
 
@@ -134,6 +138,12 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	case service.State_FAILED:
 		return core.PhaseInfoFailure(resource.Message, "failed to run the job", taskInfo), nil
 	case service.State_SUCCEEDED:
+		if resource.Outputs != nil {
+			err := taskCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil))
+			if err != nil {
+				return core.PhaseInfoUndefined, err
+			}
+		}
 		return core.PhaseInfoSuccess(taskInfo), nil
 	}
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.Message)
