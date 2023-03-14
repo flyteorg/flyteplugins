@@ -177,7 +177,7 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 	case v1.PodReasonUnschedulable:
 		phaseInfo = pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable")
 	case v1.PodUnknown:
-		phaseInfo = pluginsCore.PhaseInfoUndefined
+		// DO NOTHING
 	default:
 		primaryContainerName, exists := r.GetAnnotations()[flytek8s.PrimaryContainerKey]
 		if !exists {
