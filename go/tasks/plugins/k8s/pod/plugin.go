@@ -169,20 +169,15 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 	phaseInfo := pluginsCore.PhaseInfoUndefined
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
-		//return flytek8s.DemystifySuccess(pod.Status, info)
 		phaseInfo, err = flytek8s.DemystifySuccess(pod.Status, info)
 	case v1.PodFailed:
-		//return flytek8s.DemystifyFailure(pod.Status, info)
 		phaseInfo, err = flytek8s.DemystifyFailure(pod.Status, info)
 	case v1.PodPending:
-		//return flytek8s.DemystifyPending(pod.Status)
 		phaseInfo, err = flytek8s.DemystifyPending(pod.Status)
 	case v1.PodReasonUnschedulable:
-		//return pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable"), nil
 		phaseInfo = pluginsCore.PhaseInfoQueued(transitionOccurredAt, pluginsCore.DefaultPhaseVersion, "pod unschedulable")
 	case v1.PodUnknown:
-		//return pluginsCore.PhaseInfoUndefined, nil
-		// DO NOTHING
+		phaseInfo = pluginsCore.PhaseInfoUndefined
 	default:
 		primaryContainerName, exists := r.GetAnnotations()[flytek8s.PrimaryContainerKey]
 		if !exists {
