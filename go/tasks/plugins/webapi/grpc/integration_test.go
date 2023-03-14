@@ -2,6 +2,9 @@ package grpc
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -19,8 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
-	"testing"
-	"time"
 )
 
 type MockPlugin struct {
