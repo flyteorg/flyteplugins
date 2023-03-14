@@ -85,11 +85,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
-	prevState := service.State_RUNNING
-	if taskCtx.Resource() != nil {
-		resource := taskCtx.Resource().(*ResourceWrapper)
-		prevState = resource.State
-	}
 
 	client, conn, err := p.getClient(getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
 	if err != nil {
@@ -99,7 +94,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		defer conn.Close()
 	}
 
-	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID, PrevState: prevState})
+	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID})
 	if err != nil {
 		return nil, err
 	}
