@@ -77,11 +77,11 @@ type PluginContext interface {
 // determine if there have been any updates since the previously evaluation.
 type PluginState struct {
 	// Phase is the plugin phase.
-	Phase        pluginsCore.Phase
+	Phase pluginsCore.Phase
 	// PhaseVersion is an number used to indicate reportable changes to state that have the same phase.
 	PhaseVersion uint32
-	// Reason is the message explaning the purpose for being in the reported state.
-	Reason       string
+	// Reason is the message explaining the purpose for being in the reported state.
+	Reason string
 }
 
 // Defines a simplified interface to author plugins for k8s resources.

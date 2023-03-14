@@ -191,15 +191,13 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 			// fallback to declaring the task as 'running'.
 			phaseInfo = pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info)
 			if len(info.Logs) > 0 {
-				//return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, &info), nil
-				phaseInfo = phaseInfo.WithVersion(pluginsCore.DefaultPhaseVersion+1)
+				phaseInfo = phaseInfo.WithVersion(pluginsCore.DefaultPhaseVersion + 1)
 			}
 		} else {
 			// if the primary container annotation exists, we use the status of the specified container
 			phaseInfo = flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
 			if phaseInfo.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
-				//return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, primaryContainerPhase.Info()), nil
-				phaseInfo = phaseInfo.WithVersion(pluginsCore.DefaultPhaseVersion+1)
+				phaseInfo = phaseInfo.WithVersion(pluginsCore.DefaultPhaseVersion + 1)
 			}
 		}
 	}
@@ -209,6 +207,7 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 	} else if phaseInfo.Phase() != pluginsCore.PhaseRunning && phaseInfo.Phase() == pluginState.Phase &&
 		phaseInfo.Version() <= pluginState.PhaseVersion && phaseInfo.Reason() != pluginState.Reason {
 
+		// TODO @hamersaw - describe
 		phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion)
 	}
 
