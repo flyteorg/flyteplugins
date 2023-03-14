@@ -73,10 +73,14 @@ type PluginContext interface {
 	PluginStateReader() pluginsCore.PluginStateReader
 }
 
-// TODO @hamersaw docs
+// PluginState defines the state of a k8s plugin. This information must be maintained between propeller evaluations to
+// determine if there have been any updates since the previously evaluation.
 type PluginState struct {
+	// Phase is the plugin phase.
 	Phase        pluginsCore.Phase
+	// PhaseVersion is an number used to indicate reportable changes to state that have the same phase.
 	PhaseVersion uint32
+	// Reason is the message explaning the purpose for being in the reported state.
 	Reason       string
 }
 
