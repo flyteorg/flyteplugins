@@ -207,50 +207,13 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 	} else if phaseInfo.Phase() != pluginsCore.PhaseRunning && phaseInfo.Phase() == pluginState.Phase &&
 		phaseInfo.Version() <= pluginState.PhaseVersion && phaseInfo.Reason() != pluginState.Reason {
 
-		// TODO @hamersaw - describe
+		// if we have the same Phase as the previous evaluation and updated the Reason but not the PhaseVersion we must
+		// update the PhaseVersion so an event is sent to reflect the Reason update. this does not handle the Running
+		// Phase because the legacy used `DefaultPhaseVersion + 1` which will only increment to 1.
 		phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion)
 	}
 
 	return phaseInfo, err
-
-	/*if err != nil {
-		return pluginsCore.PhaseInfoUndefined, err
-	} else if phaseInfo.Phase() != pluginsCore.PhaseUndefined {
-		// we evaluated one of the previous phases
-		if phaseInfo.Phase() == pluginState.Phase {
-			if phaseInfo.Version() <= pluginState.PhaseVersion && phaseInfo.Reason() != pluginState.Reason {
-				// if we executed one of the previous phases and the Reason has changed and the PhaseVersion has not
-				// we need to increment the PhaseVersion so that the updated Reason is sent to admin
-				phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion+1)
-			} else {
-				// to stop an event from being sent - we ensure the version is the same
-				phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion)
-			}
-		}
-
-		return phaseInfo, err
-	}*/
-
-	// TODO @hamersaw - unable to detect reason updates to "RUNNING" state unless we also track changes to logs
-	// because DefaultPhaseVersion+1 will only increment to 1, if we use previousVersion+1 then we will always send an event
-
-	/*primaryContainerName, exists := r.GetAnnotations()[flytek8s.PrimaryContainerKey]
-	if !exists {
-		// if the primary container annotation dos not exist, then the task requires all containers
-		// to succeed to declare success. therefore, if the pod is not in one of the above states we
-		// fallback to declaring the task as 'running'.
-		if len(info.Logs) > 0 {
-			return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, &info), nil
-		}
-		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
-	}
-
-	// if the primary container annotation exists, we use the status of the specified container
-	primaryContainerPhase := flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
-	if primaryContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
-		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, primaryContainerPhase.Info()), nil
-	}
-	return primaryContainerPhase, nil*/
 }
 
 func (plugin) GetProperties() k8s.PluginProperties {
