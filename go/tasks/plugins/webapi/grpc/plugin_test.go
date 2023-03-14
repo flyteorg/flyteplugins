@@ -2,21 +2,36 @@ package grpc
 
 import (
 	"context"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
-	"google.golang.org/grpc"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	"github.com/flyteorg/flytestdlib/promutils"
+	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
-type MockClient struct {
-}
+func TestPlugin(t *testing.T) {
+	fakeSetupContext := pluginCoreMocks.SetupContext{}
+	fakeSetupContext.OnMetricsScope().Return(promutils.NewScope("test"))
 
-func (m *MockClient) CreateTask(ctx context.Context, in *service.TaskCreateRequest, opts ...grpc.CallOption) (*service.TaskCreateResponse, error) {
-	return &service.TaskCreateResponse{JobId: "job-id", Message: "succeed"}, nil
-}
-
-func (m *MockClient) GetTask(ctx context.Context, in *service.TaskGetRequest, opts ...grpc.CallOption) (*service.TaskGetResponse, error) {
-	return &service.TaskGetResponse{State: service.State_SUCCEEDED, Message: "succeed"}, nil
-}
-
-func (m *MockClient) DeleteTask(ctx context.Context, in *service.TaskDeleteRequest, opts ...grpc.CallOption) (*service.TaskDeleteResponse, error) {
-	return &service.TaskDeleteResponse{}, nil
+	plugin := Plugin{
+		metricScope: fakeSetupContext.MetricsScope(),
+		cfg:         GetConfig(),
+	}
+	t.Run("get config", func(t *testing.T) {
+		cfg := defaultConfig
+		cfg.WebAPI.Caching.Workers = 1
+		cfg.WebAPI.Caching.ResyncInterval.Duration = 5 * time.Second
+		cfg.DefaultGrpcEndpoint = "test-service.flyte.svc.cluster.local:80"
+		cfg.EndpointForTaskTypes = map[string]string{"spark": "localhost:80"}
+		err := SetConfig(&cfg)
+		assert.NoError(t, err)
+		assert.Equal(t, cfg.WebAPI, plugin.GetConfig())
+	})
+	t.Run("get ResourceRequirements", func(t *testing.T) {
+		namespace, constraints, err := plugin.ResourceRequirements(context.TODO(), nil)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginsCore.ResourceNamespace("default"), namespace)
+		assert.Equal(t, plugin.cfg.ResourceConstraints, constraints)
+	})
 }

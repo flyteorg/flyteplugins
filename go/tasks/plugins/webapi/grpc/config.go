@@ -41,8 +41,8 @@ var (
 				Value: 50,
 			},
 		},
-		GrpcTokenKey: grpcTokenKey,
-		GrpcEndpoint: "flyteplugins-service.flyte.svc.cluster.local:8000",
+		GrpcTokenKey:        grpcTokenKey,
+		DefaultGrpcEndpoint: "flyteplugins-service.flyte.svc.cluster.local:8000",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("flyteplugins-service", &defaultConfig)
@@ -58,7 +58,10 @@ type Config struct {
 
 	GrpcTokenKey string `json:"grpcTokenKey" pflag:",Name of the key where to find grpc access token in the secret manager."`
 
-	GrpcEndpoint string `json:"grpcEndpoint" pflag:",The grpc endpoint of flyteplugins service."`
+	DefaultGrpcEndpoint string `json:"defaultGrpcEndpoint" pflag:",The default grpc endpoint of flyteplugins service."`
+
+	// Maps endpoint to their plugin handler. {TaskType: Endpoint}
+	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`
 }
 
 func GetConfig() *Config {

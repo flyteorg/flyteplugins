@@ -14,9 +14,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+type GetClientFunc func(endpoint string) (service.BackendPluginServiceClient, *grpc.ClientConn, error)
+
 type Plugin struct {
 	metricScope promutils.Scope
 	cfg         *Config
+	getClient   GetClientFunc
 }
 
 type ResourceWrapper struct {
@@ -55,13 +58,14 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
-	conn, err := getGrpcConn(p.cfg.GrpcEndpoint)
+	client, conn, err := p.getClient(getFinalEndpoint(taskTemplate.Type, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
-	defer conn.Close()
+	if conn != nil {
+		defer conn.Close()
+	}
 
-	client := p.getClient(conn)
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
 	if err != nil {
 		return nil, nil, err
@@ -83,14 +87,15 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		prevState = resource.State
 	}
 
-	conn, err := getGrpcConn(p.cfg.GrpcEndpoint)
+	client, conn, err := p.getClient(getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
-	defer conn.Close()
+	if conn != nil {
+		defer conn.Close()
+	}
 
-	client := p.getClient(conn)
-	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID, OutputPrefix: metadata.OutputPrefix, PrevState: prevState})
+	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID, PrevState: prevState})
 	if err != nil {
 		return nil, err
 	}
@@ -107,12 +112,13 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	}
 	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 
-	conn, err := getGrpcConn(p.cfg.GrpcEndpoint)
+	client, conn, err := p.getClient(getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
 	if err != nil {
 		return fmt.Errorf("failed to connect flyteplugins service")
 	}
-	defer conn.Close()
-	client := p.getClient(conn)
+	if conn != nil {
+		defer conn.Close()
+	}
 	_, err = client.DeleteTask(ctx, &service.TaskDeleteRequest{TaskType: metadata.TaskType, JobId: metadata.JobID})
 	return err
 }
@@ -132,9 +138,23 @@ func (p Plugin) Status(_ context.Context, taskCtx webapi.StatusContext) (phase c
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.Message)
 }
 
-func (p Plugin) getClient(conn *grpc.ClientConn) service.BackendPluginServiceClient {
+func getFinalEndpoint(taskType, defaultEndpoint string, endpointForTaskTypes map[string]string) string {
+	if t, exists := endpointForTaskTypes[taskType]; exists {
+		return t
+	}
+
+	return defaultEndpoint
+}
+
+func getClientFunc(endpoint string) (service.BackendPluginServiceClient, *grpc.ClientConn, error) {
 	// for mocking/testing purposes
-	return service.NewBackendPluginServiceClient(conn)
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
+	conn, err := grpc.Dial(endpoint, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
+	}
+	return service.NewBackendPluginServiceClient(conn), conn, nil
 }
 
 func newGrpcPlugin() webapi.PluginEntry {
@@ -145,15 +165,10 @@ func newGrpcPlugin() webapi.PluginEntry {
 			return &Plugin{
 				metricScope: iCtx.MetricsScope(),
 				cfg:         GetConfig(),
+				getClient:   getClientFunc,
 			}, nil
 		},
 	}
-}
-
-func getGrpcConn(endpoint string) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	return grpc.Dial(endpoint, opts...)
 }
 
 func init() {
