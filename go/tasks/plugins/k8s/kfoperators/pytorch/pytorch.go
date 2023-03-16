@@ -2,26 +2,27 @@ package pytorch
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
+
 	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
 
 	commonOp "github.com/kubeflow/common/pkg/apis/common/v1"
 	kubeflowv1 "github.com/kubeflow/training-operator/pkg/apis/kubeflow.org/v1"
+
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type pytorchOperatorResourceHandler struct {
@@ -61,33 +62,22 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 	}
 
-	podSpec, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
+	podSpec, objectMeta, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
-
 	common.OverrideDefaultContainerName(taskCtx, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
 
-	podTemplate := flytek8s.DefaultPodTemplateStore.LoadOrDefault(taskCtx.TaskExecutionMetadata().GetNamespace())
-
-	objectMeta := metav1.ObjectMeta{}
-
-	if podTemplate != nil {
-		mergedPodSpec, err := flytek8s.MergePodSpecs(&podTemplate.Template.Spec, podSpec, kubeflowv1.PytorchJobDefaultContainerName)
-		if err != nil {
-			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to merge default pod template: [%v]", err.Error())
-		}
-		podSpec = mergedPodSpec
-		objectMeta = podTemplate.Template.ObjectMeta
-	}
-
 	workers := pytorchTaskExtraArgs.GetWorkers()
+	if workers == 0 {
+		return nil, fmt.Errorf("number of worker should be more then 0")
+	}
 
 	jobSpec := kubeflowv1.PyTorchJobSpec{
 		PyTorchReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{
 			kubeflowv1.PyTorchJobReplicaTypeMaster: {
 				Template: v1.PodTemplateSpec{
-					ObjectMeta: objectMeta,
+					ObjectMeta: *objectMeta,
 					Spec:       *podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
@@ -95,7 +85,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 			kubeflowv1.PyTorchJobReplicaTypeWorker: {
 				Replicas: &workers,
 				Template: v1.PodTemplateSpec{
-					ObjectMeta: objectMeta,
+					ObjectMeta: *objectMeta,
 					Spec:       *podSpec,
 				},
 				RestartPolicy: commonOp.RestartPolicyNever,
