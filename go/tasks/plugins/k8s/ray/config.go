@@ -96,7 +96,7 @@ type Config struct {
 	NodeIPAddress string `json:"nodeIPAddress,omitempty"`
 
 	// Remote Ray Cluster Config
-	RemoteClusterConfig ClusterConfig `json:"remoteClusterConfig" pflag:"Configuration of remote K8s cluster for array jobs"`
+	RemoteClusterConfig ClusterConfig `json:"remoteClusterConfig" pflag:"Configuration of remote K8s cluster for ray jobs"`
 }
 
 func GetConfig() *Config {
