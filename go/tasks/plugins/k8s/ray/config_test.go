@@ -3,6 +3,7 @@ package ray
 import (
 	"testing"
 
+	pluginmachinery "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"gotest.tools/assert"
 )
 
@@ -12,10 +13,10 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("remote cluster", func(t *testing.T) {
 		config := GetConfig()
-		remoteConfig := ClusterConfig{
+		remoteConfig := pluginmachinery.ClusterConfig{
 			Enabled:  false,
 			Endpoint: "",
-			Auth: Auth{
+			Auth: pluginmachinery.Auth{
 				TokenPath:  "",
 				CaCertPath: "",
 			},

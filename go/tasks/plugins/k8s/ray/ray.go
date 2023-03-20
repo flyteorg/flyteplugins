@@ -378,7 +378,7 @@ func init() {
 					return nil, nil
 				}
 
-				kubeConfig, err := KubeClientConfig(remoteConfig.Endpoint, remoteConfig.Auth)
+				kubeConfig, err := k8s.KubeClientConfig(remoteConfig.Endpoint, remoteConfig.Auth)
 				if err != nil {
 					return nil, err
 				}
