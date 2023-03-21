@@ -2,6 +2,7 @@ package pytorch
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -82,8 +83,23 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 	}
 
 	workers := pytorchTaskExtraArgs.GetWorkers()
+	minReplicas := pytorchTaskExtraArgs.GetMinReplicas()
+	maxReplicas := pytorchTaskExtraArgs.GetMaxReplicas()
+	maxRestarts := pytorchTaskExtraArgs.GetMaxRestarts()
+	rdzvBackend := pytorchTaskExtraArgs.GetRDZVBackend()
+	nProcPerNode := pytorchTaskExtraArgs.GetNProcPerNode()
+
+	fmt.Printf("minReplicas")
+	fmt.Println(minReplicas)
 
 	jobSpec := kubeflowv1.PyTorchJobSpec{
+		ElasticPolicy: &kubeflowv1.ElasticPolicy{
+			MinReplicas:  &minReplicas,
+			MaxReplicas:  &maxReplicas,
+			MaxRestarts:  &maxRestarts,
+			RDZVBackend:  (*kubeflowv1.RDZVBackend)(&rdzvBackend),
+			NProcPerNode: &nProcPerNode,
+		},
 		PyTorchReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{
 			kubeflowv1.PyTorchJobReplicaTypeMaster: {
 				Template: v1.PodTemplateSpec{
