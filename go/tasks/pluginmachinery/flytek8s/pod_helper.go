@@ -555,9 +555,9 @@ func DemystifySuccess(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 // DetermineContainerPhase as the name suggests, given all the containers, will return a pluginsCore.PhaseInfo object
 // corresponding to the phase of the primaryContainer which is identified using the provided name.
 // This is useful in case of sidecars or pod jobs, where Flyte will monitor successful exit of a single container.
-func DetermineContainerPhase(primaryContainerName string, statuses []v1.ContainerStatus, info *pluginsCore.TaskInfo) pluginsCore.PhaseInfo {
+func DetermineContainerPhase(containerName string, statuses []v1.ContainerStatus, info *pluginsCore.TaskInfo) pluginsCore.PhaseInfo {
 	for _, s := range statuses {
-		if s.Name == primaryContainerName {
+		if s.Name == containerName {
 			if s.State.Waiting != nil || s.State.Running != nil {
 				return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info)
 			}
@@ -574,7 +574,7 @@ func DetermineContainerPhase(primaryContainerName string, statuses []v1.Containe
 
 	// If for some reason we can't find the primary container, always just return a permanent failure
 	return pluginsCore.PhaseInfoFailure("PrimaryContainerMissing",
-		fmt.Sprintf("Primary container [%s] not found in pod's container statuses", primaryContainerName), info)
+		fmt.Sprintf("Primary container [%s] not found in pod's container statuses", containerName), info)
 }
 
 // DemystifyFailure resolves the various Kubernetes pod failure modes to determine
