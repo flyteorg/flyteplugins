@@ -5,14 +5,13 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
-
 	flyteIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"google.golang.org/grpc"
@@ -76,9 +75,13 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
+	if res.GetErrorMessage() != "" {
+		return nil, nil, fmt.Errorf(res.GetErrorMessage())
+	}
+
 	return &ResourceMetaWrapper{
 		OutputPrefix: outputPrefix,
-		JobID:        res.JobId,
+		JobID:        res.GetJobId(),
 		Token:        "",
 		TaskType:     taskTemplate.Type,
 	}, &ResourceWrapper{State: service.State_RUNNING}, nil
@@ -102,7 +105,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 
 	return &ResourceWrapper{
 		State:   res.State,
-		Message: res.Message,
+		Message: res.GetErrorMessage(),
 		Outputs: res.Outputs,
 	}, nil
 }
@@ -131,7 +134,9 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	switch resource.State {
 	case service.State_RUNNING:
 		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
-	case service.State_FAILED:
+	case service.State_PERMANENT_FAILURE:
+		return core.PhaseInfoFailure(resource.Message, "failed to run the job", taskInfo), nil
+	case service.State_RETRYABLE_FAILURE:
 		return core.PhaseInfoFailure(resource.Message, "failed to run the job", taskInfo), nil
 	case service.State_SUCCEEDED:
 		if resource.Outputs != nil {
