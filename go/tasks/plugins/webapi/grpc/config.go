@@ -42,7 +42,7 @@ var (
 			},
 		},
 		GrpcTokenKey:        grpcTokenKey,
-		DefaultGrpcEndpoint: "flyteplugins-service.flyte.svc.cluster.local:8000",
+		DefaultGrpcEndpoint: "flyteplugins-service.flyte.svc.cluster.local:80",
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("flyteplugins-service", &defaultConfig)
