@@ -85,9 +85,7 @@ func DetermineDiscoverability(ctx context.Context, tCtx core.TaskExecutionContex
 			if literalCollection = literal.GetCollection(); literalCollection != nil {
 				// validate length of input list
 				if size != -1 && size != len(literalCollection.Literals) {
-					state = state.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason(
-						fmt.Sprintf("all maptask input lists must be the same length - input list '%s' has length '%d' whereas input(s) '%+v' have length '%d'",
-						inputName, len(literalCollection.Literals), discoveredInputNames, size))
+					state = state.SetPhase(arrayCore.PhasePermanentFailure, 0).SetReason("all maptask input lists must be the same length")
 					return state, nil
 				}
 
