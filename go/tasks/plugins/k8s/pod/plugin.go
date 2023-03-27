@@ -205,7 +205,7 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		// if we have the same Phase as the previous evaluation and updated the Reason but not the PhaseVersion we must
 		// update the PhaseVersion so an event is sent to reflect the Reason update. this does not handle the Running
 		// Phase because the legacy used `DefaultPhaseVersion + 1` which will only increment to 1.
-		phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion)
+		phaseInfo = phaseInfo.WithVersion(pluginState.PhaseVersion + 1)
 	}
 
 	return phaseInfo, err
