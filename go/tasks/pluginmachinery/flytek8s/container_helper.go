@@ -204,6 +204,12 @@ func BuildRawContainer(ctx context.Context, taskContainer *core.Container, taskE
 		containerName = rand.String(4)
 	}
 
+	res, err := ToK8sResourceRequirements(taskContainer.Resources)
+
+	if err != nil {
+		return nil, err
+	}
+
 	container := &v1.Container{
 		Name:                     containerName,
 		Image:                    taskContainer.GetImage(),
@@ -211,6 +217,7 @@ func BuildRawContainer(ctx context.Context, taskContainer *core.Container, taskE
 		Command:                  taskContainer.GetCommand(),
 		Env:                      ToK8sEnvVar(taskContainer.GetEnv()),
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+		Resources:                *res,
 	}
 
 	return container, nil
@@ -303,9 +310,7 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 			" Resources [%v] with mode [%v]", res, platformResources, container.Resources, mode)
 
 		switch mode {
-		case ResourceCustomizationModeAssignResources:
-			container.Resources = ApplyResourceOverrides(*res, *platformResources, assignIfUnset)
-		case ResourceCustomizationModeMergeExistingResources:
+		case ResourceCustomizationModeAssignResources, ResourceCustomizationModeMergeExistingResources:
 			MergeResources(*res, &container.Resources)
 			container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, assignIfUnset)
 		case ResourceCustomizationModeEnsureExistingResourcesInRange:
