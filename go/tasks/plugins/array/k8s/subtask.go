@@ -160,6 +160,20 @@ func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCor
 	return nil
 }
 
+// updateCopilotArgs append array index to the end of the output prefix
+func updateCopilotArgs(pod *v1.Pod, stCtx SubTaskExecutionContext) {
+	for sidecarIndex, container := range pod.Spec.Containers {
+		if container.Name == config.GetK8sPluginConfig().CoPilot.NamePrefix+flytek8s.Sidecar {
+			for i, arg := range pod.Spec.Containers[sidecarIndex].Args {
+				if arg == "--to-output-prefix" {
+					pod.Spec.Containers[sidecarIndex].Args[i+1] = fmt.Sprintf("%s/%s", pod.Spec.Containers[sidecarIndex].Args[i+1], strconv.Itoa(stCtx.originalIndex))
+				}
+			}
+			break
+		}
+	}
+}
+
 // launchSubtask creates a k8s pod defined by the SubTaskExecutionContext and Config.
 func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
@@ -187,18 +201,8 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 		Value: strconv.Itoa(stCtx.originalIndex),
 	})
 
-	for sidecarIndex, container := range pod.Spec.Containers {
-		if container.Name == config.GetK8sPluginConfig().CoPilot.NamePrefix+flytek8s.Sidecar {
-			for i, arg := range pod.Spec.Containers[sidecarIndex].Args {
-				if arg == "--to-output-prefix" {
-					pod.Spec.Containers[sidecarIndex].Args[i+1] = fmt.Sprintf("%s/%s", pod.Spec.Containers[sidecarIndex].Args[i+1], strconv.Itoa(stCtx.originalIndex))
-				}
-			}
-			break
-		}
-	}
-
 	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, arrayJobEnvVars...)
+	updateCopilotArgs(pod, stCtx)
 
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", pod.GetObjectKind().GroupVersionKind(), pod.GetNamespace(), pod.GetName())
 	err = kubeClient.GetClient().Create(ctx, pod)
