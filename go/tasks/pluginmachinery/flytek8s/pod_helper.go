@@ -220,14 +220,21 @@ func ApplyFlytePodConfiguration(ctx context.Context, tCtx pluginsCore.TaskExecut
 	}
 
 	// add copilot configuration to primaryContainer and PodSpec (if necessary)
-	if taskTemplate.GetContainer() != nil {
-		if err := AddCoPilotToContainer(ctx, config.GetK8sPluginConfig().CoPilot, primaryContainer,
-			taskTemplate.Interface, taskTemplate.GetContainer().DataConfig); err != nil {
+	var dataLoadingConfig *core.DataLoadingConfig
+	if container := taskTemplate.GetContainer(); container != nil {
+		dataLoadingConfig = container.GetDataConfig()
+	} else if pod := taskTemplate.GetK8SPod(); pod != nil {
+		dataLoadingConfig = pod.GetDataConfig()
+	}
+
+	if dataLoadingConfig != nil {
+		if err := AddCoPilotToContainer(ctx, config.GetK8sPluginConfig().CoPilot,
+			primaryContainer, taskTemplate.Interface, dataLoadingConfig); err != nil {
 			return nil, nil, err
 		}
 
 		if err := AddCoPilotToPod(ctx, config.GetK8sPluginConfig().CoPilot, podSpec, taskTemplate.GetInterface(),
-			tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), taskTemplate.GetContainer().GetDataConfig()); err != nil {
+			tCtx.TaskExecutionMetadata(), tCtx.InputReader(), tCtx.OutputWriter(), dataLoadingConfig); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -658,13 +665,13 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) metav1.Time {
 	var lastTransitionTime metav1.Time
 	containerStatuses := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
 	for _, containerStatus := range containerStatuses {
-		if r := containerStatus.LastTerminationState.Running; r != nil {
+		if r := containerStatus.State.Running; r != nil {
 			if r.StartedAt.Unix() > lastTransitionTime.Unix() {
 				lastTransitionTime = r.StartedAt
 			}
-		} else if r := containerStatus.LastTerminationState.Terminated; r != nil {
+		} else if r := containerStatus.State.Terminated; r != nil {
 			if r.FinishedAt.Unix() > lastTransitionTime.Unix() {
-				lastTransitionTime = r.StartedAt
+				lastTransitionTime = r.FinishedAt
 			}
 		}
 	}
@@ -674,4 +681,17 @@ func GetLastTransitionOccurredAt(pod *v1.Pod) metav1.Time {
 	}
 
 	return lastTransitionTime
+}
+
+func GetReportedAt(pod *v1.Pod) metav1.Time {
+	var reportedAt metav1.Time
+	for _, condition := range pod.Status.Conditions {
+		if condition.Reason == "PodCompleted" && condition.Type == v1.PodReady && condition.Status == v1.ConditionFalse {
+			if condition.LastTransitionTime.Unix() > reportedAt.Unix() {
+				reportedAt = condition.LastTransitionTime
+			}
+		}
+	}
+
+	return reportedAt
 }
