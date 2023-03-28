@@ -31,7 +31,6 @@ const SIGKILL = 137
 const defaultContainerTemplateName = "default"
 const primaryContainerTemplateName = "primary"
 const PrimaryContainerKey = "primary_container_name"
-const FlyteCopilotName = "flyte_copilot_name"
 const Sidecar = "sidecar"
 
 // ApplyInterruptibleNodeSelectorRequirement configures the node selector requirement of the node-affinity using the configuration specified.

@@ -160,18 +160,6 @@ func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCor
 	return nil
 }
 
-func addCopilotToPod(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, pod *v1.Pod) error {
-	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
-	if err != nil {
-		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
-		return err
-	}
-	if taskTemplate.GetContainer() != nil && taskTemplate.GetContainer().DataConfig != nil && taskTemplate.GetContainer().DataConfig.Enabled {
-		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
-		pod.Annotations[flytek8s.FlyteCopilotName] = config.GetK8sPluginConfig().CoPilot.NamePrefix + flytek8s.Sidecar
-	}
-}
-
 // launchSubtask creates a k8s pod defined by the SubTaskExecutionContext and Config.
 func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
