@@ -949,7 +949,7 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 	}
 	var info = &pluginsCore.TaskInfo{}
 	t.Run("primary container waiting", func(t *testing.T) {
-		phaseInfo := DetermineContainerPhase(primaryContainerName, []v1.ContainerStatus{
+		phaseInfo := DeterminePrimaryContainerPhase(primaryContainerName, []v1.ContainerStatus{
 			secondaryContainer, {
 				Name: primaryContainerName,
 				State: v1.ContainerState{
@@ -962,7 +962,7 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhaseRunning, phaseInfo.Phase())
 	})
 	t.Run("primary container running", func(t *testing.T) {
-		phaseInfo := DetermineContainerPhase(primaryContainerName, []v1.ContainerStatus{
+		phaseInfo := DeterminePrimaryContainerPhase(primaryContainerName, []v1.ContainerStatus{
 			secondaryContainer, {
 				Name: primaryContainerName,
 				State: v1.ContainerState{
@@ -975,7 +975,7 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhaseRunning, phaseInfo.Phase())
 	})
 	t.Run("primary container failed", func(t *testing.T) {
-		phaseInfo := DetermineContainerPhase(primaryContainerName, []v1.ContainerStatus{
+		phaseInfo := DeterminePrimaryContainerPhase(primaryContainerName, []v1.ContainerStatus{
 			secondaryContainer, {
 				Name: primaryContainerName,
 				State: v1.ContainerState{
@@ -992,7 +992,7 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 		assert.Equal(t, "foo failed", phaseInfo.Err().Message)
 	})
 	t.Run("primary container succeeded", func(t *testing.T) {
-		phaseInfo := DetermineContainerPhase(primaryContainerName, []v1.ContainerStatus{
+		phaseInfo := DeterminePrimaryContainerPhase(primaryContainerName, []v1.ContainerStatus{
 			secondaryContainer, {
 				Name: primaryContainerName,
 				State: v1.ContainerState{
@@ -1005,7 +1005,7 @@ func TestDeterminePrimaryContainerPhase(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhaseSuccess, phaseInfo.Phase())
 	})
 	t.Run("missing primary container", func(t *testing.T) {
-		phaseInfo := DetermineContainerPhase(primaryContainerName, []v1.ContainerStatus{
+		phaseInfo := DeterminePrimaryContainerPhase(primaryContainerName, []v1.ContainerStatus{
 			secondaryContainer,
 		}, info)
 		assert.Equal(t, pluginsCore.PhasePermanentFailure, phaseInfo.Phase())

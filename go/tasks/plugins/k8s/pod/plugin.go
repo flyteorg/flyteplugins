@@ -3,8 +3,6 @@ package pod
 import (
 	"context"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
-
 	pluginserrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -134,11 +132,6 @@ func (p plugin) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecu
 	pod.ObjectMeta = *objectMeta
 	pod.Spec = *podSpec
 
-	if taskTemplate.GetContainer() != nil && taskTemplate.GetContainer().DataConfig != nil && taskTemplate.GetContainer().DataConfig.Enabled {
-		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
-		pod.Annotations[flytek8s.FlyteCopilotName] = config.GetK8sPluginConfig().CoPilot.NamePrefix + flytek8s.Sidecar
-	}
-
 	return pod, nil
 }
 
@@ -191,17 +184,8 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, &info), nil
 	}
 
-	// When the copilot is running, we should wait until the data is uploaded by the copilot.
-	copilotContainerName, exists := r.GetAnnotations()[flytek8s.FlyteCopilotName]
-	if exists {
-		copilotContainerPhase := flytek8s.DetermineContainerPhase(copilotContainerName, pod.Status.ContainerStatuses, &info)
-		if copilotContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
-			return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, copilotContainerPhase.Info()), nil
-		}
-	}
-
 	// if the primary container annotation exists, we use the status of the specified container
-	primaryContainerPhase := flytek8s.DetermineContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
+	primaryContainerPhase := flytek8s.DeterminePrimaryContainerPhase(primaryContainerName, pod.Status.ContainerStatuses, &info)
 	if primaryContainerPhase.Phase() == pluginsCore.PhaseRunning && len(info.Logs) > 0 {
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion+1, primaryContainerPhase.Info()), nil
 	}

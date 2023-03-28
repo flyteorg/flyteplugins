@@ -160,6 +160,18 @@ func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCor
 	return nil
 }
 
+func addCopilotToPod(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, pod *v1.Pod) error {
+	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
+	if err != nil {
+		logger.Warnf(ctx, "failed to read task information when trying to construct Pod, err: %s", err.Error())
+		return err
+	}
+	if taskTemplate.GetContainer() != nil && taskTemplate.GetContainer().DataConfig != nil && taskTemplate.GetContainer().DataConfig.Enabled {
+		pod.Annotations[flytek8s.PrimaryContainerKey] = primaryContainerName
+		pod.Annotations[flytek8s.FlyteCopilotName] = config.GetK8sPluginConfig().CoPilot.NamePrefix + flytek8s.Sidecar
+	}
+}
+
 // launchSubtask creates a k8s pod defined by the SubTaskExecutionContext and Config.
 func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
@@ -340,6 +352,10 @@ func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 	// For tasks with a Container target, we only ever build one container as part of the pod
 	if !ok {
 		if len(pod.Spec.Containers) == 1 {
+			return 0, nil
+		}
+		// Copilot is always the second container if it is enabled.
+		if len(pod.Spec.Containers) == 2 && pod.Spec.Containers[1].Name == config.GetK8sPluginConfig().CoPilot.NamePrefix+flytek8s.Sidecar {
 			return 0, nil
 		}
 		// For tasks with a K8sPod task target, they may produce multiple containers but at least one must be the designated primary.
