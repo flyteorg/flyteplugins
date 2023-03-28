@@ -191,7 +191,7 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		if !exists {
 			// if all of the containers in the Pod are complete, as an optimization, we can declare the task as
 			// succeeded rather than waiting for the Pod to be marked completed.
-			allSuccessfullyTerminated := true
+			allSuccessfullyTerminated := len(pod.Status.ContainerStatuses) > 0
 			for _, s := range pod.Status.ContainerStatuses {
 				if s.State.Waiting != nil || s.State.Running != nil || (s.State.Terminated != nil && s.State.Terminated.ExitCode != 0) {
 					allSuccessfullyTerminated = false
