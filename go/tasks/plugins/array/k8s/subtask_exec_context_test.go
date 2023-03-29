@@ -3,13 +3,13 @@ package k8s
 import (
 	"context"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+
 	"testing"
 
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/flyteorg/flytestdlib/storage"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,8 +55,8 @@ func TestUpdateCopilotArgs(t *testing.T) {
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	assert.Nil(t, err)
 
-	var stCtx SubTaskExecutionContext
-	stCtx, err = NewSubTaskExecutionContext(ctx, tCtx, taskTemplate, 0, 5, uint64(1), uint64(0))
+	stCtx, err := NewSubTaskExecutionContext(ctx, tCtx, taskTemplate, 0, 5, uint64(1), uint64(0))
+	assert.Nil(t, err)
 	updateCopilotArgs(pod, stCtx)
 	assert.Equal(t, pod.Spec.Containers[0].Args[1], "s3://bucket/key/5")
 }
