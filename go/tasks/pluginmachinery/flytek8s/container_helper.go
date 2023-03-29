@@ -205,7 +205,6 @@ func BuildRawContainer(ctx context.Context, taskContainer *core.Container, taskE
 	}
 
 	res, err := ToK8sResourceRequirements(taskContainer.Resources)
-
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +257,7 @@ func ToK8sContainer(ctx context.Context, tCtx pluginscore.TaskExecutionContext) 
 		Task:             tCtx.TaskReader(),
 	}
 
-	if err := AddFlyteCustomizationsToContainer(ctx, templateParameters, ResourceCustomizationModeAssignResources, container); err != nil {
+	if err := AddFlyteCustomizationsToContainer(ctx, templateParameters, ResourceCustomizationModeMergeExistingResources, container); err != nil {
 		return nil, err
 	}
 
@@ -310,7 +309,9 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 			" Resources [%v] with mode [%v]", res, platformResources, container.Resources, mode)
 
 		switch mode {
-		case ResourceCustomizationModeAssignResources, ResourceCustomizationModeMergeExistingResources:
+		case ResourceCustomizationModeAssignResources:
+			container.Resources = ApplyResourceOverrides(*res, *platformResources, assignIfUnset)
+		case ResourceCustomizationModeMergeExistingResources:
 			MergeResources(*res, &container.Resources)
 			container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, assignIfUnset)
 		case ResourceCustomizationModeEnsureExistingResourcesInRange:
