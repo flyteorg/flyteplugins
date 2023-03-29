@@ -55,7 +55,8 @@ func TestUpdateCopilotArgs(t *testing.T) {
 	taskTemplate, err := tCtx.TaskReader().Read(ctx)
 	assert.Nil(t, err)
 
-	stCtx, err := NewSubTaskExecutionContext(ctx, tCtx, taskTemplate, 0, 5, uint64(1), uint64(0))
+	var stCtx SubTaskExecutionContext
+	stCtx, err = NewSubTaskExecutionContext(ctx, tCtx, taskTemplate, 0, 5, uint64(1), uint64(0))
 	updateCopilotArgs(pod, stCtx)
 	assert.Equal(t, pod.Spec.Containers[0].Args[1], "s3://bucket/key/5")
 }
