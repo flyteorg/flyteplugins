@@ -42,10 +42,10 @@ var (
 			},
 		},
 		GrpcTokenKey:        grpcTokenKey,
-		DefaultGrpcEndpoint: "flyteplugins-service.flyte.svc.cluster.local:80",
+		DefaultGrpcEndpoint: "external-plugin-service.flyte.svc.cluster.local:80",
 	}
 
-	configSection = pluginsConfig.MustRegisterSubSection("flyteplugins-service", &defaultConfig)
+	configSection = pluginsConfig.MustRegisterSubSection("external-plugin-service", &defaultConfig)
 )
 
 // Config is config for 'databricks' plugin
@@ -58,7 +58,7 @@ type Config struct {
 
 	GrpcTokenKey string `json:"grpcTokenKey" pflag:",Name of the key where to find grpc access token in the secret manager."`
 
-	DefaultGrpcEndpoint string `json:"defaultGrpcEndpoint" pflag:",The default grpc endpoint of flyteplugins service."`
+	DefaultGrpcEndpoint string `json:"defaultGrpcEndpoint" pflag:",The default grpc endpoint of external plugin service."`
 
 	// Maps endpoint to their plugin handler. {TaskType: Endpoint}
 	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`

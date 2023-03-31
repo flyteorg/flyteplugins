@@ -36,7 +36,11 @@ func (m *MockClient) CreateTask(_ context.Context, _ *service.TaskCreateRequest,
 }
 
 func (m *MockClient) GetTask(_ context.Context, _ *service.TaskGetRequest, _ ...grpc.CallOption) (*service.TaskGetResponse, error) {
-	return &service.TaskGetResponse{State: service.State_SUCCEEDED}, nil
+	return &service.TaskGetResponse{State: service.State_SUCCEEDED, Outputs: &flyteIdlCore.LiteralMap{
+		Literals: map[string]*flyteIdlCore.Literal{
+			"arr": coreutils.MustMakeLiteral([]interface{}{[]interface{}{"a", "b"}, []interface{}{1, 2}}),
+		},
+	}}, nil
 }
 
 func (m *MockClient) DeleteTask(_ context.Context, _ *service.TaskDeleteRequest, _ ...grpc.CallOption) (*service.TaskDeleteResponse, error) {
@@ -91,7 +95,7 @@ func TestEndToEnd(t *testing.T) {
 
 func newMockGrpcPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
-		ID:                 "flyteplugins-service",
+		ID:                 "external-plugin-service",
 		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &MockPlugin{

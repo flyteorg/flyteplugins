@@ -35,4 +35,10 @@ func TestPlugin(t *testing.T) {
 		assert.Equal(t, pluginsCore.ResourceNamespace("default"), namespace)
 		assert.Equal(t, plugin.cfg.ResourceConstraints, constraints)
 	})
+
+	t.Run("tet newGrpcPlugin", func(t *testing.T) {
+		p := newGrpcPlugin()
+		assert.NotNil(t, p)
+		assert.Equal(t, p.ID, "external-plugin-service")
+	})
 }

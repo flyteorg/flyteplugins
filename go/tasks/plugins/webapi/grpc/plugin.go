@@ -63,7 +63,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	client, conn, err := p.getClient(getFinalEndpoint(taskTemplate.Type, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
+		return nil, nil, fmt.Errorf("failed to connect external plugin service")
 	}
 	if conn != nil {
 		defer conn.Close()
@@ -87,7 +87,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 
 	client, conn, err := p.getClient(getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect flyteplugins service")
+		return nil, fmt.Errorf("failed to connect external plugin service")
 	}
 	if conn != nil {
 		defer conn.Close()
@@ -112,7 +112,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 
 	client, conn, err := p.getClient(getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
 	if err != nil {
-		return fmt.Errorf("failed to connect flyteplugins service")
+		return fmt.Errorf("failed to connect external plugin service")
 	}
 	if conn != nil {
 		defer conn.Close()
@@ -158,14 +158,14 @@ func getClientFunc(endpoint string) (service.ExternalPluginServiceClient, *grpc.
 	opts = append(opts, grpc.WithInsecure())
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
+		return nil, nil, fmt.Errorf("failed to connect external plugin service")
 	}
 	return service.NewExternalPluginServiceClient(conn), conn, nil
 }
 
 func newGrpcPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
-		ID:                 "flyteplugins-service",
+		ID:                 "external-plugin-service",
 		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task"},
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
