@@ -40,5 +40,20 @@ func TestPlugin(t *testing.T) {
 		p := newGrpcPlugin()
 		assert.NotNil(t, p)
 		assert.Equal(t, p.ID, "external-plugin-service")
+		assert.NotNil(t, p.PluginLoader)
+	})
+
+	t.Run("test getFinalEndpoint", func(t *testing.T) {
+		endpoint := getFinalEndpoint("spark", "localhost:8080", map[string]string{"spark": "localhost:80"})
+		assert.Equal(t, endpoint, "localhost:80")
+		endpoint = getFinalEndpoint("spark", "localhost:8080", map[string]string{})
+		assert.Equal(t, endpoint, "localhost:8080")
+	})
+
+	t.Run("test getClientFunc", func(t *testing.T) {
+		client, conn, err := getClientFunc("localhost:80")
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+		assert.NotNil(t, conn)
 	})
 }
