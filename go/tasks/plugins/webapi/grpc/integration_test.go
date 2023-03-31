@@ -32,18 +32,18 @@ type MockClient struct {
 }
 
 func (m *MockClient) CreateTask(_ context.Context, _ *service.TaskCreateRequest, _ ...grpc.CallOption) (*service.TaskCreateResponse, error) {
-	return &service.TaskCreateResponse{JobId: "job-id", Message: "succeed"}, nil
+	return &service.TaskCreateResponse{JobId: "job-id"}, nil
 }
 
 func (m *MockClient) GetTask(_ context.Context, _ *service.TaskGetRequest, _ ...grpc.CallOption) (*service.TaskGetResponse, error) {
-	return &service.TaskGetResponse{State: service.State_SUCCEEDED, Message: "succeed"}, nil
+	return &service.TaskGetResponse{State: service.State_SUCCEEDED}, nil
 }
 
 func (m *MockClient) DeleteTask(_ context.Context, _ *service.TaskDeleteRequest, _ ...grpc.CallOption) (*service.TaskDeleteResponse, error) {
 	return &service.TaskDeleteResponse{}, nil
 }
 
-func mockGetClientFunc(_ string) (service.BackendPluginServiceClient, *grpc.ClientConn, error) {
+func mockGetClientFunc(_ string) (service.ExternalPluginServiceClient, *grpc.ClientConn, error) {
 	return &MockClient{}, nil, nil
 }
 

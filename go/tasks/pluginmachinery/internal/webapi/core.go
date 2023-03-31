@@ -96,6 +96,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, nextState); err != nil {
 		return core.UnknownTransition, err
 	}
+
 	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 

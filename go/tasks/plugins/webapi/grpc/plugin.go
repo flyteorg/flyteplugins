@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GetClientFunc func(endpoint string) (service.BackendPluginServiceClient, *grpc.ClientConn, error)
+type GetClientFunc func(endpoint string) (service.ExternalPluginServiceClient, *grpc.ClientConn, error)
 
 type Plugin struct {
 	metricScope promutils.Scope
@@ -27,7 +27,6 @@ type Plugin struct {
 
 type ResourceWrapper struct {
 	State   service.State
-	Message string
 	Outputs *flyteIdl.LiteralMap
 }
 
@@ -75,10 +74,6 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
-	if res.GetErrorMessage() != "" {
-		return nil, nil, fmt.Errorf(res.GetErrorMessage())
-	}
-
 	return &ResourceMetaWrapper{
 		OutputPrefix: outputPrefix,
 		JobID:        res.GetJobId(),
@@ -105,7 +100,6 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 
 	return &ResourceWrapper{
 		State:   res.State,
-		Message: res.GetErrorMessage(),
 		Outputs: res.Outputs,
 	}, nil
 }
@@ -135,9 +129,9 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	case service.State_RUNNING:
 		return core.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, taskInfo), nil
 	case service.State_PERMANENT_FAILURE:
-		return core.PhaseInfoFailure(resource.Message, "failed to run the job", taskInfo), nil
+		return core.PhaseInfoFailure(pluginErrors.TaskFailedWithError, "failed to run the job", taskInfo), nil
 	case service.State_RETRYABLE_FAILURE:
-		return core.PhaseInfoFailure(resource.Message, "failed to run the job", taskInfo), nil
+		return core.PhaseInfoFailure(pluginErrors.TaskFailedWithError, "failed to run the job", taskInfo), nil
 	case service.State_SUCCEEDED:
 		if resource.Outputs != nil {
 			err := taskCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil))
@@ -147,7 +141,7 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 		}
 		return core.PhaseInfoSuccess(taskInfo), nil
 	}
-	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.Message)
+	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.State)
 }
 
 func getFinalEndpoint(taskType, defaultEndpoint string, endpointForTaskTypes map[string]string) string {
@@ -158,7 +152,7 @@ func getFinalEndpoint(taskType, defaultEndpoint string, endpointForTaskTypes map
 	return defaultEndpoint
 }
 
-func getClientFunc(endpoint string) (service.BackendPluginServiceClient, *grpc.ClientConn, error) {
+func getClientFunc(endpoint string) (service.ExternalPluginServiceClient, *grpc.ClientConn, error) {
 	// for mocking/testing purposes
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
@@ -166,7 +160,7 @@ func getClientFunc(endpoint string) (service.BackendPluginServiceClient, *grpc.C
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect flyteplugins service")
 	}
-	return service.NewBackendPluginServiceClient(conn), conn, nil
+	return service.NewExternalPluginServiceClient(conn), conn, nil
 }
 
 func newGrpcPlugin() webapi.PluginEntry {
