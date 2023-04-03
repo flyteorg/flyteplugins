@@ -164,9 +164,12 @@ func getClientFunc(endpoint string) (service.ExternalPluginServiceClient, *grpc.
 }
 
 func newGrpcPlugin() webapi.PluginEntry {
+	supportedTaskTypes := GetConfig().SupportedTaskTypes
+	supportedTaskTypes = append(supportedTaskTypes, "bigquery_query_job_task")
+
 	return webapi.PluginEntry{
 		ID:                 "external-plugin-service",
-		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task"},
+		SupportedTaskTypes: supportedTaskTypes,
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
 				metricScope: iCtx.MetricsScope(),

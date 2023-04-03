@@ -40,6 +40,7 @@ var (
 			},
 		},
 		DefaultGrpcEndpoint: "external-plugin-service.flyte.svc.cluster.local:80",
+		SupportedTaskTypes:  []string{},
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("external-plugin-service", &defaultConfig)
@@ -57,6 +58,9 @@ type Config struct {
 
 	// Maps endpoint to their plugin handler. {TaskType: Endpoint}
 	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`
+
+	// SupportedTaskTypes is a list of task types that are supported by this plugin.
+	SupportedTaskTypes []string `json:"supportedTaskTypes" pflag:"-,"`
 }
 
 func GetConfig() *Config {
