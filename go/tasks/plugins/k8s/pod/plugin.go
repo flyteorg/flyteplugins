@@ -146,12 +146,10 @@ func (p plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContex
 
 func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.PluginContext, r client.Object, logPlugin tasklog.Plugin, logSuffix string) (pluginsCore.PhaseInfo, error) {
 	pluginState := k8s.PluginState{}
-	var err error
-	//_, err := pluginContext.PluginStateReader().Get(&pluginState)
-	//if err != nil {
-	//	logger.Errorf(ctx, "kevin test [%v]", err)
-	//	return pluginsCore.PhaseInfoUndefined, err
-	//}
+	_, err := pluginContext.PluginStateReader().Get(&pluginState)
+	if err != nil {
+		return pluginsCore.PhaseInfoUndefined, err
+	}
 
 	pod := r.(*v1.Pod)
 
