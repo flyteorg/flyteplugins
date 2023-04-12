@@ -116,6 +116,7 @@ func TestEndToEnd(t *testing.T) {
 				},
 			}, nil
 		}
+		grpcPlugin.ID = "bad-plugin"
 		pluginEntry := pluginmachinery.CreateRemotePlugin(grpcPlugin)
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext())
 		assert.NoError(t, err)
