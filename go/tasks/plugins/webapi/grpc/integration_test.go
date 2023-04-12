@@ -98,7 +98,7 @@ func TestEndToEnd(t *testing.T) {
 
 	t.Run("run a job", func(t *testing.T) {
 		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockGrpcPlugin())
-		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext())
+		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test1"))
 		assert.NoError(t, err)
 
 		phase := tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)
@@ -116,9 +116,8 @@ func TestEndToEnd(t *testing.T) {
 				},
 			}, nil
 		}
-		grpcPlugin.ID = "bad-plugin"
 		pluginEntry := pluginmachinery.CreateRemotePlugin(grpcPlugin)
-		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext())
+		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test2"))
 		assert.NoError(t, err)
 
 		latestKnownState := atomic.Value{}
@@ -218,13 +217,13 @@ func newMockGrpcPlugin() webapi.PluginEntry {
 	}
 }
 
-func newFakeSetupContext() *pluginCoreMocks.SetupContext {
+func newFakeSetupContext(name string) *pluginCoreMocks.SetupContext {
 	fakeResourceRegistrar := pluginCoreMocks.ResourceRegistrar{}
 	fakeResourceRegistrar.On("RegisterResourceQuota", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	labeled.SetMetricKeys(contextutils.NamespaceKey)
 
 	fakeSetupContext := pluginCoreMocks.SetupContext{}
-	fakeSetupContext.OnMetricsScope().Return(promutils.NewScope("test"))
+	fakeSetupContext.OnMetricsScope().Return(promutils.NewScope(name))
 	fakeSetupContext.OnResourceRegistrar().Return(&fakeResourceRegistrar)
 
 	return &fakeSetupContext
