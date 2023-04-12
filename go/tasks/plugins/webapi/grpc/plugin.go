@@ -4,26 +4,27 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"google.golang.org/grpc/grpclog"
 
 	flyteIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
-	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
+	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"google.golang.org/grpc"
 )
 
-type GetClientFunc func(endpoint string) (service.ExternalPluginServiceClient, *grpc.ClientConn, error)
+type GetClientFunc func(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.ExternalPluginServiceClient, error)
 
 type Plugin struct {
-	metricScope promutils.Scope
-	cfg         *Config
-	getClient   GetClientFunc
+	metricScope     promutils.Scope
+	cfg             *Config
+	getClient       GetClientFunc
+	connectionCache map[string]*grpc.ClientConn
 }
 
 type ResourceWrapper struct {
@@ -62,12 +63,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
-	client, conn, err := p.getClient(getFinalEndpoint(taskTemplate.Type, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
+	endpoint := getFinalEndpoint(taskTemplate.Type, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
+	client, err := p.getClient(ctx, endpoint, p.connectionCache)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect external plugin service")
-	}
-	if conn != nil {
-		defer conn.Close()
+		return nil, nil, fmt.Errorf("failed to connect external plugin service with error: %v", err)
 	}
 
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
@@ -86,12 +85,10 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 
-	client, conn, err := p.getClient(getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
+	endpoint := getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
+	client, err := p.getClient(ctx, endpoint, p.connectionCache)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect external plugin service")
-	}
-	if conn != nil {
-		defer conn.Close()
+		return nil, fmt.Errorf("failed to connect external plugin service with error: %v", err)
 	}
 
 	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID})
@@ -111,13 +108,12 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	}
 	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 
-	client, conn, err := p.getClient(getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes))
+	endpoint := getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
+	client, err := p.getClient(ctx, endpoint, p.connectionCache)
 	if err != nil {
-		return fmt.Errorf("failed to connect external plugin service")
+		return fmt.Errorf("failed to connect external plugin service with error: %v", err)
 	}
-	if conn != nil {
-		defer conn.Close()
-	}
+
 	_, err = client.DeleteTask(ctx, &service.TaskDeleteRequest{TaskType: metadata.TaskType, JobId: metadata.JobID})
 	return err
 }
@@ -153,15 +149,35 @@ func getFinalEndpoint(taskType, defaultEndpoint string, endpointForTaskTypes map
 	return defaultEndpoint
 }
 
-func getClientFunc(endpoint string) (service.ExternalPluginServiceClient, *grpc.ClientConn, error) {
-	// for mocking/testing purposes
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	conn, err := grpc.Dial(endpoint, opts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect external plugin service")
+func getClientFunc(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.ExternalPluginServiceClient, error) {
+	conn, ok := connectionCache[endpoint]
+	if ok {
+		return service.NewExternalPluginServiceClient(conn), nil
 	}
-	return service.NewExternalPluginServiceClient(conn), conn, nil
+	var opts []grpc.DialOption
+	var err error
+
+	opts = append(opts, grpc.WithInsecure())
+	conn, err = grpc.Dial(endpoint, opts...)
+	if err != nil {
+		return nil, err
+	}
+	connectionCache[endpoint] = conn
+	defer func() {
+		if err != nil {
+			if cerr := conn.Close(); cerr != nil {
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+			}
+			return
+		}
+		go func() {
+			<-ctx.Done()
+			if cerr := conn.Close(); cerr != nil {
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+			}
+		}()
+	}()
+	return service.NewExternalPluginServiceClient(conn), nil
 }
 
 func newGrpcPlugin() webapi.PluginEntry {
@@ -173,9 +189,10 @@ func newGrpcPlugin() webapi.PluginEntry {
 		SupportedTaskTypes: supportedTaskTypes,
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
-				metricScope: iCtx.MetricsScope(),
-				cfg:         GetConfig(),
-				getClient:   getClientFunc,
+				metricScope:     iCtx.MetricsScope(),
+				cfg:             GetConfig(),
+				getClient:       getClientFunc,
+				connectionCache: make(map[string]*grpc.ClientConn),
 			}, nil
 		},
 	}

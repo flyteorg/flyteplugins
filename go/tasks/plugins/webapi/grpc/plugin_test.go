@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"google.golang.org/grpc"
 	"testing"
 	"time"
 
@@ -51,9 +52,8 @@ func TestPlugin(t *testing.T) {
 	})
 
 	t.Run("test getClientFunc", func(t *testing.T) {
-		client, conn, err := getClientFunc("localhost:80")
+		client, err := getClientFunc(context.Background(), "localhost:80", map[string]*grpc.ClientConn{})
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
-		assert.NotNil(t, conn)
 	})
 }

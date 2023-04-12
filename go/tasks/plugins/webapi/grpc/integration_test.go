@@ -48,8 +48,8 @@ func (m *MockClient) DeleteTask(_ context.Context, _ *service.TaskDeleteRequest,
 	return &service.TaskDeleteResponse{}, nil
 }
 
-func mockGetClientFunc(_ string) (service.ExternalPluginServiceClient, *grpc.ClientConn, error) {
-	return &MockClient{}, nil, nil
+func mockGetClientFunc(_ context.Context, _ string, _ map[string]*grpc.ClientConn) (service.ExternalPluginServiceClient, error) {
+	return &MockClient{}, nil
 }
 
 func TestEndToEnd(t *testing.T) {
