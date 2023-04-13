@@ -121,7 +121,7 @@ func TestEndToEnd(t *testing.T) {
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test2"))
 		assert.NoError(t, err)
 
-		tCtx := getTaskContext(t, template, inputs)
+		tCtx := getTaskContext(t)
 		tr := &pluginCoreMocks.TaskReader{}
 		tr.OnRead(context.Background()).Return(&template, nil)
 		tCtx.OnTaskReader().Return(tr)
@@ -139,7 +139,7 @@ func TestEndToEnd(t *testing.T) {
 	})
 
 	t.Run("failed to read task template", func(t *testing.T) {
-		tCtx := getTaskContext(t, template, inputs)
+		tCtx := getTaskContext(t)
 		tr := &pluginCoreMocks.TaskReader{}
 		tr.OnRead(context.Background()).Return(nil, fmt.Errorf("read fail"))
 		tCtx.OnTaskReader().Return(tr)
@@ -155,7 +155,7 @@ func TestEndToEnd(t *testing.T) {
 	})
 
 	t.Run("failed to read inputs", func(t *testing.T) {
-		tCtx := getTaskContext(t, template, inputs)
+		tCtx := getTaskContext(t)
 		tr := &pluginCoreMocks.TaskReader{}
 		tr.OnRead(context.Background()).Return(&template, nil)
 		tCtx.OnTaskReader().Return(tr)
@@ -176,7 +176,7 @@ func TestEndToEnd(t *testing.T) {
 	})
 }
 
-func getTaskContext(t *testing.T, tmp flyteIdlCore.TaskTemplate, inputs *flyteIdlCore.LiteralMap) *pluginCoreMocks.TaskExecutionContext {
+func getTaskContext(t *testing.T) *pluginCoreMocks.TaskExecutionContext {
 	latestKnownState := atomic.Value{}
 	pluginStateReader := &pluginCoreMocks.PluginStateReader{}
 	pluginStateReader.OnGetMatch(mock.Anything).Return(0, nil).Run(func(args mock.Arguments) {
