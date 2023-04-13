@@ -8,13 +8,10 @@ import (
 	"testing"
 	"time"
 
-	ioMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
-	"github.com/flyteorg/flytestdlib/storage"
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
+	ioMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 
 	"github.com/flyteorg/flyteidl/clients/go/coreutils"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -26,10 +23,12 @@ import (
 	"github.com/flyteorg/flytestdlib/contextutils"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"github.com/flyteorg/flytestdlib/promutils/labeled"
+	"github.com/flyteorg/flytestdlib/storage"
 	"github.com/flyteorg/flytestdlib/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 type MockPlugin struct {
@@ -69,6 +68,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	cfg := defaultConfig
+	cfg.WebAPI.ResourceQuotas = map[core.ResourceNamespace]int{}
 	cfg.WebAPI.Caching.Workers = 1
 	cfg.WebAPI.Caching.ResyncInterval.Duration = 5 * time.Second
 	err := SetConfig(&cfg)
@@ -95,6 +95,7 @@ func TestEndToEnd(t *testing.T) {
 		Type:   "bigquery_query_job_task",
 		Custom: st,
 	}
+	basePrefix := storage.DataReference("fake://bucket/prefix/")
 
 	t.Run("run a job", func(t *testing.T) {
 		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockGrpcPlugin())
@@ -120,85 +121,122 @@ func TestEndToEnd(t *testing.T) {
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test2"))
 		assert.NoError(t, err)
 
-		latestKnownState := atomic.Value{}
-		pluginStateReader := &pluginCoreMocks.PluginStateReader{}
-		pluginStateReader.OnGetMatch(mock.Anything).Return(0, nil).Run(func(args mock.Arguments) {
-			o := args.Get(0)
-			x, err := json.Marshal(latestKnownState.Load())
-			assert.NoError(t, err)
-			assert.NoError(t, json.Unmarshal(x, &o))
-		})
-		pluginStateWriter := &pluginCoreMocks.PluginStateWriter{}
-		pluginStateWriter.OnPutMatch(mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
-			latestKnownState.Store(args.Get(1))
-		})
-
-		pluginStateWriter.OnReset().Return(nil).Run(func(args mock.Arguments) {
-			latestKnownState.Store(nil)
-		})
-
-		execID := rand.String(3)
-		tID := &pluginCoreMocks.TaskExecutionID{}
-		tID.OnGetGeneratedName().Return(execID + "-my-task-1")
-		tMeta := &pluginCoreMocks.TaskExecutionMetadata{}
-		tMeta.OnGetTaskExecutionID().Return(tID)
-		resourceManager := &pluginCoreMocks.ResourceManager{}
-		resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pluginCore.AllocationStatusGranted, nil)
-		resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tCtx := getTaskContext(t, template, inputs)
 		tr := &pluginCoreMocks.TaskReader{}
 		tr.OnRead(context.Background()).Return(&template, nil)
-
-		basePrefix := storage.DataReference("fake://bucket/prefix/" + execID)
+		tCtx.OnTaskReader().Return(tr)
 		inputReader := &ioMocks.InputReader{}
 		inputReader.OnGetInputPrefixPath().Return(basePrefix)
 		inputReader.OnGetInputPath().Return(basePrefix + "/inputs.pb")
 		inputReader.OnGetMatch(mock.Anything).Return(inputs, nil)
-
-		outputWriter := &ioMocks.OutputWriter{}
-		outputWriter.OnGetRawOutputPrefix().Return("/sandbox/")
-		outputWriter.OnGetOutputPrefixPath().Return(basePrefix)
-		outputWriter.OnGetErrorPath().Return(basePrefix + "/error.pb")
-		outputWriter.OnGetOutputPath().Return(basePrefix + "/outputs.pb")
-		outputWriter.OnGetCheckpointPrefix().Return("/checkpoint")
-		outputWriter.OnGetPreviousCheckpointsPrefix().Return("/prev")
-
-		tCtx := &pluginCoreMocks.TaskExecutionContext{}
 		tCtx.OnInputReader().Return(inputReader)
-		tCtx.OnOutputWriter().Return(outputWriter)
-		tCtx.OnResourceManager().Return(resourceManager)
-		tCtx.OnPluginStateReader().Return(pluginStateReader)
-		tCtx.OnPluginStateWriter().Return(pluginStateWriter)
-		tCtx.OnTaskExecutionMetadata().Return(tMeta)
-		tCtx.OnTaskReader().Return(tr)
-
-		tID.OnGetID().Return(flyteIdlCore.TaskExecutionIdentifier{
-			TaskId: &flyteIdlCore.Identifier{
-				ResourceType: flyteIdlCore.ResourceType_TASK,
-				Project:      "a",
-				Domain:       "d",
-				Name:         "n",
-				Version:      "abc",
-			},
-			NodeExecutionId: &flyteIdlCore.NodeExecutionIdentifier{
-				NodeId: "node1",
-				ExecutionId: &flyteIdlCore.WorkflowExecutionIdentifier{
-					Project: "a",
-					Domain:  "d",
-					Name:    "exec",
-				},
-			},
-			RetryAttempt: 0,
-		})
 
 		trns, err := plugin.Handle(context.Background(), tCtx)
-		assert.Nil(t, err)
-		assert.NotNil(t, trns)
-		trns, err = plugin.Handle(context.Background(), tCtx)
 		assert.Error(t, err)
 		assert.Equal(t, trns.Info().Phase(), core.PhaseUndefined)
 		err = plugin.Abort(context.Background(), tCtx)
 		assert.Nil(t, err)
 	})
+
+	t.Run("failed to read task template", func(t *testing.T) {
+		tCtx := getTaskContext(t, template, inputs)
+		tr := &pluginCoreMocks.TaskReader{}
+		tr.OnRead(context.Background()).Return(nil, fmt.Errorf("read fail"))
+		tCtx.OnTaskReader().Return(tr)
+
+		grpcPlugin := newMockGrpcPlugin()
+		pluginEntry := pluginmachinery.CreateRemotePlugin(grpcPlugin)
+		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test3"))
+		assert.NoError(t, err)
+
+		trns, err := plugin.Handle(context.Background(), tCtx)
+		assert.Error(t, err)
+		assert.Equal(t, trns.Info().Phase(), core.PhaseUndefined)
+	})
+
+	t.Run("failed to read inputs", func(t *testing.T) {
+		tCtx := getTaskContext(t, template, inputs)
+		tr := &pluginCoreMocks.TaskReader{}
+		tr.OnRead(context.Background()).Return(&template, nil)
+		tCtx.OnTaskReader().Return(tr)
+		inputReader := &ioMocks.InputReader{}
+		inputReader.OnGetInputPrefixPath().Return(basePrefix)
+		inputReader.OnGetInputPath().Return(basePrefix + "/inputs.pb")
+		inputReader.OnGetMatch(mock.Anything).Return(nil, fmt.Errorf("read fail"))
+		tCtx.OnInputReader().Return(inputReader)
+
+		grpcPlugin := newMockGrpcPlugin()
+		pluginEntry := pluginmachinery.CreateRemotePlugin(grpcPlugin)
+		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test4"))
+		assert.NoError(t, err)
+
+		trns, err := plugin.Handle(context.Background(), tCtx)
+		assert.Error(t, err)
+		assert.Equal(t, trns.Info().Phase(), core.PhaseUndefined)
+	})
+}
+
+func getTaskContext(t *testing.T, tmp flyteIdlCore.TaskTemplate, inputs *flyteIdlCore.LiteralMap) *pluginCoreMocks.TaskExecutionContext {
+	latestKnownState := atomic.Value{}
+	pluginStateReader := &pluginCoreMocks.PluginStateReader{}
+	pluginStateReader.OnGetMatch(mock.Anything).Return(0, nil).Run(func(args mock.Arguments) {
+		o := args.Get(0)
+		x, err := json.Marshal(latestKnownState.Load())
+		assert.NoError(t, err)
+		assert.NoError(t, json.Unmarshal(x, &o))
+	})
+	pluginStateWriter := &pluginCoreMocks.PluginStateWriter{}
+	pluginStateWriter.OnPutMatch(mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+		latestKnownState.Store(args.Get(1))
+	})
+
+	pluginStateWriter.OnReset().Return(nil).Run(func(args mock.Arguments) {
+		latestKnownState.Store(nil)
+	})
+
+	execID := rand.String(3)
+	tID := &pluginCoreMocks.TaskExecutionID{}
+	tID.OnGetGeneratedName().Return(execID + "-my-task-1")
+	tID.OnGetID().Return(flyteIdlCore.TaskExecutionIdentifier{
+		TaskId: &flyteIdlCore.Identifier{
+			ResourceType: flyteIdlCore.ResourceType_TASK,
+			Project:      "a",
+			Domain:       "d",
+			Name:         "n",
+			Version:      "abc",
+		},
+		NodeExecutionId: &flyteIdlCore.NodeExecutionIdentifier{
+			NodeId: "node1",
+			ExecutionId: &flyteIdlCore.WorkflowExecutionIdentifier{
+				Project: "a",
+				Domain:  "d",
+				Name:    "exec",
+			},
+		},
+		RetryAttempt: 0,
+	})
+	tMeta := &pluginCoreMocks.TaskExecutionMetadata{}
+	tMeta.OnGetTaskExecutionID().Return(tID)
+	resourceManager := &pluginCoreMocks.ResourceManager{}
+	resourceManager.OnAllocateResourceMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(pluginCore.AllocationStatusGranted, nil)
+	resourceManager.OnReleaseResourceMatch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	basePrefix := storage.DataReference("fake://bucket/prefix/" + execID)
+	outputWriter := &ioMocks.OutputWriter{}
+	outputWriter.OnGetRawOutputPrefix().Return("/sandbox/")
+	outputWriter.OnGetOutputPrefixPath().Return(basePrefix)
+	outputWriter.OnGetErrorPath().Return(basePrefix + "/error.pb")
+	outputWriter.OnGetOutputPath().Return(basePrefix + "/outputs.pb")
+	outputWriter.OnGetCheckpointPrefix().Return("/checkpoint")
+	outputWriter.OnGetPreviousCheckpointsPrefix().Return("/prev")
+
+	tCtx := &pluginCoreMocks.TaskExecutionContext{}
+	tCtx.OnOutputWriter().Return(outputWriter)
+	tCtx.OnResourceManager().Return(resourceManager)
+	tCtx.OnPluginStateReader().Return(pluginStateReader)
+	tCtx.OnPluginStateWriter().Return(pluginStateWriter)
+	tCtx.OnTaskExecutionMetadata().Return(tMeta)
+	return tCtx
 }
 
 func newMockGrpcPlugin() webapi.PluginEntry {

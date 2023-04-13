@@ -39,7 +39,7 @@ var (
 				Value: 50,
 			},
 		},
-		DefaultGrpcEndpoint: "external-plugin-service.flyte.svc.cluster.local:80",
+		DefaultGrpcEndpoint: "dns:///external-plugin-service.flyte.svc.cluster.local:80",
 		SupportedTaskTypes:  []string{},
 	}
 
