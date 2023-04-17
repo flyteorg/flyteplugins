@@ -74,7 +74,9 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	workersPodSpec := podSpec.DeepCopy()
 
 	// If users don't specify "worker_spec_command" in the task config, the command/args are empty.
-	// In the case of horovod tasks, each worker runs a command launching ssh daemon.
+	// However, in some cases, the workers need command/args.
+	// For example, in horovod tasks, each worker runs a command launching ssh daemon.
+
 	workerSpecCommand := []string{}
 	if val, ok := taskTemplateConfig["worker_spec_command"]; ok {
 		workerSpecCommand = strings.Split(val, " ")
