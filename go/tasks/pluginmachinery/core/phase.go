@@ -86,9 +86,12 @@ type ExternalResource struct {
 type TaskInfo struct {
 	// log information for the task execution
 	Logs []*core.TaskLog
-	// Set this value to the intended time when the status occurred at. If not provided, will be defaulted to the current
-	// time at the time of publishing the event.
+	// This value represents the time the status occurred at. If not provided, it will be defaulted to the time Flyte
+	// checked the task status.
 	OccurredAt *time.Time
+	// This value represents the time the status was reported at. If not provided, will be defaulted to the current time
+	// when Flyte published the event.
+	ReportedAt *time.Time
 	// Custom Event information that the plugin would like to expose to the front-end
 	CustomInfo *structpb.Struct
 	// A collection of information about external resources launched by this task
@@ -142,6 +145,16 @@ func (p PhaseInfo) Err() *core.ExecutionError {
 
 func (p PhaseInfo) CleanupOnFailure() bool {
 	return p.cleanupOnFailure
+}
+
+func (p PhaseInfo) WithVersion(version uint32) PhaseInfo {
+	return PhaseInfo{
+		phase:   p.phase,
+		version: version,
+		info:    p.info,
+		err:     p.err,
+		reason:  p.reason,
+	}
 }
 
 func (p PhaseInfo) String() string {

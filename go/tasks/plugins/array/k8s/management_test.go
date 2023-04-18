@@ -129,12 +129,16 @@ func getMockTaskExecutionContext(ctx context.Context, parallelism int) *mocks.Ta
 		ReferenceConstructor:  &storage.URLPathConstructor{},
 	}
 
+	pluginStateReader := &mocks.PluginStateReader{}
+	pluginStateReader.OnGetMatch(mock.Anything).Return(0, nil)
+
 	tCtx := &mocks.TaskExecutionContext{}
 	tCtx.OnTaskReader().Return(tr)
 	tCtx.OnTaskExecutionMetadata().Return(tMeta)
 	tCtx.OnOutputWriter().Return(ow)
 	tCtx.OnInputReader().Return(ir)
 	tCtx.OnDataStore().Return(dataStore)
+	tCtx.OnPluginStateReader().Return(pluginStateReader)
 	return tCtx
 }
 
@@ -160,6 +164,13 @@ func TestCheckSubTasksState(t *testing.T) {
 		pod.Spec.Containers = append(pod.Spec.Containers, v1.Container{Name: "foo"})
 
 		pod.Status.Phase = v1.PodRunning
+		pod.Status.ContainerStatuses = []v1.ContainerStatus{
+			v1.ContainerStatus{
+				State: v1.ContainerState{
+					Running: &v1.ContainerStateRunning{},
+				},
+			},
+		}
 		_ = fakeKubeClient.Create(ctx, pod)
 		_ = fakeKubeCache.Create(ctx, pod)
 	}
