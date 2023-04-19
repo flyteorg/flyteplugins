@@ -22,6 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const workerSpecCommandKey = "worker_spec_command"
+
 type mpiOperatorResourceHandler struct {
 }
 
@@ -78,7 +80,7 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 	// For example, in horovod tasks, each worker runs a command launching ssh daemon.
 
 	workerSpecCommand := []string{}
-	if val, ok := taskTemplateConfig["worker_spec_command"]; ok {
+	if val, ok := taskTemplateConfig[workerSpecCommandKey]; ok {
 		workerSpecCommand = strings.Split(val, " ")
 	}
 
