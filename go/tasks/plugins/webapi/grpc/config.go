@@ -40,7 +40,7 @@ var (
 			},
 		},
 		DefaultGrpcEndpoint: "dns:///external-plugin-service.flyte.svc.cluster.local:80",
-		SupportedTaskTypes:  []string{},
+		SupportedTaskTypes:  []string{"bigquery_query_job_task"},
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("external-plugin-service", &defaultConfig)
