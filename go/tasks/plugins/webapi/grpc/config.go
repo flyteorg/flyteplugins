@@ -40,7 +40,7 @@ var (
 			},
 		},
 		DefaultGrpcEndpoint: "dns:///external-plugin-service.flyte.svc.cluster.local:80",
-		SupportedTaskTypes:  []string{"bigquery_query_job_task"},
+		SupportedTaskTypes:  []string{"task_type_1", "task_type_2"},
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("external-plugin-service", &defaultConfig)
@@ -60,7 +60,7 @@ type Config struct {
 	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`
 
 	// SupportedTaskTypes is a list of task types that are supported by this plugin.
-	SupportedTaskTypes []string `json:"supportedTaskTypes" pflag:"-,"`
+	SupportedTaskTypes []string `json:"supportedTaskTypes" pflag:"-,Defines a list of task types that are supported by this plugin."`
 }
 
 func GetConfig() *Config {
