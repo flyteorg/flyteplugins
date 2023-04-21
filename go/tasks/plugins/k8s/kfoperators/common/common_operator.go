@@ -5,9 +5,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	kfplugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins/kubeflow"
 	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -179,4 +181,60 @@ func OverridePrimaryContainerName(podSpec *v1.PodSpec, primaryContainerName stri
 			return
 		}
 	}
+}
+
+func ParseRunPolicy(flyteRunPolicy kfplugins.RunPolicy) commonOp.RunPolicy {
+	runPolicy := commonOp.RunPolicy{}
+	if flyteRunPolicy.GetBackoffLimit() != 0 {
+		var backoffLimit = flyteRunPolicy.GetBackoffLimit()
+		runPolicy.BackoffLimit = &backoffLimit
+	}
+	var cleanPodPolicy = ParseCleanPodPolicy(flyteRunPolicy.GetCleanPodPolicy())
+	runPolicy.CleanPodPolicy = &cleanPodPolicy
+	if flyteRunPolicy.GetActiveDeadlineSeconds() != 0 {
+		var ddlSeconds = int64(flyteRunPolicy.GetActiveDeadlineSeconds())
+		runPolicy.ActiveDeadlineSeconds = &ddlSeconds
+	}
+	if flyteRunPolicy.GetTtlSecondsAfterFinished() != 0 {
+		var ttl = flyteRunPolicy.GetTtlSecondsAfterFinished()
+		runPolicy.TTLSecondsAfterFinished = &ttl
+	}
+
+	return runPolicy
+}
+
+func ParseCleanPodPolicy(flyteCleanPodPolicy kfplugins.CleanPodPolicy) commonOp.CleanPodPolicy {
+	cleanPodPolicyMap := map[kfplugins.CleanPodPolicy]commonOp.CleanPodPolicy{
+		kfplugins.CleanPodPolicy_CLEANPOD_POLICY_NONE:    commonOp.CleanPodPolicyNone,
+		kfplugins.CleanPodPolicy_CLEANPOD_POLICY_ALL:     commonOp.CleanPodPolicyAll,
+		kfplugins.CleanPodPolicy_CLEANPOD_POLICY_RUNNING: commonOp.CleanPodPolicyRunning,
+	}
+	return cleanPodPolicyMap[flyteCleanPodPolicy]
+}
+
+func ParseRestartPolicy(flyteRestartPolicy kfplugins.RestartPolicy) commonOp.RestartPolicy {
+	restartPolicyMap := map[kfplugins.RestartPolicy]commonOp.RestartPolicy{
+		kfplugins.RestartPolicy_RESTART_POLICY_NEVER:      commonOp.RestartPolicyNever,
+		kfplugins.RestartPolicy_RESTART_POLICY_ON_FAILURE: commonOp.RestartPolicyOnFailure,
+		kfplugins.RestartPolicy_RESTART_POLICY_ALWAYS:     commonOp.RestartPolicyAlways,
+	}
+	return restartPolicyMap[flyteRestartPolicy]
+}
+
+func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image string, resources *core.Resources) (*v1.PodSpec, error) {
+	for idx, c := range podSpec.Containers {
+		if c.Name == containerName {
+			if image != "" {
+				podSpec.Containers[idx].Image = image
+			}
+			if resources != nil {
+				resources, err := flytek8s.ToK8sResourceRequirements(resources)
+				if err != nil {
+					return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification on Resources [%v], Err: [%v]", resources, err.Error())
+				}
+				podSpec.Containers[idx].Resources = *resources
+			}
+		}
+	}
+	return podSpec, nil
 }
