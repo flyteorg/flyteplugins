@@ -267,7 +267,7 @@ func dummyPytorchJobResource(pytorchResourceHandler pytorchOperatorResourceHandl
 	}
 
 	ptObj := dummyPytorchCustomObj(workers)
-	taskTemplate := dummyPytorchTaskTemplate("the job", ptObj)
+	taskTemplate := dummyPytorchTaskTemplate("job1", ptObj)
 	resource, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
 	if err != nil {
 		panic(err)
@@ -293,7 +293,7 @@ func TestBuildResourcePytorchElastic(t *testing.T) {
 	pytorchResourceHandler := pytorchOperatorResourceHandler{}
 
 	ptObj := dummyElasticPytorchCustomObj(2, plugins.ElasticConfig{MinReplicas: 1, MaxReplicas: 2, NprocPerNode: 4, RdzvBackend: "c10d"})
-	taskTemplate := dummyPytorchTaskTemplate("the job", ptObj)
+	taskTemplate := dummyPytorchTaskTemplate("job2", ptObj)
 
 	resource, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
 	assert.NoError(t, err)
@@ -326,13 +326,13 @@ func TestBuildResourcePytorch(t *testing.T) {
 	pytorchResourceHandler := pytorchOperatorResourceHandler{}
 
 	ptObj := dummyPytorchCustomObj(100)
-	taskTemplate := dummyPytorchTaskTemplate("the job", ptObj)
+	taskTemplate := dummyPytorchTaskTemplate("job3", ptObj)
 
-	resource, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
+	res, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
 	assert.NoError(t, err)
-	assert.NotNil(t, resource)
+	assert.NotNil(t, res)
 
-	pytorchJob, ok := resource.(*kubeflowv1.PyTorchJob)
+	pytorchJob, ok := res.(*kubeflowv1.PyTorchJob)
 	assert.True(t, ok)
 	assert.Equal(t, int32(100), *pytorchJob.Spec.PyTorchReplicaSpecs[kubeflowv1.PyTorchJobReplicaTypeWorker].Replicas)
 	assert.Nil(t, pytorchJob.Spec.ElasticPolicy)
@@ -433,17 +433,17 @@ func TestReplicaCounts(t *testing.T) {
 			ptObj := dummyPytorchCustomObj(test.workerReplicaCount)
 			taskTemplate := dummyPytorchTaskTemplate("the job", ptObj)
 
-			resource, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
+			res, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
 			if test.expectError {
 				assert.Error(t, err)
-				assert.Nil(t, resource)
+				assert.Nil(t, res)
 				return
 			}
 
 			assert.NoError(t, err)
-			assert.NotNil(t, resource)
+			assert.NotNil(t, res)
 
-			job, ok := resource.(*kubeflowv1.PyTorchJob)
+			job, ok := res.(*kubeflowv1.PyTorchJob)
 			assert.True(t, ok)
 
 			assert.Len(t, job.Spec.PyTorchReplicaSpecs, len(test.contains))
