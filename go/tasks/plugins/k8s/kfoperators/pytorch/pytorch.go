@@ -148,20 +148,6 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		RunPolicy: runPolicy,
 	}
 
-
-	jobSpec = kubeflowv1.PyTorchJobSpec{
-		PyTorchReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{
-			kubeflowv1.PyTorchJobReplicaTypeWorker: {
-				Replicas: &workers,
-				Template: v1.PodTemplateSpec{
-					ObjectMeta: *objectMeta,
-					Spec:       *podSpec,
-				},
-				RestartPolicy: commonOp.RestartPolicyNever,
-			},
-		},
-	}
-
 	// Set elastic config
 	elasticConfig := pytorchTaskExtraArgs.GetElasticConfig()
 	if elasticConfig != nil {
@@ -170,14 +156,16 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		nProcPerNode := elasticConfig.GetNprocPerNode()
 		maxRestarts := elasticConfig.GetMaxRestarts()
 		rdzvBackend := kubeflowv1.RDZVBackend(elasticConfig.GetRdzvBackend())
-		var elasticPolicy := kubeflowv1.ElasticPolicy{
+		var elasticPolicy = kubeflowv1.ElasticPolicy{
 			MinReplicas:  &minReplicas,
 			MaxReplicas:  &maxReplicas,
 			RDZVBackend:  &rdzvBackend,
 			NProcPerNode: &nProcPerNode,
 			MaxRestarts:  &maxRestarts,
 		}
-		jobSpec.elasticPolicy = &elasticPolicy
+		jobSpec.ElasticPolicy = &elasticPolicy
+		// Remove master replica if elastic policy is set
+		delete(jobSpec.PyTorchReplicaSpecs, kubeflowv1.PyTorchJobReplicaTypeMaster)
 	}
 
 	job := &kubeflowv1.PyTorchJob{
