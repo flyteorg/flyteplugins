@@ -94,6 +94,16 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		workerReplicaSpec := kfPytorchTaskExtraArgs.GetWorkerReplicas()
 		masterReplicaSpec := kfPytorchTaskExtraArgs.GetMasterReplicas()
 
+		// Replace specs of master replica
+		if masterReplicaSpec != nil {
+			for _, c := range masterPodSpec.Containers {
+				if c.Name == kubeflowv1.PytorchJobDefaultContainerName {
+					common.OverrideContainerSpec(masterPodSpec, c.Name, masterReplicaSpec.GetImage(), masterReplicaSpec.GetResources())
+				}
+				masterRestartPolicy = commonOp.RestartPolicy(common.ParseRestartPolicy(masterReplicaSpec.GetRestartPolicy()))
+			}
+		}
+
 		// Replace specs of worker replica
 		if workerReplicaSpec != nil {
 			for _, c := range workerPodSpec.Containers {
@@ -103,16 +113,6 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 			}
 			workerRestartPolicy = commonOp.RestartPolicy(common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy()))
 			workers = workerReplicaSpec.GetReplicas()
-		}
-
-		// Replace specs of master replica
-		if masterReplicaSpec != nil {
-			for _, c := range masterPodSpec.Containers {
-				if c.Name == kubeflowv1.PytorchJobDefaultContainerName {
-					common.OverrideContainerSpec(masterPodSpec, c.Name, masterReplicaSpec.GetImage(), masterReplicaSpec.GetResources())
-				}
-				masterRestartPolicy = commonOp.RestartPolicy(common.ParseRestartPolicy(masterReplicaSpec.GetRestartPolicy()))
-			}
 		}
 
 		if kfPytorchTaskExtraArgs.GetRunPolicy() != nil {
@@ -132,17 +132,17 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 			kubeflowv1.PyTorchJobReplicaTypeMaster: {
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: *objectMeta,
-					Spec:       *workerPodSpec,
+					Spec:       *masterPodSpec,
 				},
-				RestartPolicy: workerRestartPolicy,
+				RestartPolicy: masterRestartPolicy,
 			},
 			kubeflowv1.PyTorchJobReplicaTypeWorker: {
 				Replicas: &workers,
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: *objectMeta,
-					Spec:       *masterPodSpec,
+					Spec:       *workerPodSpec,
 				},
-				RestartPolicy: masterRestartPolicy,
+				RestartPolicy: workerRestartPolicy,
 			},
 		},
 		RunPolicy: runPolicy,
