@@ -236,6 +236,9 @@ func (sparkResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCo
 		j.Spec.MainClass = &sparkJob.MainClass
 	}
 
+	// Add non-interruptible node selector requirements to driver pod
+	flytek8s.ApplyInterruptibleNodeSelectorRequirement(false, j.Spec.Driver.Affinity)
+
 	// Add Interruptible Tolerations/NodeSelector to only Executor pods.
 	// The Interruptible NodeSelector takes precedence over the DefaultNodeSelector
 	if taskCtx.TaskExecutionMetadata().IsInterruptible() {
