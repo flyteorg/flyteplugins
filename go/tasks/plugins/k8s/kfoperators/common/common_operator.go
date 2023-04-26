@@ -23,6 +23,12 @@ const (
 	PytorchTaskType    = "pytorch"
 )
 
+type ReplicaEntry struct {
+	PodSpec       *v1.PodSpec
+	ReplicaNum    int32
+	RestartPolicy commonOp.RestartPolicy
+}
+
 // ExtractMPICurrentCondition will return the first job condition for MPI
 func ExtractMPICurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
 	if jobConditions != nil {

@@ -69,50 +69,64 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 	}
 	common.OverridePrimaryContainerName(podSpec, primaryContainerName, kubeflowv1.PytorchJobDefaultContainerName)
 
-	var workers int32
-	var runPolicy = commonOp.RunPolicy{}
-	var workerPodSpec = podSpec.DeepCopy()
-	var masterPodSpec = podSpec.DeepCopy()
-	var workerRestartPolicy = commonOp.RestartPolicyNever
-	var masterRestartPolicy = commonOp.RestartPolicyNever
+	var masterReplica = common.ReplicaEntry{
+		ReplicaNum:    int32(1),
+		PodSpec:       podSpec.DeepCopy(),
+		RestartPolicy: commonOp.RestartPolicyNever,
+	}
+	var workerReplica = common.ReplicaEntry{
+		ReplicaNum:    int32(0),
+		PodSpec:       podSpec.DeepCopy(),
+		RestartPolicy: commonOp.RestartPolicyNever,
+	}
+	runPolicy := commonOp.RunPolicy{}
 
 	if taskTemplate.TaskTypeVersion == 0 {
 		pytorchTaskExtraArgs := plugins.DistributedPyTorchTrainingTask{}
-		err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &pytorchTaskExtraArgs)
 
+		err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &pytorchTaskExtraArgs)
 		if err != nil {
 			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 		}
-		workers = pytorchTaskExtraArgs.GetWorkers()
+
+		workerReplica.ReplicaNum = pytorchTaskExtraArgs.GetWorkers()
 	} else if taskTemplate.TaskTypeVersion == 1 {
 		kfPytorchTaskExtraArgs := kfplugins.DistributedPyTorchTrainingTask{}
+
 		err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &kfPytorchTaskExtraArgs)
 		if err != nil {
 			return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 		}
 
-		workerReplicaSpec := kfPytorchTaskExtraArgs.GetWorkerReplicas()
+		// Replace specs of master replica, master should always have 1 replica
 		masterReplicaSpec := kfPytorchTaskExtraArgs.GetMasterReplicas()
-
-		// Replace specs of master replica
 		if masterReplicaSpec != nil {
-			for _, c := range masterPodSpec.Containers {
-				if c.Name == kubeflowv1.PytorchJobDefaultContainerName {
-					common.OverrideContainerSpec(masterPodSpec, c.Name, masterReplicaSpec.GetImage(), masterReplicaSpec.GetResources())
-				}
-				masterRestartPolicy = commonOp.RestartPolicy(common.ParseRestartPolicy(masterReplicaSpec.GetRestartPolicy()))
-			}
+			common.OverrideContainerSpec(
+				masterReplica.PodSpec,
+				kubeflowv1.PytorchJobDefaultContainerName,
+				masterReplicaSpec.GetImage(),
+				masterReplicaSpec.GetResources(),
+			)
+			masterReplica.RestartPolicy =
+				commonOp.RestartPolicy(
+					common.ParseRestartPolicy(masterReplicaSpec.GetRestartPolicy()),
+				)
 		}
 
 		// Replace specs of worker replica
+		workerReplicaSpec := kfPytorchTaskExtraArgs.GetWorkerReplicas()
 		if workerReplicaSpec != nil {
-			for _, c := range workerPodSpec.Containers {
-				if c.Name == kubeflowv1.PytorchJobDefaultContainerName {
-					common.OverrideContainerSpec(workerPodSpec, c.Name, workerReplicaSpec.GetImage(), workerReplicaSpec.GetResources())
-				}
-			}
-			workerRestartPolicy = commonOp.RestartPolicy(common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy()))
-			workers = workerReplicaSpec.GetReplicas()
+			common.OverrideContainerSpec(
+				workerReplica.PodSpec,
+				kubeflowv1.PytorchJobDefaultContainerName,
+				workerReplicaSpec.GetImage(),
+				workerReplicaSpec.GetResources(),
+			)
+			workerReplica.RestartPolicy =
+				commonOp.RestartPolicy(
+					common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy()),
+				)
+			workerReplica.ReplicaNum = workerReplicaSpec.GetReplicas()
 		}
 
 		if kfPytorchTaskExtraArgs.GetRunPolicy() != nil {
@@ -123,7 +137,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 			"Invalid TaskSpecification, unsupported task template version [%v] key", taskTemplate.TaskTypeVersion)
 	}
 
-	if workers == 0 {
+	if workerReplica.ReplicaNum == 0 {
 		return nil, fmt.Errorf("number of worker should be more then 0")
 	}
 
@@ -132,17 +146,17 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 			kubeflowv1.PyTorchJobReplicaTypeMaster: {
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: *objectMeta,
-					Spec:       *masterPodSpec,
+					Spec:       *masterReplica.PodSpec,
 				},
-				RestartPolicy: masterRestartPolicy,
+				RestartPolicy: masterReplica.RestartPolicy,
 			},
 			kubeflowv1.PyTorchJobReplicaTypeWorker: {
-				Replicas: &workers,
+				Replicas: &workerReplica.ReplicaNum,
 				Template: v1.PodTemplateSpec{
 					ObjectMeta: *objectMeta,
-					Spec:       *workerPodSpec,
+					Spec:       *workerReplica.PodSpec,
 				},
-				RestartPolicy: workerRestartPolicy,
+				RestartPolicy: workerReplica.RestartPolicy,
 			},
 		},
 		RunPolicy: runPolicy,
@@ -156,7 +170,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		nProcPerNode := elasticConfig.GetNprocPerNode()
 		maxRestarts := elasticConfig.GetMaxRestarts()
 		rdzvBackend := kubeflowv1.RDZVBackend(elasticConfig.GetRdzvBackend())
-		var elasticPolicy = kubeflowv1.ElasticPolicy{
+		elasticPolicy := kubeflowv1.ElasticPolicy{
 			MinReplicas:  &minReplicas,
 			MaxReplicas:  &maxReplicas,
 			RDZVBackend:  &rdzvBackend,

@@ -475,7 +475,7 @@ func TestReplicaCounts(t *testing.T) {
 }
 
 func TestBuildResourcePytorchV1(t *testing.T) {
-	var taskConfig = &kfplugins.DistributedPyTorchTrainingTask{
+	taskConfig := &kfplugins.DistributedPyTorchTrainingTask{
 		MasterReplicas: &kfplugins.DistributedPyTorchTrainingReplicaSpec{
 			Image: testImageMaster,
 			Resources: &core.Resources{
@@ -556,7 +556,7 @@ func TestBuildResourcePytorchV1(t *testing.T) {
 }
 
 func TestBuildResourcePytorchV1WithOnlyWorkerSpec(t *testing.T) {
-	var taskConfig = &kfplugins.DistributedPyTorchTrainingTask{
+	taskConfig := &kfplugins.DistributedPyTorchTrainingTask{
 		WorkerReplicas: &kfplugins.DistributedPyTorchTrainingReplicaSpec{
 			Replicas: 100,
 			Resources: &core.Resources{
@@ -594,7 +594,7 @@ func TestBuildResourcePytorchV1WithOnlyWorkerSpec(t *testing.T) {
 
 	pytorchResourceHandler := pytorchOperatorResourceHandler{}
 
-	taskTemplate := dummyPytorchTaskTemplate("job4", taskConfig)
+	taskTemplate := dummyPytorchTaskTemplate("job5", taskConfig)
 	taskTemplate.TaskTypeVersion = 1
 
 	res, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
