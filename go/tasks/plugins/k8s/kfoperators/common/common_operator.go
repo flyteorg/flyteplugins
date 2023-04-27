@@ -227,7 +227,7 @@ func ParseRestartPolicy(flyteRestartPolicy kfplugins.RestartPolicy) commonOp.Res
 	return restartPolicyMap[flyteRestartPolicy]
 }
 
-func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image string, resources *core.Resources) (*v1.PodSpec, error) {
+func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image string, resources *core.Resources, args []string) (*v1.PodSpec, error) {
 	for idx, c := range podSpec.Containers {
 		if c.Name == containerName {
 			if image != "" {
@@ -239,6 +239,9 @@ func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image stri
 					return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification on Resources [%v], Err: [%v]", resources, err.Error())
 				}
 				podSpec.Containers[idx].Resources = *resources
+			}
+			if args != nil && len(args) != 0 {
+				podSpec.Containers[idx].Args = args
 			}
 		}
 	}

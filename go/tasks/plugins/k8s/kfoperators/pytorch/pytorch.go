@@ -106,6 +106,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 				kubeflowv1.PytorchJobDefaultContainerName,
 				masterReplicaSpec.GetImage(),
 				masterReplicaSpec.GetResources(),
+				nil,
 			)
 			masterReplica.RestartPolicy =
 				commonOp.RestartPolicy(
@@ -121,6 +122,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 				kubeflowv1.PytorchJobDefaultContainerName,
 				workerReplicaSpec.GetImage(),
 				workerReplicaSpec.GetResources(),
+				nil,
 			)
 			workerReplica.RestartPolicy =
 				commonOp.RestartPolicy(

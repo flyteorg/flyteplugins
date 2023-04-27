@@ -109,6 +109,7 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 				kubeflowv1.TFJobDefaultContainerName,
 				chiefReplicaSpec.GetImage(),
 				chiefReplicaSpec.GetResources(),
+				nil,
 			)
 			replicaSpecMap[kubeflowv1.TFJobReplicaTypeChief].RestartPolicy =
 				commonOp.RestartPolicy(
@@ -124,6 +125,7 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 				kubeflowv1.TFJobDefaultContainerName,
 				workerReplicaSpec.GetImage(),
 				workerReplicaSpec.GetResources(),
+				nil,
 			)
 			replicaSpecMap[kubeflowv1.TFJobReplicaTypeWorker].RestartPolicy =
 				commonOp.RestartPolicy(
@@ -139,6 +141,7 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 				kubeflowv1.TFJobDefaultContainerName,
 				psReplicaSpec.GetImage(),
 				psReplicaSpec.GetResources(),
+				nil,
 			)
 			replicaSpecMap[kubeflowv1.TFJobReplicaTypePS].RestartPolicy =
 				commonOp.RestartPolicy(
