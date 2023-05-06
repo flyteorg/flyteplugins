@@ -234,11 +234,16 @@ func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image stri
 				podSpec.Containers[idx].Image = image
 			}
 			if resources != nil {
-				resources, err := flytek8s.ToK8sResourceRequirements(resources)
-				if err != nil {
-					return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification on Resources [%v], Err: [%v]", resources, err.Error())
+				// if resources requests and limits both not set, we will not override the resources
+				if len(resources.Requests) >= 1 || len(resources.Limits) >= 1 {
+					resources, err := flytek8s.ToK8sResourceRequirements(resources)
+					if err != nil {
+						return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecificat ion on Resources [%v], Err: [%v]", resources, err.Error())
+					}
+					podSpec.Containers[idx].Resources = *resources
 				}
-				podSpec.Containers[idx].Resources = *resources
+			} else {
+				podSpec.Containers[idx].Resources = v1.ResourceRequirements{}
 			}
 			if args != nil && len(args) != 0 {
 				podSpec.Containers[idx].Args = args
