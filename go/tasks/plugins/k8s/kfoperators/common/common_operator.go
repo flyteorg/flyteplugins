@@ -189,6 +189,7 @@ func OverridePrimaryContainerName(podSpec *v1.PodSpec, primaryContainerName stri
 	}
 }
 
+// ParseRunPolicy converts a kubeflow plugin RunPolicy object to a k8s RunPolicy object.
 func ParseRunPolicy(flyteRunPolicy kfplugins.RunPolicy) commonOp.RunPolicy {
 	runPolicy := commonOp.RunPolicy{}
 	if flyteRunPolicy.GetBackoffLimit() != 0 {
@@ -209,6 +210,7 @@ func ParseRunPolicy(flyteRunPolicy kfplugins.RunPolicy) commonOp.RunPolicy {
 	return runPolicy
 }
 
+// Get k8s clean pod policy from flyte kubeflow plugins clean pod policy.
 func ParseCleanPodPolicy(flyteCleanPodPolicy kfplugins.CleanPodPolicy) commonOp.CleanPodPolicy {
 	cleanPodPolicyMap := map[kfplugins.CleanPodPolicy]commonOp.CleanPodPolicy{
 		kfplugins.CleanPodPolicy_CLEANPOD_POLICY_NONE:    commonOp.CleanPodPolicyNone,
@@ -218,6 +220,7 @@ func ParseCleanPodPolicy(flyteCleanPodPolicy kfplugins.CleanPodPolicy) commonOp.
 	return cleanPodPolicyMap[flyteCleanPodPolicy]
 }
 
+// Get k8s restart policy from flyte kubeflow plugins restart policy.
 func ParseRestartPolicy(flyteRestartPolicy kfplugins.RestartPolicy) commonOp.RestartPolicy {
 	restartPolicyMap := map[kfplugins.RestartPolicy]commonOp.RestartPolicy{
 		kfplugins.RestartPolicy_RESTART_POLICY_NEVER:      commonOp.RestartPolicyNever,
@@ -227,6 +230,8 @@ func ParseRestartPolicy(flyteRestartPolicy kfplugins.RestartPolicy) commonOp.Res
 	return restartPolicyMap[flyteRestartPolicy]
 }
 
+// OverrideContainerSpec overrides the specified container's properties in the given podSpec. The function
+// updates the image, resources and command arguments of the container that matches the given containerName.
 func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image string, resources *core.Resources, args []string) (*v1.PodSpec, error) {
 	for idx, c := range podSpec.Containers {
 		if c.Name == containerName {
@@ -245,7 +250,7 @@ func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image stri
 			} else {
 				podSpec.Containers[idx].Resources = v1.ResourceRequirements{}
 			}
-			if args != nil && len(args) != 0 {
+			if len(args) != 0 {
 				podSpec.Containers[idx].Args = args
 			}
 		}
