@@ -2,7 +2,6 @@ package pytorch
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
@@ -69,9 +68,6 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 	common.OverridePrimaryContainerName(podSpec, primaryContainerName, kubeflowv1.PytorchJobDefaultContainerName)
 
 	workers := pytorchTaskExtraArgs.GetWorkers()
-	if workers == 0 {
-		return nil, fmt.Errorf("number of worker should be more then 0")
-	}
 
 	var jobSpec kubeflowv1.PyTorchJobSpec
 
@@ -115,15 +111,18 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 					},
 					RestartPolicy: commonOp.RestartPolicyNever,
 				},
-				kubeflowv1.PyTorchJobReplicaTypeWorker: {
-					Replicas: &workers,
-					Template: v1.PodTemplateSpec{
-						ObjectMeta: *objectMeta,
-						Spec:       *podSpec,
-					},
-					RestartPolicy: commonOp.RestartPolicyNever,
-				},
 			},
+		}
+
+		if workers > 0 {
+			jobSpec.PyTorchReplicaSpecs[kubeflowv1.MPIJobReplicaTypeWorker] = &commonOp.ReplicaSpec{
+				Replicas: &workers,
+				Template: v1.PodTemplateSpec{
+					ObjectMeta: *objectMeta,
+					Spec:       *podSpec,
+				},
+				RestartPolicy: commonOp.RestartPolicyNever,
+			}
 		}
 	}
 	job := &kubeflowv1.PyTorchJob{
@@ -131,7 +130,8 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 			Kind:       kubeflowv1.PytorchJobKind,
 			APIVersion: kubeflowv1.SchemeGroupVersion.String(),
 		},
-		Spec: jobSpec,
+		Spec:       jobSpec,
+		ObjectMeta: *objectMeta,
 	}
 
 	return job, nil

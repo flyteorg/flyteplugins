@@ -425,7 +425,7 @@ func TestReplicaCounts(t *testing.T) {
 		contains           []commonOp.ReplicaType
 		notContains        []commonOp.ReplicaType
 	}{
-		{"NoWorkers", 0, true, nil, nil},
+		{"NoWorkers", 0, false, []commonOp.ReplicaType{kubeflowv1.PyTorchJobReplicaTypeMaster}, nil},
 		{"Works", 1, false, []commonOp.ReplicaType{kubeflowv1.PyTorchJobReplicaTypeMaster, kubeflowv1.PyTorchJobReplicaTypeWorker}, []commonOp.ReplicaType{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
