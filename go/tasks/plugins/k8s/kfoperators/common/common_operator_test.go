@@ -239,7 +239,7 @@ func dummyPodSpec() v1.PodSpec {
 
 func TestOverrideContainerSpec(t *testing.T) {
 	podSpec := dummyPodSpec()
-	_, err := OverrideContainerSpec(
+	err := OverrideContainerSpec(
 		&podSpec, "primary container", "testing-image",
 		&core.Resources{
 			Requests: []*core.Resources_ResourceEntry{
@@ -256,7 +256,7 @@ func TestOverrideContainerSpec(t *testing.T) {
 	assert.Equal(t, "testing-image", podSpec.Containers[0].Image)
 	assert.NotNil(t, podSpec.Containers[0].Resources.Limits)
 	assert.NotNil(t, podSpec.Containers[0].Resources.Requests)
-	// verify resources not overriden if empty resources
+	// verify resources not overridden if empty resources
 	assert.True(t, podSpec.Containers[0].Resources.Requests.Cpu().Equal(resource.MustParse("250m")))
 	assert.True(t, podSpec.Containers[0].Resources.Limits.Cpu().Equal(resource.MustParse("500m")))
 	assert.Equal(t, []string{"python", "-m", "run.py"}, podSpec.Containers[0].Args)
@@ -264,12 +264,12 @@ func TestOverrideContainerSpec(t *testing.T) {
 
 func TestOverrideContainerSpecEmptyFields(t *testing.T) {
 	podSpec := dummyPodSpec()
-	_, err := OverrideContainerSpec(&podSpec, "primary container", "", &core.Resources{}, []string{})
+	err := OverrideContainerSpec(&podSpec, "primary container", "", &core.Resources{}, []string{})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(podSpec.Containers))
 	assert.NotNil(t, podSpec.Containers[0].Resources.Limits)
 	assert.NotNil(t, podSpec.Containers[0].Resources.Requests)
-	// verify resources not overriden if empty resources
+	// verify resources not overridden if empty resources
 	assert.True(t, podSpec.Containers[0].Resources.Requests.Cpu().Equal(resource.MustParse("1")))
 	assert.True(t, podSpec.Containers[0].Resources.Requests.Memory().Equal(resource.MustParse("100Mi")))
 	assert.True(t, podSpec.Containers[0].Resources.Limits.Cpu().Equal(resource.MustParse("2")))
@@ -278,7 +278,7 @@ func TestOverrideContainerSpecEmptyFields(t *testing.T) {
 
 func TestOverrideContainerNilResources(t *testing.T) {
 	podSpec := dummyPodSpec()
-	_, err := OverrideContainerSpec(&podSpec, "primary container", "", nil, []string{})
+	err := OverrideContainerSpec(&podSpec, "primary container", "", nil, []string{})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(podSpec.Containers))
 	assert.Nil(t, podSpec.Containers[0].Resources.Limits)

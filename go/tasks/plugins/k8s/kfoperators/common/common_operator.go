@@ -232,7 +232,7 @@ func ParseRestartPolicy(flyteRestartPolicy kfplugins.RestartPolicy) commonOp.Res
 
 // OverrideContainerSpec overrides the specified container's properties in the given podSpec. The function
 // updates the image, resources and command arguments of the container that matches the given containerName.
-func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image string, resources *core.Resources, args []string) (*v1.PodSpec, error) {
+func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image string, resources *core.Resources, args []string) error {
 	for idx, c := range podSpec.Containers {
 		if c.Name == containerName {
 			if image != "" {
@@ -243,7 +243,7 @@ func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image stri
 				if len(resources.Requests) >= 1 || len(resources.Limits) >= 1 {
 					resources, err := flytek8s.ToK8sResourceRequirements(resources)
 					if err != nil {
-						return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecificat ion on Resources [%v], Err: [%v]", resources, err.Error())
+						return flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecificat ion on Resources [%v], Err: [%v]", resources, err.Error())
 					}
 					podSpec.Containers[idx].Resources = *resources
 				}
@@ -255,5 +255,5 @@ func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image stri
 			}
 		}
 	}
-	return podSpec, nil
+	return nil
 }

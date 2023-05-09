@@ -104,49 +104,49 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 
 		chiefReplicaSpec := kfTensorflowTaskExtraArgs.GetChiefReplicas()
 		if chiefReplicaSpec != nil {
-			common.OverrideContainerSpec(
+			err := common.OverrideContainerSpec(
 				replicaSpecMap[kubeflowv1.TFJobReplicaTypeChief].PodSpec,
 				kubeflowv1.TFJobDefaultContainerName,
 				chiefReplicaSpec.GetImage(),
 				chiefReplicaSpec.GetResources(),
 				nil,
 			)
-			replicaSpecMap[kubeflowv1.TFJobReplicaTypeChief].RestartPolicy =
-				commonOp.RestartPolicy(
-					common.ParseRestartPolicy(chiefReplicaSpec.GetRestartPolicy()),
-				)
+			if err != nil {
+				return nil, err
+			}
+			replicaSpecMap[kubeflowv1.TFJobReplicaTypeChief].RestartPolicy = common.ParseRestartPolicy(chiefReplicaSpec.GetRestartPolicy())
 			replicaSpecMap[kubeflowv1.TFJobReplicaTypeChief].ReplicaNum = chiefReplicaSpec.GetReplicas()
 		}
 
 		workerReplicaSpec := kfTensorflowTaskExtraArgs.GetWorkerReplicas()
 		if workerReplicaSpec != nil {
-			common.OverrideContainerSpec(
+			err := common.OverrideContainerSpec(
 				replicaSpecMap[kubeflowv1.MPIJobReplicaTypeWorker].PodSpec,
 				kubeflowv1.TFJobDefaultContainerName,
 				workerReplicaSpec.GetImage(),
 				workerReplicaSpec.GetResources(),
 				nil,
 			)
-			replicaSpecMap[kubeflowv1.TFJobReplicaTypeWorker].RestartPolicy =
-				commonOp.RestartPolicy(
-					common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy()),
-				)
+			if err != nil {
+				return nil, err
+			}
+			replicaSpecMap[kubeflowv1.TFJobReplicaTypeWorker].RestartPolicy = common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy())
 			replicaSpecMap[kubeflowv1.TFJobReplicaTypeWorker].ReplicaNum = workerReplicaSpec.GetReplicas()
 		}
 
 		psReplicaSpec := kfTensorflowTaskExtraArgs.GetPsReplicas()
 		if psReplicaSpec != nil {
-			common.OverrideContainerSpec(
+			err := common.OverrideContainerSpec(
 				replicaSpecMap[kubeflowv1.TFJobReplicaTypePS].PodSpec,
 				kubeflowv1.TFJobDefaultContainerName,
 				psReplicaSpec.GetImage(),
 				psReplicaSpec.GetResources(),
 				nil,
 			)
-			replicaSpecMap[kubeflowv1.TFJobReplicaTypePS].RestartPolicy =
-				commonOp.RestartPolicy(
-					common.ParseRestartPolicy(psReplicaSpec.GetRestartPolicy()),
-				)
+			if err != nil {
+				return nil, err
+			}
+			replicaSpecMap[kubeflowv1.TFJobReplicaTypePS].RestartPolicy = common.ParseRestartPolicy(psReplicaSpec.GetRestartPolicy())
 			replicaSpecMap[kubeflowv1.TFJobReplicaTypePS].ReplicaNum = psReplicaSpec.GetReplicas()
 		}
 

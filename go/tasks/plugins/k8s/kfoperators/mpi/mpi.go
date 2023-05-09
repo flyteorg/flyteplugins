@@ -112,32 +112,32 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 		launcherReplicaSpec := kfMPITaskExtraArgs.GetLauncherReplicas()
 		if launcherReplicaSpec != nil {
 			// flyte commands will be passed as args to the container
-			common.OverrideContainerSpec(
+			err = common.OverrideContainerSpec(
 				launcherReplica.PodSpec,
 				kubeflowv1.MPIJobDefaultContainerName,
 				launcherReplicaSpec.GetImage(),
 				launcherReplicaSpec.GetResources(),
 				launcherReplicaSpec.GetCommand(),
 			)
-			launcherReplica.RestartPolicy =
-				commonOp.RestartPolicy(
-					common.ParseRestartPolicy(launcherReplicaSpec.GetRestartPolicy()),
-				)
+			if err != nil {
+				return nil, err
+			}
+			launcherReplica.RestartPolicy = common.ParseRestartPolicy(launcherReplicaSpec.GetRestartPolicy())
 		}
 
 		workerReplicaSpec := kfMPITaskExtraArgs.GetWorkerReplicas()
 		if workerReplicaSpec != nil {
-			common.OverrideContainerSpec(
+			err = common.OverrideContainerSpec(
 				workerReplica.PodSpec,
 				kubeflowv1.MPIJobDefaultContainerName,
 				workerReplicaSpec.GetImage(),
 				workerReplicaSpec.GetResources(),
 				workerReplicaSpec.GetCommand(),
 			)
-			workerReplica.RestartPolicy =
-				commonOp.RestartPolicy(
-					common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy()),
-				)
+			if err != nil {
+				return nil, err
+			}
+			workerReplica.RestartPolicy = common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy())
 			workerReplica.ReplicaNum = workerReplicaSpec.GetReplicas()
 		}
 

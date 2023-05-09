@@ -35,7 +35,6 @@ import (
 )
 
 const testImage = "image://"
-const testImageChief = "image://chief"
 const serviceAccount = "tensorflow_sa"
 
 var (
@@ -518,7 +517,7 @@ func TestBuildResourceTensorFlowV1(t *testing.T) {
 
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
-	taskTemplate := dummyTensorFlowTaskTemplate("the job", taskConfig)
+	taskTemplate := dummyTensorFlowTaskTemplate("v1", taskConfig)
 	taskTemplate.TaskTypeVersion = 1
 
 	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))
@@ -579,7 +578,7 @@ func TestBuildResourceTensorFlowV1WithOnlyWorker(t *testing.T) {
 
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 
-	taskTemplate := dummyTensorFlowTaskTemplate("the job", taskConfig)
+	taskTemplate := dummyTensorFlowTaskTemplate("v1 with only worker replica", taskConfig)
 	taskTemplate.TaskTypeVersion = 1
 
 	resource, err := tensorflowResourceHandler.BuildResource(context.TODO(), dummyTensorFlowTaskContext(taskTemplate))

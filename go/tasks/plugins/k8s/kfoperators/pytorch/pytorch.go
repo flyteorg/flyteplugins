@@ -101,33 +101,33 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		// Replace specs of master replica, master should always have 1 replica
 		masterReplicaSpec := kfPytorchTaskExtraArgs.GetMasterReplicas()
 		if masterReplicaSpec != nil {
-			common.OverrideContainerSpec(
+			err := common.OverrideContainerSpec(
 				masterReplica.PodSpec,
 				kubeflowv1.PytorchJobDefaultContainerName,
 				masterReplicaSpec.GetImage(),
 				masterReplicaSpec.GetResources(),
 				nil,
 			)
-			masterReplica.RestartPolicy =
-				commonOp.RestartPolicy(
-					common.ParseRestartPolicy(masterReplicaSpec.GetRestartPolicy()),
-				)
+			if err != nil {
+				return nil, err
+			}
+			masterReplica.RestartPolicy = common.ParseRestartPolicy(masterReplicaSpec.GetRestartPolicy())
 		}
 
 		// Replace specs of worker replica
 		workerReplicaSpec := kfPytorchTaskExtraArgs.GetWorkerReplicas()
 		if workerReplicaSpec != nil {
-			common.OverrideContainerSpec(
+			err := common.OverrideContainerSpec(
 				workerReplica.PodSpec,
 				kubeflowv1.PytorchJobDefaultContainerName,
 				workerReplicaSpec.GetImage(),
 				workerReplicaSpec.GetResources(),
 				nil,
 			)
-			workerReplica.RestartPolicy =
-				commonOp.RestartPolicy(
-					common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy()),
-				)
+			if err != nil {
+				return nil, err
+			}
+			workerReplica.RestartPolicy = common.ParseRestartPolicy(workerReplicaSpec.GetRestartPolicy())
 			workerReplica.ReplicaNum = workerReplicaSpec.GetReplicas()
 		}
 
