@@ -62,15 +62,17 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
 
-	var container *v1.Container = nil
+	var container v1.Container
+	var found bool = false
 	for _, c := range podSpec.Containers {
 		if c.Name == primaryContainerName {
-			container = &c
+			container = c
+			found = true
 			break
 		}
 	}
 
-	if container == nil {
+	if found == false {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to get primary container from the pod: [%v]", err.Error())
 	}
 
@@ -92,7 +94,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
 		HeadGroupSpec: rayv1alpha1.HeadGroupSpec{
-			Template:       buildHeadPodTemplate(container, podSpec, objectMeta, taskCtx),
+			Template:       buildHeadPodTemplate(&container, podSpec, objectMeta, taskCtx),
 			ServiceType:    v1.ServiceType(GetConfig().ServiceType),
 			Replicas:       &headReplicas,
 			EnableIngress:  &enableIngress,
@@ -102,7 +104,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	}
 
 	for _, spec := range rayJob.RayCluster.WorkerGroupSpec {
-		workerPodTemplate := buildWorkerPodTemplate(container, podSpec, objectMeta, taskCtx)
+		workerPodTemplate := buildWorkerPodTemplate(&container, podSpec, objectMeta, taskCtx)
 
 		minReplicas := spec.Replicas
 		maxReplicas := spec.Replicas
