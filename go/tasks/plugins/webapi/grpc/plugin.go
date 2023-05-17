@@ -182,7 +182,10 @@ func getClientFunc(ctx context.Context, endpoint string, connectionCache map[str
 }
 
 func newGrpcPlugin() webapi.PluginEntry {
-	supportedTaskTypes := GetConfig().SupportedTaskTypes
+	var supportedTaskTypes []pluginsCore.TaskType
+	for i := 0; i < len(GetConfig().SupportedTaskTypes); i++ {
+		supportedTaskTypes = append(supportedTaskTypes, GetConfig().SupportedTaskTypes[i])
+	}
 
 	return webapi.PluginEntry{
 		ID:                 "external-plugin-service",
