@@ -60,7 +60,7 @@ type Config struct {
 	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`
 
 	// SupportedTaskTypes is a list of task types that are supported by this plugin.
-	SupportedTaskTypes []string `json:"supportedTaskTypes" pflag:"-,Defines a list of task types that are supported by this plugin."`
+	SupportedTaskTypes []core.TaskType `json:"supportedTaskTypes" pflag:"-,Defines a list of task types that are supported by this plugin."`
 }
 
 func GetConfig() *Config {
