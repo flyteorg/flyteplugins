@@ -23,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/flyteorg/flytestdlib/logger"
 )
 
 const (
@@ -64,6 +66,7 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 	if err != nil {
 		return nil, err
 	}
+	logger.Infof(ctx, "HAMERSAW - %+v\n", containerResources)
 
 	jobRunnerContainer := v1.Container{
 		Name:      "job-runner",
@@ -84,6 +87,7 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 
 		return nil, err
 	}
+	logger.Infof(ctx, "HAMERSAW - %+v\n", &jobRunnerContainer.Resources)
 
 	return &defaults{
 		Image:              defaultImage,
