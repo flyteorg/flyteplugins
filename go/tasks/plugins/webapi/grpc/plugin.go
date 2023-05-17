@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-
+	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/grpclog"
 
 	flyteIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -186,7 +186,7 @@ func newGrpcPlugin() webapi.PluginEntry {
 	for i := 0; i < len(GetConfig().SupportedTaskTypes); i++ {
 		supportedTaskTypes = append(supportedTaskTypes, GetConfig().SupportedTaskTypes[i])
 	}
-
+	logger.Infof(context.Background(), "Supported task types: %v", supportedTaskTypes)
 	return webapi.PluginEntry{
 		ID:                 "external-plugin-service",
 		SupportedTaskTypes: supportedTaskTypes,
