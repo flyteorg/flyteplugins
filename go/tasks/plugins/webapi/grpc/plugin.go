@@ -187,6 +187,8 @@ func newGrpcPlugin() webapi.PluginEntry {
 		supportedTaskTypes = append(supportedTaskTypes, GetConfig().SupportedTaskTypes[i])
 	}
 	logger.Infof(context.Background(), "Supported task types: %v", supportedTaskTypes)
+	logger.Infof(context.Background(), "Supported task types: %v", GetConfig().SupportedTaskTypes)
+	logger.Infof(context.Background(), "DefaultGrpcEndpoint: %v", GetConfig().DefaultGrpcEndpoint)
 	return webapi.PluginEntry{
 		ID:                 "external-plugin-service",
 		SupportedTaskTypes: supportedTaskTypes,
