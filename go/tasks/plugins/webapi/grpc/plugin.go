@@ -191,7 +191,7 @@ func newGrpcPlugin() webapi.PluginEntry {
 	logger.Infof(context.Background(), "DefaultGrpcEndpoint: %v", GetConfig().DefaultGrpcEndpoint)
 	return webapi.PluginEntry{
 		ID:                 "external-plugin-service",
-		SupportedTaskTypes: supportedTaskTypes,
+		SupportedTaskTypes: GetConfig().SupportedTaskTypes,
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
 				metricScope:     iCtx.MetricsScope(),
