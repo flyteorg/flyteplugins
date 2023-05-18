@@ -9,7 +9,6 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
-	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -45,15 +44,15 @@ func (rayJobResourceHandler) GetProperties() k8s.PluginProperties {
 func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext) (client.Object, error) {
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "unable to fetch task specification [%v]", err.Error())
+		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "unable to fetch task specification [%v]", err.Error())
 	} else if taskTemplate == nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "nil task specification")
+		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "nil task specification")
 	}
 
 	rayJob := plugins.RayJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &rayJob)
 	if err != nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
+		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
 	}
 
 	podSpec, objectMeta, primaryContainerName, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
@@ -63,7 +62,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	}
 
 	var container v1.Container
-	var found bool = false
+	found := false
 	for _, c := range podSpec.Containers {
 		if c.Name == primaryContainerName {
 			container = c
@@ -72,7 +71,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		}
 	}
 
-	if found == false {
+	if !found {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to get primary container from the pod: [%v]", err.Error())
 	}
 
@@ -379,7 +378,7 @@ func (rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s
 		return pluginsCore.PhaseInfoNotReady(time.Now(), pluginsCore.DefaultPhaseVersion, "job is pending"), nil
 	case rayv1alpha1.JobStatusFailed:
 		reason := fmt.Sprintf("Failed to create Ray job: %s", rayJob.Name)
-		return pluginsCore.PhaseInfoFailure(errors.TaskFailedWithError, reason, info), nil
+		return pluginsCore.PhaseInfoFailure(flyteerr.TaskFailedWithError, reason, info), nil
 	case rayv1alpha1.JobStatusSucceeded:
 		return pluginsCore.PhaseInfoSuccess(info), nil
 	case rayv1alpha1.JobStatusRunning:
