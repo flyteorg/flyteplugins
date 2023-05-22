@@ -23,8 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/flyteorg/flytestdlib/logger"
 )
 
 const (
