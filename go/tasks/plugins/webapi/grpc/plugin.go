@@ -198,7 +198,7 @@ func newGrpcPlugin() webapi.PluginEntry {
 	}
 }
 
-func init() {
+func RegisterGrpcPlugin() {
 	gob.Register(ResourceMetaWrapper{})
 	gob.Register(ResourceWrapper{})
 
