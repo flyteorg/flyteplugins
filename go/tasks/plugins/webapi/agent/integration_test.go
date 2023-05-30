@@ -1,4 +1,4 @@
-package grpc
+package agent
 
 import (
 	"context"
@@ -54,11 +54,11 @@ func (m *MockClient) DeleteTask(_ context.Context, _ *service.TaskDeleteRequest,
 	return &service.TaskDeleteResponse{}, nil
 }
 
-func mockGetClientFunc(_ context.Context, _ string, _ map[string]*grpc.ClientConn) (service.ExternalPluginServiceClient, error) {
+func mockGetClientFunc(_ context.Context, _ string, _ map[string]*grpc.ClientConn) (service.AgentServiceClient, error) {
 	return &MockClient{}, nil
 }
 
-func mockGetBadClientFunc(_ context.Context, _ string, _ map[string]*grpc.ClientConn) (service.ExternalPluginServiceClient, error) {
+func mockGetBadClientFunc(_ context.Context, _ string, _ map[string]*grpc.ClientConn) (service.AgentServiceClient, error) {
 	return nil, fmt.Errorf("error")
 }
 

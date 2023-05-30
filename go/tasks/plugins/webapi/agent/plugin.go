@@ -1,4 +1,4 @@
-package grpc
+package agent
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GetClientFunc func(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.ExternalPluginServiceClient, error)
+type GetClientFunc func(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.AgentServiceClient, error)
 
 type Plugin struct {
 	metricScope     promutils.Scope
@@ -67,7 +67,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	endpoint := getFinalEndpoint(taskTemplate.Type, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
 	client, err := p.getClient(ctx, endpoint, p.connectionCache)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect external plugin service with error: %v", err)
+		return nil, nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
 	res, err := client.CreateTask(ctx, &service.TaskCreateRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
@@ -89,7 +89,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	endpoint := getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
 	client, err := p.getClient(ctx, endpoint, p.connectionCache)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect external plugin service with error: %v", err)
+		return nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
 	res, err := client.GetTask(ctx, &service.TaskGetRequest{TaskType: metadata.TaskType, JobId: metadata.JobID})
@@ -112,7 +112,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	endpoint := getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
 	client, err := p.getClient(ctx, endpoint, p.connectionCache)
 	if err != nil {
-		return fmt.Errorf("failed to connect external plugin service with error: %v", err)
+		return fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
 	_, err = client.DeleteTask(ctx, &service.TaskDeleteRequest{TaskType: metadata.TaskType, JobId: metadata.JobID})
@@ -150,10 +150,10 @@ func getFinalEndpoint(taskType, defaultEndpoint string, endpointForTaskTypes map
 	return defaultEndpoint
 }
 
-func getClientFunc(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.ExternalPluginServiceClient, error) {
+func getClientFunc(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.AgentServiceClient, error) {
 	conn, ok := connectionCache[endpoint]
 	if ok {
-		return service.NewExternalPluginServiceClient(conn), nil
+		return service.NewAgentServiceClient(conn), nil
 	}
 	var opts []grpc.DialOption
 	var err error
@@ -178,14 +178,14 @@ func getClientFunc(ctx context.Context, endpoint string, connectionCache map[str
 			}
 		}()
 	}()
-	return service.NewExternalPluginServiceClient(conn), nil
+	return service.NewAgentServiceClient(conn), nil
 }
 
-func newGrpcPlugin() webapi.PluginEntry {
+func newAgentPlugin() webapi.PluginEntry {
 	supportedTaskTypes := GetConfig().SupportedTaskTypes
 
 	return webapi.PluginEntry{
-		ID:                 "external-plugin-service",
+		ID:                 "agent-service",
 		SupportedTaskTypes: supportedTaskTypes,
 		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &Plugin{
@@ -198,9 +198,9 @@ func newGrpcPlugin() webapi.PluginEntry {
 	}
 }
 
-func RegisterGrpcPlugin() {
+func RegisterAgentPlugin() {
 	gob.Register(ResourceMetaWrapper{})
 	gob.Register(ResourceWrapper{})
 
-	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newGrpcPlugin())
+	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newAgentPlugin())
 }

@@ -1,4 +1,4 @@
-package grpc
+package agent
 
 import (
 	"context"
@@ -38,10 +38,10 @@ func TestPlugin(t *testing.T) {
 		assert.Equal(t, plugin.cfg.ResourceConstraints, constraints)
 	})
 
-	t.Run("tet newGrpcPlugin", func(t *testing.T) {
-		p := newGrpcPlugin()
+	t.Run("tet newAgentPlugin", func(t *testing.T) {
+		p := newAgentPlugin()
 		assert.NotNil(t, p)
-		assert.Equal(t, p.ID, "external-plugin-service")
+		assert.Equal(t, p.ID, "flyte-agent")
 		assert.NotNil(t, p.PluginLoader)
 	})
 
