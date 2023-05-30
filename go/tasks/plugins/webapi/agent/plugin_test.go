@@ -25,7 +25,7 @@ func TestPlugin(t *testing.T) {
 		cfg := defaultConfig
 		cfg.WebAPI.Caching.Workers = 1
 		cfg.WebAPI.Caching.ResyncInterval.Duration = 5 * time.Second
-		cfg.DefaultGrpcEndpoint = "test-service.flyte.svc.cluster.local:80"
+		cfg.DefaultGrpcEndpoint = "test-agent.flyte.svc.cluster.local:80"
 		cfg.EndpointForTaskTypes = map[string]string{"spark": "localhost:80"}
 		err := SetConfig(&cfg)
 		assert.NoError(t, err)

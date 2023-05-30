@@ -98,7 +98,7 @@ func TestEndToEnd(t *testing.T) {
 	basePrefix := storage.DataReference("fake://bucket/prefix/")
 
 	t.Run("run a job", func(t *testing.T) {
-		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockGrpcPlugin())
+		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockAgentPlugin())
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test1"))
 		assert.NoError(t, err)
 
@@ -107,8 +107,8 @@ func TestEndToEnd(t *testing.T) {
 	})
 
 	t.Run("failed to create a job", func(t *testing.T) {
-		grpcPlugin := newMockGrpcPlugin()
-		grpcPlugin.PluginLoader = func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
+		agentPlugin := newMockAgentPlugin()
+		agentPlugin.PluginLoader = func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
 			return &MockPlugin{
 				Plugin{
 					metricScope: iCtx.MetricsScope(),
@@ -117,7 +117,7 @@ func TestEndToEnd(t *testing.T) {
 				},
 			}, nil
 		}
-		pluginEntry := pluginmachinery.CreateRemotePlugin(grpcPlugin)
+		pluginEntry := pluginmachinery.CreateRemotePlugin(agentPlugin)
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test2"))
 		assert.NoError(t, err)
 
@@ -144,8 +144,8 @@ func TestEndToEnd(t *testing.T) {
 		tr.OnRead(context.Background()).Return(nil, fmt.Errorf("read fail"))
 		tCtx.OnTaskReader().Return(tr)
 
-		grpcPlugin := newMockGrpcPlugin()
-		pluginEntry := pluginmachinery.CreateRemotePlugin(grpcPlugin)
+		agentPlugin := newAgentPlugin()
+		pluginEntry := pluginmachinery.CreateRemotePlugin(agentPlugin)
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test3"))
 		assert.NoError(t, err)
 
@@ -165,8 +165,8 @@ func TestEndToEnd(t *testing.T) {
 		inputReader.OnGetMatch(mock.Anything).Return(nil, fmt.Errorf("read fail"))
 		tCtx.OnInputReader().Return(inputReader)
 
-		grpcPlugin := newMockGrpcPlugin()
-		pluginEntry := pluginmachinery.CreateRemotePlugin(grpcPlugin)
+		agentPlugin := newMockAgentPlugin()
+		pluginEntry := pluginmachinery.CreateRemotePlugin(agentPlugin)
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test4"))
 		assert.NoError(t, err)
 
@@ -239,7 +239,7 @@ func getTaskContext(t *testing.T) *pluginCoreMocks.TaskExecutionContext {
 	return tCtx
 }
 
-func newMockGrpcPlugin() webapi.PluginEntry {
+func newMockAgentPlugin() webapi.PluginEntry {
 	return webapi.PluginEntry{
 		ID:                 "external-plugin-service",
 		SupportedTaskTypes: []core.TaskType{"bigquery_query_job_task"},
