@@ -41,7 +41,7 @@ func TestPlugin(t *testing.T) {
 	t.Run("tet newAgentPlugin", func(t *testing.T) {
 		p := newAgentPlugin()
 		assert.NotNil(t, p)
-		assert.Equal(t, p.ID, "flyte-agent")
+		assert.Equal(t, p.ID, "agent-service")
 		assert.NotNil(t, p.PluginLoader)
 	})
 
