@@ -4,7 +4,7 @@ type TokenSourceFactoryType = string
 
 const (
 	TokenSourceTypeDefault                 = "default"
-	TokenSourceTypeGkeTaskWorkloadIdentity = "gke-task-workload-identity"
+	TokenSourceTypeGkeTaskWorkloadIdentity = "gke-task-workload-identity" // #nosec
 )
 
 type TokenSourceFactoryConfig struct {
