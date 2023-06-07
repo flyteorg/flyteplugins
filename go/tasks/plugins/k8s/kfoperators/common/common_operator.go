@@ -110,7 +110,7 @@ func GetLogs(taskType string, name string, namespace string, hasMaster bool,
 		return nil, nil
 	}
 
-	if taskType == PytorchTaskType && hasMaster == true {
+	if taskType == PytorchTaskType && hasMaster {
 		masterTaskLog, masterErr := logPlugin.GetTaskLogs(
 			tasklog.Input{
 				PodName:   name + "-master-0",
