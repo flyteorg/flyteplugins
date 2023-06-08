@@ -6,8 +6,11 @@ import (
 	"fmt"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 
 	"google.golang.org/grpc/grpclog"
+
+	"google.golang.org/grpc"
 
 	flyteIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
@@ -18,7 +21,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
 	"github.com/flyteorg/flytestdlib/promutils"
-	"google.golang.org/grpc"
 )
 
 type GetClientFunc func(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error)
@@ -72,7 +74,8 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	res, err := client.CreateTask(ctx, &admin.CreateTaskRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix})
+	serviceAccountName := flytek8s.GetServiceAccountNameFromTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
+	res, err := client.CreateTask(ctx, &admin.CreateTaskRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix, ServiceAccount: serviceAccountName})
 	if err != nil {
 		return nil, nil, err
 	}
