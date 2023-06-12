@@ -638,3 +638,41 @@ func TestBuildResourcePytorchV1WithOnlyWorkerSpec(t *testing.T) {
 
 	assert.Nil(t, pytorchJob.Spec.ElasticPolicy)
 }
+
+func TestBuildResourcePytorchV2WithElastic(t *testing.T) {
+	taskConfig := &kfplugins.DistributedPyTorchTrainingTask{
+		WorkerReplicas: &kfplugins.DistributedPyTorchTrainingReplicaSpec{
+			Replicas: 2,
+		},
+		ElasticConfig: &kfplugins.ElasticConfig{MinReplicas: 1, MaxReplicas: 2, NprocPerNode: 4, RdzvBackend: "c10d"},
+	}
+	taskTemplate := dummyPytorchTaskTemplate("job5", taskConfig)
+	taskTemplate.TaskTypeVersion = 1
+
+	pytorchResourceHandler := pytorchOperatorResourceHandler{}
+	resource, err := pytorchResourceHandler.BuildResource(context.TODO(), dummyPytorchTaskContext(taskTemplate))
+	assert.NoError(t, err)
+	assert.NotNil(t, resource)
+
+	pytorchJob, ok := resource.(*kubeflowv1.PyTorchJob)
+	assert.True(t, ok)
+	assert.Equal(t, int32(2), *pytorchJob.Spec.PyTorchReplicaSpecs[kubeflowv1.PyTorchJobReplicaTypeWorker].Replicas)
+	assert.NotNil(t, pytorchJob.Spec.ElasticPolicy)
+	assert.Equal(t, int32(1), *pytorchJob.Spec.ElasticPolicy.MinReplicas)
+	assert.Equal(t, int32(2), *pytorchJob.Spec.ElasticPolicy.MaxReplicas)
+	assert.Equal(t, int32(4), *pytorchJob.Spec.ElasticPolicy.NProcPerNode)
+	assert.Equal(t, kubeflowv1.RDZVBackend("c10d"), *pytorchJob.Spec.ElasticPolicy.RDZVBackend)
+
+	assert.Equal(t, 1, len(pytorchJob.Spec.PyTorchReplicaSpecs))
+	assert.Contains(t, pytorchJob.Spec.PyTorchReplicaSpecs, kubeflowv1.PyTorchJobReplicaTypeWorker)
+
+	var hasContainerWithDefaultPytorchName = false
+
+	for _, container := range pytorchJob.Spec.PyTorchReplicaSpecs[kubeflowv1.PyTorchJobReplicaTypeWorker].Template.Spec.Containers {
+		if container.Name == kubeflowv1.PytorchJobDefaultContainerName {
+			hasContainerWithDefaultPytorchName = true
+		}
+	}
+
+	assert.True(t, hasContainerWithDefaultPytorchName)
+}

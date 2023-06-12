@@ -57,12 +57,6 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "nil task specification")
 	}
 
-	pytorchTaskExtraArgs := plugins.DistributedPyTorchTrainingTask{}
-	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &pytorchTaskExtraArgs)
-	if err != nil {
-		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification [%v], Err: [%v]", taskTemplate.GetCustom(), err.Error())
-	}
-
 	podSpec, objectMeta, primaryContainerName, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
@@ -80,6 +74,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		RestartPolicy: commonOp.RestartPolicyNever,
 	}
 	runPolicy := commonOp.RunPolicy{}
+	var elasticPolicy *kubeflowv1.ElasticPolicy
 
 	if taskTemplate.TaskTypeVersion == 0 {
 		pytorchTaskExtraArgs := plugins.DistributedPyTorchTrainingTask{}
@@ -90,6 +85,14 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		}
 
 		workerReplica.ReplicaNum = pytorchTaskExtraArgs.GetWorkers()
+		// Set elastic config
+		elasticConfig := pytorchTaskExtraArgs.GetElasticConfig()
+		if elasticConfig != nil {
+			elasticPolicy, err = ParseElasticConfig(elasticConfig)
+			if err != nil {
+				return nil, err
+			}
+		}
 	} else if taskTemplate.TaskTypeVersion == 1 {
 		kfPytorchTaskExtraArgs := kfplugins.DistributedPyTorchTrainingTask{}
 
@@ -134,6 +137,14 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		if kfPytorchTaskExtraArgs.GetRunPolicy() != nil {
 			runPolicy = common.ParseRunPolicy(*kfPytorchTaskExtraArgs.GetRunPolicy())
 		}
+		// Set elastic config
+		elasticConfig := kfPytorchTaskExtraArgs.GetElasticConfig()
+		if elasticConfig != nil {
+			elasticPolicy, err = ParseElasticConfig(elasticConfig)
+			if err != nil {
+				return nil, err
+			}
+		}
 	} else {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification,
 			"Invalid TaskSpecification, unsupported task template version [%v] key", taskTemplate.TaskTypeVersion)
@@ -164,23 +175,9 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		RunPolicy: runPolicy,
 	}
 
-	// Set elastic config
-	elasticConfig := pytorchTaskExtraArgs.GetElasticConfig()
-	if elasticConfig != nil {
-		minReplicas := elasticConfig.GetMinReplicas()
-		maxReplicas := elasticConfig.GetMaxReplicas()
-		nProcPerNode := elasticConfig.GetNprocPerNode()
-		maxRestarts := elasticConfig.GetMaxRestarts()
-		rdzvBackend := kubeflowv1.RDZVBackend(elasticConfig.GetRdzvBackend())
-		elasticPolicy := kubeflowv1.ElasticPolicy{
-			MinReplicas:  &minReplicas,
-			MaxReplicas:  &maxReplicas,
-			RDZVBackend:  &rdzvBackend,
-			NProcPerNode: &nProcPerNode,
-			MaxRestarts:  &maxRestarts,
-		}
-		jobSpec.ElasticPolicy = &elasticPolicy
-		// Remove master replica if elastic policy is set
+	if elasticPolicy != nil {
+		jobSpec.ElasticPolicy = elasticPolicy
+		// Remove master replica spec if elastic policy is set
 		delete(jobSpec.PyTorchReplicaSpecs, kubeflowv1.PyTorchJobReplicaTypeMaster)
 	}
 
@@ -193,6 +190,40 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 	}
 
 	return job, nil
+}
+
+// To support parsing elastic config from both v0 and v1 of kubeflow pytorch idl
+func ParseElasticConfig(elasticConfig interface{}) (*kubeflowv1.ElasticPolicy, error) {
+	switch t := elasticConfig.(type) {
+	case *kfplugins.ElasticConfig:
+		minReplicas := t.GetMinReplicas()
+		maxReplicas := t.GetMaxReplicas()
+		nProcPerNode := t.GetNprocPerNode()
+		maxRestarts := t.GetMaxRestarts()
+		rdzvBackend := kubeflowv1.RDZVBackend(t.GetRdzvBackend())
+		return &kubeflowv1.ElasticPolicy{
+			MinReplicas:  &minReplicas,
+			MaxReplicas:  &maxReplicas,
+			RDZVBackend:  &rdzvBackend,
+			NProcPerNode: &nProcPerNode,
+			MaxRestarts:  &maxRestarts,
+		}, nil
+	case *plugins.ElasticConfig:
+		minReplicas := t.GetMinReplicas()
+		maxReplicas := t.GetMaxReplicas()
+		nProcPerNode := t.GetNprocPerNode()
+		maxRestarts := t.GetMaxRestarts()
+		rdzvBackend := kubeflowv1.RDZVBackend(t.GetRdzvBackend())
+		return &kubeflowv1.ElasticPolicy{
+			MinReplicas:  &minReplicas,
+			MaxReplicas:  &maxReplicas,
+			RDZVBackend:  &rdzvBackend,
+			NProcPerNode: &nProcPerNode,
+			MaxRestarts:  &maxRestarts,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unrecognized elastic config type %T", t)
+	}
 }
 
 // Analyses the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
