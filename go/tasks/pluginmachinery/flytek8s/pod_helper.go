@@ -624,7 +624,9 @@ func DemystifyFailure(status v1.PodStatus, info pluginsCore.TaskInfo) (pluginsCo
 	// }
 	//
 	// In some versions of GKE the reason can also be "Terminated"
+	fmt.Sprintf("HERE before if statement Reason: [%s]. Message: [%s]", code, message)
 	if code == "Shutdown" || code == "Terminated" {
+		fmt.Sprintf("HHERE Pod is shutting down. Reason: [%s]. Message: [%s]", code, message)
 		return pluginsCore.PhaseInfoSystemRetryableFailure(Interrupted, message, &info), nil
 	}
 
