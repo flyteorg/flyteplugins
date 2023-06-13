@@ -192,38 +192,30 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 	return job, nil
 }
 
+// Interface for unified elastic config handling across plugin version v0 and v1. This interface should
+// always be aligned with the ElasticConfig defined in flyteidl.
+type ElasticConfig interface {
+	GetMinReplicas() int32
+	GetMaxReplicas() int32
+	GetNprocPerNode() int32
+	GetMaxRestarts() int32
+	GetRdzvBackend() string
+}
+
 // To support parsing elastic config from both v0 and v1 of kubeflow pytorch idl
-func ParseElasticConfig(elasticConfig interface{}) (*kubeflowv1.ElasticPolicy, error) {
-	switch t := elasticConfig.(type) {
-	case *kfplugins.ElasticConfig:
-		minReplicas := t.GetMinReplicas()
-		maxReplicas := t.GetMaxReplicas()
-		nProcPerNode := t.GetNprocPerNode()
-		maxRestarts := t.GetMaxRestarts()
-		rdzvBackend := kubeflowv1.RDZVBackend(t.GetRdzvBackend())
-		return &kubeflowv1.ElasticPolicy{
-			MinReplicas:  &minReplicas,
-			MaxReplicas:  &maxReplicas,
-			RDZVBackend:  &rdzvBackend,
-			NProcPerNode: &nProcPerNode,
-			MaxRestarts:  &maxRestarts,
-		}, nil
-	case *plugins.ElasticConfig:
-		minReplicas := t.GetMinReplicas()
-		maxReplicas := t.GetMaxReplicas()
-		nProcPerNode := t.GetNprocPerNode()
-		maxRestarts := t.GetMaxRestarts()
-		rdzvBackend := kubeflowv1.RDZVBackend(t.GetRdzvBackend())
-		return &kubeflowv1.ElasticPolicy{
-			MinReplicas:  &minReplicas,
-			MaxReplicas:  &maxReplicas,
-			RDZVBackend:  &rdzvBackend,
-			NProcPerNode: &nProcPerNode,
-			MaxRestarts:  &maxRestarts,
-		}, nil
-	default:
-		return nil, fmt.Errorf("unrecognized elastic config type %T", t)
-	}
+func ParseElasticConfig(elasticConfig ElasticConfig) (*kubeflowv1.ElasticPolicy, error) {
+	minReplicas := elasticConfig.GetMinReplicas()
+	maxReplicas := elasticConfig.GetMaxReplicas()
+	nProcPerNode := elasticConfig.GetNprocPerNode()
+	maxRestarts := elasticConfig.GetMaxRestarts()
+	rdzvBackend := kubeflowv1.RDZVBackend(elasticConfig.GetRdzvBackend())
+	return &kubeflowv1.ElasticPolicy{
+		MinReplicas:  &minReplicas,
+		MaxReplicas:  &maxReplicas,
+		RDZVBackend:  &rdzvBackend,
+		NProcPerNode: &nProcPerNode,
+		MaxRestarts:  &maxRestarts,
+	}, nil
 }
 
 // Analyses the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
