@@ -88,10 +88,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		// Set elastic config
 		elasticConfig := pytorchTaskExtraArgs.GetElasticConfig()
 		if elasticConfig != nil {
-			elasticPolicy, err = ParseElasticConfig(elasticConfig)
-			if err != nil {
-				return nil, err
-			}
+			elasticPolicy = ParseElasticConfig(elasticConfig)
 		}
 	} else if taskTemplate.TaskTypeVersion == 1 {
 		kfPytorchTaskExtraArgs := kfplugins.DistributedPyTorchTrainingTask{}
@@ -140,10 +137,7 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		// Set elastic config
 		elasticConfig := kfPytorchTaskExtraArgs.GetElasticConfig()
 		if elasticConfig != nil {
-			elasticPolicy, err = ParseElasticConfig(elasticConfig)
-			if err != nil {
-				return nil, err
-			}
+			elasticPolicy = ParseElasticConfig(elasticConfig)
 		}
 	} else {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification,
@@ -203,7 +197,7 @@ type ElasticConfig interface {
 }
 
 // To support parsing elastic config from both v0 and v1 of kubeflow pytorch idl
-func ParseElasticConfig(elasticConfig ElasticConfig) (*kubeflowv1.ElasticPolicy, error) {
+func ParseElasticConfig(elasticConfig ElasticConfig) *kubeflowv1.ElasticPolicy {
 	minReplicas := elasticConfig.GetMinReplicas()
 	maxReplicas := elasticConfig.GetMaxReplicas()
 	nProcPerNode := elasticConfig.GetNprocPerNode()
@@ -215,7 +209,7 @@ func ParseElasticConfig(elasticConfig ElasticConfig) (*kubeflowv1.ElasticPolicy,
 		RDZVBackend:  &rdzvBackend,
 		NProcPerNode: &nProcPerNode,
 		MaxRestarts:  &maxRestarts,
-	}, nil
+	}
 }
 
 // Analyses the k8s resource and reports the status as TaskPhase. This call is expected to be relatively fast,
