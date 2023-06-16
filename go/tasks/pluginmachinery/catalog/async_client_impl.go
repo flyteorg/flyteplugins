@@ -14,11 +14,14 @@ import (
 	"github.com/flyteorg/flytestdlib/errors"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
 const specialEncoderKey = "abcdefghijklmnopqrstuvwxyz123456"
 
 var base32Encoder = base32.NewEncoding(specialEncoderKey).WithPadding(base32.NoPadding)
+var emptyLiteralMap = core.LiteralMap{Literals: map[string]*core.Literal{}}
 
 // An async-client for catalog that can queue download and upload requests on workqueues.
 type AsyncClientImpl struct {
@@ -39,6 +42,18 @@ func consistentHash(str string) (string, error) {
 
 	b := hasher.Sum(nil)
 	return base32Encoder.EncodeToString(b), nil
+}
+
+func hashInputs(ctx context.Context, key Key) (string, error) {
+	inputs := &core.LiteralMap{}
+	if key.TypedInterface.Inputs != nil {
+		retInputs, err := key.InputReader.Get(ctx)
+		if err != nil {
+			return "", err
+		}
+		inputs = retInputs
+	}
+	return HashLiteralMap(ctx, inputs)
 }
 
 func (c AsyncClientImpl) Download(ctx context.Context, requests ...DownloadRequest) (outputFuture DownloadFuture, err error) {
@@ -95,8 +110,12 @@ func (c AsyncClientImpl) Upload(ctx context.Context, requests ...UploadRequest) 
 	status := ResponseStatusReady
 	var respErr error
 	for idx, request := range requests {
-		workItemID := formatWorkItemID(request.Key, idx, "")
-		err := c.Writer.Queue(ctx, workItemID, NewWriterWorkItem(
+		inputHash, err := hashInputs(ctx, request.Key)
+		if err != nil {
+			return nil, errors.Wrapf(ErrSystemError, err, "Failed to hash inputs for item: %v", request.Key)
+		}
+		workItemID := formatWorkItemID(request.Key, idx, inputHash)
+		err = c.Writer.Queue(ctx, workItemID, NewWriterWorkItem(
 			request.Key,
 			request.ArtifactData,
 			request.ArtifactMetadata))
