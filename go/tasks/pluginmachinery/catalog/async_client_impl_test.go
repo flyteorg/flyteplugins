@@ -2,9 +2,10 @@ package catalog
 
 import (
 	"context"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"reflect"
 	"testing"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue/mocks"
