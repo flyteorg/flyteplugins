@@ -35,11 +35,14 @@ const (
 	databricksAPI   string           = "/api/2.0/jobs/runs"
 	newCluster      string           = "new_cluster"
 	dockerImage     string           = "docker_image"
+	basicAuth       string           = "basic_auth"
 	sparkConfig     string           = "spark_conf"
 	sparkPythonTask string           = "spark_python_task"
 	pythonFile      string           = "python_file"
 	parameters      string           = "parameters"
 	url             string           = "url"
+	userName        string           = "username"
+	password        string           = "password"
 )
 
 // for mocking/testing purposes, and we'll override this method
@@ -85,9 +88,12 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, err
 	}
 
-	token, err := taskCtx.SecretManager().Get(ctx, p.cfg.TokenKey)
-	if err != nil {
-		return nil, nil, err
+	var token string
+	if len(p.cfg.TokenKey) != 0 {
+		token, err = taskCtx.SecretManager().Get(ctx, p.cfg.TokenKey)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	container := taskTemplate.GetContainer()
@@ -100,6 +106,9 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	// override the default token in propeller
 	if len(sparkJob.DatabricksToken) != 0 {
 		token = sparkJob.DatabricksToken
+	}
+	if len(token) == 0 {
+		return nil, nil, errors.Errorf(pluginErrors.BadTaskSpecification, "missing databricks token")
 	}
 	modifiedArgs, err := template.Render(ctx, container.GetArgs(), template.Parameters{
 		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
@@ -119,6 +128,11 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 	if _, ok := databricksJob[newCluster]; ok {
 		databricksJob[newCluster].(map[string]interface{})[dockerImage] = map[string]string{url: container.Image}
+		dockerUserName, _ := taskCtx.SecretManager().Get(ctx, "docker-username")
+		dockerPassword, _ := taskCtx.SecretManager().Get(ctx, "docker-password")
+		if len(dockerUserName) == 0 && len(dockerPassword) == 0 {
+			databricksJob[newCluster].(map[string]interface{})[basicAuth] = map[string]string{userName: dockerUserName, password: dockerPassword}
+		}
 		if len(sparkJob.SparkConf) != 0 {
 			databricksJob[newCluster].(map[string]interface{})[sparkConfig] = sparkJob.SparkConf
 		}
