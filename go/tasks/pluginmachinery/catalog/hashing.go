@@ -8,6 +8,8 @@ import (
 	"github.com/flyteorg/flytestdlib/pbhash"
 )
 
+var emptyLiteralMap = core.LiteralMap{Literals: map[string]*core.Literal{}}
+
 // Hashify a literal, in other words, produce a new literal where the corresponding value is removed in case
 // the literal hash is set.
 func hashify(literal *core.Literal) *core.Literal {

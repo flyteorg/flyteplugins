@@ -21,7 +21,6 @@ import (
 const specialEncoderKey = "abcdefghijklmnopqrstuvwxyz123456"
 
 var base32Encoder = base32.NewEncoding(specialEncoderKey).WithPadding(base32.NoPadding)
-var emptyLiteralMap = core.LiteralMap{Literals: map[string]*core.Literal{}}
 
 // An async-client for catalog that can queue download and upload requests on workqueues.
 type AsyncClientImpl struct {
