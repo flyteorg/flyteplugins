@@ -26,9 +26,8 @@ import (
 )
 
 const (
-	daskTaskType        = "dask"
-	KindDaskJob         = "DaskJob"
-	PrimaryContainerKey = "primary_container_name"
+	daskTaskType = "dask"
+	KindDaskJob  = "DaskJob"
 )
 
 type defaults struct {
@@ -53,7 +52,7 @@ func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, 
 		return nil, errors.Errorf(errors.BadTaskSpecification, "task is missing a default image")
 	}
 
-	defaultEnvVars := []v1.EnvVar{}
+	var defaultEnvVars []v1.EnvVar
 	if taskTemplate.GetContainer().GetEnv() != nil {
 		for _, keyValuePair := range taskTemplate.GetContainer().GetEnv() {
 			defaultEnvVars = append(defaultEnvVars, v1.EnvVar{Name: keyValuePair.Key, Value: keyValuePair.Value})

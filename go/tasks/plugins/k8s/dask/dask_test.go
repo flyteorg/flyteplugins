@@ -181,10 +181,10 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 
 	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	var defaultTolerations []v1.Toleration
@@ -289,10 +289,10 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate(customImage, nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job
@@ -322,10 +322,10 @@ func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job
@@ -379,10 +379,10 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("", &protobufResources)
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job
@@ -434,10 +434,10 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 
 	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, true)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job pod - should not be interruptible
