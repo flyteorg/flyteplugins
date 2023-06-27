@@ -6,13 +6,11 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io/mocks"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue/mocks"
 	"github.com/flyteorg/flytestdlib/bitarray"
 	"github.com/stretchr/testify/mock"
-
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/workqueue"
 )
 
 var exampleInterface = &core.TypedInterface{
