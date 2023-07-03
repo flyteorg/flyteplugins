@@ -2,10 +2,14 @@ package agent
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/gob"
 	"fmt"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
+	"github.com/flyteorg/flytestdlib/config"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"google.golang.org/grpc/grpclog"
 
@@ -21,7 +25,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GetClientFunc func(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error)
+type GetClientFunc func(ctx context.Context, endpoint GrpcEndpoint, connectionCache map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error)
 
 type Plugin struct {
 	metricScope     promutils.Scope
@@ -72,8 +76,11 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
+	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("CreateTask", endpoint.Timeouts).Duration)
+	defer cancel()
+
 	taskExecutionMetadata := buildTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
-	res, err := client.CreateTask(ctx, &admin.CreateTaskRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix, TaskExecutionMetadata: &taskExecutionMetadata})
+	res, err := client.CreateTask(newCtx, &admin.CreateTaskRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix, TaskExecutionMetadata: &taskExecutionMetadata})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,7 +102,10 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		return nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	res, err := client.GetTask(ctx, &admin.GetTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
+	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("GetTask", endpoint.Timeouts).Duration)
+	defer cancel()
+
+	res, err := client.GetTask(newCtx, &admin.GetTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +128,10 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 		return fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	_, err = client.DeleteTask(ctx, &admin.DeleteTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
+	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("DeleteTask", endpoint.Timeouts).Duration)
+	defer cancel()
+
+	_, err = client.DeleteTask(newCtx, &admin.DeleteTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
 	return err
 }
 
@@ -145,7 +158,7 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.State)
 }
 
-func getFinalEndpoint(taskType, defaultEndpoint string, endpointForTaskTypes map[string]string) string {
+func getFinalEndpoint(taskType string, defaultEndpoint GrpcEndpoint, endpointForTaskTypes map[string]GrpcEndpoint) GrpcEndpoint {
 	if t, exists := endpointForTaskTypes[taskType]; exists {
 		return t
 	}
@@ -153,20 +166,36 @@ func getFinalEndpoint(taskType, defaultEndpoint string, endpointForTaskTypes map
 	return defaultEndpoint
 }
 
-func getClientFunc(ctx context.Context, endpoint string, connectionCache map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
-	conn, ok := connectionCache[endpoint]
+func getClientFunc(ctx context.Context, endpoint GrpcEndpoint, connectionCache map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
+	conn, ok := connectionCache[endpoint.Endpoint]
 	if ok {
 		return service.NewAsyncAgentServiceClient(conn), nil
 	}
-	var opts []grpc.DialOption
-	var err error
 
-	opts = append(opts, grpc.WithInsecure())
-	conn, err = grpc.Dial(endpoint, opts...)
+	var opts []grpc.DialOption
+
+	if endpoint.Insecure {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		pool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, err
+		}
+
+		creds := credentials.NewClientTLSFromCert(pool, "")
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	}
+
+	if endpoint.DefaultServiceConfig != "" {
+		opts = append(opts, grpc.WithDefaultServiceConfig(endpoint.DefaultServiceConfig))
+	}
+
+	var err error
+	conn, err = grpc.Dial(endpoint.Endpoint, opts...)
 	if err != nil {
 		return nil, err
 	}
-	connectionCache[endpoint] = conn
+	connectionCache[endpoint.Endpoint] = conn
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
@@ -194,6 +223,14 @@ func buildTaskExecutionMetadata(taskExecutionMetadata pluginsCore.TaskExecutionM
 		K8SServiceAccount:    taskExecutionMetadata.GetK8sServiceAccount(),
 		EnvironmentVariables: taskExecutionMetadata.GetEnvironmentVariables(),
 	}
+}
+
+func getFinalTimeout(operation string, timeouts map[string]config.Duration) config.Duration {
+	if t, exists := timeouts[operation]; exists {
+		return t
+	}
+
+	return defaultTimeout
 }
 
 func newAgentPlugin() webapi.PluginEntry {

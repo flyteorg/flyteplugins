@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/flyteorg/flytestdlib/config"
+
 	"google.golang.org/grpc"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
@@ -25,8 +27,8 @@ func TestPlugin(t *testing.T) {
 		cfg := defaultConfig
 		cfg.WebAPI.Caching.Workers = 1
 		cfg.WebAPI.Caching.ResyncInterval.Duration = 5 * time.Second
-		cfg.DefaultGrpcEndpoint = "test-agent.flyte.svc.cluster.local:80"
-		cfg.EndpointForTaskTypes = map[string]string{"spark": "localhost:80"}
+		cfg.DefaultGrpcEndpoint = GrpcEndpoint{Endpoint: "test-agent.flyte.svc.cluster.local:80"}
+		cfg.EndpointForTaskTypes = map[string]GrpcEndpoint{"spark": {Endpoint: "localhost:80"}}
 		err := SetConfig(&cfg)
 		assert.NoError(t, err)
 		assert.Equal(t, cfg.WebAPI, plugin.GetConfig())
@@ -46,15 +48,29 @@ func TestPlugin(t *testing.T) {
 	})
 
 	t.Run("test getFinalEndpoint", func(t *testing.T) {
-		endpoint := getFinalEndpoint("spark", "localhost:8080", map[string]string{"spark": "localhost:80"})
-		assert.Equal(t, endpoint, "localhost:80")
-		endpoint = getFinalEndpoint("spark", "localhost:8080", map[string]string{})
-		assert.Equal(t, endpoint, "localhost:8080")
+		defaultGrpcEndpoint := GrpcEndpoint{Endpoint: "localhost:8080"}
+		endpoint := getFinalEndpoint("spark", defaultGrpcEndpoint, map[string]GrpcEndpoint{"spark": {Endpoint: "localhost:80"}})
+		assert.Equal(t, endpoint.Endpoint, "localhost:80")
+		endpoint = getFinalEndpoint("spark", defaultGrpcEndpoint, map[string]GrpcEndpoint{})
+		assert.Equal(t, endpoint.Endpoint, "localhost:8080")
 	})
 
 	t.Run("test getClientFunc", func(t *testing.T) {
-		client, err := getClientFunc(context.Background(), "localhost:80", map[string]*grpc.ClientConn{})
+		client, err := getClientFunc(context.Background(), GrpcEndpoint{Endpoint: "localhost:80"}, map[string]*grpc.ClientConn{})
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
+	})
+
+	t.Run("test getClientFunc more config", func(t *testing.T) {
+		client, err := getClientFunc(context.Background(), GrpcEndpoint{Endpoint: "localhost:80", Insecure: true, DefaultServiceConfig: "{\"loadBalancingConfig\": [{\"round_robin\":{}}]}"}, map[string]*grpc.ClientConn{})
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+	})
+
+	t.Run("test getFinalTimeout", func(t *testing.T) {
+		timeout := getFinalTimeout("CreateTask", map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}})
+		assert.Equal(t, timeout.Duration, 1*time.Millisecond)
+		timeout = getFinalTimeout("DeleteTask", map[string]config.Duration{})
+		assert.Equal(t, timeout.Duration, 10*time.Second)
 	})
 }

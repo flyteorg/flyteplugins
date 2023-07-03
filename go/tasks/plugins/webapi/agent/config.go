@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	defaultTimeout = config.Duration{Duration: 10 * time.Second}
+
 	defaultConfig = Config{
 		WebAPI: webapi.PluginConfig{
 			ResourceQuotas: map[core.ResourceNamespace]int{
@@ -39,8 +41,11 @@ var (
 				Value: 50,
 			},
 		},
-		DefaultGrpcEndpoint: "dns:///flyte-agent.flyte.svc.cluster.local:80",
-		SupportedTaskTypes:  []string{"task_type_1", "task_type_2"},
+		DefaultGrpcEndpoint: GrpcEndpoint{
+			Endpoint: "dns:///flyte-agent.flyte.svc.cluster.local:80",
+			Insecure: true,
+		},
+		SupportedTaskTypes: []string{"task_type_1", "task_type_2"},
 	}
 
 	configSection = pluginsConfig.MustRegisterSubSection("agent-service", &defaultConfig)
@@ -54,13 +59,27 @@ type Config struct {
 	// ResourceConstraints defines resource constraints on how many executions to be created per project/overall at any given time
 	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 
-	DefaultGrpcEndpoint string `json:"defaultGrpcEndpoint" pflag:",The default grpc endpoint of agent service."`
+	DefaultGrpcEndpoint GrpcEndpoint `json:"defaultGrpcEndpoint" pflag:",The default grpc endpoint of agent service."`
 
 	// Maps endpoint to their plugin handler. {TaskType: Endpoint}
-	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`
+	EndpointForTaskTypes map[string]GrpcEndpoint `json:"endpointForTaskTypes" pflag:"-,"`
 
 	// SupportedTaskTypes is a list of task types that are supported by this plugin.
 	SupportedTaskTypes []string `json:"supportedTaskTypes" pflag:"-,Defines a list of task types that are supported by this plugin."`
+}
+
+type GrpcEndpoint struct {
+	// Endpoint points to a gRPC service
+	Endpoint string `json:"endpoint"`
+
+	// Insecure indicates whether the communication with the gRPC service is insecure
+	Insecure bool `json:"insecure"`
+
+	// DefaultServiceConfig sets default gRPC service config; check https://github.com/grpc/grpc/blob/master/doc/service_config.md for more details
+	DefaultServiceConfig string `json:"defaultServiceConfig"`
+
+	// Timeouts defines various RPC timeout values for different plugin operations: CreateTask, GetTask, DeleteTask; if not configured, defaults to 10s
+	Timeouts map[string]config.Duration `json:"timeouts"`
 }
 
 func GetConfig() *Config {
