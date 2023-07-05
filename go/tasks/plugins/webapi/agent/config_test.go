@@ -26,6 +26,7 @@ func TestGetAndSetConfig(t *testing.T) {
 			Duration: 3 * time.Millisecond,
 		},
 	}
+	cfg.DefaultGrpcEndpoint.DefaultTimeout = config.Duration{Duration: 10 * time.Second}
 	err := SetConfig(&cfg)
 	assert.NoError(t, err)
 	assert.Equal(t, &cfg, GetConfig())

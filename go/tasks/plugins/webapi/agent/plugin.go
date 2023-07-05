@@ -76,7 +76,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("CreateTask", endpoint.Timeouts).Duration)
+	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("CreateTask", endpoint).Duration)
 	defer cancel()
 
 	taskExecutionMetadata := buildTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
@@ -102,7 +102,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		return nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("GetTask", endpoint.Timeouts).Duration)
+	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("GetTask", endpoint).Duration)
 	defer cancel()
 
 	res, err := client.GetTask(newCtx, &admin.GetTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
@@ -128,7 +128,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 		return fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("DeleteTask", endpoint.Timeouts).Duration)
+	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("DeleteTask", endpoint).Duration)
 	defer cancel()
 
 	_, err = client.DeleteTask(newCtx, &admin.DeleteTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
@@ -186,7 +186,7 @@ func getClientFunc(ctx context.Context, endpoint GrpcEndpoint, connectionCache m
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
-	if endpoint.DefaultServiceConfig != "" {
+	if len(endpoint.DefaultServiceConfig) != 0 {
 		opts = append(opts, grpc.WithDefaultServiceConfig(endpoint.DefaultServiceConfig))
 	}
 
@@ -225,12 +225,12 @@ func buildTaskExecutionMetadata(taskExecutionMetadata pluginsCore.TaskExecutionM
 	}
 }
 
-func getFinalTimeout(operation string, timeouts map[string]config.Duration) config.Duration {
-	if t, exists := timeouts[operation]; exists {
+func getFinalTimeout(operation string, endpoint *GrpcEndpoint) config.Duration {
+	if t, exists := endpoint.Timeouts[operation]; exists {
 		return t
 	}
 
-	return defaultTimeout
+	return endpoint.DefaultTimeout
 }
 
 func newAgentPlugin() webapi.PluginEntry {

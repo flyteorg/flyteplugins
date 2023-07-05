@@ -10,8 +10,6 @@ import (
 )
 
 var (
-	defaultTimeout = config.Duration{Duration: 10 * time.Second}
-
 	defaultConfig = Config{
 		WebAPI: webapi.PluginConfig{
 			ResourceQuotas: map[core.ResourceNamespace]int{
@@ -42,8 +40,9 @@ var (
 			},
 		},
 		DefaultGrpcEndpoint: GrpcEndpoint{
-			Endpoint: "dns:///flyte-agent.flyte.svc.cluster.local:80",
-			Insecure: true,
+			Endpoint:       "dns:///flyte-agent.flyte.svc.cluster.local:80",
+			Insecure:       true,
+			DefaultTimeout: config.Duration{Duration: 10 * time.Second},
 		},
 		SupportedTaskTypes: []string{"task_type_1", "task_type_2"},
 	}
@@ -78,8 +77,11 @@ type GrpcEndpoint struct {
 	// DefaultServiceConfig sets default gRPC service config; check https://github.com/grpc/grpc/blob/master/doc/service_config.md for more details
 	DefaultServiceConfig string `json:"defaultServiceConfig"`
 
-	// Timeouts defines various RPC timeout values for different plugin operations: CreateTask, GetTask, DeleteTask; if not configured, defaults to 10s
+	// Timeouts defines various RPC timeout values for different plugin operations: CreateTask, GetTask, DeleteTask; if not configured, defaults to DefaultTimeout
 	Timeouts map[string]config.Duration `json:"timeouts"`
+
+	// DefaultTimeout gives the default RPC timeout if a more specific one is not defined in Timeouts
+	DefaultTimeout config.Duration `json:"defaultTimeout"`
 }
 
 func GetConfig() *Config {

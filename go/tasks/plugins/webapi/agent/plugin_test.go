@@ -68,9 +68,9 @@ func TestPlugin(t *testing.T) {
 	})
 
 	t.Run("test getFinalTimeout", func(t *testing.T) {
-		timeout := getFinalTimeout("CreateTask", map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}})
+		timeout := getFinalTimeout("CreateTask", GrpcEndpoint{Endpoint: "localhost:8080", Timeouts: map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}}})
 		assert.Equal(t, timeout.Duration, 1*time.Millisecond)
-		timeout = getFinalTimeout("DeleteTask", map[string]config.Duration{})
+		timeout = getFinalTimeout("DeleteTask", GrpcEndpoint{Endpoint: "localhost:8080", DefaultTimeout: config.Duration{Duration: 10 * time.Second}})
 		assert.Equal(t, timeout.Duration, 10*time.Second)
 	})
 }
