@@ -80,7 +80,7 @@ type GrpcEndpoint struct {
 	// Timeouts defines various RPC timeout values for different plugin operations: CreateTask, GetTask, DeleteTask; if not configured, defaults to DefaultTimeout
 	Timeouts map[string]config.Duration `json:"timeouts"`
 
-	// DefaultTimeout gives the default RPC timeout if a more specific one is not defined in Timeouts
+	// DefaultTimeout gives the default RPC timeout if a more specific one is not defined in Timeouts; if neither DefaultTimeout nor Timeouts is defined for an operation, RPC timeout will not be enforced
 	DefaultTimeout config.Duration `json:"defaultTimeout"`
 }
 

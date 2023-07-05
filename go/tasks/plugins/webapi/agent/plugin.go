@@ -76,11 +76,11 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 		return nil, nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("CreateTask", endpoint).Duration)
+	finalCtx, cancel := getFinalContext(ctx, "CreateTask", endpoint)
 	defer cancel()
 
 	taskExecutionMetadata := buildTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
-	res, err := client.CreateTask(newCtx, &admin.CreateTaskRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix, TaskExecutionMetadata: &taskExecutionMetadata})
+	res, err := client.CreateTask(finalCtx, &admin.CreateTaskRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix, TaskExecutionMetadata: &taskExecutionMetadata})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -102,10 +102,10 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		return nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("GetTask", endpoint).Duration)
+	finalCtx, cancel := getFinalContext(ctx, "GetTask", endpoint)
 	defer cancel()
 
-	res, err := client.GetTask(newCtx, &admin.GetTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
+	res, err := client.GetTask(finalCtx, &admin.GetTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
 	if err != nil {
 		return nil, err
 	}
@@ -128,10 +128,10 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 		return fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
 
-	newCtx, cancel := context.WithTimeout(ctx, getFinalTimeout("DeleteTask", endpoint).Duration)
+	finalCtx, cancel := getFinalContext(ctx, "DeleteTask", endpoint)
 	defer cancel()
 
-	_, err = client.DeleteTask(newCtx, &admin.DeleteTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
+	_, err = client.DeleteTask(finalCtx, &admin.DeleteTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
 	return err
 }
 
@@ -231,6 +231,14 @@ func getFinalTimeout(operation string, endpoint *GrpcEndpoint) config.Duration {
 	}
 
 	return endpoint.DefaultTimeout
+}
+
+func getFinalContext(ctx context.Context, operation string, endpoint GrpcEndpoint) (context.Context, context.CancelFunc) {
+	timeout := getFinalTimeout(operation, endpoint).Duration
+	if timeout == 0 {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 
 func newAgentPlugin() webapi.PluginEntry {

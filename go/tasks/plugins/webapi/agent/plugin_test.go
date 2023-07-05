@@ -43,16 +43,16 @@ func TestPlugin(t *testing.T) {
 	t.Run("tet newAgentPlugin", func(t *testing.T) {
 		p := newAgentPlugin()
 		assert.NotNil(t, p)
-		assert.Equal(t, p.ID, "agent-service")
+		assert.Equal(t, "agent-service", p.ID)
 		assert.NotNil(t, p.PluginLoader)
 	})
 
 	t.Run("test getFinalEndpoint", func(t *testing.T) {
 		defaultGrpcEndpoint := GrpcEndpoint{Endpoint: "localhost:8080"}
 		endpoint := getFinalEndpoint("spark", defaultGrpcEndpoint, map[string]GrpcEndpoint{"spark": {Endpoint: "localhost:80"}})
-		assert.Equal(t, endpoint.Endpoint, "localhost:80")
+		assert.Equal(t, "localhost:80", endpoint.Endpoint)
 		endpoint = getFinalEndpoint("spark", defaultGrpcEndpoint, map[string]GrpcEndpoint{})
-		assert.Equal(t, endpoint.Endpoint, "localhost:8080")
+		assert.Equal(t, "localhost:8080", endpoint.Endpoint)
 	})
 
 	t.Run("test getClientFunc", func(t *testing.T) {
@@ -69,8 +69,16 @@ func TestPlugin(t *testing.T) {
 
 	t.Run("test getFinalTimeout", func(t *testing.T) {
 		timeout := getFinalTimeout("CreateTask", GrpcEndpoint{Endpoint: "localhost:8080", Timeouts: map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}}})
-		assert.Equal(t, timeout.Duration, 1*time.Millisecond)
+		assert.Equal(t, 1*time.Millisecond, timeout.Duration)
 		timeout = getFinalTimeout("DeleteTask", GrpcEndpoint{Endpoint: "localhost:8080", DefaultTimeout: config.Duration{Duration: 10 * time.Second}})
-		assert.Equal(t, timeout.Duration, 10*time.Second)
+		assert.Equal(t, 10*time.Second, timeout.Duration)
+	})
+
+	t.Run("test getFinalContext", func(t *testing.T) {
+		ctx, _ := getFinalContext(context.TODO(), "DeleteTask", GrpcEndpoint{})
+		assert.Equal(t, context.TODO(), ctx)
+
+		ctx, _ = getFinalContext(context.TODO(), "CreateTask", GrpcEndpoint{Endpoint: "localhost:8080", Timeouts: map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}}})
+		assert.NotEqual(t, context.TODO(), ctx)
 	})
 }
