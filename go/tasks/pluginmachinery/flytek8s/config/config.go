@@ -51,7 +51,7 @@ var (
 			Duration: time.Minute * 3,
 		},
 		ImagePullBackoffGracePeriod: config2.Duration{
-			Duration: time.Minute * 1,
+			Duration: time.Minute * 3,
 		},
 		GpuResourceName: ResourceNvidiaGPU,
 		DefaultPodTemplateResync: config2.Duration{

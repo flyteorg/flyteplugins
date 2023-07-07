@@ -558,6 +558,9 @@ func TestDemystifyPending(t *testing.T) {
 		CreateContainerErrorGracePeriod: config1.Duration{
 			Duration: time.Minute * 3,
 		},
+		ImagePullBackoffGracePeriod: config1.Duration{
+			Duration: time.Minute * 3,
+		},
 	}))
 
 	t.Run("PodNotScheduled", func(t *testing.T) {
