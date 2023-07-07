@@ -689,8 +689,10 @@ func TestDemystifyPending(t *testing.T) {
 		assert.Equal(t, pluginsCore.PhaseInitializing, taskStatus.Phase())
 	})
 
-	t.Run("ImagePullBackOff", func(t *testing.T) {
-		s.ContainerStatuses = []v1.ContainerStatus{
+	t.Run("ImagePullBackOffWithinGracePeriod", func(t *testing.T) {
+		s2 := *s.DeepCopy()
+		s2.Conditions[0].LastTransitionTime = metav1.Now()
+		s2.ContainerStatuses = []v1.ContainerStatus{
 			{
 				Ready: false,
 				State: v1.ContainerState{
@@ -701,7 +703,26 @@ func TestDemystifyPending(t *testing.T) {
 				},
 			},
 		}
-		taskStatus, err := DemystifyPending(s)
+		taskStatus, err := DemystifyPending(s2)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginsCore.PhaseInitializing, taskStatus.Phase())
+	})
+
+	t.Run("ImagePullBackOffOutsideGracePeriod", func(t *testing.T) {
+		s2 := *s.DeepCopy()
+		s2.Conditions[0].LastTransitionTime.Time = metav1.Now().Add(-config.GetK8sPluginConfig().ImagePullBackoffGracePeriod.Duration)
+		s2.ContainerStatuses = []v1.ContainerStatus{
+			{
+				Ready: false,
+				State: v1.ContainerState{
+					Waiting: &v1.ContainerStateWaiting{
+						Reason:  "ImagePullBackOff",
+						Message: "this is an error",
+					},
+				},
+			},
+		}
+		taskStatus, err := DemystifyPending(s2)
 		assert.NoError(t, err)
 		assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskStatus.Phase())
 	})
