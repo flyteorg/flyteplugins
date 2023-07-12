@@ -209,7 +209,13 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 }
 
 func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
+	if taskCtx.ResourceMeta() == nil {
+		return core.PhaseInfoUndefined, errors.Errorf("CorruptedPluginState", "failed to get the resource meta")
+	}
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
+	if taskCtx.Resource() == nil {
+		return core.PhaseInfoUndefined, errors.Errorf("CorruptedPluginState", "failed to get the resource")
+	}
 	resource := taskCtx.Resource().(*ResourceWrapper)
 	message := resource.Message
 	statusCode := resource.StatusCode
