@@ -151,6 +151,9 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
+	if taskCtx.ResourceMeta() == nil {
+		return nil, errors.Errorf("CorruptedPluginState", "failed to get the resource meta")
+	}
 	exec := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 	req, err := buildRequest(get, nil, p.cfg.databricksEndpoint,
 		p.cfg.DatabricksInstance, exec.Token, exec.RunID, false)
