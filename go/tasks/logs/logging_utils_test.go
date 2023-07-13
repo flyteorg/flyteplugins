@@ -17,16 +17,17 @@ const podName = "PodName"
 var dummyTaskExecId = &core.TaskExecutionIdentifier{
 	TaskId: &core.Identifier{
 		ResourceType: core.ResourceType_TASK,
-		Name:         "my_name",
-		Project:      "my_project",
-		Domain:       "my_domain",
+		Name:         "my-name",
+		Project:      "my-project",
+		Domain:       "my-domain",
 		Version:      "1",
 	},
 	NodeExecutionId: &core.NodeExecutionIdentifier{
+		NodeId: "n0",
 		ExecutionId: &core.WorkflowExecutionIdentifier{
-			Name:    "my_name",
-			Project: "my_project",
-			Domain:  "my_domain",
+			Name:    "my-name",
+			Project: "my-project",
+			Domain:  "my-domain",
 		},
 	},
 }
@@ -318,12 +319,24 @@ func TestGetLogsForContainerInPod_Templates(t *testing.T) {
 				},
 				MessageFormat: core.TaskLog_JSON,
 			},
+			{
+				DisplayName: "Internal",
+				TemplateURIs: []string{
+					"https://my-log-server/{{ .taskExecution.node_execution_id.execution_id.project }}/{{ .taskExecution.node_execution_id.execution_id.domain }}/{{ .taskExecution.node_execution_id.execution_id.name }}/{{ .taskExecution.node_execution_id.node_id }}",
+				},
+				MessageFormat: core.TaskLog_JSON,
+			},
 		},
 	}, []*core.TaskLog{
 		{
 			Uri:           "https://my-log-server/my-namespace/my-pod/ContainerName/ContainerID",
 			MessageFormat: core.TaskLog_JSON,
 			Name:          "StackDriver my-Suffix",
+		},
+		{
+			Uri:           "https://my-log-server/my-project/my-domain/my-name/n0",
+			MessageFormat: core.TaskLog_JSON,
+			Name:          "Internal my-Suffix",
 		},
 	})
 }

@@ -159,11 +159,12 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		input Input
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    Output
-		wantErr bool
+		name                 string
+		fields               fields
+		args                 args
+		extraLogTemplateVars []TemplateVars
+		want                 Output
+		wantErr              bool
 	}{
 		{
 			"splunk",
@@ -185,6 +186,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 					PodUnixFinishTime:    12345,
 				},
 			},
+			[]TemplateVars{},
 			Output{
 				TaskLogs: []*core.TaskLog{
 					{
@@ -216,6 +218,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 					PodUnixFinishTime:    12345,
 				},
 			},
+			[]TemplateVars{},
 			Output{
 				TaskLogs: []*core.TaskLog{
 					{
@@ -247,10 +250,66 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 					PodUnixFinishTime:    12345,
 				},
 			},
+			[]TemplateVars{},
 			Output{
 				TaskLogs: []*core.TaskLog{
 					{
 						Uri:           "https://console.cloud.google.com/logs/viewer?project=test-gcp-project&angularJsUrl=%2Flogs%2Fviewer%3Fproject%3Dtest-gcp-project&resource=aws_ec2_instance&advancedFilter=resource.labels.pod_name%3Dmy-pod%20%221970-01-01T01:02:03+01:00%22",
+						MessageFormat: core.TaskLog_JSON,
+						Name:          "main_logs",
+					},
+				},
+			},
+			false,
+		},
+		{
+			"custom-with-task-execution-identifier",
+			fields{
+				templateURI:   "https://logs.flyte.corp.net/{{ .taskExecution.node_execution_id.execution_id.project }}/{{ .taskExecution.node_execution_id.execution_id.domain }}/{{ .taskExecution.node_execution_id.execution_id.name }}/{{ .taskExecution.node_execution_id.node_id }}/{{ .taskExecution.extraField }}",
+				messageFormat: core.TaskLog_JSON,
+			},
+			args{
+				input: Input{
+					HostName:             "my-host",
+					PodName:              "my-pod",
+					Namespace:            "my-namespace",
+					ContainerName:        "my-container",
+					ContainerID:          "ignore",
+					LogName:              "main_logs",
+					PodRFC3339StartTime:  "1970-01-01T01:02:03+01:00",
+					PodRFC3339FinishTime: "1970-01-01T04:25:45+01:00",
+					PodUnixStartTime:     123,
+					PodUnixFinishTime:    12345,
+					TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
+						TaskId: &core.Identifier{
+							ResourceType: core.ResourceType_TASK,
+							Name:         "my-name",
+							Project:      "my-project",
+							Domain:       "my-domain",
+							Version:      "1",
+						},
+						NodeExecutionId: &core.NodeExecutionIdentifier{
+							NodeId: "n0",
+							ExecutionId: &core.WorkflowExecutionIdentifier{
+								Name:    "my-name",
+								Project: "my-project",
+								Domain:  "my-domain",
+							},
+						},
+					},
+				},
+			},
+			[]TemplateVars{
+				TemplateVars{
+					"taskExecution": TemplateVars{
+						"extraField": 1,
+					},
+				},
+			},
+			Output{
+				TaskLogs: []*core.TaskLog{
+					{
+						Uri:           "https://logs.flyte.corp.net/my-project/my-domain/my-name/n0/1",
 						MessageFormat: core.TaskLog_JSON,
 						Name:          "main_logs",
 					},
@@ -265,7 +324,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 				templateUris:  []string{tt.fields.templateURI},
 				messageFormat: tt.fields.messageFormat,
 			}
-			got, err := s.GetTaskLogs(tt.args.input)
+			got, err := s.GetTaskLogs(tt.args.input, tt.extraLogTemplateVars...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTaskLog() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -328,16 +328,16 @@ func dummyTaskContext() pluginsCore.TaskExecutionContext {
 	tID.OnGetID().Return(core.TaskExecutionIdentifier{
 		TaskId: &core.Identifier{
 			ResourceType: core.ResourceType_TASK,
-			Name:         "my_name",
-			Project:      "my_project",
-			Domain:       "my_domain",
+			Name:         "my-name",
+			Project:      "my-project",
+			Domain:       "my-domain",
 			Version:      "1",
 		},
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
-				Name:    "my_name",
-				Project: "my_project",
-				Domain:  "my_domain",
+				Name:    "my-name",
+				Project: "my-project",
+				Domain:  "my-domain",
 			},
 		},
 	})

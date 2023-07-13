@@ -166,8 +166,9 @@ func (plugin) GetTaskPhaseWithLogs(ctx context.Context, pluginContext k8s.Plugin
 		ReportedAt: &reportedAt,
 	}
 
+	taskExecId := pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	if pod.Status.Phase != v1.PodPending && pod.Status.Phase != v1.PodUnknown {
-		taskLogs, err := logs.GetLogsForContainerInPod(ctx, logPlugin, &pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID(), pod, 0, logSuffix, extraLogTemplateVars...)
+		taskLogs, err := logs.GetLogsForContainerInPod(ctx, logPlugin, &taskExecId, pod, 0, logSuffix, extraLogTemplateVars...)
 		if err != nil {
 			return pluginsCore.PhaseInfoUndefined, err
 		}
