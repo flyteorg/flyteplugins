@@ -10,9 +10,9 @@ import (
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils/secrets"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/array"
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
 
@@ -176,18 +176,15 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 	return fmt.Sprintf(" #%d-%d-%d", s.taskRetryAttempt, s.executionIndex, s.subtaskRetryAttempt)
 }
 
-func (s SubTaskExecutionID) ToTemplateVars() (tasklog.TemplateVars, error) {
-	v, err := tasklog.TaskExecutionIdentifierTemplateVarsProvider{s.GetID()}.ToTemplateVars()
-	if err != nil {
-		return v, err
-	}
+func (s SubTaskExecutionID) ToTemplateVars() tasklog.TemplateVars {
+	v := tasklog.TaskExecutionIdentifierTemplateVarsProvider{s.GetID()}.ToTemplateVars()
 	v.Merge(tasklog.TemplateVars{
-		"executionIndex": s.executionIndex,
-		"parentName": s.parentName,
+		"executionIndex":      s.executionIndex,
+		"parentName":          s.parentName,
 		"subtaskRetryAttempt": s.subtaskRetryAttempt,
-		"taskRetryAttempt": s.taskRetryAttempt,
+		"taskRetryAttempt":    s.taskRetryAttempt,
 	})
-	return v, nil
+	return v
 }
 
 // NewSubtaskExecutionID constructs a SubTaskExecutionID using the provided parameters

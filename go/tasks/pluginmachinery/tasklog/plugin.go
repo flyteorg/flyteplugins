@@ -5,7 +5,7 @@ import "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 type TemplateVars map[string]interface{}
 
 type TemplateVarsProvider interface {
-	ToTemplateVars() (TemplateVars, error)
+	ToTemplateVars() TemplateVars
 }
 
 // Input contains all available information about task's execution that a log plugin can use to construct task's

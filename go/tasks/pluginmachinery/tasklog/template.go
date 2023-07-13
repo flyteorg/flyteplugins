@@ -18,20 +18,15 @@ func (t TemplateVars) Merge(others ...TemplateVars) {
 	}
 }
 
-func (t TemplateVars) MergeProviders(providers ...TemplateVarsProvider) error {
+func (t TemplateVars) MergeProviders(providers ...TemplateVarsProvider) {
 	var others []TemplateVars
 	for _, p := range providers {
-		pTemplateVars, err := p.ToTemplateVars()
-		if err != nil {
-			return err
-		}
-		others = append(others, pTemplateVars)
+		others = append(others, p.ToTemplateVars())
 	}
 	t.Merge(others...)
-	return nil
 }
 
-func (input Input) ToTemplateVars() (TemplateVars, error) {
+func (input Input) ToTemplateVars() TemplateVars {
 	// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
 	// stream. Therefore, we must also strip the prefix.
 	containerID := input.ContainerID
@@ -50,24 +45,18 @@ func (input Input) ToTemplateVars() (TemplateVars, error) {
 		"hostname":          input.HostName,
 		"podUnixStartTime":  strconv.FormatInt(input.PodUnixStartTime, 10),
 		"podUnixFinishTime": strconv.FormatInt(input.PodUnixFinishTime, 10),
-	}, nil
+	}
 }
 
 type TaskExecutionIdentifierTemplateVarsProvider struct {
 	core.TaskExecutionIdentifier
 }
 
-func (p TaskExecutionIdentifierTemplateVarsProvider) ToTemplateVars() (TemplateVars, error) {
+func (p TaskExecutionIdentifierTemplateVarsProvider) ToTemplateVars() TemplateVars {
 	var templateVars TemplateVars
-	var err error
-
-	serialized, err := json.Marshal(p.TaskExecutionIdentifier)
-	if err != nil {
-		return templateVars, err
-	}
-
-	err = json.Unmarshal(serialized, &templateVars)
-	return templateVars, err
+	serialized, _ := json.Marshal(p.TaskExecutionIdentifier)
+	_ = json.Unmarshal(serialized, &templateVars)
+	return templateVars
 }
 
 // A simple log plugin that supports templates in urls to build the final log link. Supported templates are:
@@ -108,11 +97,7 @@ func (s TemplateLogPlugin) GetTaskLog(
 }
 
 func (s TemplateLogPlugin) GetTaskLogs(input Input, extraTemplateVars ...TemplateVars) (Output, error) {
-	var err error
-	templateVars, err := input.ToTemplateVars()
-	if err != nil {
-		return Output{}, err
-	}
+	templateVars := input.ToTemplateVars()
 	templateVars.Merge(extraTemplateVars...)
 
 	taskLogs := make([]*core.TaskLog, 0, len(s.templateUris))
