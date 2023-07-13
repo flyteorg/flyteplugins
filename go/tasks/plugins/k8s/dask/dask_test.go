@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	daskAPI "github.com/bstadlbauer/dask-k8s-operator-go-client/pkg/apis/kubernetes.dask.org/v1"
+	daskAPI "github.com/dask/dask-kubernetes/v2023/dask_kubernetes/operator/go_client/pkg/apis/kubernetes.dask.org/v1"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
@@ -181,10 +181,10 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 
 	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	var defaultTolerations []v1.Toleration
@@ -228,7 +228,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 			Protocol:      "TCP",
 		},
 	}
-	assert.Equal(t, v1.RestartPolicyNever, schedulerSpec.RestartPolicy)
+	assert.Equal(t, v1.RestartPolicyAlways, schedulerSpec.RestartPolicy)
 	assert.Equal(t, defaultTestImage, schedulerSpec.Containers[0].Image)
 	assert.Equal(t, defaultResources, schedulerSpec.Containers[0].Resources)
 	assert.Equal(t, []string{"dask-scheduler"}, schedulerSpec.Containers[0].Args)
@@ -289,10 +289,10 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate(customImage, nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job
@@ -322,10 +322,10 @@ func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job
@@ -379,10 +379,10 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("", &protobufResources)
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job
@@ -434,10 +434,10 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 
 	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, true)
-	resource, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
-	assert.NotNil(t, resource)
-	daskJob, ok := resource.(*daskAPI.DaskJob)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
 	// Job pod - should not be interruptible
@@ -494,7 +494,14 @@ func TestGetTaskPhaseDask(t *testing.T) {
 	taskTemplate := dummyDaskTaskTemplate("", nil)
 	taskCtx := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 
-	taskPhase, err := daskResourceHandler.GetTaskPhase(ctx, taskCtx, dummyDaskJob(daskAPI.DaskJobCreated))
+	taskPhase, err := daskResourceHandler.GetTaskPhase(ctx, taskCtx, dummyDaskJob(""))
+	assert.NoError(t, err)
+	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseInitializing)
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, taskPhase.Info().Logs)
+	assert.Nil(t, err)
+
+	taskPhase, err = daskResourceHandler.GetTaskPhase(ctx, taskCtx, dummyDaskJob(daskAPI.DaskJobCreated))
 	assert.NoError(t, err)
 	assert.Equal(t, taskPhase.Phase(), pluginsCore.PhaseInitializing)
 	assert.NotNil(t, taskPhase.Info())

@@ -375,7 +375,7 @@ func TestGetLogs(t *testing.T) {
 	tensorflowResourceHandler := tensorflowOperatorResourceHandler{}
 	tensorFlowJob := dummyTensorFlowJobResource(tensorflowResourceHandler, workers, psReplicas, chiefReplicas, commonOp.JobRunning)
 	taskCtx := dummyTensorFlowTaskContext(dummyTensorFlowTaskTemplate("", dummyTensorFlowCustomObj(workers, psReplicas, chiefReplicas)))
-	jobLogs, err := common.GetLogs(taskCtx, common.TensorflowTaskType, tensorFlowJob.Name, tensorFlowJob.Namespace, false,
+	jobLogs, err := common.GetLogs(taskCtx, common.TensorflowTaskType, tensorFlowJob.ObjectMeta, false,
 		workers, psReplicas, chiefReplicas)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(jobLogs))

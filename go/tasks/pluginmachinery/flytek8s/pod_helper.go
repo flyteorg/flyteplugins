@@ -134,7 +134,7 @@ func BuildRawPod(ctx context.Context, tCtx pluginsCore.TaskExecutionContext) (*v
 	switch target := taskTemplate.GetTarget().(type) {
 	case *core.TaskTemplate_Container:
 		// handles tasks defined by a single container
-		c, err := ToK8sContainer(ctx, tCtx)
+		c, err := BuildRawContainer(ctx, tCtx)
 		if err != nil {
 			return nil, nil, "", err
 		}
@@ -521,9 +521,19 @@ func DemystifyPending(status v1.PodStatus) (pluginsCore.PhaseInfo, error) {
 
 							case "ImagePullBackOff":
 								t := c.LastTransitionTime.Time
-								return pluginsCore.PhaseInfoRetryableFailureWithCleanup(finalReason, finalMessage, &pluginsCore.TaskInfo{
-									OccurredAt: &t,
-								}), nil
+								if time.Since(t) >= config.GetK8sPluginConfig().ImagePullBackoffGracePeriod.Duration {
+									return pluginsCore.PhaseInfoRetryableFailureWithCleanup(finalReason, finalMessage, &pluginsCore.TaskInfo{
+										OccurredAt: &t,
+									}), nil
+								}
+
+								return pluginsCore.PhaseInfoInitializing(
+									t,
+									pluginsCore.DefaultPhaseVersion,
+									fmt.Sprintf("[%s]: %s", finalReason, finalMessage),
+									&pluginsCore.TaskInfo{OccurredAt: &t},
+								), nil
+
 							default:
 								// Since we are not checking for all error states, we may end up perpetually
 								// in the queued state returned at the bottom of this function, until the Pod is reaped

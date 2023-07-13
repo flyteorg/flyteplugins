@@ -28,15 +28,17 @@ func (input Input) ToTemplateVars() TemplateVars {
 	}
 
 	return TemplateVars{
-		"podName":           input.PodName,
-		"podUID":            input.PodUID,
-		"namespace":         input.Namespace,
-		"containerName":     input.ContainerName,
-		"containerId":       containerID,
-		"logName":           input.LogName,
-		"hostname":          input.HostName,
-		"podUnixStartTime":  strconv.FormatInt(input.PodUnixStartTime, 10),
-		"podUnixFinishTime": strconv.FormatInt(input.PodUnixFinishTime, 10),
+		"podName":              input.PodName,
+		"podUID":               input.PodUID,
+		"namespace":            input.Namespace,
+		"containerName":        input.ContainerName,
+		"containerId":          containerID,
+		"logName":              input.LogName,
+		"hostname":             input.HostName,
+		"podRFC3339StartTime":  input.PodRFC3339StartTime,
+		"podRFC3339FinishTime": input.PodRFC3339FinishTime,
+		"podUnixStartTime":     strconv.FormatInt(input.PodUnixStartTime, 10),
+		"podUnixFinishTime":    strconv.FormatInt(input.PodUnixFinishTime, 10),
 	}
 }
 
@@ -55,6 +57,8 @@ func GetTaskExecutionIdentifierTemplateVars(id core.TaskExecutionIdentifier) Tem
 // {{ .containerId }}: The container id docker/crio generated at run time,
 // {{ .logName }}: A deployment specific name where to expect the logs to be.
 // {{ .hostname }}: The hostname where the pod is running and where logs reside.
+// {{ .PodRFC3339StartTime }}: The pod creation time in RFC3339 format
+// {{ .PodRFC3339FinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
 // {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
 // {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
 type TemplateLogPlugin struct {
@@ -62,16 +66,18 @@ type TemplateLogPlugin struct {
 	messageFormat core.TaskLog_MessageFormat
 }
 
-func (s TemplateLogPlugin) GetTaskLog(podName, podUID, namespace, containerName, containerID, logName string, podUnixStartTime, podUnixFinishTime int64) (core.TaskLog, error) {
+func (s TemplateLogPlugin) GetTaskLog(podName, podUID, namespace, containerName, containerID, logName string, podRFC3339StartTime string, podRFC3339FinishTime string, podUnixStartTime, podUnixFinishTime int64) (core.TaskLog, error) {
 	o, err := s.GetTaskLogs(Input{
-		LogName:           logName,
-		Namespace:         namespace,
-		PodName:           podName,
-		PodUID:            podUID,
-		ContainerName:     containerName,
-		ContainerID:       containerID,
-		PodUnixStartTime:  podUnixStartTime,
-		PodUnixFinishTime: podUnixFinishTime,
+		LogName:              logName,
+		Namespace:            namespace,
+		PodName:              podName,
+		PodUID:               podUID,
+		ContainerName:        containerName,
+		ContainerID:          containerID,
+		PodRFC3339StartTime:  podRFC3339StartTime,
+		PodRFC3339FinishTime: podRFC3339FinishTime,
+		PodUnixStartTime:     podUnixStartTime,
+		PodUnixFinishTime:    podUnixFinishTime,
 	})
 
 	if err != nil || len(o.TaskLogs) == 0 {
@@ -115,6 +121,8 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input, extraTemplateVars ...Templat
 // {{ .containerId }}: The container id docker/crio generated at run time,
 // {{ .logName }}: A deployment specific name where to expect the logs to be.
 // {{ .hostname }}: The hostname where the pod is running and where logs reside.
+// {{ .PodRFC3339StartTime }}: The pod creation time in RFC3339 format
+// {{ .PodRFC3339FinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
 // {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
 // {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
 func NewTemplateLogPlugin(templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
