@@ -18,14 +18,6 @@ func (t TemplateVars) Merge(others ...TemplateVars) {
 	}
 }
 
-func (t TemplateVars) MergeProviders(providers ...TemplateVarsProvider) {
-	var others []TemplateVars
-	for _, p := range providers {
-		others = append(others, p.ToTemplateVars())
-	}
-	t.Merge(others...)
-}
-
 func (input Input) ToTemplateVars() TemplateVars {
 	// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
 	// stream. Therefore, we must also strip the prefix.
