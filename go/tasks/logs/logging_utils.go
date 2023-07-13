@@ -18,7 +18,7 @@ type logPlugin struct {
 }
 
 // Internal
-func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, pod *v1.Pod, index uint32, nameSuffix string, extraLogTemplateVars ...tasklog.TemplateVars) ([]*core.TaskLog, error) {
+func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, taskExecId core.TaskExecutionIdentifier, pod *v1.Pod, index uint32, nameSuffix string, extraLogTemplateVars ...tasklog.TemplateVars) ([]*core.TaskLog, error) {
 	if logPlugin == nil {
 		return nil, nil
 	}
@@ -43,16 +43,17 @@ func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, pod
 
 	logs, err := logPlugin.GetTaskLogs(
 		tasklog.Input{
-			PodName:              pod.Name,
-			PodUID:               string(pod.GetUID()),
-			Namespace:            pod.Namespace,
-			ContainerName:        pod.Spec.Containers[index].Name,
-			ContainerID:          pod.Status.ContainerStatuses[index].ContainerID,
-			LogName:              nameSuffix,
-			PodRFC3339StartTime:  time.Unix(startTime, 0).Format(time.RFC3339),
-			PodRFC3339FinishTime: time.Unix(finishTime, 0).Format(time.RFC3339),
-			PodUnixStartTime:     startTime,
-			PodUnixFinishTime:    finishTime,
+			PodName:                 pod.Name,
+			PodUID:                  string(pod.GetUID()),
+			Namespace:               pod.Namespace,
+			ContainerName:           pod.Spec.Containers[index].Name,
+			ContainerID:             pod.Status.ContainerStatuses[index].ContainerID,
+			LogName:                 nameSuffix,
+			PodRFC3339StartTime:     time.Unix(startTime, 0).Format(time.RFC3339),
+			PodRFC3339FinishTime:    time.Unix(finishTime, 0).Format(time.RFC3339),
+			PodUnixStartTime:        startTime,
+			PodUnixFinishTime:       finishTime,
+			TaskExecutionIdentifier: taskExecId,
 		},
 		extraLogTemplateVars...,
 	)
@@ -73,7 +74,9 @@ func (t taskLogPluginWrapper) GetTaskLogs(input tasklog.Input, extraTemplateVars
 	suffix := input.LogName
 
 	mergedTemplateVars := make(tasklog.TemplateVars)
-	mergedTemplateVars.Merge(extraTemplateVars...)
+	if err := mergedTemplateVars.Merge(extraTemplateVars...); err != nil {
+		return tasklog.Output{}, err
+	}
 
 	for _, plugin := range t.logPlugins {
 		input.LogName = plugin.Name + suffix

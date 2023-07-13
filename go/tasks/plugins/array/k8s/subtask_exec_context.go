@@ -177,14 +177,14 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 }
 
 func (s SubTaskExecutionID) ToTemplateVars() tasklog.TemplateVars {
-	v := tasklog.GetTaskExecutionIdentifierTemplateVars(s.GetID())
-	v.Merge(tasklog.TemplateVars{
-		"executionIndex":      s.executionIndex,
-		"parentName":          s.parentName,
-		"subtaskRetryAttempt": s.subtaskRetryAttempt,
-		"taskRetryAttempt":    s.taskRetryAttempt,
-	})
-	return v
+	return tasklog.TemplateVars{
+		"taskExecution": tasklog.TemplateVars{
+			"executionIndex":      s.executionIndex,
+			"parentName":          s.parentName,
+			"subtaskRetryAttempt": s.subtaskRetryAttempt,
+			"taskRetryAttempt":    s.taskRetryAttempt,
+		},
+	}
 }
 
 // NewSubtaskExecutionID constructs a SubTaskExecutionID using the provided parameters

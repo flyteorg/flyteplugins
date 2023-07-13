@@ -8,18 +8,21 @@ import (
 	"text/template"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+
+	"github.com/imdario/mergo"
 )
 
-func (t TemplateVars) Merge(others ...TemplateVars) {
-	for _, other := range others {
-		for k, v := range other {
-			t[k] = v
+func (t TemplateVars) Merge(others ...TemplateVars) error {
+	for _, o := range others {
+		err := mergo.Merge(&t, o)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func (input Input) ToTemplateVars() TemplateVars {
-	// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
+func (input Input) ToTemplateVars() (TemplateVars, error) {
 	// stream. Therefore, we must also strip the prefix.
 	containerID := input.ContainerID
 	stripDelimiter := "://"
@@ -27,26 +30,42 @@ func (input Input) ToTemplateVars() TemplateVars {
 		containerID = split[1]
 	}
 
-	return TemplateVars{
-		"podName":              input.PodName,
-		"podUID":               input.PodUID,
-		"namespace":            input.Namespace,
-		"containerName":        input.ContainerName,
-		"containerId":          containerID,
-		"logName":              input.LogName,
-		"hostname":             input.HostName,
-		"podRFC3339StartTime":  input.PodRFC3339StartTime,
-		"podRFC3339FinishTime": input.PodRFC3339FinishTime,
-		"podUnixStartTime":     strconv.FormatInt(input.PodUnixStartTime, 10),
-		"podUnixFinishTime":    strconv.FormatInt(input.PodUnixFinishTime, 10),
-	}
-}
-
-func GetTaskExecutionIdentifierTemplateVars(id core.TaskExecutionIdentifier) TemplateVars {
 	var templateVars TemplateVars
-	serialized, _ := json.Marshal(id)
-	_ = json.Unmarshal(serialized, &templateVars)
-	return templateVars
+	var err error
+
+	serialized, err := json.Marshal(&struct {
+		HostName                string                       `json:"hostname,omitempty"`
+		PodName                 string                       `json:"podName,omitempty"`
+		Namespace               string                       `json:"namespace,omitempty"`
+		ContainerName           string                       `json:"containerName,omitempty"`
+		ContainerID             string                       `json:"containerId,omitempty"`
+		LogName                 string                       `json:"logName,omitempty"`
+		PodRFC3339StartTime     string                       `json:"podRFC3339StartTime,omitempty"`
+		PodRFC3339FinishTime    string                       `json:"podRFC3339FinishTime,omitempty"`
+		PodUnixStartTime        string                       `json:"podUnixStartTime,omitempty"`
+		PodUnixFinishTime       string                       `json:"podUnixFinishTime,omitempty"`
+		PodUID                  string                       `json:"podUID,omitempty"`
+		TaskExecutionIdentifier core.TaskExecutionIdentifier `json:"taskExecution"`
+	}{
+		input.HostName,
+		input.PodName,
+		input.Namespace,
+		input.ContainerName,
+		containerID,
+		input.LogName,
+		input.PodRFC3339StartTime,
+		input.PodRFC3339FinishTime,
+		strconv.FormatInt(input.PodUnixStartTime, 10),
+		strconv.FormatInt(input.PodUnixFinishTime, 10),
+		input.PodUID,
+		input.TaskExecutionIdentifier,
+	})
+	if err != nil {
+		return templateVars, err
+	}
+
+	err = json.Unmarshal(serialized, &templateVars)
+	return templateVars, err
 }
 
 // A simple log plugin that supports templates in urls to build the final log link. Supported templates are:
@@ -88,8 +107,15 @@ func (s TemplateLogPlugin) GetTaskLog(podName, podUID, namespace, containerName,
 }
 
 func (s TemplateLogPlugin) GetTaskLogs(input Input, extraTemplateVars ...TemplateVars) (Output, error) {
-	templateVars := input.ToTemplateVars()
-	templateVars.Merge(extraTemplateVars...)
+	var err error
+	templateVars, err := input.ToTemplateVars()
+	if err != nil {
+		return Output{}, err
+	}
+	err = templateVars.Merge(extraTemplateVars...)
+	if err != nil {
+		return Output{}, err
+	}
 
 	taskLogs := make([]*core.TaskLog, 0, len(s.templateUris))
 	for _, templateURI := range s.templateUris {
