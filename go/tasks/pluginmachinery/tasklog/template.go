@@ -66,10 +66,7 @@ type TemplateLogPlugin struct {
 	messageFormat core.TaskLog_MessageFormat
 }
 
-func (s TemplateLogPlugin) GetTaskLog(
-	podName, podUID, namespace, containerName, containerID, logName string,
-	podUnixStartTime, podUnixFinishTime int64,
-) (core.TaskLog, error) {
+func (s TemplateLogPlugin) GetTaskLog(podName, podUID, namespace, containerName, containerID, logName string, podUnixStartTime, podUnixFinishTime int64) (core.TaskLog, error) {
 	o, err := s.GetTaskLogs(Input{
 		LogName:           logName,
 		Namespace:         namespace,
@@ -124,10 +121,7 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input, extraTemplateVars ...Templat
 // {{ .hostname }}: The hostname where the pod is running and where logs reside.
 // {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
 // {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
-func NewTemplateLogPlugin(
-	templateUris []string,
-	messageFormat core.TaskLog_MessageFormat,
-) TemplateLogPlugin {
+func NewTemplateLogPlugin(templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
 	return TemplateLogPlugin{
 		templateUris:  templateUris,
 		messageFormat: messageFormat,

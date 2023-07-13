@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
+
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 )
