@@ -18,7 +18,7 @@ type logPlugin struct {
 }
 
 // Internal
-func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, taskExecId *core.TaskExecutionIdentifier, pod *v1.Pod, index uint32, nameSuffix string, extraLogTemplateVars ...tasklog.TemplateVars) ([]*core.TaskLog, error) {
+func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, taskExecID *core.TaskExecutionIdentifier, pod *v1.Pod, index uint32, nameSuffix string, extraLogTemplateVars ...tasklog.TemplateVars) ([]*core.TaskLog, error) {
 	if logPlugin == nil {
 		return nil, nil
 	}

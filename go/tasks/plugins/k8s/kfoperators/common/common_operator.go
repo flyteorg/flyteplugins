@@ -112,7 +112,7 @@ func GetLogs(pluginContext k8s.PluginContext, taskType string, objectMeta meta_v
 	namespace := objectMeta.Namespace
 
 	taskLogs := make([]*core.TaskLog, 0, 10)
-	taskExecId := pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+	taskExecID := pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 
 	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
 
@@ -141,7 +141,7 @@ func GetLogs(pluginContext k8s.PluginContext, taskType string, objectMeta meta_v
 				PodRFC3339FinishTime:    RFC3999FinishTime,
 				PodUnixStartTime:        startTime,
 				PodUnixFinishTime:       finishTime,
-				TaskExecutionIdentifier: &taskExecId,
+				TaskExecutionIdentifier: &taskExecID,
 			},
 		)
 		if masterErr != nil {
@@ -159,7 +159,7 @@ func GetLogs(pluginContext k8s.PluginContext, taskType string, objectMeta meta_v
 			PodRFC3339FinishTime:    RFC3999FinishTime,
 			PodUnixStartTime:        startTime,
 			PodUnixFinishTime:       finishTime,
-			TaskExecutionIdentifier: &taskExecId,
+			TaskExecutionIdentifier: &taskExecID,
 		})
 		if err != nil {
 			return nil, err
@@ -176,7 +176,7 @@ func GetLogs(pluginContext k8s.PluginContext, taskType string, objectMeta meta_v
 		psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
 			PodName:                 name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
 			Namespace:               namespace,
-			TaskExecutionIdentifier: &taskExecId,
+			TaskExecutionIdentifier: &taskExecID,
 		})
 		if err != nil {
 			return nil, err
@@ -188,7 +188,7 @@ func GetLogs(pluginContext k8s.PluginContext, taskType string, objectMeta meta_v
 		chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
 			PodName:                 name + fmt.Sprintf("-chiefReplica-%d", 0),
 			Namespace:               namespace,
-			TaskExecutionIdentifier: &taskExecId,
+			TaskExecutionIdentifier: &taskExecID,
 		})
 		if err != nil {
 			return nil, err
