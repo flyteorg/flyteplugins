@@ -2,6 +2,7 @@ package tasklog
 
 import (
 	"bytes"
+	"encoding/json"
 	"strconv"
 	"strings"
 	"text/template"
@@ -50,6 +51,23 @@ func (input Input) ToTemplateVars() (TemplateVars, error) {
 		"podUnixStartTime":  strconv.FormatInt(input.PodUnixStartTime, 10),
 		"podUnixFinishTime": strconv.FormatInt(input.PodUnixFinishTime, 10),
 	}, nil
+}
+
+type TaskExecutionIdentifierTemplateVarsProvider struct {
+	core.TaskExecutionIdentifier
+}
+
+func (p TaskExecutionIdentifierTemplateVarsProvider) ToTemplateVars() (TemplateVars, error) {
+	var templateVars TemplateVars
+	var err error
+
+	serialized, err := json.Marshal(p.TaskExecutionIdentifier)
+	if err != nil {
+		return templateVars, err
+	}
+
+	err = json.Unmarshal(serialized, &templateVars)
+	return templateVars, err
 }
 
 // A simple log plugin that supports templates in urls to build the final log link. Supported templates are:

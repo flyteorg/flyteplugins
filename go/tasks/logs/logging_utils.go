@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flytestdlib/logger"
 	v1 "k8s.io/api/core/v1"
 )
@@ -18,7 +17,7 @@ type logPlugin struct {
 }
 
 // Internal
-func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, pod *v1.Pod, index uint32, nameSuffix string) ([]*core.TaskLog, error) {
+func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, pod *v1.Pod, index uint32, nameSuffix string, extraLogTemplateVarProviders ...tasklog.TemplateVarsProvider) ([]*core.TaskLog, error) {
 	if logPlugin == nil {
 		return nil, nil
 	}
@@ -49,6 +48,7 @@ func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, pod
 			PodUnixStartTime:  pod.CreationTimestamp.Unix(),
 			PodUnixFinishTime: time.Now().Unix(),
 		},
+		extraLogTemplateVarProviders...,
 	)
 
 	if err != nil {
