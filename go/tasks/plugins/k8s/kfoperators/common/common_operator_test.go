@@ -328,18 +328,19 @@ func dummyTaskContext() pluginsCore.TaskExecutionContext {
 	tID.OnGetID().Return(core.TaskExecutionIdentifier{
 		TaskId: &core.Identifier{
 			ResourceType: core.ResourceType_TASK,
-			Name:         "my-name",
+			Name:         "my-task-name",
 			Project:      "my-project",
 			Domain:       "my-domain",
 			Version:      "1",
 		},
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
-				Name:    "my-name",
+				Name:    "my-execution-name",
 				Project: "my-project",
 				Domain:  "my-domain",
 			},
 		},
+		RetryAttempt: 0,
 	})
 
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}

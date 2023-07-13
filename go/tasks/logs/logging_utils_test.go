@@ -17,7 +17,7 @@ const podName = "PodName"
 var dummyTaskExecID = &core.TaskExecutionIdentifier{
 	TaskId: &core.Identifier{
 		ResourceType: core.ResourceType_TASK,
-		Name:         "my-name",
+		Name:         "my-task-name",
 		Project:      "my-project",
 		Domain:       "my-domain",
 		Version:      "1",
@@ -25,11 +25,12 @@ var dummyTaskExecID = &core.TaskExecutionIdentifier{
 	NodeExecutionId: &core.NodeExecutionIdentifier{
 		NodeId: "n0",
 		ExecutionId: &core.WorkflowExecutionIdentifier{
-			Name:    "my-name",
+			Name:    "my-execution-name",
 			Project: "my-project",
 			Domain:  "my-domain",
 		},
 	},
+	RetryAttempt: 1,
 }
 
 func TestGetLogsForContainerInPod_NoPlugins(t *testing.T) {
@@ -322,7 +323,7 @@ func TestGetLogsForContainerInPod_Templates(t *testing.T) {
 			{
 				DisplayName: "Internal",
 				TemplateURIs: []string{
-					"https://my-log-server/{{ .taskExecution.node_execution_id.execution_id.project }}/{{ .taskExecution.node_execution_id.execution_id.domain }}/{{ .taskExecution.node_execution_id.execution_id.name }}/{{ .taskExecution.node_execution_id.node_id }}",
+					"https://flyte.corp.net/console/projects/{{ .taskExecution.node_execution_id.execution_id.project }}/domains/{{ .taskExecution.node_execution_id.execution_id.domain }}/executions/{{ .taskExecution.node_execution_id.execution_id.name }}/nodeId/{{ .taskExecution.node_execution_id.node_id }}/taskId/{{ .taskExecution.task_id.name }}/attempt/{{ .taskExecution.retry_attempt }}/view/logs",
 				},
 				MessageFormat: core.TaskLog_JSON,
 			},
@@ -334,7 +335,7 @@ func TestGetLogsForContainerInPod_Templates(t *testing.T) {
 			Name:          "StackDriver my-Suffix",
 		},
 		{
-			Uri:           "https://my-log-server/my-project/my-domain/my-name/n0",
+			Uri:           "https://flyte.corp.net/console/projects/my-project/domains/my-domain/executions/my-execution-name/nodeId/n0/taskId/my-task-name/attempt/1/view/logs",
 			MessageFormat: core.TaskLog_JSON,
 			Name:          "Internal my-Suffix",
 		},

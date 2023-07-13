@@ -265,7 +265,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"custom-with-task-execution-identifier",
 			fields{
-				templateURI:   "https://logs.flyte.corp.net/{{ .taskExecution.node_execution_id.execution_id.project }}/{{ .taskExecution.node_execution_id.execution_id.domain }}/{{ .taskExecution.node_execution_id.execution_id.name }}/{{ .taskExecution.node_execution_id.node_id }}/{{ .taskExecution.extraField }}",
+				templateURI:   "https://flyte.corp.net/console/projects/{{ .taskExecution.node_execution_id.execution_id.project }}/domains/{{ .taskExecution.node_execution_id.execution_id.domain }}/executions/{{ .taskExecution.node_execution_id.execution_id.name }}/nodeId/{{ .taskExecution.node_execution_id.node_id }}/taskId/{{ .taskExecution.task_id.name }}/attempt/{{ .taskExecution.taskRetryAttempt }}/mappedIndex/{{ .taskExecution.executionIndex }}/mappedAttempt/{{ .taskExecution.subtaskRetryAttempt }}/view/logs",
 				messageFormat: core.TaskLog_JSON,
 			},
 			args{
@@ -283,7 +283,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 					TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
 						TaskId: &core.Identifier{
 							ResourceType: core.ResourceType_TASK,
-							Name:         "my-name",
+							Name:         "my-task-name",
 							Project:      "my-project",
 							Domain:       "my-domain",
 							Version:      "1",
@@ -291,25 +291,29 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 						NodeExecutionId: &core.NodeExecutionIdentifier{
 							NodeId: "n0",
 							ExecutionId: &core.WorkflowExecutionIdentifier{
-								Name:    "my-name",
+								Name:    "my-execution-name",
 								Project: "my-project",
 								Domain:  "my-domain",
 							},
 						},
+						RetryAttempt: 0,
 					},
 				},
 			},
 			[]TemplateVars{
 				TemplateVars{
 					"taskExecution": TemplateVars{
-						"extraField": 1,
+						"executionIndex":      1,
+						"parentName":          "notfound",
+						"subtaskRetryAttempt": 1,
+						"taskRetryAttempt":    0,
 					},
 				},
 			},
 			Output{
 				TaskLogs: []*core.TaskLog{
 					{
-						Uri:           "https://logs.flyte.corp.net/my-project/my-domain/my-name/n0/1",
+						Uri:           "https://flyte.corp.net/console/projects/my-project/domains/my-domain/executions/my-execution-name/nodeId/n0/taskId/my-task-name/attempt/0/mappedIndex/1/mappedAttempt/1/view/logs",
 						MessageFormat: core.TaskLog_JSON,
 						Name:          "main_logs",
 					},

@@ -53,7 +53,7 @@ func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, tas
 			PodRFC3339FinishTime:    time.Unix(finishTime, 0).Format(time.RFC3339),
 			PodUnixStartTime:        startTime,
 			PodUnixFinishTime:       finishTime,
-			TaskExecutionIdentifier: taskExecId,
+			TaskExecutionIdentifier: taskExecID,
 		},
 		extraLogTemplateVars...,
 	)
