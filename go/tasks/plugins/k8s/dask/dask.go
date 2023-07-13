@@ -324,11 +324,13 @@ func (p daskResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s
 		status == daskAPI.DaskJobClusterCreated
 
 	if !isQueued {
-		o, err := logPlugin.GetTaskLogs(tasklog.Input{
-			Namespace: job.ObjectMeta.Namespace,
-			PodName:   job.Status.JobRunnerPodName,
-			LogName:   "(User logs)",
-		},
+		o, err := logPlugin.GetTaskLogs(
+			tasklog.Input{
+				Namespace: job.ObjectMeta.Namespace,
+				PodName:   job.Status.JobRunnerPodName,
+				LogName:   "(User logs)",
+			},
+			tasklog.GetTaskExecutionIdentifierTemplateVars(pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()),
 		)
 		if err != nil {
 			return pluginsCore.PhaseInfoUndefined, err

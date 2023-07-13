@@ -305,11 +305,13 @@ func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx p
 	}, nil
 }
 
-func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
+func getEventInfoForSpark(pluginContext k8s.PluginContext, sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
 	state := sj.Status.AppState.State
 	isQueued := state == sparkOp.NewState ||
 		state == sparkOp.PendingSubmissionState ||
 		state == sparkOp.SubmittedState
+
+	extraLogTemplateVars := tasklog.GetTaskExecutionIdentifierTemplateVars(pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID())
 
 	sparkConfig := GetSparkConfig()
 	taskLogs := make([]*core.TaskLog, 0, 3)
@@ -326,7 +328,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 					PodName:   sj.Status.DriverInfo.PodName,
 					Namespace: sj.Namespace,
 					LogName:   "(Driver Logs)",
-				})
+				}, extraLogTemplateVars)
 
 				if err != nil {
 					return nil, err
@@ -346,7 +348,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 				PodName:   sj.Status.DriverInfo.PodName,
 				Namespace: sj.Namespace,
 				LogName:   "(User Logs)",
-			})
+			}, extraLogTemplateVars)
 
 			if err != nil {
 				return nil, err
@@ -365,7 +367,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 				PodName:   sj.Name,
 				Namespace: sj.Namespace,
 				LogName:   "(System Logs)",
-			})
+			}, extraLogTemplateVars)
 
 			if err != nil {
 				return nil, err
@@ -385,7 +387,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 			PodName:   sj.Name,
 			Namespace: sj.Namespace,
 			LogName:   "(Spark-Submit/All User Logs)",
-		})
+		}, extraLogTemplateVars)
 
 		if err != nil {
 			return nil, err
@@ -432,7 +434,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 
 	app := resource.(*sparkOp.SparkApplication)
-	info, err := getEventInfoForSpark(app)
+	info, err := getEventInfoForSpark(pluginContext, app)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}

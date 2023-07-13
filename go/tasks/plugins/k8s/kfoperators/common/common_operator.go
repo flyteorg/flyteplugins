@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -104,8 +105,10 @@ func GetMPIPhaseInfo(currentCondition commonOp.JobCondition, occurredAt time.Tim
 }
 
 // GetLogs will return the logs for kubeflow job
-func GetLogs(taskType string, name string, namespace string, hasMaster bool,
+func GetLogs(pluginContext k8s.PluginContext, taskType string, name string, namespace string, hasMaster bool,
 	workersCount int32, psReplicasCount int32, chiefReplicasCount int32) ([]*core.TaskLog, error) {
+	extraLogTemplateVars := tasklog.GetTaskExecutionIdentifierTemplateVars(pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID())
+
 	taskLogs := make([]*core.TaskLog, 0, 10)
 
 	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
@@ -125,6 +128,7 @@ func GetLogs(taskType string, name string, namespace string, hasMaster bool,
 				Namespace: namespace,
 				LogName:   "master",
 			},
+			extraLogTemplateVars,
 		)
 		if masterErr != nil {
 			return nil, masterErr
@@ -137,7 +141,7 @@ func GetLogs(taskType string, name string, namespace string, hasMaster bool,
 		workerLog, err := logPlugin.GetTaskLogs(tasklog.Input{
 			PodName:   name + fmt.Sprintf("-worker-%d", workerIndex),
 			Namespace: namespace,
-		})
+		}, extraLogTemplateVars)
 		if err != nil {
 			return nil, err
 		}
@@ -153,7 +157,7 @@ func GetLogs(taskType string, name string, namespace string, hasMaster bool,
 		psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
 			PodName:   name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
 			Namespace: namespace,
-		})
+		}, extraLogTemplateVars)
 		if err != nil {
 			return nil, err
 		}
@@ -164,7 +168,7 @@ func GetLogs(taskType string, name string, namespace string, hasMaster bool,
 		chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
 			PodName:   name + fmt.Sprintf("-chiefReplica-%d", 0),
 			Namespace: namespace,
-		})
+		}, extraLogTemplateVars)
 		if err != nil {
 			return nil, err
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	commonOp "github.com/kubeflow/common/pkg/apis/common/v1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -167,18 +168,19 @@ func TestGetLogs(t *testing.T) {
 	workers := int32(1)
 	launcher := int32(1)
 
-	jobLogs, err := GetLogs(MPITaskType, "test", "mpi-namespace", false, workers, launcher, 0)
+	taskCtx := dummyTaskContext()
+	jobLogs, err := GetLogs(taskCtx, MPITaskType, "test", "mpi-namespace", false, workers, launcher, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=mpi-namespace", "mpi-namespace", "test"), jobLogs[0].Uri)
 
-	jobLogs, err = GetLogs(PytorchTaskType, "test", "pytorch-namespace", true, workers, launcher, 0)
+	jobLogs, err = GetLogs(taskCtx, PytorchTaskType, "test", "pytorch-namespace", true, workers, launcher, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-master-0/pod?namespace=pytorch-namespace", "pytorch-namespace", "test"), jobLogs[0].Uri)
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=pytorch-namespace", "pytorch-namespace", "test"), jobLogs[1].Uri)
 
-	jobLogs, err = GetLogs(TensorflowTaskType, "test", "tensorflow-namespace", false, workers, launcher, 1)
+	jobLogs, err = GetLogs(taskCtx, TensorflowTaskType, "test", "tensorflow-namespace", false, workers, launcher, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=tensorflow-namespace", "tensorflow-namespace", "test"), jobLogs[0].Uri)
@@ -283,4 +285,31 @@ func TestOverrideContainerNilResources(t *testing.T) {
 	assert.Equal(t, 2, len(podSpec.Containers))
 	assert.Nil(t, podSpec.Containers[0].Resources.Limits)
 	assert.Nil(t, podSpec.Containers[0].Resources.Requests)
+}
+
+func dummyTaskContext() pluginsCore.TaskExecutionContext {
+	taskCtx := &mocks.TaskExecutionContext{}
+
+	tID := &mocks.TaskExecutionID{}
+	tID.OnGetID().Return(core.TaskExecutionIdentifier{
+		TaskId: &core.Identifier{
+			ResourceType: core.ResourceType_TASK,
+			Name:         "my_name",
+			Project:      "my_project",
+			Domain:       "my_domain",
+			Version:      "1",
+		},
+		NodeExecutionId: &core.NodeExecutionIdentifier{
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Name:    "my_name",
+				Project: "my_project",
+				Domain:  "my_domain",
+			},
+		},
+	})
+
+	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
+	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
+	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
+	return taskCtx
 }
