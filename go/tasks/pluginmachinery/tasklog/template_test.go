@@ -159,12 +159,11 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		input Input
 	}
 	tests := []struct {
-		name                 string
-		fields               fields
-		args                 args
-		extraLogTemplateVars []TemplateVars
-		want                 Output
-		wantErr              bool
+		name    string
+		fields  fields
+		args    args
+		want    Output
+		wantErr bool
 	}{
 		{
 			"splunk",
@@ -186,7 +185,6 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 					PodUnixFinishTime:    12345,
 				},
 			},
-			[]TemplateVars{},
 			Output{
 				TaskLogs: []*core.TaskLog{
 					{
@@ -218,7 +216,6 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 					PodUnixFinishTime:    12345,
 				},
 			},
-			[]TemplateVars{},
 			Output{
 				TaskLogs: []*core.TaskLog{
 					{
@@ -250,7 +247,6 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 					PodUnixFinishTime:    12345,
 				},
 			},
-			[]TemplateVars{},
 			Output{
 				TaskLogs: []*core.TaskLog{
 					{
@@ -265,7 +261,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"custom-with-task-execution-identifier",
 			fields{
-				templateURI:   "https://flyte.corp.net/console/projects/{{ .taskExecution.node_execution_id.execution_id.project }}/domains/{{ .taskExecution.node_execution_id.execution_id.domain }}/executions/{{ .taskExecution.node_execution_id.execution_id.name }}/nodeId/{{ .taskExecution.node_execution_id.node_id }}/taskId/{{ .taskExecution.task_id.name }}/attempt/{{ .taskExecution.taskRetryAttempt }}/mappedIndex/{{ .taskExecution.executionIndex }}/mappedAttempt/{{ .taskExecution.subtaskRetryAttempt }}/view/logs",
+				templateURI:   "https://flyte.corp.net/console/projects/{{ .executionProject }}/domains/{{ .executionDomain }}/executions/{{ .executionName }}/nodeId/{{ .nodeID }}/taskId/{{ .taskID }}/attempt/{{ .subtaskParentRetryAttempt }}/mappedIndex/{{ .subtaskExecutionIndex }}/mappedAttempt/{{ .subtaskRetryAttempt }}/view/logs",
 				messageFormat: core.TaskLog_JSON,
 			},
 			args{
@@ -298,15 +294,10 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 						},
 						RetryAttempt: 0,
 					},
-				},
-			},
-			[]TemplateVars{
-				TemplateVars{
-					"taskExecution": TemplateVars{
-						"executionIndex":      1,
-						"parentName":          "notfound",
-						"subtaskRetryAttempt": 1,
-						"taskRetryAttempt":    0,
+					ExtraTemplateVars: TemplateVars{
+						{MustCreateRegex("subtaskExecutionIndex"), "1"},
+						{MustCreateRegex("subtaskRetryAttempt"), "1"},
+						{MustCreateRegex("subtaskParentRetryAttempt"), "0"},
 					},
 				},
 			},
@@ -328,7 +319,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 				templateUris:  []string{tt.fields.templateURI},
 				messageFormat: tt.fields.messageFormat,
 			}
-			got, err := s.GetTaskLogs(tt.args.input, tt.extraLogTemplateVars...)
+			got, err := s.GetTaskLogs(tt.args.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTaskLog() error = %v, wantErr %v", err, tt.wantErr)
 				return

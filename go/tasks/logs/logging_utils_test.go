@@ -323,7 +323,7 @@ func TestGetLogsForContainerInPod_Templates(t *testing.T) {
 			{
 				DisplayName: "Internal",
 				TemplateURIs: []string{
-					"https://flyte.corp.net/console/projects/{{ .taskExecution.node_execution_id.execution_id.project }}/domains/{{ .taskExecution.node_execution_id.execution_id.domain }}/executions/{{ .taskExecution.node_execution_id.execution_id.name }}/nodeId/{{ .taskExecution.node_execution_id.node_id }}/taskId/{{ .taskExecution.task_id.name }}/attempt/{{ .taskExecution.retry_attempt }}/view/logs",
+					"https://flyte.corp.net/console/projects/{{ .executionProject }}/domains/{{ .executionDomain }}/executions/{{ .executionName }}/nodeId/{{ .nodeID }}/taskId/{{ .taskID }}/attempt/{{ .taskRetryAttempt }}/view/logs",
 				},
 				MessageFormat: core.TaskLog_JSON,
 			},

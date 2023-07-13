@@ -18,7 +18,7 @@ type logPlugin struct {
 }
 
 // Internal
-func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, taskExecID *core.TaskExecutionIdentifier, pod *v1.Pod, index uint32, nameSuffix string, extraLogTemplateVars ...tasklog.TemplateVars) ([]*core.TaskLog, error) {
+func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, taskExecID *core.TaskExecutionIdentifier, pod *v1.Pod, index uint32, nameSuffix string, extraLogTemplateVars ...tasklog.TemplateVar) ([]*core.TaskLog, error) {
 	if logPlugin == nil {
 		return nil, nil
 	}
@@ -54,8 +54,8 @@ func GetLogsForContainerInPod(ctx context.Context, logPlugin tasklog.Plugin, tas
 			PodUnixStartTime:        startTime,
 			PodUnixFinishTime:       finishTime,
 			TaskExecutionIdentifier: taskExecID,
+			ExtraTemplateVars:       extraLogTemplateVars,
 		},
-		extraLogTemplateVars...,
 	)
 
 	if err != nil {
@@ -69,18 +69,13 @@ type taskLogPluginWrapper struct {
 	logPlugins []logPlugin
 }
 
-func (t taskLogPluginWrapper) GetTaskLogs(input tasklog.Input, extraTemplateVars ...tasklog.TemplateVars) (logOutput tasklog.Output, err error) {
+func (t taskLogPluginWrapper) GetTaskLogs(input tasklog.Input) (logOutput tasklog.Output, err error) {
 	logs := make([]*core.TaskLog, 0, len(t.logPlugins))
 	suffix := input.LogName
 
-	mergedTemplateVars := make(tasklog.TemplateVars)
-	if err := mergedTemplateVars.Merge(extraTemplateVars...); err != nil {
-		return tasklog.Output{}, err
-	}
-
 	for _, plugin := range t.logPlugins {
 		input.LogName = plugin.Name + suffix
-		o, err := plugin.Plugin.GetTaskLogs(input, mergedTemplateVars)
+		o, err := plugin.Plugin.GetTaskLogs(input)
 		if err != nil {
 			return tasklog.Output{}, err
 		}

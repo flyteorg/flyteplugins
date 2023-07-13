@@ -1,8 +1,17 @@
 package tasklog
 
-import "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+import (
+	"regexp"
 
-type TemplateVars map[string]interface{}
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+)
+
+type TemplateVar struct {
+	Regex *regexp.Regexp
+	Value string
+}
+
+type TemplateVars []TemplateVar
 
 // Input contains all available information about task's execution that a log plugin can use to construct task's
 // log links.
@@ -19,6 +28,7 @@ type Input struct {
 	PodUnixFinishTime       int64
 	PodUID                  string
 	TaskExecutionIdentifier *core.TaskExecutionIdentifier
+	ExtraTemplateVars       TemplateVars
 }
 
 // Output contains all task logs a plugin generates for a given Input.
@@ -29,5 +39,5 @@ type Output struct {
 // Plugin represents an interface for task log plugins to implement to plug generated task log links into task events.
 type Plugin interface {
 	// Generates a TaskLog object given necessary computation information
-	GetTaskLogs(i Input, v ...TemplateVars) (logs Output, err error)
+	GetTaskLogs(i Input) (logs Output, err error)
 }

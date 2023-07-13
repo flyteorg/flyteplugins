@@ -38,12 +38,10 @@ func TestSubTaskExecutionContext(t *testing.T) {
 	assert.Equal(t, storage.DataReference("/raw_prefix/5/1"), stCtx.OutputWriter().GetRawOutputPrefix())
 	assert.Equal(t,
 		tasklog.TemplateVars{
-			"taskExecution": tasklog.TemplateVars{
-				"executionIndex":      0,
-				"parentName":          "notfound",
-				"subtaskRetryAttempt": uint64(1),
-				"taskRetryAttempt":    uint32(0),
-			},
+			{logTemplateRegexes.ParentName, "notfound"},
+			{logTemplateRegexes.ExecutionIndex, "0"},
+			{logTemplateRegexes.RetryAttempt, "1"},
+			{logTemplateRegexes.ParentRetryAttempt, "0"},
 		},
 		stCtx.TaskExecutionMetadata().GetTaskExecutionID().(SubTaskExecutionID).ToTemplateVars(),
 	)

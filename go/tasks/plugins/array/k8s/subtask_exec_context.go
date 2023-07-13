@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -176,13 +177,32 @@ func (s SubTaskExecutionID) GetLogSuffix() string {
 	return fmt.Sprintf(" #%d-%d-%d", s.taskRetryAttempt, s.executionIndex, s.subtaskRetryAttempt)
 }
 
+var logTemplateRegexes = struct {
+	ExecutionIndex     *regexp.Regexp
+	ParentName         *regexp.Regexp
+	RetryAttempt       *regexp.Regexp
+	ParentRetryAttempt *regexp.Regexp
+}{
+	tasklog.MustCreateRegex("subtaskExecutionIndex"),
+	tasklog.MustCreateRegex("subtaskParentName"),
+	tasklog.MustCreateRegex("subtaskRetryAttempt"),
+	tasklog.MustCreateRegex("subtaskParentRetryAttempt"),
+}
+
 func (s SubTaskExecutionID) ToTemplateVars() tasklog.TemplateVars {
 	return tasklog.TemplateVars{
-		"taskExecution": tasklog.TemplateVars{
-			"executionIndex":      s.executionIndex,
-			"parentName":          s.parentName,
-			"subtaskRetryAttempt": s.subtaskRetryAttempt,
-			"taskRetryAttempt":    s.taskRetryAttempt,
+		{logTemplateRegexes.ParentName, s.parentName},
+		{
+			logTemplateRegexes.ExecutionIndex,
+			strconv.FormatUint(uint64(s.executionIndex), 10),
+		},
+		{
+			logTemplateRegexes.RetryAttempt,
+			strconv.FormatUint(uint64(s.subtaskRetryAttempt), 10),
+		},
+		{
+			logTemplateRegexes.ParentRetryAttempt,
+			strconv.FormatUint(uint64(s.taskRetryAttempt), 10),
 		},
 	}
 }

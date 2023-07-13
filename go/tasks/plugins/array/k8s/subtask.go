@@ -304,7 +304,7 @@ func getSubtaskPhaseInfo(ctx context.Context, stCtx SubTaskExecutionContext, cfg
 	}
 
 	stID, _ := stCtx.TaskExecutionMetadata().GetTaskExecutionID().(SubTaskExecutionID)
-	phaseInfo, err := podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogs(ctx, stCtx, pod, logPlugin, stID.GetLogSuffix(), stID.ToTemplateVars())
+	phaseInfo, err := podPlugin.DefaultPodPlugin.GetTaskPhaseWithLogs(ctx, stCtx, pod, logPlugin, stID.GetLogSuffix(), stID.ToTemplateVars()...)
 	if err != nil {
 		logger.Warnf(ctx, "failed to check status of resource in plugin [%s], with error: %s", executorName, err.Error())
 		return pluginsCore.PhaseInfoUndefined, err
