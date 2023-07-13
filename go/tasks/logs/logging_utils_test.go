@@ -14,7 +14,7 @@ import (
 
 const podName = "PodName"
 
-var dummyTaskExecId = core.TaskExecutionIdentifier{
+var dummyTaskExecId = &core.TaskExecutionIdentifier{
 	TaskId: &core.Identifier{
 		ResourceType: core.ResourceType_TASK,
 		Name:         "my_name",

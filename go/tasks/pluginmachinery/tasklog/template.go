@@ -34,18 +34,18 @@ func (input Input) ToTemplateVars() (TemplateVars, error) {
 	var err error
 
 	serialized, err := json.Marshal(&struct {
-		HostName                string                       `json:"hostname,omitempty"`
-		PodName                 string                       `json:"podName,omitempty"`
-		Namespace               string                       `json:"namespace,omitempty"`
-		ContainerName           string                       `json:"containerName,omitempty"`
-		ContainerID             string                       `json:"containerId,omitempty"`
-		LogName                 string                       `json:"logName,omitempty"`
-		PodRFC3339StartTime     string                       `json:"podRFC3339StartTime,omitempty"`
-		PodRFC3339FinishTime    string                       `json:"podRFC3339FinishTime,omitempty"`
-		PodUnixStartTime        string                       `json:"podUnixStartTime,omitempty"`
-		PodUnixFinishTime       string                       `json:"podUnixFinishTime,omitempty"`
-		PodUID                  string                       `json:"podUID,omitempty"`
-		TaskExecutionIdentifier core.TaskExecutionIdentifier `json:"taskExecution"`
+		HostName                string                        `json:"hostname,omitempty"`
+		PodName                 string                        `json:"podName,omitempty"`
+		Namespace               string                        `json:"namespace,omitempty"`
+		ContainerName           string                        `json:"containerName,omitempty"`
+		ContainerID             string                        `json:"containerId,omitempty"`
+		LogName                 string                        `json:"logName,omitempty"`
+		PodRFC3339StartTime     string                        `json:"podRFC3339StartTime,omitempty"`
+		PodRFC3339FinishTime    string                        `json:"podRFC3339FinishTime,omitempty"`
+		PodUnixStartTime        string                        `json:"podUnixStartTime,omitempty"`
+		PodUnixFinishTime       string                        `json:"podUnixFinishTime,omitempty"`
+		PodUID                  string                        `json:"podUID,omitempty"`
+		TaskExecutionIdentifier *core.TaskExecutionIdentifier `json:"taskExecution,omitempty"`
 	}{
 		input.HostName,
 		input.PodName,

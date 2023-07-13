@@ -18,7 +18,7 @@ type Input struct {
 	PodUnixStartTime        int64
 	PodUnixFinishTime       int64
 	PodUID                  string
-	TaskExecutionIdentifier core.TaskExecutionIdentifier
+	TaskExecutionIdentifier *core.TaskExecutionIdentifier
 }
 
 // Output contains all task logs a plugin generates for a given Input.
