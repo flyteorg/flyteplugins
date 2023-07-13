@@ -28,13 +28,6 @@ func TestTemplateLog(t *testing.T) {
 	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.f-uuid-driver_pod-uid_flyteexamples-production_spark-kubernetes-driver-abc.log", tl.Uri)
 }
 
-// Latest Run: Benchmark_mustInitTemplateRegexes-16    	   45960	     26914 ns/op
-func Benchmark_mustInitTemplateRegexes(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		mustInitTemplateRegexes()
-	}
-}
-
 func Test_templateLogPlugin_Regression(t *testing.T) {
 	type fields struct {
 		templateURI   string

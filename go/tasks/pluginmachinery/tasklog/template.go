@@ -40,13 +40,9 @@ func (input Input) ToTemplateVars() TemplateVars {
 	}
 }
 
-type TaskExecutionIdentifierTemplateVarsProvider struct {
-	core.TaskExecutionIdentifier
-}
-
-func (p TaskExecutionIdentifierTemplateVarsProvider) ToTemplateVars() TemplateVars {
+func GetTaskExecutionIdentifierTemplateVars(id core.TaskExecutionIdentifier) TemplateVars {
 	var templateVars TemplateVars
-	serialized, _ := json.Marshal(p.TaskExecutionIdentifier)
+	serialized, _ := json.Marshal(id)
 	_ = json.Unmarshal(serialized, &templateVars)
 	return templateVars
 }

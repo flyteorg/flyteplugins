@@ -143,7 +143,7 @@ func (p plugin) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContex
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
-	extraLogTemplateVars := tasklog.TaskExecutionIdentifierTemplateVarsProvider{pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()}.ToTemplateVars()
+	extraLogTemplateVars := tasklog.GetTaskExecutionIdentifierTemplateVars(pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID())
 	return p.GetTaskPhaseWithLogs(ctx, pluginContext, r, logPlugin, " (User)", extraLogTemplateVars)
 }
 
