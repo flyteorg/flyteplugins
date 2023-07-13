@@ -30,5 +30,5 @@ type Output struct {
 // Plugin represents an interface for task log plugins to implement to plug generated task log links into task events.
 type Plugin interface {
 	// Generates a TaskLog object given necessary computation information
-	GetTaskLogs(input Input, p ...TemplateVarsProvider) (logs Output, err error)
+	GetTaskLogs(i Input, v ...TemplateVars) (logs Output, err error)
 }

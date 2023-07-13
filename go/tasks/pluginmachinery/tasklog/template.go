@@ -107,16 +107,13 @@ func (s TemplateLogPlugin) GetTaskLog(
 	return *o.TaskLogs[0], nil
 }
 
-func (s TemplateLogPlugin) GetTaskLogs(input Input, p ...TemplateVarsProvider) (Output, error) {
+func (s TemplateLogPlugin) GetTaskLogs(input Input, extraTemplateVars ...TemplateVars) (Output, error) {
 	var err error
 	templateVars, err := input.ToTemplateVars()
 	if err != nil {
 		return Output{}, err
 	}
-	err = templateVars.MergeProviders(p...)
-	if err != nil {
-		return Output{}, err
-	}
+	templateVars.Merge(extraTemplateVars...)
 
 	taskLogs := make([]*core.TaskLog, 0, len(s.templateUris))
 	for _, templateURI := range s.templateUris {
