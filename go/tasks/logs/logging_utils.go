@@ -62,12 +62,12 @@ type taskLogPluginWrapper struct {
 	logPlugins []logPlugin
 }
 
-func (t taskLogPluginWrapper) GetTaskLogs(input tasklog.Input) (logOutput tasklog.Output, err error) {
+func (t taskLogPluginWrapper) GetTaskLogs(input tasklog.Input, p ...tasklog.TemplateVarsProvider) (logOutput tasklog.Output, err error) {
 	logs := make([]*core.TaskLog, 0, len(t.logPlugins))
 	suffix := input.LogName
 	for _, plugin := range t.logPlugins {
 		input.LogName = plugin.Name + suffix
-		o, err := plugin.Plugin.GetTaskLogs(input)
+		o, err := plugin.Plugin.GetTaskLogs(input, p...)
 		if err != nil {
 			return tasklog.Output{}, err
 		}

@@ -2,6 +2,12 @@ package tasklog
 
 import "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 
+type TemplateVars map[string]interface{}
+
+type TemplateVarsProvider interface {
+	ToTemplateVars() (TemplateVars, error)
+}
+
 // Input contains all available information about task's execution that a log plugin can use to construct task's
 // log links.
 type Input struct {
@@ -24,5 +30,5 @@ type Output struct {
 // Plugin represents an interface for task log plugins to implement to plug generated task log links into task events.
 type Plugin interface {
 	// Generates a TaskLog object given necessary computation information
-	GetTaskLogs(input Input) (logs Output, err error)
+	GetTaskLogs(input Input, p ...TemplateVarsProvider) (logs Output, err error)
 }

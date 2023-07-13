@@ -11,7 +11,12 @@ import (
 )
 
 func TestTemplateLog(t *testing.T) {
-	p := NewTemplateLogPlugin([]string{"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.podUID}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log"}, core.TaskLog_JSON)
+	p := NewTemplateLogPlugin(
+		[]string{
+			"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.podUID}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log",
+		},
+		core.TaskLog_JSON,
+	)
 	tl, err := p.GetTaskLog(
 		"f-uuid-driver",
 		"pod-uid",
@@ -25,14 +30,11 @@ func TestTemplateLog(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, tl.GetName(), "main_logs")
 	assert.Equal(t, tl.GetMessageFormat(), core.TaskLog_JSON)
-	assert.Equal(t, "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.f-uuid-driver_pod-uid_flyteexamples-production_spark-kubernetes-driver-abc.log", tl.Uri)
-}
-
-// Latest Run: Benchmark_mustInitTemplateRegexes-16    	   45960	     26914 ns/op
-func Benchmark_mustInitTemplateRegexes(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		mustInitTemplateRegexes()
-	}
+	assert.Equal(
+		t,
+		"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.f-uuid-driver_pod-uid_flyteexamples-production_spark-kubernetes-driver-abc.log",
+		tl.Uri,
+	)
 }
 
 func Test_templateLogPlugin_Regression(t *testing.T) {
@@ -134,7 +136,16 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 				messageFormat: tt.fields.messageFormat,
 			}
 
-			got, err := s.GetTaskLog(tt.args.podName, tt.args.podUID, tt.args.namespace, tt.args.containerName, tt.args.containerID, tt.args.logName, tt.args.podUnixStartTime, tt.args.podUnixFinishTime)
+			got, err := s.GetTaskLog(
+				tt.args.podName,
+				tt.args.podUID,
+				tt.args.namespace,
+				tt.args.containerName,
+				tt.args.containerID,
+				tt.args.logName,
+				tt.args.podUnixStartTime,
+				tt.args.podUnixFinishTime,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetTaskLog() error = %v, wantErr %v", err, tt.wantErr)
 				return

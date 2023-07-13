@@ -1,13 +1,56 @@
 package tasklog
 
 import (
-	"fmt"
-	"regexp"
+	"bytes"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
+
+func (t TemplateVars) Merge(others ...TemplateVars) {
+	for _, other := range others {
+		for k, v := range other {
+			t[k] = v
+		}
+	}
+}
+
+func (t TemplateVars) MergeProviders(providers ...TemplateVarsProvider) error {
+	var others []TemplateVars
+	for _, p := range providers {
+		pTemplateVars, err := p.ToTemplateVars()
+		if err != nil {
+			return err
+		}
+		others = append(others, pTemplateVars)
+	}
+	t.Merge(others...)
+	return nil
+}
+
+func (input Input) ToTemplateVars() (TemplateVars, error) {
+	// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
+	// stream. Therefore, we must also strip the prefix.
+	containerID := input.ContainerID
+	stripDelimiter := "://"
+	if split := strings.Split(input.ContainerID, stripDelimiter); len(split) > 1 {
+		containerID = split[1]
+	}
+
+	return TemplateVars{
+		"podName":           input.PodName,
+		"podUID":            input.PodUID,
+		"namespace":         input.Namespace,
+		"containerName":     input.ContainerName,
+		"containerId":       containerID,
+		"logName":           input.LogName,
+		"hostname":          input.HostName,
+		"podUnixStartTime":  strconv.FormatInt(input.PodUnixStartTime, 10),
+		"podUnixFinishTime": strconv.FormatInt(input.PodUnixFinishTime, 10),
+	}, nil
+}
 
 // A simple log plugin that supports templates in urls to build the final log link. Supported templates are:
 // {{ .podName }}: Gets the pod name as it shows in k8s dashboard,
@@ -24,52 +67,10 @@ type TemplateLogPlugin struct {
 	messageFormat core.TaskLog_MessageFormat
 }
 
-type regexValPair struct {
-	regex *regexp.Regexp
-	val   string
-}
-
-type templateRegexes struct {
-	PodName           *regexp.Regexp
-	PodUID            *regexp.Regexp
-	Namespace         *regexp.Regexp
-	ContainerName     *regexp.Regexp
-	ContainerID       *regexp.Regexp
-	LogName           *regexp.Regexp
-	Hostname          *regexp.Regexp
-	PodUnixStartTime  *regexp.Regexp
-	PodUnixFinishTime *regexp.Regexp
-}
-
-func mustInitTemplateRegexes() templateRegexes {
-	return templateRegexes{
-		PodName:           mustCreateRegex("podName"),
-		PodUID:            mustCreateRegex("podUID"),
-		Namespace:         mustCreateRegex("namespace"),
-		ContainerName:     mustCreateRegex("containerName"),
-		ContainerID:       mustCreateRegex("containerID"),
-		LogName:           mustCreateRegex("logName"),
-		Hostname:          mustCreateRegex("hostname"),
-		PodUnixStartTime:  mustCreateRegex("podUnixStartTime"),
-		PodUnixFinishTime: mustCreateRegex("podUnixFinishTime"),
-	}
-}
-
-var regexes = mustInitTemplateRegexes()
-
-func mustCreateRegex(varName string) *regexp.Regexp {
-	return regexp.MustCompile(fmt.Sprintf(`(?i){{\s*[\.$]%s\s*}}`, varName))
-}
-
-func replaceAll(template string, values []regexValPair) string {
-	for _, v := range values {
-		template = v.regex.ReplaceAllString(template, v.val)
-	}
-
-	return template
-}
-
-func (s TemplateLogPlugin) GetTaskLog(podName, podUID, namespace, containerName, containerID, logName string, podUnixStartTime, podUnixFinishTime int64) (core.TaskLog, error) {
+func (s TemplateLogPlugin) GetTaskLog(
+	podName, podUID, namespace, containerName, containerID, logName string,
+	podUnixStartTime, podUnixFinishTime int64,
+) (core.TaskLog, error) {
 	o, err := s.GetTaskLogs(Input{
 		LogName:           logName,
 		Namespace:         namespace,
@@ -88,59 +89,28 @@ func (s TemplateLogPlugin) GetTaskLog(podName, podUID, namespace, containerName,
 	return *o.TaskLogs[0], nil
 }
 
-func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
-	// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
-	// stream. Therefore, we must also strip the prefix.
-	containerID := input.ContainerID
-	stripDelimiter := "://"
-	if split := strings.Split(input.ContainerID, stripDelimiter); len(split) > 1 {
-		containerID = split[1]
+func (s TemplateLogPlugin) GetTaskLogs(input Input, p ...TemplateVarsProvider) (Output, error) {
+	var err error
+	templateVars, err := input.ToTemplateVars()
+	if err != nil {
+		return Output{}, err
+	}
+	err = templateVars.MergeProviders(p...)
+	if err != nil {
+		return Output{}, err
 	}
 
 	taskLogs := make([]*core.TaskLog, 0, len(s.templateUris))
 	for _, templateURI := range s.templateUris {
+		var buf bytes.Buffer
+		t := template.Must(template.New("uri").Parse(templateURI))
+		err := t.Execute(&buf, templateVars)
+		if err != nil {
+			return Output{}, err
+		}
+
 		taskLogs = append(taskLogs, &core.TaskLog{
-			Uri: replaceAll(
-				templateURI,
-				[]regexValPair{
-					{
-						regex: regexes.PodName,
-						val:   input.PodName,
-					},
-					{
-						regex: regexes.PodUID,
-						val:   input.PodUID,
-					},
-					{
-						regex: regexes.Namespace,
-						val:   input.Namespace,
-					},
-					{
-						regex: regexes.ContainerName,
-						val:   input.ContainerName,
-					},
-					{
-						regex: regexes.ContainerID,
-						val:   containerID,
-					},
-					{
-						regex: regexes.LogName,
-						val:   input.LogName,
-					},
-					{
-						regex: regexes.Hostname,
-						val:   input.HostName,
-					},
-					{
-						regex: regexes.PodUnixStartTime,
-						val:   strconv.FormatInt(input.PodUnixStartTime, 10),
-					},
-					{
-						regex: regexes.PodUnixFinishTime,
-						val:   strconv.FormatInt(input.PodUnixFinishTime, 10),
-					},
-				},
-			),
+			Uri:           buf.String(),
 			Name:          input.LogName,
 			MessageFormat: s.messageFormat,
 		})
@@ -162,7 +132,10 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 // {{ .hostname }}: The hostname where the pod is running and where logs reside.
 // {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
 // {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
-func NewTemplateLogPlugin(templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
+func NewTemplateLogPlugin(
+	templateUris []string,
+	messageFormat core.TaskLog_MessageFormat,
+) TemplateLogPlugin {
 	return TemplateLogPlugin{
 		templateUris:  templateUris,
 		messageFormat: messageFormat,
