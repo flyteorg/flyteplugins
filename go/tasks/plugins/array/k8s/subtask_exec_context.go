@@ -192,18 +192,18 @@ var logTemplateRegexes = struct {
 func (s SubTaskExecutionID) TemplateVarsByScheme() *tasklog.TemplateVarsByScheme {
 	return &tasklog.TemplateVarsByScheme{
 		TaskExecution: tasklog.TemplateVars{
-			{logTemplateRegexes.ParentName, s.parentName},
+			{Regex: logTemplateRegexes.ParentName, Value: s.parentName},
 			{
-				logTemplateRegexes.ExecutionIndex,
-				strconv.FormatUint(uint64(s.executionIndex), 10),
+				Regex: logTemplateRegexes.ExecutionIndex,
+				Value: strconv.FormatUint(uint64(s.executionIndex), 10),
 			},
 			{
-				logTemplateRegexes.RetryAttempt,
-				strconv.FormatUint(uint64(s.subtaskRetryAttempt), 10),
+				Regex: logTemplateRegexes.RetryAttempt,
+				Value: strconv.FormatUint(s.subtaskRetryAttempt, 10),
 			},
 			{
-				logTemplateRegexes.ParentRetryAttempt,
-				strconv.FormatUint(uint64(s.taskRetryAttempt), 10),
+				Regex: logTemplateRegexes.ParentRetryAttempt,
+				Value: strconv.FormatUint(uint64(s.taskRetryAttempt), 10),
 			},
 		},
 	}

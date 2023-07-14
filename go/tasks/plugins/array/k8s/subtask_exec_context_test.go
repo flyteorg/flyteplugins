@@ -39,10 +39,10 @@ func TestSubTaskExecutionContext(t *testing.T) {
 	assert.Equal(t,
 		&tasklog.TemplateVarsByScheme{
 			TaskExecution: tasklog.TemplateVars{
-				{logTemplateRegexes.ParentName, "notfound"},
-				{logTemplateRegexes.ExecutionIndex, "0"},
-				{logTemplateRegexes.RetryAttempt, "1"},
-				{logTemplateRegexes.ParentRetryAttempt, "0"},
+				{Regex: logTemplateRegexes.ParentName, Value: "notfound"},
+				{Regex: logTemplateRegexes.ExecutionIndex, Value: "0"},
+				{Regex: logTemplateRegexes.RetryAttempt, Value: "1"},
+				{Regex: logTemplateRegexes.ParentRetryAttempt, Value: "0"},
 			},
 		},
 		stCtx.TaskExecutionMetadata().GetTaskExecutionID().(SubTaskExecutionID).TemplateVarsByScheme(),
