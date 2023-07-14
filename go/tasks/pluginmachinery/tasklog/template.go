@@ -215,19 +215,8 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 	return Output{TaskLogs: taskLogs}, nil
 }
 
-// NewTemplateLogPlugin creates a template-based log plugin with the provided template Uri and message format. Supported
-// templates are:
-// {{ .podName }}: Gets the pod name as it shows in k8s dashboard,
-// {{ .podUID }}: Gets the pod UID,
-// {{ .namespace }}: K8s namespace where the pod runs,
-// {{ .containerName }}: The container name that generated the log,
-// {{ .containerId }}: The container id docker/crio generated at run time,
-// {{ .logName }}: A deployment specific name where to expect the logs to be.
-// {{ .hostname }}: The hostname where the pod is running and where logs reside.
-// {{ .PodRFC3339StartTime }}: The pod creation time in RFC3339 format
-// {{ .PodRFC3339FinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
-// {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
-// {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
+// NewTemplateLogPlugin creates a template-based log plugin with the provided template Uri and message format.
+// See `defaultRegexes` for supported templates.
 func NewTemplateLogPlugin(scheme TemplateScheme, templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
 	return TemplateLogPlugin{
 		scheme:        scheme,
