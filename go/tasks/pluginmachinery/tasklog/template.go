@@ -14,12 +14,12 @@ func MustCreateRegex(varName string) *regexp.Regexp {
 }
 
 type templateRegexes struct {
+	LogName              *regexp.Regexp
 	PodName              *regexp.Regexp
 	PodUID               *regexp.Regexp
 	Namespace            *regexp.Regexp
 	ContainerName        *regexp.Regexp
 	ContainerID          *regexp.Regexp
-	LogName              *regexp.Regexp
 	Hostname             *regexp.Regexp
 	PodRFC3339StartTime  *regexp.Regexp
 	PodRFC3339FinishTime *regexp.Regexp
@@ -38,12 +38,12 @@ type templateRegexes struct {
 
 func initDefaultRegexes() templateRegexes {
 	return templateRegexes{
+		MustCreateRegex("logName"),
 		MustCreateRegex("podName"),
 		MustCreateRegex("podUID"),
 		MustCreateRegex("namespace"),
 		MustCreateRegex("containerName"),
 		MustCreateRegex("containerID"),
-		MustCreateRegex("logName"),
 		MustCreateRegex("hostname"),
 		MustCreateRegex("podRFC3339StartTime"),
 		MustCreateRegex("podRFC3339FinishTime"),
@@ -72,92 +72,110 @@ func replaceAll(template string, vars TemplateVars) string {
 	return template
 }
 
-func (input Input) ToTemplateVars() TemplateVars {
-	// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
-	// stream. Therefore, we must also strip the prefix.
-	containerID := input.ContainerID
-	stripDelimiter := "://"
-	if split := strings.Split(input.ContainerID, stripDelimiter); len(split) > 1 {
-		containerID = split[1]
-	}
-
+func (input Input) templateVarsForScheme(scheme string) TemplateVars {
 	vars := TemplateVars{
-		{defaultRegexes.PodName, input.PodName},
-		{defaultRegexes.PodUID, input.PodUID},
-		{defaultRegexes.Namespace, input.Namespace},
-		{defaultRegexes.ContainerName, input.ContainerName},
-		{defaultRegexes.ContainerID, containerID},
 		{defaultRegexes.LogName, input.LogName},
-		{defaultRegexes.Hostname, input.HostName},
-		{defaultRegexes.PodRFC3339StartTime, input.PodRFC3339StartTime},
-		{defaultRegexes.PodRFC3339FinishTime, input.PodRFC3339FinishTime},
-		{
-			defaultRegexes.PodUnixStartTime,
-			strconv.FormatInt(input.PodUnixStartTime, 10),
-		},
-		{
-			defaultRegexes.PodUnixFinishTime,
-			strconv.FormatInt(input.PodUnixFinishTime, 10),
-		},
 	}
 
-	if input.TaskExecutionIdentifier != nil {
-		vars = append(vars, TemplateVar{
-			defaultRegexes.TaskRetryAttempt,
-			strconv.FormatUint(uint64(input.TaskExecutionIdentifier.RetryAttempt), 10),
-		})
-		if input.TaskExecutionIdentifier.TaskId != nil {
-			vars = append(
-				vars,
-				TemplateVar{
-					defaultRegexes.TaskID,
-					input.TaskExecutionIdentifier.TaskId.Name,
-				},
-				TemplateVar{
-					defaultRegexes.TaskVersion,
-					input.TaskExecutionIdentifier.TaskId.Version,
-				},
-				TemplateVar{
-					defaultRegexes.TaskProject,
-					input.TaskExecutionIdentifier.TaskId.Project,
-				},
-				TemplateVar{
-					defaultRegexes.TaskDomain,
-					input.TaskExecutionIdentifier.TaskId.Domain,
-				},
-			)
+	gotExtraTemplateVars := input.ExtraTemplateVarsByScheme != nil
+	if gotExtraTemplateVars {
+		vars = append(vars, input.ExtraTemplateVarsByScheme.Common...)
+	}
+
+	switch scheme {
+	case "PodMetadata":
+		// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
+		// stream. Therefore, we must also strip the prefix.
+		containerID := input.ContainerID
+		stripDelimiter := "://"
+		if split := strings.Split(input.ContainerID, stripDelimiter); len(split) > 1 {
+			containerID = split[1]
 		}
-		if input.TaskExecutionIdentifier.NodeExecutionId != nil {
+		vars = append(
+			vars,
+			TemplateVar{defaultRegexes.PodName, input.PodName},
+			TemplateVar{defaultRegexes.PodUID, input.PodUID},
+			TemplateVar{defaultRegexes.Namespace, input.Namespace},
+			TemplateVar{defaultRegexes.ContainerName, input.ContainerName},
+			TemplateVar{defaultRegexes.ContainerID, containerID},
+			TemplateVar{defaultRegexes.Hostname, input.HostName},
+			TemplateVar{defaultRegexes.PodRFC3339StartTime, input.PodRFC3339StartTime},
+			TemplateVar{defaultRegexes.PodRFC3339FinishTime, input.PodRFC3339FinishTime},
+			TemplateVar{
+				defaultRegexes.PodUnixStartTime,
+				strconv.FormatInt(input.PodUnixStartTime, 10),
+			},
+			TemplateVar{
+				defaultRegexes.PodUnixFinishTime,
+				strconv.FormatInt(input.PodUnixFinishTime, 10),
+			},
+		)
+		if gotExtraTemplateVars {
+			vars = append(vars, input.ExtraTemplateVarsByScheme.PodMetadata...)
+		}
+	case "TaskExecution":
+		if input.TaskExecutionIdentifier != nil {
 			vars = append(vars, TemplateVar{
-				defaultRegexes.NodeID,
-				input.TaskExecutionIdentifier.NodeExecutionId.NodeId,
+				defaultRegexes.TaskRetryAttempt,
+				strconv.FormatUint(uint64(input.TaskExecutionIdentifier.RetryAttempt), 10),
 			})
-			if input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId != nil {
+			if input.TaskExecutionIdentifier.TaskId != nil {
 				vars = append(
 					vars,
 					TemplateVar{
-						defaultRegexes.ExecutionName,
-						input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Name,
+						defaultRegexes.TaskID,
+						input.TaskExecutionIdentifier.TaskId.Name,
 					},
 					TemplateVar{
-						defaultRegexes.ExecutionProject,
-						input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Project,
+						defaultRegexes.TaskVersion,
+						input.TaskExecutionIdentifier.TaskId.Version,
 					},
 					TemplateVar{
-						defaultRegexes.ExecutionDomain,
-						input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Domain,
+						defaultRegexes.TaskProject,
+						input.TaskExecutionIdentifier.TaskId.Project,
+					},
+					TemplateVar{
+						defaultRegexes.TaskDomain,
+						input.TaskExecutionIdentifier.TaskId.Domain,
 					},
 				)
 			}
+			if input.TaskExecutionIdentifier.NodeExecutionId != nil {
+				vars = append(vars, TemplateVar{
+					defaultRegexes.NodeID,
+					input.TaskExecutionIdentifier.NodeExecutionId.NodeId,
+				})
+				if input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId != nil {
+					vars = append(
+						vars,
+						TemplateVar{
+							defaultRegexes.ExecutionName,
+							input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Name,
+						},
+						TemplateVar{
+							defaultRegexes.ExecutionProject,
+							input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Project,
+						},
+						TemplateVar{
+							defaultRegexes.ExecutionDomain,
+							input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Domain,
+						},
+					)
+				}
+			}
+		}
+		if gotExtraTemplateVars {
+			vars = append(vars, input.ExtraTemplateVarsByScheme.TaskExecution...)
 		}
 	}
 
-	return append(vars, input.ExtraTemplateVars...)
+	return vars
 }
 
 // A simple log plugin that supports templates in urls to build the final log link.
 // See `defaultRegexes` for supported templates.
 type TemplateLogPlugin struct {
+	scheme        string
 	templateUris  []string
 	messageFormat core.TaskLog_MessageFormat
 }
@@ -184,7 +202,7 @@ func (s TemplateLogPlugin) GetTaskLog(podName, podUID, namespace, containerName,
 }
 
 func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
-	templateVars := input.ToTemplateVars()
+	templateVars := input.templateVarsForScheme(s.scheme)
 	taskLogs := make([]*core.TaskLog, 0, len(s.templateUris))
 	for _, templateURI := range s.templateUris {
 		taskLogs = append(taskLogs, &core.TaskLog{
@@ -194,9 +212,7 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 		})
 	}
 
-	return Output{
-		TaskLogs: taskLogs,
-	}, nil
+	return Output{TaskLogs: taskLogs}, nil
 }
 
 // NewTemplateLogPlugin creates a template-based log plugin with the provided template Uri and message format. Supported
@@ -212,8 +228,13 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 // {{ .PodRFC3339FinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
 // {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
 // {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
-func NewTemplateLogPlugin(templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
+func NewTemplateLogPlugin(scheme string, templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
+	// Use `PodTemplate` as default scheme for backward compatibility
+	if len(scheme) == 0 {
+		scheme = "PodMetadata"
+	}
 	return TemplateLogPlugin{
+		scheme:        scheme,
 		templateUris:  templateUris,
 		messageFormat: messageFormat,
 	}

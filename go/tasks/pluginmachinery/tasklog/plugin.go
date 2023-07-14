@@ -13,22 +13,28 @@ type TemplateVar struct {
 
 type TemplateVars []TemplateVar
 
+type TemplateVarsByScheme struct {
+	Common        TemplateVars
+	PodMetadata   TemplateVars
+	TaskExecution TemplateVars
+}
+
 // Input contains all available information about task's execution that a log plugin can use to construct task's
 // log links.
 type Input struct {
-	HostName                string
-	PodName                 string
-	Namespace               string
-	ContainerName           string
-	ContainerID             string
-	LogName                 string
-	PodRFC3339StartTime     string
-	PodRFC3339FinishTime    string
-	PodUnixStartTime        int64
-	PodUnixFinishTime       int64
-	PodUID                  string
-	TaskExecutionIdentifier *core.TaskExecutionIdentifier
-	ExtraTemplateVars       TemplateVars
+	HostName                  string
+	PodName                   string
+	Namespace                 string
+	ContainerName             string
+	ContainerID               string
+	LogName                   string
+	PodRFC3339StartTime       string
+	PodRFC3339FinishTime      string
+	PodUnixStartTime          int64
+	PodUnixFinishTime         int64
+	PodUID                    string
+	TaskExecutionIdentifier   *core.TaskExecutionIdentifier
+	ExtraTemplateVarsByScheme *TemplateVarsByScheme
 }
 
 // Output contains all task logs a plugin generates for a given Input.
