@@ -6,15 +6,12 @@ import (
 	"time"
 
 	daskAPI "github.com/dask/dask-kubernetes/v2023/dask_kubernetes/operator/go_client/pkg/apis/kubernetes.dask.org/v1"
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -30,68 +27,13 @@ const (
 	KindDaskJob  = "DaskJob"
 )
 
-type defaults struct {
-	Image              string
-	JobRunnerContainer v1.Container
-	Resources          *v1.ResourceRequirements
-	Env                []v1.EnvVar
-	Annotations        map[string]string
-	IsInterruptible    bool
-}
-
-func getDefaults(ctx context.Context, taskCtx pluginsCore.TaskExecutionContext, taskTemplate core.TaskTemplate) (*defaults, error) {
-	executionMetadata := taskCtx.TaskExecutionMetadata()
-
-	defaultContainerSpec := taskTemplate.GetContainer()
-	if defaultContainerSpec == nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "task is missing a default container")
-	}
-
-	defaultImage := defaultContainerSpec.GetImage()
-	if defaultImage == "" {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "task is missing a default image")
-	}
-
-	var defaultEnvVars []v1.EnvVar
-	if taskTemplate.GetContainer().GetEnv() != nil {
-		for _, keyValuePair := range taskTemplate.GetContainer().GetEnv() {
-			defaultEnvVars = append(defaultEnvVars, v1.EnvVar{Name: keyValuePair.Key, Value: keyValuePair.Value})
+func getPrimaryContainer(spec *v1.PodSpec, primaryContainerName string) *v1.Container {
+	for _, container := range spec.Containers {
+		if container.Name == primaryContainerName {
+			return &container
 		}
 	}
-
-	containerResources, err := flytek8s.ToK8sResourceRequirements(defaultContainerSpec.GetResources())
-	if err != nil {
-		return nil, err
-	}
-
-	jobRunnerContainer := v1.Container{
-		Name:      "job-runner",
-		Image:     defaultImage,
-		Args:      defaultContainerSpec.GetArgs(),
-		Env:       defaultEnvVars,
-		Resources: *containerResources,
-	}
-
-	templateParameters := template.Parameters{
-		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
-		Inputs:           taskCtx.InputReader(),
-		OutputPath:       taskCtx.OutputWriter(),
-		Task:             taskCtx.TaskReader(),
-	}
-	if err = flytek8s.AddFlyteCustomizationsToContainer(ctx, templateParameters,
-		flytek8s.ResourceCustomizationModeMergeExistingResources, &jobRunnerContainer); err != nil {
-
-		return nil, err
-	}
-
-	return &defaults{
-		Image:              defaultImage,
-		JobRunnerContainer: jobRunnerContainer,
-		Resources:          &jobRunnerContainer.Resources,
-		Env:                defaultEnvVars,
-		Annotations:        executionMetadata.GetAnnotations(),
-		IsInterruptible:    executionMetadata.IsInterruptible(),
-	}, nil
+	return nil
 }
 
 type daskResourceHandler struct {
@@ -114,11 +56,6 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	} else if taskTemplate == nil {
 		return nil, errors.Errorf(errors.BadTaskSpecification, "nil task specification")
 	}
-	defaults, err := getDefaults(ctx, taskCtx, *taskTemplate)
-	if err != nil {
-		return nil, err
-	}
-	clusterName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 
 	daskJob := plugins.DaskJob{}
 	err = utils.UnmarshalStruct(taskTemplate.GetCustom(), &daskJob)
@@ -126,38 +63,45 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		return nil, errors.Wrapf(errors.BadTaskSpecification, err, "invalid TaskSpecification [%v], failed to unmarshal", taskTemplate.GetCustom())
 	}
 
-	workerSpec, err := createWorkerSpec(*daskJob.Workers, *defaults)
+	podSpec, objectMeta, primaryContainerName, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
+
+	workerSpec, err := createWorkerSpec(*daskJob.Workers, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, err
 	}
-	schedulerSpec, err := createSchedulerSpec(*daskJob.Scheduler, clusterName, *defaults)
+
+	clusterName := taskCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
+	schedulerSpec, err := createSchedulerSpec(*daskJob.Scheduler, clusterName, podSpec, primaryContainerName)
 	if err != nil {
 		return nil, err
 	}
-	jobSpec := createJobSpec(*workerSpec, *schedulerSpec, *defaults)
+
+	jobSpec := createJobSpec(*workerSpec, *schedulerSpec, podSpec, objectMeta)
 
 	job := &daskAPI.DaskJob{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       KindDaskJob,
 			APIVersion: daskAPI.SchemeGroupVersion.String(),
 		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "will-be-overridden", // Will be overridden by Flyte to `clusterName`
-			Annotations: defaults.Annotations,
-		},
-		Spec: *jobSpec,
+		ObjectMeta: *objectMeta,
+		Spec:       *jobSpec,
 	}
 	return job, nil
 }
 
-func createWorkerSpec(cluster plugins.DaskWorkerGroup, defaults defaults) (*daskAPI.WorkerSpec, error) {
-	image := defaults.Image
+func createWorkerSpec(cluster plugins.DaskWorkerGroup, podSpec *v1.PodSpec, primaryContainerName string) (*daskAPI.WorkerSpec, error) {
+	workerPodSpec := podSpec.DeepCopy()
+	primaryContainer := getPrimaryContainer(workerPodSpec, primaryContainerName)
+	primaryContainer.Name = "dask-worker"
+
+	// Set custom image if present
 	if cluster.GetImage() != "" {
-		image = cluster.GetImage()
+		primaryContainer.Image = cluster.GetImage()
 	}
 
+	// Set custom resources
 	var err error
-	resources := defaults.Resources
+	resources := &primaryContainer.Resources
 	clusterResources := cluster.GetResources()
 	if len(clusterResources.Requests) >= 1 || len(clusterResources.Limits) >= 1 {
 		resources, err = flytek8s.ToK8sResourceRequirements(cluster.GetResources())
@@ -165,16 +109,14 @@ func createWorkerSpec(cluster plugins.DaskWorkerGroup, defaults defaults) (*dask
 			return nil, err
 		}
 	}
-	if resources == nil {
-		resources = &v1.ResourceRequirements{}
-	}
+	primaryContainer.Resources = *resources
 
+	// Set custom args
 	workerArgs := []string{
 		"dask-worker",
 		"--name",
 		"$(DASK_WORKER_NAME)",
 	}
-
 	// If limits are set, append `--nthreads` and `--memory-limit` as per these docs:
 	// https://kubernetes.dask.org/en/latest/kubecluster.html?#best-practices
 	if resources != nil && resources.Limits != nil {
@@ -188,83 +130,63 @@ func createWorkerSpec(cluster plugins.DaskWorkerGroup, defaults defaults) (*dask
 			workerArgs = append(workerArgs, "--memory-limit", memory)
 		}
 	}
-
-	wokerSpec := v1.PodSpec{
-		Affinity: &v1.Affinity{},
-		Containers: []v1.Container{
-			{
-				Name:            "dask-worker",
-				Image:           image,
-				ImagePullPolicy: v1.PullIfNotPresent,
-				Args:            workerArgs,
-				Resources:       *resources,
-				Env:             defaults.Env,
-			},
-		},
-	}
-
-	if defaults.IsInterruptible {
-		wokerSpec.Tolerations = append(wokerSpec.Tolerations, config.GetK8sPluginConfig().InterruptibleTolerations...)
-		wokerSpec.NodeSelector = config.GetK8sPluginConfig().InterruptibleNodeSelector
-	}
-	flytek8s.ApplyInterruptibleNodeSelectorRequirement(defaults.IsInterruptible, wokerSpec.Affinity)
+	primaryContainer.Args = workerArgs
 
 	return &daskAPI.WorkerSpec{
 		Replicas: int(cluster.GetNumberOfWorkers()),
-		Spec:     wokerSpec,
+		Spec:     *workerPodSpec,
 	}, nil
 }
 
-func createSchedulerSpec(cluster plugins.DaskScheduler, clusterName string, defaults defaults) (*daskAPI.SchedulerSpec, error) {
-	schedulerImage := defaults.Image
-	if cluster.GetImage() != "" {
-		schedulerImage = cluster.GetImage()
+func createSchedulerSpec(scheduler plugins.DaskScheduler, clusterName string, podSpec *v1.PodSpec, primaryContainerName string) (*daskAPI.SchedulerSpec, error) {
+	schedulerPodSpec := podSpec.DeepCopy()
+	primaryContainer := getPrimaryContainer(schedulerPodSpec, primaryContainerName)
+	primaryContainer.Name = "scheduler"
+
+	// Override image if applicable
+	if scheduler.GetImage() != "" {
+		primaryContainer.Image = scheduler.GetImage()
 	}
 
+	// Override resources if applicable
 	var err error
-	resources := defaults.Resources
-
-	clusterResources := cluster.GetResources()
-	if len(clusterResources.Requests) >= 1 || len(clusterResources.Limits) >= 1 {
-		resources, err = flytek8s.ToK8sResourceRequirements(cluster.GetResources())
+	resources := &primaryContainer.Resources
+	schedulerResources := scheduler.GetResources()
+	if len(schedulerResources.Requests) >= 1 || len(schedulerResources.Limits) >= 1 {
+		resources, err = flytek8s.ToK8sResourceRequirements(scheduler.GetResources())
 		if err != nil {
 			return nil, err
 		}
 	}
-	if resources == nil {
-		resources = &v1.ResourceRequirements{}
+	primaryContainer.Resources = *resources
+
+	// Override args
+	primaryContainer.Args = []string{"dask-scheduler"}
+
+	// Add ports
+	primaryContainer.Ports = []v1.ContainerPort{
+		{
+			Name:          "tcp-comm",
+			ContainerPort: 8786,
+			Protocol:      "TCP",
+		},
+		{
+			Name:          "dashboard",
+			ContainerPort: 8787,
+			Protocol:      "TCP",
+		},
 	}
 
+	// Set restart policy
+	schedulerPodSpec.RestartPolicy = v1.RestartPolicyAlways
+
 	return &daskAPI.SchedulerSpec{
-		Spec: v1.PodSpec{
-			RestartPolicy: v1.RestartPolicyAlways,
-			Containers: []v1.Container{
-				{
-					Name:      "scheduler",
-					Image:     schedulerImage,
-					Args:      []string{"dask-scheduler"},
-					Resources: *resources,
-					Env:       defaults.Env,
-					Ports: []v1.ContainerPort{
-						{
-							Name:          "tcp-comm",
-							ContainerPort: 8786,
-							Protocol:      "TCP",
-						},
-						{
-							Name:          "dashboard",
-							ContainerPort: 8787,
-							Protocol:      "TCP",
-						},
-					},
-				},
-			},
-		},
+		Spec: *schedulerPodSpec,
 		Service: v1.ServiceSpec{
 			Type: v1.ServiceTypeNodePort,
 			Selector: map[string]string{
-				"dask.org/cluster-name": clusterName,
-				"dask.org/component":    "scheduler",
+				"dask.org/scheduler-name": clusterName,
+				"dask.org/component":      "scheduler",
 			},
 			Ports: []v1.ServicePort{
 				{
@@ -284,20 +206,16 @@ func createSchedulerSpec(cluster plugins.DaskScheduler, clusterName string, defa
 	}, nil
 }
 
-func createJobSpec(workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec, defaults defaults) *daskAPI.DaskJobSpec {
+func createJobSpec(workerSpec daskAPI.WorkerSpec, schedulerSpec daskAPI.SchedulerSpec, podSpec *v1.PodSpec, objectMeta *metav1.ObjectMeta) *daskAPI.DaskJobSpec {
+	jobPodSpec := podSpec.DeepCopy()
+	jobPodSpec.RestartPolicy = v1.RestartPolicyNever
+
 	return &daskAPI.DaskJobSpec{
 		Job: daskAPI.JobSpec{
-			Spec: v1.PodSpec{
-				RestartPolicy: v1.RestartPolicyNever,
-				Containers: []v1.Container{
-					defaults.JobRunnerContainer,
-				},
-			},
+			Spec: *jobPodSpec,
 		},
 		Cluster: daskAPI.DaskCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: defaults.Annotations,
-			},
+			ObjectMeta: *objectMeta,
 			Spec: daskAPI.DaskClusterSpec{
 				Worker:    workerSpec,
 				Scheduler: schedulerSpec,
