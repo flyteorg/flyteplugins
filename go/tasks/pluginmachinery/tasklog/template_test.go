@@ -11,7 +11,7 @@ import (
 )
 
 func TestTemplateLog(t *testing.T) {
-	p := NewTemplateLogPlugin([]string{"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.podUID}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log"}, core.TaskLog_JSON)
+	p := NewTemplateLogPlugin(TemplateSchemePod, []string{"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.podUID}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log"}, core.TaskLog_JSON)
 	tl, err := p.GetTaskLog(
 		"f-uuid-driver",
 		"pod-uid",
@@ -159,6 +159,7 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 
 func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 	type fields struct {
+		scheme        TemplateScheme
 		templateURI   string
 		messageFormat core.TaskLog_MessageFormat
 	}
@@ -266,8 +267,59 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 			false,
 		},
 		{
-			"custom-with-task-execution-identifier",
+			"task-with-task-execution-identifier",
 			fields{
+				scheme:        TemplateSchemeTaskExecution,
+				templateURI:   "https://flyte.corp.net/console/projects/{{ .executionProject }}/domains/{{ .executionDomain }}/executions/{{ .executionName }}/nodeId/{{ .nodeID }}/taskId/{{ .taskID }}/attempt/{{ .taskRetryAttempt }}/view/logs",
+				messageFormat: core.TaskLog_JSON,
+			},
+			args{
+				input: Input{
+					HostName:             "my-host",
+					PodName:              "my-pod",
+					Namespace:            "my-namespace",
+					ContainerName:        "my-container",
+					ContainerID:          "ignore",
+					LogName:              "main_logs",
+					PodRFC3339StartTime:  "1970-01-01T01:02:03+01:00",
+					PodRFC3339FinishTime: "1970-01-01T04:25:45+01:00",
+					PodUnixStartTime:     123,
+					PodUnixFinishTime:    12345,
+					TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
+						TaskId: &core.Identifier{
+							ResourceType: core.ResourceType_TASK,
+							Name:         "my-task-name",
+							Project:      "my-project",
+							Domain:       "my-domain",
+							Version:      "1",
+						},
+						NodeExecutionId: &core.NodeExecutionIdentifier{
+							NodeId: "n0",
+							ExecutionId: &core.WorkflowExecutionIdentifier{
+								Name:    "my-execution-name",
+								Project: "my-project",
+								Domain:  "my-domain",
+							},
+						},
+						RetryAttempt: 0,
+					},
+				},
+			},
+			Output{
+				TaskLogs: []*core.TaskLog{
+					{
+						Uri:           "https://flyte.corp.net/console/projects/my-project/domains/my-domain/executions/my-execution-name/nodeId/n0/taskId/my-task-name/attempt/0/view/logs",
+						MessageFormat: core.TaskLog_JSON,
+						Name:          "main_logs",
+					},
+				},
+			},
+			false,
+		},
+		{
+			"mapped-task-with-task-execution-identifier",
+			fields{
+				scheme:        TemplateSchemeTaskExecution,
 				templateURI:   "https://flyte.corp.net/console/projects/{{ .executionProject }}/domains/{{ .executionDomain }}/executions/{{ .executionName }}/nodeId/{{ .nodeID }}/taskId/{{ .taskID }}/attempt/{{ .subtaskParentRetryAttempt }}/mappedIndex/{{ .subtaskExecutionIndex }}/mappedAttempt/{{ .subtaskRetryAttempt }}/view/logs",
 				messageFormat: core.TaskLog_JSON,
 			},
@@ -301,10 +353,12 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 						},
 						RetryAttempt: 0,
 					},
-					ExtraTemplateVars: TemplateVars{
-						{MustCreateRegex("subtaskExecutionIndex"), "1"},
-						{MustCreateRegex("subtaskRetryAttempt"), "1"},
-						{MustCreateRegex("subtaskParentRetryAttempt"), "0"},
+					ExtraTemplateVarsByScheme: &TemplateVarsByScheme{
+						TaskExecution: TemplateVars{
+							{MustCreateRegex("subtaskExecutionIndex"), "1"},
+							{MustCreateRegex("subtaskRetryAttempt"), "1"},
+							{MustCreateRegex("subtaskParentRetryAttempt"), "0"},
+						},
 					},
 				},
 			},
@@ -323,6 +377,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := TemplateLogPlugin{
+				scheme:        tt.fields.scheme,
 				templateUris:  []string{tt.fields.templateURI},
 				messageFormat: tt.fields.messageFormat,
 			}
