@@ -2,6 +2,7 @@ package tasklog
 
 import (
 	"reflect"
+	"regexp"
 
 	"testing"
 
@@ -34,6 +35,204 @@ func TestTemplateLog(t *testing.T) {
 func Benchmark_initDefaultRegexes(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		initDefaultRegexes()
+	}
+}
+
+func Test_Input_templateVarsForScheme(t *testing.T) {
+	testRegexes := struct {
+		Foo  *regexp.Regexp
+		Bar  *regexp.Regexp
+		Baz  *regexp.Regexp
+		Ham  *regexp.Regexp
+		Spam *regexp.Regexp
+	}{
+		MustCreateRegex("foo"),
+		MustCreateRegex("bar"),
+		MustCreateRegex("baz"),
+		MustCreateRegex("ham"),
+		MustCreateRegex("spam"),
+	}
+	podBase := Input{
+		HostName:             "my-host",
+		PodName:              "my-pod",
+		PodUID:               "my-pod-uid",
+		Namespace:            "my-namespace",
+		ContainerName:        "my-container",
+		ContainerID:          "docker://containerID",
+		LogName:              "main_logs",
+		PodRFC3339StartTime:  "1970-01-01T01:02:03+01:00",
+		PodRFC3339FinishTime: "1970-01-01T04:25:45+01:00",
+		PodUnixStartTime:     123,
+		PodUnixFinishTime:    12345,
+	}
+	taskExecutionBase := Input{
+		LogName: "main_logs",
+		TaskExecutionIdentifier: &core.TaskExecutionIdentifier{
+			TaskId: &core.Identifier{
+				ResourceType: core.ResourceType_TASK,
+				Name:         "my-task-name",
+				Project:      "my-task-project",
+				Domain:       "my-task-domain",
+				Version:      "1",
+			},
+			NodeExecutionId: &core.NodeExecutionIdentifier{
+				NodeId: "n0",
+				ExecutionId: &core.WorkflowExecutionIdentifier{
+					Name:    "my-execution-name",
+					Project: "my-execution-project",
+					Domain:  "my-execution-domain",
+				},
+			},
+			RetryAttempt: 0,
+		},
+	}
+
+	tests := []struct {
+		name        string
+		scheme      TemplateScheme
+		baseVars    Input
+		extraVars   *TemplateVarsByScheme
+		exact       TemplateVars
+		contains    TemplateVars
+		notContains TemplateVars
+	}{
+		{
+			"pod happy path",
+			TemplateSchemePod,
+			podBase,
+			nil,
+			TemplateVars{
+				{defaultRegexes.LogName, "main_logs"},
+				{defaultRegexes.PodName, "my-pod"},
+				{defaultRegexes.PodUID, "my-pod-uid"},
+				{defaultRegexes.Namespace, "my-namespace"},
+				{defaultRegexes.ContainerName, "my-container"},
+				{defaultRegexes.ContainerID, "containerID"},
+				{defaultRegexes.Hostname, "my-host"},
+				{defaultRegexes.PodRFC3339StartTime, "1970-01-01T01:02:03+01:00"},
+				{defaultRegexes.PodRFC3339FinishTime, "1970-01-01T04:25:45+01:00"},
+				{defaultRegexes.PodUnixStartTime, "123"},
+				{defaultRegexes.PodUnixFinishTime, "12345"},
+			},
+			nil,
+			nil,
+		},
+		{
+			"pod with extra vars",
+			TemplateSchemePod,
+			podBase,
+			&TemplateVarsByScheme{
+				Common: TemplateVars{
+					{testRegexes.Foo, "foo"},
+				},
+				Pod: TemplateVars{
+					{testRegexes.Bar, "bar"},
+					{testRegexes.Baz, "baz"},
+				},
+			},
+			nil,
+			TemplateVars{
+				{testRegexes.Foo, "foo"},
+				{testRegexes.Bar, "bar"},
+				{testRegexes.Baz, "baz"},
+			},
+			nil,
+		},
+		{
+			"pod with unused extra vars",
+			TemplateSchemePod,
+			podBase,
+			&TemplateVarsByScheme{
+				TaskExecution: TemplateVars{
+					{testRegexes.Bar, "bar"},
+					{testRegexes.Baz, "baz"},
+				},
+			},
+			nil,
+			nil,
+			TemplateVars{
+				{testRegexes.Bar, "bar"},
+				{testRegexes.Baz, "baz"},
+			},
+		},
+		{
+			"task execution happy path",
+			TemplateSchemeTaskExecution,
+			taskExecutionBase,
+			nil,
+			TemplateVars{
+				{defaultRegexes.LogName, "main_logs"},
+				{defaultRegexes.TaskRetryAttempt, "0"},
+				{defaultRegexes.TaskID, "my-task-name"},
+				{defaultRegexes.TaskVersion, "1"},
+				{defaultRegexes.TaskProject, "my-task-project"},
+				{defaultRegexes.TaskDomain, "my-task-domain"},
+				{defaultRegexes.NodeID, "n0"},
+				{defaultRegexes.ExecutionName, "my-execution-name"},
+				{defaultRegexes.ExecutionProject, "my-execution-project"},
+				{defaultRegexes.ExecutionDomain, "my-execution-domain"},
+			},
+			nil,
+			nil,
+		},
+		{
+			"task execution with extra vars",
+			TemplateSchemeTaskExecution,
+			taskExecutionBase,
+			&TemplateVarsByScheme{
+				Common: TemplateVars{
+					{testRegexes.Foo, "foo"},
+				},
+				TaskExecution: TemplateVars{
+					{testRegexes.Bar, "bar"},
+					{testRegexes.Baz, "baz"},
+				},
+			},
+			nil,
+			TemplateVars{
+				{testRegexes.Foo, "foo"},
+				{testRegexes.Bar, "bar"},
+				{testRegexes.Baz, "baz"},
+			},
+			nil,
+		},
+		{
+			"task execution with unused extra vars",
+			TemplateSchemeTaskExecution,
+			taskExecutionBase,
+			&TemplateVarsByScheme{
+				Pod: TemplateVars{
+					{testRegexes.Bar, "bar"},
+					{testRegexes.Baz, "baz"},
+				},
+			},
+			nil,
+			nil,
+			TemplateVars{
+				{testRegexes.Bar, "bar"},
+				{testRegexes.Baz, "baz"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := tt.baseVars
+			base.ExtraTemplateVarsByScheme = tt.extraVars
+			got := base.templateVarsForScheme(tt.scheme)
+			if tt.exact != nil {
+				assert.Equal(t, got, tt.exact)
+			}
+			if tt.contains != nil {
+				for _, c := range tt.contains {
+					assert.Contains(t, got, c)
+				}
+			}
+			if tt.notContains != nil {
+				for _, c := range tt.notContains {
+					assert.NotContains(t, got, c)
+				}
+			}
+		})
 	}
 }
 
