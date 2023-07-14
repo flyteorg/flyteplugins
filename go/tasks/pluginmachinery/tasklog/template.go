@@ -13,7 +13,7 @@ func MustCreateRegex(varName string) *regexp.Regexp {
 	return regexp.MustCompile(fmt.Sprintf(`(?i){{\s*[\.$]%s\s*}}`, varName))
 }
 
-var defaultRegexes = struct {
+type templateRegexes struct {
 	PodName              *regexp.Regexp
 	PodUID               *regexp.Regexp
 	Namespace            *regexp.Regexp
@@ -34,28 +34,34 @@ var defaultRegexes = struct {
 	ExecutionName        *regexp.Regexp
 	ExecutionProject     *regexp.Regexp
 	ExecutionDomain      *regexp.Regexp
-}{
-	MustCreateRegex("podName"),
-	MustCreateRegex("podUID"),
-	MustCreateRegex("namespace"),
-	MustCreateRegex("containerName"),
-	MustCreateRegex("containerID"),
-	MustCreateRegex("logName"),
-	MustCreateRegex("hostname"),
-	MustCreateRegex("podRFC3339StartTime"),
-	MustCreateRegex("podRFC3339FinishTime"),
-	MustCreateRegex("podUnixStartTime"),
-	MustCreateRegex("podUnixFinishTime"),
-	MustCreateRegex("taskID"),
-	MustCreateRegex("taskVersion"),
-	MustCreateRegex("taskProject"),
-	MustCreateRegex("taskDomain"),
-	MustCreateRegex("taskRetryAttempt"),
-	MustCreateRegex("nodeID"),
-	MustCreateRegex("executionName"),
-	MustCreateRegex("executionProject"),
-	MustCreateRegex("executionDomain"),
 }
+
+func initDefaultRegexes() templateRegexes {
+	return templateRegexes{
+		MustCreateRegex("podName"),
+		MustCreateRegex("podUID"),
+		MustCreateRegex("namespace"),
+		MustCreateRegex("containerName"),
+		MustCreateRegex("containerID"),
+		MustCreateRegex("logName"),
+		MustCreateRegex("hostname"),
+		MustCreateRegex("podRFC3339StartTime"),
+		MustCreateRegex("podRFC3339FinishTime"),
+		MustCreateRegex("podUnixStartTime"),
+		MustCreateRegex("podUnixFinishTime"),
+		MustCreateRegex("taskID"),
+		MustCreateRegex("taskVersion"),
+		MustCreateRegex("taskProject"),
+		MustCreateRegex("taskDomain"),
+		MustCreateRegex("taskRetryAttempt"),
+		MustCreateRegex("nodeID"),
+		MustCreateRegex("executionName"),
+		MustCreateRegex("executionProject"),
+		MustCreateRegex("executionDomain"),
+	}
+}
+
+var defaultRegexes = initDefaultRegexes()
 
 func replaceAll(template string, vars TemplateVars) string {
 	for _, v := range vars {
@@ -76,97 +82,70 @@ func (input Input) ToTemplateVars() TemplateVars {
 	}
 
 	vars := TemplateVars{
+		{defaultRegexes.PodName, input.PodName},
+		{defaultRegexes.PodUID, input.PodUID},
+		{defaultRegexes.Namespace, input.Namespace},
+		{defaultRegexes.ContainerName, input.ContainerName},
+		{defaultRegexes.ContainerID, containerID},
+		{defaultRegexes.LogName, input.LogName},
+		{defaultRegexes.Hostname, input.HostName},
+		{defaultRegexes.PodRFC3339StartTime, input.PodRFC3339StartTime},
+		{defaultRegexes.PodRFC3339FinishTime, input.PodRFC3339FinishTime},
 		{
-			Regex: defaultRegexes.PodName,
-			Value: input.PodName,
+			defaultRegexes.PodUnixStartTime,
+			strconv.FormatInt(input.PodUnixStartTime, 10),
 		},
 		{
-			Regex: defaultRegexes.PodUID,
-			Value: input.PodUID,
-		},
-		{
-			Regex: defaultRegexes.Namespace,
-			Value: input.Namespace,
-		},
-		{
-			Regex: defaultRegexes.ContainerName,
-			Value: input.ContainerName,
-		},
-		{
-			Regex: defaultRegexes.ContainerID,
-			Value: containerID,
-		},
-		{
-			Regex: defaultRegexes.LogName,
-			Value: input.LogName,
-		},
-		{
-			Regex: defaultRegexes.Hostname,
-			Value: input.HostName,
-		},
-		{
-			Regex: defaultRegexes.PodRFC3339StartTime,
-			Value: input.PodRFC3339StartTime,
-		},
-		{
-			Regex: defaultRegexes.PodRFC3339FinishTime,
-			Value: input.PodRFC3339FinishTime,
-		},
-		{
-			Regex: defaultRegexes.PodUnixStartTime,
-			Value: strconv.FormatInt(input.PodUnixStartTime, 10),
-		},
-		{
-			Regex: defaultRegexes.PodUnixFinishTime,
-			Value: strconv.FormatInt(input.PodUnixFinishTime, 10),
+			defaultRegexes.PodUnixFinishTime,
+			strconv.FormatInt(input.PodUnixFinishTime, 10),
 		},
 	}
 
 	if input.TaskExecutionIdentifier != nil {
 		vars = append(vars, TemplateVar{
-			Regex: defaultRegexes.TaskRetryAttempt,
-			Value: strconv.FormatUint(uint64(input.TaskExecutionIdentifier.RetryAttempt), 10),
+			defaultRegexes.TaskRetryAttempt,
+			strconv.FormatUint(uint64(input.TaskExecutionIdentifier.RetryAttempt), 10),
 		})
 		if input.TaskExecutionIdentifier.TaskId != nil {
 			vars = append(
 				vars,
 				TemplateVar{
-					Regex: defaultRegexes.TaskID,
-					Value: input.TaskExecutionIdentifier.TaskId.Name,
+					defaultRegexes.TaskID,
+					input.TaskExecutionIdentifier.TaskId.Name,
 				},
 				TemplateVar{
-					Regex: defaultRegexes.TaskVersion,
-					Value: input.TaskExecutionIdentifier.TaskId.Version,
+					defaultRegexes.TaskVersion,
+					input.TaskExecutionIdentifier.TaskId.Version,
 				},
 				TemplateVar{
-					Regex: defaultRegexes.TaskProject,
-					Value: input.TaskExecutionIdentifier.TaskId.Project,
+					defaultRegexes.TaskProject,
+					input.TaskExecutionIdentifier.TaskId.Project,
 				},
 				TemplateVar{
-					Regex: defaultRegexes.TaskDomain,
-					Value: input.TaskExecutionIdentifier.TaskId.Domain,
+					defaultRegexes.TaskDomain,
+					input.TaskExecutionIdentifier.TaskId.Domain,
 				},
 			)
 		}
 		if input.TaskExecutionIdentifier.NodeExecutionId != nil {
 			vars = append(vars, TemplateVar{
-				Regex: defaultRegexes.NodeID,
-				Value: input.TaskExecutionIdentifier.NodeExecutionId.NodeId,
+				defaultRegexes.NodeID,
+				input.TaskExecutionIdentifier.NodeExecutionId.NodeId,
 			})
 			if input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId != nil {
 				vars = append(
 					vars,
 					TemplateVar{
-						Regex: defaultRegexes.ExecutionName,
-						Value: input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Name,
+						defaultRegexes.ExecutionName,
+						input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Name,
 					},
 					TemplateVar{
-						Regex: defaultRegexes.ExecutionProject,
-						Value: input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Project,
+						defaultRegexes.ExecutionProject,
+						input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Project,
 					},
 					TemplateVar{
-						Regex: defaultRegexes.ExecutionDomain,
-						Value: input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Domain,
+						defaultRegexes.ExecutionDomain,
+						input.TaskExecutionIdentifier.NodeExecutionId.ExecutionId.Domain,
 					},
 				)
 			}
