@@ -6,6 +6,15 @@ import (
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 )
 
+//go:generate enumer --type=TemplateScheme --trimprefix=TemplateScheme -json -yaml
+
+type TemplateScheme int
+
+const (
+	TemplateSchemePod TemplateScheme = iota
+	TemplateSchemeTaskExecution
+)
+
 type TemplateVar struct {
 	Regex *regexp.Regexp
 	Value string
@@ -15,7 +24,7 @@ type TemplateVars []TemplateVar
 
 type TemplateVarsByScheme struct {
 	Common        TemplateVars
-	PodMetadata   TemplateVars
+	Pod           TemplateVars
 	TaskExecution TemplateVars
 }
 

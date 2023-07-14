@@ -72,7 +72,7 @@ func replaceAll(template string, vars TemplateVars) string {
 	return template
 }
 
-func (input Input) templateVarsForScheme(scheme string) TemplateVars {
+func (input Input) templateVarsForScheme(scheme TemplateScheme) TemplateVars {
 	vars := TemplateVars{
 		{defaultRegexes.LogName, input.LogName},
 	}
@@ -83,7 +83,7 @@ func (input Input) templateVarsForScheme(scheme string) TemplateVars {
 	}
 
 	switch scheme {
-	case "PodMetadata":
+	case TemplateSchemePod:
 		// Container IDs are prefixed with docker://, cri-o://, etc. which is stripped by fluentd before pushing to a log
 		// stream. Therefore, we must also strip the prefix.
 		containerID := input.ContainerID
@@ -111,9 +111,9 @@ func (input Input) templateVarsForScheme(scheme string) TemplateVars {
 			},
 		)
 		if gotExtraTemplateVars {
-			vars = append(vars, input.ExtraTemplateVarsByScheme.PodMetadata...)
+			vars = append(vars, input.ExtraTemplateVarsByScheme.Pod...)
 		}
-	case "TaskExecution":
+	case TemplateSchemeTaskExecution:
 		if input.TaskExecutionIdentifier != nil {
 			vars = append(vars, TemplateVar{
 				defaultRegexes.TaskRetryAttempt,
@@ -175,7 +175,7 @@ func (input Input) templateVarsForScheme(scheme string) TemplateVars {
 // A simple log plugin that supports templates in urls to build the final log link.
 // See `defaultRegexes` for supported templates.
 type TemplateLogPlugin struct {
-	scheme        string
+	scheme        TemplateScheme
 	templateUris  []string
 	messageFormat core.TaskLog_MessageFormat
 }
@@ -228,11 +228,7 @@ func (s TemplateLogPlugin) GetTaskLogs(input Input) (Output, error) {
 // {{ .PodRFC3339FinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
 // {{ .podUnixStartTime }}: The pod creation time (in unix seconds, not millis)
 // {{ .podUnixFinishTime }}: Don't have a good mechanism for this yet, but approximating with time.Now for now
-func NewTemplateLogPlugin(scheme string, templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
-	// Use `PodTemplate` as default scheme for backward compatibility
-	if len(scheme) == 0 {
-		scheme = "PodMetadata"
-	}
+func NewTemplateLogPlugin(scheme TemplateScheme, templateUris []string, messageFormat core.TaskLog_MessageFormat) TemplateLogPlugin {
 	return TemplateLogPlugin{
 		scheme:        scheme,
 		templateUris:  templateUris,

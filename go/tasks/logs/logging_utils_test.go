@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/go-test/deep"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -319,7 +320,6 @@ func TestGetLogsForContainerInPod_Templates(t *testing.T) {
 					"https://my-log-server/{{ .namespace }}/{{ .podName }}/{{ .containerName }}/{{ .containerId }}",
 				},
 				MessageFormat: core.TaskLog_JSON,
-				Scheme:        "PodMetadata",
 			},
 			{
 				DisplayName: "Internal",
@@ -327,7 +327,7 @@ func TestGetLogsForContainerInPod_Templates(t *testing.T) {
 					"https://flyte.corp.net/console/projects/{{ .executionProject }}/domains/{{ .executionDomain }}/executions/{{ .executionName }}/nodeId/{{ .nodeID }}/taskId/{{ .taskID }}/attempt/{{ .taskRetryAttempt }}/view/logs",
 				},
 				MessageFormat: core.TaskLog_JSON,
-				Scheme:        "TaskExecution",
+				Scheme:        tasklog.TemplateSchemeTaskExecution,
 			},
 		},
 	}, []*core.TaskLog{

@@ -11,7 +11,7 @@ import (
 )
 
 func TestTemplateLog(t *testing.T) {
-	p := NewTemplateLogPlugin("PodMetadata", []string{"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.podUID}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log"}, core.TaskLog_JSON)
+	p := NewTemplateLogPlugin(TemplateSchemePod, []string{"https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/flyte-production/kubernetes;stream=var.log.containers.{{.podName}}_{{.podUID}}_{{.namespace}}_{{.containerName}}-{{.containerId}}.log"}, core.TaskLog_JSON)
 	tl, err := p.GetTaskLog(
 		"f-uuid-driver",
 		"pod-uid",
@@ -140,7 +140,6 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := TemplateLogPlugin{
-				scheme:        "PodMetadata",
 				templateUris:  []string{tt.fields.templateURI},
 				messageFormat: tt.fields.messageFormat,
 			}
@@ -160,7 +159,7 @@ func Test_templateLogPlugin_Regression(t *testing.T) {
 
 func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 	type fields struct {
-		scheme        string
+		scheme        TemplateScheme
 		templateURI   string
 		messageFormat core.TaskLog_MessageFormat
 	}
@@ -177,7 +176,6 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"splunk",
 			fields{
-				scheme:        "PodMetadata",
 				templateURI:   "https://prd-p-ighar.splunkcloud.com/en-US/app/search/search?q=search%20container_name%3D%22{{ .containerName }}%22",
 				messageFormat: core.TaskLog_JSON,
 			},
@@ -209,7 +207,6 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"ddog",
 			fields{
-				scheme:        "PodMetadata",
 				templateURI:   "https://app.datadoghq.com/logs?event&from_ts={{ .podUnixStartTime }}&live=true&query=pod_name%3A{{ .podName }}&to_ts={{ .podUnixFinishTime }}",
 				messageFormat: core.TaskLog_JSON,
 			},
@@ -241,7 +238,6 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"stackdriver-with-rfc3339-timestamp",
 			fields{
-				scheme:        "PodMetadata",
 				templateURI:   "https://console.cloud.google.com/logs/viewer?project=test-gcp-project&angularJsUrl=%2Flogs%2Fviewer%3Fproject%3Dtest-gcp-project&resource=aws_ec2_instance&advancedFilter=resource.labels.pod_name%3D{{.podName}}%20%22{{.podRFC3339StartTime}}%22",
 				messageFormat: core.TaskLog_JSON,
 			},
@@ -273,7 +269,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"task-with-task-execution-identifier",
 			fields{
-				scheme:        "TaskExecution",
+				scheme:        TemplateSchemeTaskExecution,
 				templateURI:   "https://flyte.corp.net/console/projects/{{ .executionProject }}/domains/{{ .executionDomain }}/executions/{{ .executionName }}/nodeId/{{ .nodeID }}/taskId/{{ .taskID }}/attempt/{{ .taskRetryAttempt }}/view/logs",
 				messageFormat: core.TaskLog_JSON,
 			},
@@ -323,7 +319,7 @@ func TestTemplateLogPlugin_NewTaskLog(t *testing.T) {
 		{
 			"mapped-task-with-task-execution-identifier",
 			fields{
-				scheme:        "TaskExecution",
+				scheme:        TemplateSchemeTaskExecution,
 				templateURI:   "https://flyte.corp.net/console/projects/{{ .executionProject }}/domains/{{ .executionDomain }}/executions/{{ .executionName }}/nodeId/{{ .nodeID }}/taskId/{{ .taskID }}/attempt/{{ .subtaskParentRetryAttempt }}/mappedIndex/{{ .subtaskExecutionIndex }}/mappedAttempt/{{ .subtaskRetryAttempt }}/view/logs",
 				messageFormat: core.TaskLog_JSON,
 			},
