@@ -19,16 +19,16 @@ var dummyTaskExecID = &core.TaskExecutionIdentifier{
 	TaskId: &core.Identifier{
 		ResourceType: core.ResourceType_TASK,
 		Name:         "my-task-name",
-		Project:      "my-project",
-		Domain:       "my-domain",
+		Project:      "my-task-project",
+		Domain:       "my-task-domain",
 		Version:      "1",
 	},
 	NodeExecutionId: &core.NodeExecutionIdentifier{
 		NodeId: "n0",
 		ExecutionId: &core.WorkflowExecutionIdentifier{
 			Name:    "my-execution-name",
-			Project: "my-project",
-			Domain:  "my-domain",
+			Project: "my-execution-project",
+			Domain:  "my-execution-domain",
 		},
 	},
 	RetryAttempt: 1,
@@ -337,7 +337,7 @@ func TestGetLogsForContainerInPod_Templates(t *testing.T) {
 			Name:          "StackDriver my-Suffix",
 		},
 		{
-			Uri:           "https://flyte.corp.net/console/projects/my-project/domains/my-domain/executions/my-execution-name/nodeId/n0/taskId/my-task-name/attempt/1/view/logs",
+			Uri:           "https://flyte.corp.net/console/projects/my-execution-project/domains/my-execution-domain/executions/my-execution-name/nodeId/n0/taskId/my-task-name/attempt/1/view/logs",
 			MessageFormat: core.TaskLog_JSON,
 			Name:          "Internal my-Suffix",
 		},

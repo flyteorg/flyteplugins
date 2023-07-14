@@ -329,15 +329,15 @@ func dummyTaskContext() pluginsCore.TaskExecutionContext {
 		TaskId: &core.Identifier{
 			ResourceType: core.ResourceType_TASK,
 			Name:         "my-task-name",
-			Project:      "my-project",
-			Domain:       "my-domain",
+			Project:      "my-task-project",
+			Domain:       "my-task-domain",
 			Version:      "1",
 		},
 		NodeExecutionId: &core.NodeExecutionIdentifier{
 			ExecutionId: &core.WorkflowExecutionIdentifier{
 				Name:    "my-execution-name",
-				Project: "my-project",
-				Domain:  "my-domain",
+				Project: "my-execution-project",
+				Domain:  "my-execution-domain",
 			},
 		},
 		RetryAttempt: 0,
