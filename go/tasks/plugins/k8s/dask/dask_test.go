@@ -27,9 +27,11 @@ import (
 )
 
 const (
-	defaultTestImage = "image://"
-	testNWorkers     = 10
-	testTaskID       = "some-acceptable-name"
+	defaultTestImage   = "image://"
+	testNWorkers       = 10
+	testTaskID         = "some-acceptable-name"
+	podTemplateName    = "dask-dummy-pod-template-name"
+	serviceAccountName = "dummy-service-account"
 )
 
 var (
@@ -52,6 +54,16 @@ var (
 	defaultResources = v1.ResourceRequirements{
 		Requests: testPlatformResources.Requests,
 		Limits:   testPlatformResources.Requests,
+	}
+	podTemplate = &v1.PodTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: podTemplateName,
+		},
+		Template: v1.PodTemplateSpec{
+			Spec: v1.PodSpec{
+				ServiceAccountName: serviceAccountName,
+			},
+		},
 	}
 )
 
@@ -90,7 +102,7 @@ func dummpyDaskCustomObj(customImage string, resources *core.Resources) *plugins
 	return &daskJob
 }
 
-func dummyDaskTaskTemplate(customImage string, resources *core.Resources) *core.TaskTemplate {
+func dummyDaskTaskTemplate(customImage string, resources *core.Resources, podTemplateName string) *core.TaskTemplate {
 	// In a real usecase, resources will always be filled, but might be empty
 	if resources == nil {
 		resources = &core.Resources{
@@ -114,9 +126,13 @@ func dummyDaskTaskTemplate(customImage string, resources *core.Resources) *core.
 	for _, envVar := range testEnvVars {
 		envVars = append(envVars, &core.KeyValuePair{Key: envVar.Name, Value: envVar.Value})
 	}
+	metadata := &core.TaskMetadata{
+		PodTemplateName: podTemplateName,
+	}
 	return &core.TaskTemplate{
-		Id:   &core.Identifier{Name: "test-build-resource"},
-		Type: daskTaskType,
+		Id:       &core.Identifier{Name: "test-build-resource"},
+		Type:     daskTaskType,
+		Metadata: metadata,
 		Target: &core.TaskTemplate_Container{
 			Container: &core.Container{
 				Image: defaultTestImage,
@@ -179,7 +195,7 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 func TestBuildResourceDaskHappyPath(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 
-	taskTemplate := dummyDaskTaskTemplate("", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -287,7 +303,7 @@ func TestBuildResourceDaskCustomImages(t *testing.T) {
 	customImage := "customImage"
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate(customImage, nil)
+	taskTemplate := dummyDaskTaskTemplate(customImage, nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -320,7 +336,7 @@ func TestBuildResourceDaskDefaultResoureRequirements(t *testing.T) {
 	}
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -377,7 +393,7 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 	}
 
 	daskResourceHandler := daskResourceHandler{}
-	taskTemplate := dummyDaskTaskTemplate("", &protobufResources)
+	taskTemplate := dummyDaskTaskTemplate("", &protobufResources, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &flyteWorkflowResources, false)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -432,7 +448,7 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 
 	daskResourceHandler := daskResourceHandler{}
 
-	taskTemplate := dummyDaskTaskTemplate("", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, nil, true)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
@@ -446,7 +462,7 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 	assert.Equal(t, defaultNodeSelector, jobSpec.NodeSelector)
 	assert.Equal(t, defaultAffinity, jobSpec.Affinity)
 
-	// Scheduler - should not bt interruptible
+	// Scheduler - should not be interruptible
 	schedulerSpec := daskJob.Spec.Cluster.Spec.Scheduler.Spec
 	assert.Equal(t, defaultTolerations, schedulerSpec.Tolerations)
 	assert.Equal(t, defaultNodeSelector, schedulerSpec.NodeSelector)
@@ -461,6 +477,26 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 		workerSpec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0],
 		*interruptibleNodeSelectorRequirement,
 	)
+}
+
+func TestBuildResouceDaskUsePodTemplate(t *testing.T) {
+	flytek8s.DefaultPodTemplateStore.Store(podTemplate)
+	daskResourceHandler := daskResourceHandler{}
+	taskTemplate := dummyDaskTaskTemplate("", nil, podTemplateName)
+	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
+	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
+	assert.Nil(t, err)
+	assert.NotNil(t, r)
+	daskJob, ok := r.(*daskAPI.DaskJob)
+	assert.True(t, ok)
+
+	// The job template has a custom service account set. This should be passed on to all three components
+	assert.Equal(t, serviceAccountName, daskJob.Spec.Job.Spec.ServiceAccountName)
+	assert.Equal(t, serviceAccountName, daskJob.Spec.Cluster.Spec.Scheduler.Spec.ServiceAccountName)
+	assert.Equal(t, serviceAccountName, daskJob.Spec.Cluster.Spec.Worker.Spec.ServiceAccountName)
+
+	// Cleanup
+	flytek8s.DefaultPodTemplateStore.Delete(podTemplate)
 }
 
 func TestGetPropertiesDask(t *testing.T) {
@@ -478,7 +514,7 @@ func TestBuildIdentityResourceDask(t *testing.T) {
 		},
 	}
 
-	taskTemplate := dummyDaskTaskTemplate("", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil, "")
 	taskContext := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 	identityResources, err := daskResourceHandler.BuildIdentityResource(context.TODO(), taskContext.TaskExecutionMetadata())
 	if err != nil {
