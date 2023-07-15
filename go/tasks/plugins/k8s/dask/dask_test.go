@@ -27,11 +27,11 @@ import (
 )
 
 const (
-	defaultTestImage   = "image://"
-	testNWorkers       = 10
-	testTaskID         = "some-acceptable-name"
-	podTemplateName    = "dask-dummy-pod-template-name"
-	serviceAccountName = "dummy-service-account"
+	defaultTestImage           = "image://"
+	testNWorkers               = 10
+	testTaskID                 = "some-acceptable-name"
+	podTemplateName            = "dask-dummy-pod-template-name"
+	templateServiceAccountName = "template-service-account"
 )
 
 var (
@@ -61,7 +61,7 @@ var (
 		},
 		Template: v1.PodTemplateSpec{
 			Spec: v1.PodSpec{
-				ServiceAccountName: serviceAccountName,
+				ServiceAccountName: templateServiceAccountName,
 			},
 		},
 	}
@@ -491,9 +491,9 @@ func TestBuildResouceDaskUsePodTemplate(t *testing.T) {
 	assert.True(t, ok)
 
 	// The job template has a custom service account set. This should be passed on to all three components
-	assert.Equal(t, serviceAccountName, daskJob.Spec.Job.Spec.ServiceAccountName)
-	assert.Equal(t, serviceAccountName, daskJob.Spec.Cluster.Spec.Scheduler.Spec.ServiceAccountName)
-	assert.Equal(t, serviceAccountName, daskJob.Spec.Cluster.Spec.Worker.Spec.ServiceAccountName)
+	assert.Equal(t, templateServiceAccountName, daskJob.Spec.Job.Spec.ServiceAccountName)
+	assert.Equal(t, templateServiceAccountName, daskJob.Spec.Cluster.Spec.Scheduler.Spec.ServiceAccountName)
+	assert.Equal(t, templateServiceAccountName, daskJob.Spec.Cluster.Spec.Worker.Spec.ServiceAccountName)
 
 	// Cleanup
 	flytek8s.DefaultPodTemplateStore.Delete(podTemplate)
