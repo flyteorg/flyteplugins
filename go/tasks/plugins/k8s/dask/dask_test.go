@@ -27,11 +27,13 @@ import (
 )
 
 const (
-	defaultTestImage           = "image://"
-	testNWorkers               = 10
-	testTaskID                 = "some-acceptable-name"
-	podTemplateName            = "dask-dummy-pod-template-name"
-	templateServiceAccountName = "template-service-account"
+	defaultTestImage             = "image://"
+	testNWorkers                 = 10
+	testTaskID                   = "some-acceptable-name"
+	podTemplateName              = "dask-dummy-pod-template-name"
+	defaultServiceAccountName    = "default-service-account"
+	defaultNamespace             = "default-namespace"
+	podTempaltePriorityClassName = "pod-template-priority-class-name"
 )
 
 var (
@@ -61,7 +63,7 @@ var (
 		},
 		Template: v1.PodTemplateSpec{
 			Spec: v1.PodSpec{
-				ServiceAccountName: templateServiceAccountName,
+				PriorityClassName: podTempaltePriorityClassName,
 			},
 		},
 	}
@@ -71,7 +73,7 @@ func dummyDaskJob(status daskAPI.JobStatus) *daskAPI.DaskJob {
 	return &daskAPI.DaskJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dask-job-name",
-			Namespace: "dask-namespace",
+			Namespace: defaultNamespace,
 		},
 		Status: daskAPI.DaskJobStatus{
 			ClusterName:      "dask-cluster-name",
@@ -122,7 +124,7 @@ func dummyDaskTaskTemplate(customImage string, resources *core.Resources, podTem
 	if err != nil {
 		panic(err)
 	}
-	envVars := []*core.KeyValuePair{}
+	var envVars []*core.KeyValuePair
 	for _, envVar := range testEnvVars {
 		envVars = append(envVars, &core.KeyValuePair{Key: envVar.Name, Value: envVar.Value})
 	}
@@ -185,6 +187,8 @@ func dummyDaskTaskContext(taskTemplate *core.TaskTemplate, resources *v1.Resourc
 	taskExecutionMetadata.OnGetMaxAttempts().Return(uint32(1))
 	taskExecutionMetadata.OnIsInterruptible().Return(isInterruptible)
 	taskExecutionMetadata.OnGetEnvironmentVariables().Return(nil)
+	taskExecutionMetadata.OnGetK8sServiceAccount().Return(defaultServiceAccountName)
+	taskExecutionMetadata.OnGetNamespace().Return(defaultNamespace)
 	overrides := &mocks.TaskOverrides{}
 	overrides.OnGetResources().Return(resources)
 	taskExecutionMetadata.OnGetOverrides().Return(overrides)
@@ -196,7 +200,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 
 	taskTemplate := dummyDaskTaskTemplate("", nil, "")
-	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
+	taskContext := dummyDaskTaskContext(taskTemplate, &defaultResources, false)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, r)
@@ -204,9 +208,8 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.True(t, ok)
 
 	var defaultTolerations []v1.Toleration
-	var defaultNodeSelector map[string]string
-	var defaultAffinity *v1.Affinity
-	defaultWorkerAffinity := v1.Affinity{
+	defaultNodeSelector := map[string]string{}
+	defaultAffinity := &v1.Affinity{
 		NodeAffinity:    nil,
 		PodAffinity:     nil,
 		PodAntiAffinity: nil,
@@ -249,7 +252,8 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	assert.Equal(t, defaultResources, schedulerSpec.Containers[0].Resources)
 	assert.Equal(t, []string{"dask-scheduler"}, schedulerSpec.Containers[0].Args)
 	assert.Equal(t, expectedPorts, schedulerSpec.Containers[0].Ports)
-	assert.Equal(t, testEnvVars, schedulerSpec.Containers[0].Env)
+	// Flyte adds more environment variables to the scheduler
+	assert.Contains(t, schedulerSpec.Containers[0].Env, testEnvVars[0])
 	assert.Equal(t, defaultTolerations, schedulerSpec.Tolerations)
 	assert.Equal(t, defaultNodeSelector, schedulerSpec.NodeSelector)
 	assert.Equal(t, defaultAffinity, schedulerSpec.Affinity)
@@ -281,13 +285,13 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 	workerSpec := daskJob.Spec.Cluster.Spec.Worker.Spec
 	assert.Equal(t, testNWorkers, daskJob.Spec.Cluster.Spec.Worker.Replicas)
 	assert.Equal(t, "dask-worker", workerSpec.Containers[0].Name)
-	assert.Equal(t, v1.PullIfNotPresent, workerSpec.Containers[0].ImagePullPolicy)
 	assert.Equal(t, defaultTestImage, workerSpec.Containers[0].Image)
 	assert.Equal(t, defaultResources, workerSpec.Containers[0].Resources)
-	assert.Equal(t, testEnvVars, workerSpec.Containers[0].Env)
+	// Flyte adds more environment variables to the worker
+	assert.Contains(t, workerSpec.Containers[0].Env, testEnvVars[0])
 	assert.Equal(t, defaultTolerations, workerSpec.Tolerations)
 	assert.Equal(t, defaultNodeSelector, workerSpec.NodeSelector)
-	assert.Equal(t, &defaultWorkerAffinity, workerSpec.Affinity)
+	assert.Equal(t, defaultAffinity, workerSpec.Affinity)
 	assert.Equal(t, []string{
 		"dask-worker",
 		"--name",
@@ -419,9 +423,19 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 }
 
 func TestBuildResourceDaskInterruptible(t *testing.T) {
-	var defaultNodeSelector map[string]string
-	var defaultAffinity *v1.Affinity
-	var defaultTolerations []v1.Toleration
+	defaultNodeSelector := map[string]string{}
+	defaultAffinity := v1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+				NodeSelectorTerms: []v1.NodeSelectorTerm{
+					{
+						MatchExpressions: []v1.NodeSelectorRequirement{},
+					},
+				},
+			},
+		},
+	}
+	defaultTolerations := []v1.Toleration{}
 
 	interruptibleNodeSelector := map[string]string{
 		"x/interruptible": "true",
@@ -449,7 +463,7 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 
 	taskTemplate := dummyDaskTaskTemplate("", nil, "")
-	taskContext := dummyDaskTaskContext(taskTemplate, nil, true)
+	taskContext := dummyDaskTaskContext(taskTemplate, &defaultResources, true)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, r)
@@ -460,13 +474,13 @@ func TestBuildResourceDaskInterruptible(t *testing.T) {
 	jobSpec := daskJob.Spec.Job.Spec
 	assert.Equal(t, defaultTolerations, jobSpec.Tolerations)
 	assert.Equal(t, defaultNodeSelector, jobSpec.NodeSelector)
-	assert.Equal(t, defaultAffinity, jobSpec.Affinity)
+	assert.Equal(t, &defaultAffinity, jobSpec.Affinity)
 
 	// Scheduler - should not be interruptible
 	schedulerSpec := daskJob.Spec.Cluster.Spec.Scheduler.Spec
 	assert.Equal(t, defaultTolerations, schedulerSpec.Tolerations)
 	assert.Equal(t, defaultNodeSelector, schedulerSpec.NodeSelector)
-	assert.Equal(t, defaultAffinity, schedulerSpec.Affinity)
+	assert.Equal(t, &defaultAffinity, schedulerSpec.Affinity)
 
 	// Default Workers - Should be interruptible
 	workerSpec := daskJob.Spec.Cluster.Spec.Worker.Spec
@@ -483,17 +497,16 @@ func TestBuildResouceDaskUsePodTemplate(t *testing.T) {
 	flytek8s.DefaultPodTemplateStore.Store(podTemplate)
 	daskResourceHandler := daskResourceHandler{}
 	taskTemplate := dummyDaskTaskTemplate("", nil, podTemplateName)
-	taskContext := dummyDaskTaskContext(taskTemplate, nil, false)
+	taskContext := dummyDaskTaskContext(taskTemplate, &defaultResources, false)
 	r, err := daskResourceHandler.BuildResource(context.TODO(), taskContext)
 	assert.Nil(t, err)
 	assert.NotNil(t, r)
 	daskJob, ok := r.(*daskAPI.DaskJob)
 	assert.True(t, ok)
 
-	// The job template has a custom service account set. This should be passed on to all three components
-	assert.Equal(t, templateServiceAccountName, daskJob.Spec.Job.Spec.ServiceAccountName)
-	assert.Equal(t, templateServiceAccountName, daskJob.Spec.Cluster.Spec.Scheduler.Spec.ServiceAccountName)
-	assert.Equal(t, templateServiceAccountName, daskJob.Spec.Cluster.Spec.Worker.Spec.ServiceAccountName)
+	assert.Equal(t, podTempaltePriorityClassName, daskJob.Spec.Job.Spec.PriorityClassName)
+	assert.Equal(t, podTempaltePriorityClassName, daskJob.Spec.Cluster.Spec.Scheduler.Spec.PriorityClassName)
+	assert.Equal(t, podTempaltePriorityClassName, daskJob.Spec.Cluster.Spec.Worker.Spec.PriorityClassName)
 
 	// Cleanup
 	flytek8s.DefaultPodTemplateStore.Delete(podTemplate)
