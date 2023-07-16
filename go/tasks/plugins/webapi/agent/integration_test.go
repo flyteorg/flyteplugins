@@ -55,11 +55,11 @@ func (m *MockClient) DeleteTask(_ context.Context, _ *admin.DeleteTaskRequest, _
 	return &admin.DeleteTaskResponse{}, nil
 }
 
-func mockGetClientFunc(_ context.Context, _ GrpcEndpoint, _ map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
+func mockGetClientFunc(_ context.Context, _ *GrpcEndpoint, _ map[*GrpcEndpoint]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
 	return &MockClient{}, nil
 }
 
-func mockGetBadClientFunc(_ context.Context, _ GrpcEndpoint, _ map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
+func mockGetBadClientFunc(_ context.Context, _ *GrpcEndpoint, _ map[*GrpcEndpoint]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
 	return nil, fmt.Errorf("error")
 }
 

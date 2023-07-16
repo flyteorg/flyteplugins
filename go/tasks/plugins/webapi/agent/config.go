@@ -58,10 +58,14 @@ type Config struct {
 	// ResourceConstraints defines resource constraints on how many executions to be created per project/overall at any given time
 	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 
+	// The default grpc endpoint if there does not exist a more specific matching against task types
 	DefaultGrpcEndpoint GrpcEndpoint `json:"defaultGrpcEndpoint" pflag:",The default grpc endpoint of agent service."`
 
+	// The grpc endpoints of agent services, which are used to match against specific task types
+	GrpcEndpoints map[string]*GrpcEndpoint `json:"grpcEndpoints" pflag:",The grpc endpoints of agent services."`
+
 	// Maps endpoint to their plugin handler. {TaskType: Endpoint}
-	EndpointForTaskTypes map[string]GrpcEndpoint `json:"endpointForTaskTypes" pflag:"-,"`
+	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`
 
 	// SupportedTaskTypes is a list of task types that are supported by this plugin.
 	SupportedTaskTypes []string `json:"supportedTaskTypes" pflag:"-,Defines a list of task types that are supported by this plugin."`
