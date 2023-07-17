@@ -185,6 +185,9 @@ func createWorkerSpec(cluster plugins.DaskWorkerGroup, podSpec *v1.PodSpec, prim
 			return nil, err
 		}
 	}
+	if resources == nil {
+		resources = &v1.ResourceRequirements{}
+	}
 	primaryContainer.Resources = *resources
 
 	// Set custom args
@@ -195,7 +198,7 @@ func createWorkerSpec(cluster plugins.DaskWorkerGroup, podSpec *v1.PodSpec, prim
 	}
 	// If limits are set, append `--nthreads` and `--memory-limit` as per these docs:
 	// https://kubernetes.dask.org/en/latest/kubecluster.html?#best-practices
-	if resources != nil && resources.Limits != nil {
+	if resources.Limits != nil {
 		limits := resources.Limits
 		if limits.Cpu() != nil {
 			cpuCount := fmt.Sprintf("%v", limits.Cpu().Value())
