@@ -39,7 +39,7 @@ var (
 				Value: 50,
 			},
 		},
-		DefaultGrpcEndpoint: GrpcEndpoint{
+		DefaultAgent: Agent{
 			Endpoint:       "dns:///flyte-agent.flyte.svc.cluster.local:80",
 			Insecure:       true,
 			DefaultTimeout: config.Duration{Duration: 10 * time.Second},
@@ -58,21 +58,21 @@ type Config struct {
 	// ResourceConstraints defines resource constraints on how many executions to be created per project/overall at any given time
 	ResourceConstraints core.ResourceConstraintsSpec `json:"resourceConstraints" pflag:"-,Defines resource constraints on how many executions to be created per project/overall at any given time."`
 
-	// The default grpc endpoint if there does not exist a more specific matching against task types
-	DefaultGrpcEndpoint GrpcEndpoint `json:"defaultGrpcEndpoint" pflag:",The default grpc endpoint of agent service."`
+	// The default agent if there does not exist a more specific matching against task types
+	DefaultAgent Agent `json:"defaultAgent" pflag:",The default agent."`
 
-	// The grpc endpoints of agent services, which are used to match against specific task types
-	GrpcEndpoints map[string]*GrpcEndpoint `json:"grpcEndpoints" pflag:",The grpc endpoints of agent services."`
+	// The agents used to match against specific task types. {AgentId: Agent}
+	Agents map[string]*Agent `json:"agents" pflag:",The agents."`
 
-	// Maps endpoint to their plugin handler. {TaskType: Endpoint}
-	EndpointForTaskTypes map[string]string `json:"endpointForTaskTypes" pflag:"-,"`
+	// Maps task types to their agents. {TaskType: AgentId}
+	AgentForTaskTypes map[string]string `json:"agentForTaskTypes" pflag:"-,"`
 
 	// SupportedTaskTypes is a list of task types that are supported by this plugin.
 	SupportedTaskTypes []string `json:"supportedTaskTypes" pflag:"-,Defines a list of task types that are supported by this plugin."`
 }
 
-type GrpcEndpoint struct {
-	// Endpoint points to a gRPC service
+type Agent struct {
+	// Endpoint points to an agent gRPC endpoint
 	Endpoint string `json:"endpoint"`
 
 	// Insecure indicates whether the communication with the gRPC service is insecure

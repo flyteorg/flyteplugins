@@ -22,9 +22,9 @@ func TestPlugin(t *testing.T) {
 	cfg := defaultConfig
 	cfg.WebAPI.Caching.Workers = 1
 	cfg.WebAPI.Caching.ResyncInterval.Duration = 5 * time.Second
-	cfg.DefaultGrpcEndpoint = GrpcEndpoint{Endpoint: "test-agent.flyte.svc.cluster.local:80"}
-	cfg.GrpcEndpoints = map[string]*GrpcEndpoint{"spark_agent": {Endpoint: "localhost:80"}}
-	cfg.EndpointForTaskTypes = map[string]string{"spark": "spark_agent", "bar": "bar_agent"}
+	cfg.DefaultAgent = Agent{Endpoint: "test-agent.flyte.svc.cluster.local:80"}
+	cfg.Agents = map[string]*Agent{"spark_agent": {Endpoint: "localhost:80"}}
+	cfg.AgentForTaskTypes = map[string]string{"spark": "spark_agent", "bar": "bar_agent"}
 
 	plugin := Plugin{
 		metricScope: fakeSetupContext.MetricsScope(),
@@ -51,28 +51,28 @@ func TestPlugin(t *testing.T) {
 
 	t.Run("test getFinalEndpoint", func(t *testing.T) {
 		endpoint, _ := getFinalEndpoint("spark", &cfg)
-		assert.Equal(t, cfg.GrpcEndpoints["spark_agent"].Endpoint, endpoint.Endpoint)
+		assert.Equal(t, cfg.Agents["spark_agent"].Endpoint, endpoint.Endpoint)
 		endpoint, _ = getFinalEndpoint("foo", &cfg)
-		assert.Equal(t, cfg.DefaultGrpcEndpoint.Endpoint, endpoint.Endpoint)
+		assert.Equal(t, cfg.DefaultAgent.Endpoint, endpoint.Endpoint)
 		_, err := getFinalEndpoint("bar", &cfg)
 		assert.NotNil(t, err)
 	})
 
 	t.Run("test getClientFunc", func(t *testing.T) {
-		client, err := getClientFunc(context.Background(), &GrpcEndpoint{Endpoint: "localhost:80"}, map[*GrpcEndpoint]*grpc.ClientConn{})
+		client, err := getClientFunc(context.Background(), &Agent{Endpoint: "localhost:80"}, map[*Agent]*grpc.ClientConn{})
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
 
 	t.Run("test getClientFunc more config", func(t *testing.T) {
-		client, err := getClientFunc(context.Background(), &GrpcEndpoint{Endpoint: "localhost:80", Insecure: true, DefaultServiceConfig: "{\"loadBalancingConfig\": [{\"round_robin\":{}}]}"}, map[*GrpcEndpoint]*grpc.ClientConn{})
+		client, err := getClientFunc(context.Background(), &Agent{Endpoint: "localhost:80", Insecure: true, DefaultServiceConfig: "{\"loadBalancingConfig\": [{\"round_robin\":{}}]}"}, map[*Agent]*grpc.ClientConn{})
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
 
 	t.Run("test getClientFunc cache hit", func(t *testing.T) {
-		connectionCache := make(map[*GrpcEndpoint]*grpc.ClientConn)
-		endpoint := &GrpcEndpoint{Endpoint: "localhost:80", Insecure: true, DefaultServiceConfig: "{\"loadBalancingConfig\": [{\"round_robin\":{}}]}"}
+		connectionCache := make(map[*Agent]*grpc.ClientConn)
+		endpoint := &Agent{Endpoint: "localhost:80", Insecure: true, DefaultServiceConfig: "{\"loadBalancingConfig\": [{\"round_robin\":{}}]}"}
 
 		client, err := getClientFunc(context.Background(), endpoint, connectionCache)
 		assert.NoError(t, err)
@@ -86,17 +86,17 @@ func TestPlugin(t *testing.T) {
 	})
 
 	t.Run("test getFinalTimeout", func(t *testing.T) {
-		timeout := getFinalTimeout("CreateTask", &GrpcEndpoint{Endpoint: "localhost:8080", Timeouts: map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}}})
+		timeout := getFinalTimeout("CreateTask", &Agent{Endpoint: "localhost:8080", Timeouts: map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}}})
 		assert.Equal(t, 1*time.Millisecond, timeout.Duration)
-		timeout = getFinalTimeout("DeleteTask", &GrpcEndpoint{Endpoint: "localhost:8080", DefaultTimeout: config.Duration{Duration: 10 * time.Second}})
+		timeout = getFinalTimeout("DeleteTask", &Agent{Endpoint: "localhost:8080", DefaultTimeout: config.Duration{Duration: 10 * time.Second}})
 		assert.Equal(t, 10*time.Second, timeout.Duration)
 	})
 
 	t.Run("test getFinalContext", func(t *testing.T) {
-		ctx, _ := getFinalContext(context.TODO(), "DeleteTask", &GrpcEndpoint{})
+		ctx, _ := getFinalContext(context.TODO(), "DeleteTask", &Agent{})
 		assert.Equal(t, context.TODO(), ctx)
 
-		ctx, _ = getFinalContext(context.TODO(), "CreateTask", &GrpcEndpoint{Endpoint: "localhost:8080", Timeouts: map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}}})
+		ctx, _ = getFinalContext(context.TODO(), "CreateTask", &Agent{Endpoint: "localhost:8080", Timeouts: map[string]config.Duration{"CreateTask": {Duration: 1 * time.Millisecond}}})
 		assert.NotEqual(t, context.TODO(), ctx)
 	})
 }

@@ -13,9 +13,9 @@ func TestGetAndSetConfig(t *testing.T) {
 	cfg := defaultConfig
 	cfg.WebAPI.Caching.Workers = 1
 	cfg.WebAPI.Caching.ResyncInterval.Duration = 5 * time.Second
-	cfg.DefaultGrpcEndpoint.Insecure = false
-	cfg.DefaultGrpcEndpoint.DefaultServiceConfig = "{\"loadBalancingConfig\": [{\"round_robin\":{}}]}"
-	cfg.DefaultGrpcEndpoint.Timeouts = map[string]config.Duration{
+	cfg.DefaultAgent.Insecure = false
+	cfg.DefaultAgent.DefaultServiceConfig = "{\"loadBalancingConfig\": [{\"round_robin\":{}}]}"
+	cfg.DefaultAgent.Timeouts = map[string]config.Duration{
 		"CreateTask": {
 			Duration: 1 * time.Millisecond,
 		},
@@ -26,15 +26,15 @@ func TestGetAndSetConfig(t *testing.T) {
 			Duration: 3 * time.Millisecond,
 		},
 	}
-	cfg.DefaultGrpcEndpoint.DefaultTimeout = config.Duration{Duration: 10 * time.Second}
-	cfg.GrpcEndpoints = map[string]*GrpcEndpoint{
+	cfg.DefaultAgent.DefaultTimeout = config.Duration{Duration: 10 * time.Second}
+	cfg.Agents = map[string]*Agent{
 		"endpoint_1": {
-			Insecure:             cfg.DefaultGrpcEndpoint.Insecure,
-			DefaultServiceConfig: cfg.DefaultGrpcEndpoint.DefaultServiceConfig,
-			Timeouts:             cfg.DefaultGrpcEndpoint.Timeouts,
+			Insecure:             cfg.DefaultAgent.Insecure,
+			DefaultServiceConfig: cfg.DefaultAgent.DefaultServiceConfig,
+			Timeouts:             cfg.DefaultAgent.Timeouts,
 		},
 	}
-	cfg.EndpointForTaskTypes = map[string]string{"task_type_1": "endpoint_1"}
+	cfg.AgentForTaskTypes = map[string]string{"task_type_1": "endpoint_1"}
 	err := SetConfig(&cfg)
 	assert.NoError(t, err)
 	assert.Equal(t, &cfg, GetConfig())

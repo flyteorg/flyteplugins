@@ -25,13 +25,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GetClientFunc func(ctx context.Context, endpoint *GrpcEndpoint, connectionCache map[*GrpcEndpoint]*grpc.ClientConn) (service.AsyncAgentServiceClient, error)
+type GetClientFunc func(ctx context.Context, endpoint *Agent, connectionCache map[*Agent]*grpc.ClientConn) (service.AsyncAgentServiceClient, error)
 
 type Plugin struct {
 	metricScope     promutils.Scope
 	cfg             *Config
 	getClient       GetClientFunc
-	connectionCache map[*GrpcEndpoint]*grpc.ClientConn
+	connectionCache map[*Agent]*grpc.ClientConn
 }
 
 type ResourceWrapper struct {
@@ -167,18 +167,18 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(pluginsCore.SystemErrorCode, "unknown execution phase [%v].", resource.State)
 }
 
-func getFinalEndpoint(taskType string, cfg *Config) (*GrpcEndpoint, error) {
-	if id, exists := cfg.EndpointForTaskTypes[taskType]; exists {
-		if endpoint, exists := cfg.GrpcEndpoints[id]; exists {
+func getFinalEndpoint(taskType string, cfg *Config) (*Agent, error) {
+	if id, exists := cfg.AgentForTaskTypes[taskType]; exists {
+		if endpoint, exists := cfg.Agents[id]; exists {
 			return endpoint, nil
 		}
 		return nil, fmt.Errorf("no endpoint definition found for ID %s that matches task type %s", id, taskType)
 	}
 
-	return &cfg.DefaultGrpcEndpoint, nil
+	return &cfg.DefaultAgent, nil
 }
 
-func getClientFunc(ctx context.Context, endpoint *GrpcEndpoint, connectionCache map[*GrpcEndpoint]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
+func getClientFunc(ctx context.Context, endpoint *Agent, connectionCache map[*Agent]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
 	conn, ok := connectionCache[endpoint]
 	if ok {
 		return service.NewAsyncAgentServiceClient(conn), nil
@@ -237,7 +237,7 @@ func buildTaskExecutionMetadata(taskExecutionMetadata pluginsCore.TaskExecutionM
 	}
 }
 
-func getFinalTimeout(operation string, endpoint *GrpcEndpoint) config.Duration {
+func getFinalTimeout(operation string, endpoint *Agent) config.Duration {
 	if t, exists := endpoint.Timeouts[operation]; exists {
 		return t
 	}
@@ -245,7 +245,7 @@ func getFinalTimeout(operation string, endpoint *GrpcEndpoint) config.Duration {
 	return endpoint.DefaultTimeout
 }
 
-func getFinalContext(ctx context.Context, operation string, endpoint *GrpcEndpoint) (context.Context, context.CancelFunc) {
+func getFinalContext(ctx context.Context, operation string, endpoint *Agent) (context.Context, context.CancelFunc) {
 	timeout := getFinalTimeout(operation, endpoint).Duration
 	if timeout == 0 {
 		return ctx, func() {}
@@ -264,7 +264,7 @@ func newAgentPlugin() webapi.PluginEntry {
 				metricScope:     iCtx.MetricsScope(),
 				cfg:             GetConfig(),
 				getClient:       getClientFunc,
-				connectionCache: make(map[*GrpcEndpoint]*grpc.ClientConn),
+				connectionCache: make(map[*Agent]*grpc.ClientConn),
 			}, nil
 		},
 	}
