@@ -32,6 +32,25 @@ var (
 			},
 		},
 	}
+	nilUnionLiteral = &core.Literal{
+		Value: &core.Literal_Scalar{
+			Scalar: &core.Scalar{
+				Value: &core.Scalar_Union{
+					Union: &core.Union{
+						Value: nilLiteral,
+						Type: &core.LiteralType{
+							Type: &core.LiteralType_Simple{
+								Simple: core.SimpleType_NONE,
+							},
+							Structure: &core.TypeStructure{
+								Tag: "none",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 )
 
 // Represents an indexed work queue that aggregates outputs of sub tasks.
@@ -46,6 +65,7 @@ func (o OutputAssembler) Queue(ctx context.Context, id workqueue.WorkItemID, ite
 type outputAssembleItem struct {
 	outputPaths    io.OutputFilePaths
 	varNames       []string
+	isVarUnion     []bool
 	finalPhases    bitarray.CompactArray
 	dataStore      *storage.DataStore
 	isAwsSingleJob bool
@@ -102,7 +122,7 @@ func (w assembleOutputsWorker) Process(ctx context.Context, workItem workqueue.W
 
 		// TODO: Do we need the names of the outputs in the literalMap here?
 		if !i.isAwsSingleJob {
-			appendEmptyOutputs(finalOutputs, i.varNames)
+			appendEmptyOutputs(finalOutputs, i.varNames, i.isVarUnion)
 		}
 	}
 
@@ -143,9 +163,13 @@ func appendSubTaskOutput(outputs *core.LiteralMap, subTaskOutput *core.LiteralMa
 	}
 }
 
-func appendEmptyOutputs(outputs *core.LiteralMap, vars []string) {
-	for _, varName := range vars {
-		appendOneItem(outputs, varName, nilLiteral, 1)
+func appendEmptyOutputs(outputs *core.LiteralMap, vars []string, isVarUnion []bool) {
+	for i, varName := range vars {
+		appendNilLiteral := nilLiteral
+		if isVarUnion[i] {
+			appendNilLiteral = nilUnionLiteral
+		}
+		appendOneItem(outputs, varName, appendNilLiteral, 1)
 	}
 }
 
@@ -199,8 +223,15 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 			state.GetOriginalArraySize(), state.GetArrayStatus().Detailed.ItemsCount)
 
 		varNames := make([]string, 0, len(outputVariables.GetVariables()))
-		for varName := range outputVariables.GetVariables() {
+		isVarUnion := make([]bool, 0, len(outputVariables.GetVariables()))
+		for varName, variable := range outputVariables.GetVariables() {
 			varNames = append(varNames, varName)
+
+			isUnion := false
+			if collectionType, ok := variable.Type.Type.(*core.LiteralType_CollectionType); ok {
+				_, isUnion = collectionType.CollectionType.Type.(*core.LiteralType_UnionType)
+			}
+			isVarUnion = append(isVarUnion, isUnion)
 		}
 
 		finalPhases := buildFinalPhases(state.GetArrayStatus().Detailed,
@@ -208,6 +239,7 @@ func AssembleFinalOutputs(ctx context.Context, assemblyQueue OutputAssembler, tC
 
 		err = assemblyQueue.Queue(ctx, workItemID, &outputAssembleItem{
 			varNames:       varNames,
+			isVarUnion:     isVarUnion,
 			finalPhases:    finalPhases,
 			outputPaths:    tCtx.OutputWriter(),
 			dataStore:      tCtx.DataStore(),
