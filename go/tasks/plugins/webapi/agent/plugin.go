@@ -102,7 +102,8 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if taskCtx.ResourceMeta() == nil {
 		return nil, pluginErrors.Errorf(pluginErrors.MetadataAccessFailed, "resource meta is nil")
 	}
-	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
+	logger.Infof(ctx, "kevin taskCtx.ResourceMeta [%v]", taskCtx.ResourceMeta())
+	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
 
 	agent, err := getFinalAgent(metadata.TaskType, p.cfg)
 	if err != nil {
