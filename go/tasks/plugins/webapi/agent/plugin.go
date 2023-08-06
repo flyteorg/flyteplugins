@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 
@@ -67,6 +68,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
 	endpoint := getFinalEndpoint(taskTemplate.Type, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
+
 	client, err := p.getClient(ctx, endpoint, p.connectionCache)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to agent with error: %v", err)
@@ -87,6 +89,7 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
+	logger.Infof(ctx, "kevin is getting task status for task")
 	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 
 	endpoint := getFinalEndpoint(metadata.TaskType, p.cfg.DefaultGrpcEndpoint, p.cfg.EndpointForTaskTypes)
@@ -94,7 +97,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to agent with error: %v", err)
 	}
-
+	logger.Infof(ctx, "kevin client is getting task status for task")
 	res, err := client.GetTask(ctx, &admin.GetTaskRequest{TaskType: metadata.TaskType, ResourceMeta: metadata.AgentResourceMeta})
 	if err != nil {
 		return nil, err
