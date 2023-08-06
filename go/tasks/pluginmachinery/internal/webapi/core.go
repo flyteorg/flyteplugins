@@ -90,6 +90,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	}
 
 	if err != nil {
+		logger.Errorf(ctx, "failed to handle resource [%v]. Error: %v", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), err)
 		return core.UnknownTransition, err
 	}
 
