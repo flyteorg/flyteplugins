@@ -99,6 +99,9 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
 	logger.Infof(ctx, "kevin is getting task status for task")
+	if taskCtx.ResourceMeta() == nil {
+		return nil, pluginErrors.Errorf(pluginErrors.MetadataAccessFailed, "resource meta is nil")
+	}
 	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 
 	agent, err := getFinalAgent(metadata.TaskType, p.cfg)
