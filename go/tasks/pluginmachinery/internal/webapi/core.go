@@ -95,6 +95,7 @@ func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) 
 	}
 
 	if err := tCtx.PluginStateWriter().Put(pluginStateVersion, nextState); err != nil {
+		logger.Errorf(ctx, "failed to write plugin state for resource [%v]. Error: %v", tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetID(), err)
 		return core.UnknownTransition, err
 	}
 
