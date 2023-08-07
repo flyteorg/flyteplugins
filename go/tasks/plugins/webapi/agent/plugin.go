@@ -103,7 +103,7 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 		return nil, pluginErrors.Errorf(pluginErrors.MetadataAccessFailed, "resource meta is nil")
 	}
 	logger.Infof(ctx, "kevin taskCtx.ResourceMeta [%v]", taskCtx.ResourceMeta())
-	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
+	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 
 	agent, err := getFinalAgent(metadata.TaskType, p.cfg)
 	if err != nil {
@@ -132,7 +132,7 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 	if taskCtx.ResourceMeta() == nil {
 		return nil
 	}
-	metadata := taskCtx.ResourceMeta().(ResourceMetaWrapper)
+	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 
 	agent, err := getFinalAgent(metadata.TaskType, p.cfg)
 	if err != nil {
