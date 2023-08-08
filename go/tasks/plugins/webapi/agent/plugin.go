@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/config"
@@ -67,7 +68,19 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	if err != nil {
 		return nil, nil, err
 	}
-
+	templateParameters := template.Parameters{
+		TaskExecMetadata: taskCtx.TaskExecutionMetadata(),
+		Inputs:           taskCtx.InputReader(),
+		OutputPath:       taskCtx.OutputWriter(),
+		Task:             taskCtx.TaskReader(),
+	}
+	if taskTemplate.GetContainer() != nil {
+		modifiedArgs, err := template.Render(ctx, taskTemplate.GetContainer().Args, templateParameters)
+		if err != nil {
+			return nil, nil, err
+		}
+		taskTemplate.GetContainer().Args = modifiedArgs
+	}
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
 	agent, err := getFinalAgent(taskTemplate.Type, p.cfg)
