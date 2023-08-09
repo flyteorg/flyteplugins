@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/utils/strings/slices"
-
 	flyteIdlCore "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	pluginCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	pluginCoreMocks "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
@@ -32,6 +30,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/utils/strings/slices"
 )
 
 type MockPlugin struct {
