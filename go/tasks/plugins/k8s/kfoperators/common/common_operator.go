@@ -60,6 +60,7 @@ func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.Jo
 				return jc, nil
 			}
 		}
+		return commonOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
 	}
 	return commonOp.JobCondition{}, nil
 }
