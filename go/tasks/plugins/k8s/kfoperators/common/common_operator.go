@@ -43,6 +43,7 @@ func ExtractMPICurrentCondition(jobConditions []commonOp.JobCondition) (commonOp
 				return jc, nil
 			}
 		}
+		return commonOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
 	}
 
 	return commonOp.JobCondition{}, nil
