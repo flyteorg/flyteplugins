@@ -18,30 +18,6 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestExtractMPICurrentCondition(t *testing.T) {
-	jobCreated := commonOp.JobCondition{
-		Type:   commonOp.JobCreated,
-		Status: corev1.ConditionTrue,
-	}
-	jobRunningActive := commonOp.JobCondition{
-		Type:   commonOp.JobRunning,
-		Status: corev1.ConditionFalse,
-	}
-	jobConditions := []commonOp.JobCondition{
-		jobCreated,
-		jobRunningActive,
-	}
-	currentCondition, err := ExtractMPICurrentCondition(jobConditions)
-	assert.NoError(t, err)
-	assert.Equal(t, currentCondition, jobCreated)
-
-	jobConditions = nil
-	currentCondition, err = ExtractMPICurrentCondition(jobConditions)
-	assert.Error(t, err)
-	assert.Equal(t, currentCondition, commonOp.JobCondition{})
-	assert.Equal(t, err, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions))
-}
-
 func TestExtractCurrentCondition(t *testing.T) {
 	jobCreated := commonOp.JobCondition{
 		Type:   commonOp.JobCreated,
@@ -60,6 +36,16 @@ func TestExtractCurrentCondition(t *testing.T) {
 	assert.Equal(t, currentCondition, jobCreated)
 
 	jobConditions = nil
+	currentCondition, err = ExtractCurrentCondition(jobConditions)
+	assert.Equal(t, currentCondition, commonOp.JobCondition{})
+
+	jobCreating := commonOp.JobCondition{}
+	jobConditions = []commonOp.JobCondition{jobCreating}
+	currentCondition, err = ExtractCurrentCondition(jobConditions)
+	assert.Equal(t, currentCondition, commonOp.JobCondition{})
+
+	jobUnknown := commonOp.JobCondition{Type: "unknown"}
+	jobConditions = []commonOp.JobCondition{jobUnknown}
 	currentCondition, err = ExtractCurrentCondition(jobConditions)
 	assert.Error(t, err)
 	assert.Equal(t, currentCondition, commonOp.JobCondition{})

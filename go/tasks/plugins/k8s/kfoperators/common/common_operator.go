@@ -31,24 +31,6 @@ type ReplicaEntry struct {
 	RestartPolicy commonOp.RestartPolicy
 }
 
-// ExtractMPICurrentCondition will return the first job condition for MPI
-func ExtractMPICurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
-	if jobConditions != nil {
-		sort.Slice(jobConditions, func(i, j int) bool {
-			return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
-		})
-
-		for _, jc := range jobConditions {
-			if jc.Status == v1.ConditionTrue {
-				return jc, nil
-			}
-		}
-		return commonOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
-	}
-
-	return commonOp.JobCondition{}, nil
-}
-
 // ExtractCurrentCondition will return the first job condition for tensorflow/pytorch
 func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
 	if jobConditions != nil {

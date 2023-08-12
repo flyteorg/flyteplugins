@@ -209,7 +209,7 @@ func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext 
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
-	currentCondition, err := common.ExtractMPICurrentCondition(app.Status.Conditions)
+	currentCondition, err := common.ExtractCurrentCondition(app.Status.Conditions)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
@@ -223,7 +223,6 @@ func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext 
 	}
 
 	return common.GetMPIPhaseInfo(currentCondition, occurredAt, taskPhaseInfo)
-
 }
 
 func init() {
