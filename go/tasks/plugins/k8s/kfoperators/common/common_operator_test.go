@@ -67,10 +67,17 @@ func TestExtractCurrentCondition(t *testing.T) {
 }
 
 func TestGetPhaseInfo(t *testing.T) {
+	jobCreating := commonOp.JobCondition{}
+	taskPhase, err := GetPhaseInfo(jobCreating, time.Now(), pluginsCore.TaskInfo{})
+	assert.NoError(t, err)
+	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, err)
+
 	jobCreated := commonOp.JobCondition{
 		Type: commonOp.JobCreated,
 	}
-	taskPhase, err := GetPhaseInfo(jobCreated, time.Now(), pluginsCore.TaskInfo{})
+	taskPhase, err = GetPhaseInfo(jobCreated, time.Now(), pluginsCore.TaskInfo{})
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
