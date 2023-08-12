@@ -37,11 +37,11 @@ func TestExtractCurrentCondition(t *testing.T) {
 
 	jobConditions = nil
 	currentCondition, err = ExtractCurrentCondition(jobConditions)
+	assert.NoError(t, err)
 	assert.Equal(t, currentCondition, commonOp.JobCondition{})
 
-	jobCreating := commonOp.JobCondition{}
-	jobConditions = []commonOp.JobCondition{jobCreating}
-	currentCondition, err = ExtractCurrentCondition(jobConditions)
+	currentCondition, err = ExtractCurrentCondition(nil)
+	assert.NoError(t, err)
 	assert.Equal(t, currentCondition, commonOp.JobCondition{})
 
 	jobUnknown := commonOp.JobCondition{Type: "unknown"}
