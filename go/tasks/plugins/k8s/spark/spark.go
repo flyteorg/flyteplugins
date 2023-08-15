@@ -414,8 +414,12 @@ func getEventInfoForSpark(pluginContext k8s.PluginContext, sj *sparkOp.SparkAppl
 		}
 	} else if sj.Status.AppState.State == sparkOp.RunningState && sj.Status.DriverInfo.WebUIIngressAddress != "" {
 		// Older versions of spark-operator does not append http:// but newer versions do.
-		uri := strings.TrimPrefix(sj.Status.DriverInfo.WebUIIngressAddress, "http://")
-		customInfoMap[sparkDriverUI] = fmt.Sprintf("https://%s", uri)
+		uri := sj.Status.DriverInfo.WebUIIngressAddress
+		if !strings.HasPrefix(uri, "https://") && !strings.HasPrefix(uri, "http://") {
+			uri = fmt.Sprintf("https://%s", uri)
+		}
+		customInfoMap[sparkDriverUI] = uri
+
 		// Custom doesn't work unless the UI has a custom plugin to parse this, hence add to Logs as well.
 		taskLogs = append(taskLogs, &core.TaskLog{
 			Uri:           customInfoMap[sparkDriverUI],

@@ -33,7 +33,7 @@ import (
 const sparkMainClass = "MainClass"
 const sparkApplicationFile = "local:///spark_app.py"
 const testImage = "image://"
-const sparkUIAddress = "http://spark-ui.flyte"
+const sparkUIAddress = "https://spark-ui.flyte"
 
 var (
 	dummySparkConf = map[string]string{
