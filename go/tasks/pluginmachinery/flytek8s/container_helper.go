@@ -3,8 +3,6 @@ package flytek8s
 import (
 	"context"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
-
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginscore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
@@ -194,12 +192,26 @@ func ApplyResourceOverrides(resources, platformResources v1.ResourceRequirements
 	return resources
 }
 
-// BuildRawContainer constructs a Container based on the definition passed by the taskContainer and
-// TaskExecutionMetadata.
-func BuildRawContainer(ctx context.Context, taskContainer *core.Container, taskExecMetadata pluginscore.TaskExecutionMetadata) (*v1.Container, error) {
+// BuildRawContainer constructs a Container based on the definition passed by the TaskExecutionContext.
+func BuildRawContainer(ctx context.Context, tCtx pluginscore.TaskExecutionContext) (*v1.Container, error) {
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	if err != nil {
+		logger.Warnf(ctx, "failed to read task information when trying to construct container, err: %s", err.Error())
+		return nil, err
+	}
+
+	// validate arguments
+	taskContainer := taskTemplate.GetContainer()
+	if taskContainer == nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "unable to create container with no definition in TaskTemplate")
+	}
+	if tCtx.TaskExecutionMetadata().GetOverrides() == nil || tCtx.TaskExecutionMetadata().GetOverrides().GetResources() == nil {
+		return nil, errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
+	}
+
 	// Make the container name the same as the pod name, unless it violates K8s naming conventions
 	// Container names are subject to the DNS-1123 standard
-	containerName := taskExecMetadata.GetTaskExecutionID().GetGeneratedName()
+	containerName := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	if errs := validation.IsDNS1123Label(containerName); len(errs) > 0 {
 		containerName = rand.String(4)
 	}
@@ -225,22 +237,8 @@ func BuildRawContainer(ctx context.Context, taskContainer *core.Container, taskE
 // ToK8sContainer builds a Container based on the definition passed by the TaskExecutionContext. This involves applying
 // all Flyte configuration including k8s plugins and resource requests.
 func ToK8sContainer(ctx context.Context, tCtx pluginscore.TaskExecutionContext) (*v1.Container, error) {
-	taskTemplate, err := tCtx.TaskReader().Read(ctx)
-	if err != nil {
-		logger.Warnf(ctx, "failed to read task information when trying to construct container, err: %s", err.Error())
-		return nil, err
-	}
-
-	// validate arguments
-	if taskTemplate.GetContainer() == nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "unable to create container with no definition in TaskTemplate")
-	}
-	if tCtx.TaskExecutionMetadata().GetOverrides() == nil || tCtx.TaskExecutionMetadata().GetOverrides().GetResources() == nil {
-		return nil, errors.Errorf(errors.BadTaskSpecification, "resource requirements not found for container task, required!")
-	}
-
 	// build raw container
-	container, err := BuildRawContainer(ctx, taskTemplate.GetContainer(), tCtx.TaskExecutionMetadata())
+	container, err := BuildRawContainer(ctx, tCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -296,29 +294,41 @@ func AddFlyteCustomizationsToContainer(ctx context.Context, parameters template.
 	}
 	container.Args = modifiedArgs
 
-	container.Env = DecorateEnvVars(ctx, container.Env, parameters.TaskExecMetadata.GetTaskExecutionID())
+	container.Env = DecorateEnvVars(ctx, container.Env, parameters.TaskExecMetadata.GetEnvironmentVariables(), parameters.TaskExecMetadata.GetTaskExecutionID())
 
-	if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
-		res := parameters.TaskExecMetadata.GetOverrides().GetResources()
-		platformResources := parameters.TaskExecMetadata.GetPlatformResources()
-		if platformResources == nil {
-			platformResources = &v1.ResourceRequirements{}
-		}
-
-		logger.Infof(ctx, "ApplyResourceOverrides with Resources [%v], Platform Resources [%v] and Container"+
-			" Resources [%v] with mode [%v]", res, platformResources, container.Resources, mode)
-
-		switch mode {
-		case ResourceCustomizationModeAssignResources:
-			container.Resources = ApplyResourceOverrides(*res, *platformResources, assignIfUnset)
-		case ResourceCustomizationModeMergeExistingResources:
-			MergeResources(*res, &container.Resources)
-			container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, assignIfUnset)
-		case ResourceCustomizationModeEnsureExistingResourcesInRange:
-			container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, !assignIfUnset)
-		}
-
-		logger.Infof(ctx, "Adjusted container resources [%v]", container.Resources)
+	// retrieve platformResources and overrideResources to use when aggregating container resources
+	platformResources := parameters.TaskExecMetadata.GetPlatformResources()
+	if platformResources == nil {
+		platformResources = &v1.ResourceRequirements{}
 	}
+
+	var overrideResources *v1.ResourceRequirements
+	if parameters.TaskExecMetadata.GetOverrides() != nil && parameters.TaskExecMetadata.GetOverrides().GetResources() != nil {
+		overrideResources = parameters.TaskExecMetadata.GetOverrides().GetResources()
+	}
+	if overrideResources == nil {
+		overrideResources = &v1.ResourceRequirements{}
+	}
+
+	logger.Infof(ctx, "ApplyResourceOverrides with Resources [%v], Platform Resources [%v] and Container"+
+		" Resources [%v] with mode [%v]", overrideResources, platformResources, container.Resources, mode)
+
+	switch mode {
+	case ResourceCustomizationModeAssignResources:
+		// this will use overrideResources to set container resources and fallback to the platformResource values.
+		// it is important to note that this ignores the existing container.Resources values.
+		container.Resources = ApplyResourceOverrides(*overrideResources, *platformResources, assignIfUnset)
+	case ResourceCustomizationModeMergeExistingResources:
+		// this merges the overrideResources on top of the existing container.Resources to apply the overrides, then it
+		// uses the platformResource values to set defaults for any missing resource.
+		MergeResources(*overrideResources, &container.Resources)
+		container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, assignIfUnset)
+	case ResourceCustomizationModeEnsureExistingResourcesInRange:
+		// this use the platformResources defaults to ensure that the container.Resources values are within the
+		// platformResources limits. it will not override any existing container.Resources values.
+		container.Resources = ApplyResourceOverrides(container.Resources, *platformResources, !assignIfUnset)
+	}
+
+	logger.Infof(ctx, "Adjusted container resources [%v]", container.Resources)
 	return nil
 }
