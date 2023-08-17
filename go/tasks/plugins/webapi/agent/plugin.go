@@ -5,6 +5,8 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
+	"github.com/flyteorg/flytestdlib/logger"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/config"
@@ -169,11 +171,17 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	case admin.State_RETRYABLE_FAILURE:
 		return core.PhaseInfoRetryableFailure(pluginErrors.TaskFailedWithError, "failed to run the job", taskInfo), nil
 	case admin.State_SUCCEEDED:
+		var opReader io.OutputReader
 		if resource.Outputs != nil {
-			err := taskCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil))
-			if err != nil {
-				return core.PhaseInfoUndefined, err
-			}
+			logger.Infof(ctx, "Agent returned an output")
+			opReader = ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil)
+		} else {
+			logger.Infof(ctx, "Agent didn't return any output, assuming file based outputs.")
+			opReader = ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
+		}
+		err := taskCtx.OutputWriter().Put(ctx, opReader)
+		if err != nil {
+			return core.PhaseInfoUndefined, err
 		}
 		return core.PhaseInfoSuccess(taskInfo), nil
 	}
