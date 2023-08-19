@@ -6,11 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
-	"github.com/flyteorg/flytestdlib/logger"
-
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
-	"github.com/flyteorg/flytestdlib/config"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -22,8 +18,11 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/webapi"
+	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/logger"
 	"github.com/flyteorg/flytestdlib/promutils"
 	"google.golang.org/grpc"
 )

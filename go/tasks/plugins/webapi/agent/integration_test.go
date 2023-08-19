@@ -118,7 +118,7 @@ func TestEndToEnd(t *testing.T) {
 		assert.Equal(t, true, phase.Phase().IsSuccess())
 	})
 
-	t.Run("run a job that doesn't produce any output", func(t *testing.T) {
+	t.Run("run a job that produces file output", func(t *testing.T) {
 		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockAgentPlugin())
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test1"))
 		assert.NoError(t, err)
