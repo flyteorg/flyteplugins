@@ -6,12 +6,11 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-
 	"google.golang.org/grpc/grpclog"
 
+	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	flyteIdl "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/service"
 	pluginErrors "github.com/flyteorg/flyteplugins/go/tasks/errors"
