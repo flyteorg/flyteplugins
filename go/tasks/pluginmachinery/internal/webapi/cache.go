@@ -79,11 +79,8 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 			resource.GetID())
 
 		if cacheItem.State.Phase.IsTerminal() {
-			logger.Infof(ctx, "Sync loop - resource cache key [%v] in terminal state [%s]",
+			logger.Debugf(ctx, "Sync loop - resource cache key [%v] in terminal state [%s]",
 				resource.GetID())
-
-			logger.Infof(ctx, "phase [%v]", cacheItem.Phase)
-			logger.Infof(ctx, "phase [%v]", resource.GetItem().(CacheItem).Phase)
 			resp = append(resp, cache.ItemSyncResponse{
 				ID:     resource.GetID(),
 				Item:   cacheItem,
