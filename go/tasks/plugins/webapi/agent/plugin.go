@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"fmt"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/io"
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -171,21 +172,36 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	case admin.State_RETRYABLE_FAILURE:
 		return core.PhaseInfoRetryableFailure(pluginErrors.TaskFailedWithError, "failed to run the job", taskInfo), nil
 	case admin.State_SUCCEEDED:
-		var opReader io.OutputReader
-		if resource.Outputs != nil {
-			logger.Infof(ctx, "Agent returned an output")
-			opReader = ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil)
-		} else {
-			logger.Infof(ctx, "Agent didn't return any output, assuming file based outputs.")
-			opReader = ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
-		}
-		err := taskCtx.OutputWriter().Put(ctx, opReader)
+		err = writeOutput(ctx, taskCtx, resource)
 		if err != nil {
+			logger.Errorf(ctx, "Failed to write output with err %s", err.Error())
 			return core.PhaseInfoUndefined, err
 		}
 		return core.PhaseInfoSuccess(taskInfo), nil
 	}
 	return core.PhaseInfoUndefined, pluginErrors.Errorf(core.SystemErrorCode, "unknown execution phase [%v].", resource.State)
+}
+
+func writeOutput(ctx context.Context, taskCtx webapi.StatusContext, resource *ResourceWrapper) error {
+	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
+	if err != nil {
+		return err
+	}
+
+	if taskTemplate.Interface == nil || taskTemplate.Interface.Outputs == nil || taskTemplate.Interface.Outputs.Variables == nil {
+		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
+		return nil
+	}
+
+	var opReader io.OutputReader
+	if resource.Outputs != nil {
+		logger.Infof(ctx, "Agent returned an output")
+		opReader = ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil)
+	} else {
+		logger.Infof(ctx, "Agent didn't return any output, assuming file based outputs.")
+		opReader = ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
+	}
+	return taskCtx.OutputWriter().Put(ctx, opReader)
 }
 
 func getFinalAgent(taskType string, cfg *Config) (*Agent, error) {
