@@ -108,9 +108,9 @@ func TestEndToEnd(t *testing.T) {
 		},
 	}
 	basePrefix := storage.DataReference("fake://bucket/prefix/")
-	pluginEntry := pluginmachinery.CreateRemotePlugin(newMockAgentPlugin())
 
 	t.Run("run a job", func(t *testing.T) {
+		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockAgentPlugin())
 		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test1"))
 		assert.NoError(t, err)
 
@@ -119,7 +119,8 @@ func TestEndToEnd(t *testing.T) {
 	})
 
 	t.Run("run a job that produces file output", func(t *testing.T) {
-		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test1"))
+		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockAgentPlugin())
+		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test2"))
 		assert.NoError(t, err)
 
 		template.Type = "spark_job"
