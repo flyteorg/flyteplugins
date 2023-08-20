@@ -116,16 +116,11 @@ func TestEndToEnd(t *testing.T) {
 
 		phase := tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)
 		assert.Equal(t, true, phase.Phase().IsSuccess())
-	})
-
-	t.Run("run a job that produces file output", func(t *testing.T) {
-		pluginEntry := pluginmachinery.CreateRemotePlugin(newMockAgentPlugin())
-		plugin, err := pluginEntry.LoadPlugin(context.TODO(), newFakeSetupContext("test2"))
-		assert.NoError(t, err)
 
 		template.Type = "spark_job"
-		phase := tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)
+		phase = tests.RunPluginEndToEndTest(t, plugin, &template, inputs, nil, nil, iter)
 		assert.Equal(t, true, phase.Phase().IsSuccess())
+
 	})
 
 	t.Run("failed to create a job", func(t *testing.T) {
