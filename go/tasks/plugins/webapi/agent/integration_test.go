@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/utils/strings/slices"
 )
 
 type MockPlugin struct {
@@ -39,7 +40,11 @@ type MockPlugin struct {
 type MockClient struct {
 }
 
-func (m *MockClient) CreateTask(_ context.Context, _ *admin.CreateTaskRequest, _ ...grpc.CallOption) (*admin.CreateTaskResponse, error) {
+func (m *MockClient) CreateTask(_ context.Context, createTaskRequest *admin.CreateTaskRequest, _ ...grpc.CallOption) (*admin.CreateTaskResponse, error) {
+	expectedArgs := []string{"pyflyte-fast-execute", "--output-prefix", "fake://bucket/prefix/nhv"}
+	if slices.Equal(createTaskRequest.Template.GetContainer().Args, expectedArgs) {
+		return nil, fmt.Errorf("args not as expected")
+	}
 	return &admin.CreateTaskResponse{ResourceMeta: []byte{1, 2, 3, 4}}, nil
 }
 
@@ -55,11 +60,11 @@ func (m *MockClient) DeleteTask(_ context.Context, _ *admin.DeleteTaskRequest, _
 	return &admin.DeleteTaskResponse{}, nil
 }
 
-func mockGetClientFunc(_ context.Context, _ string, _ map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
+func mockGetClientFunc(_ context.Context, _ *Agent, _ map[*Agent]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
 	return &MockClient{}, nil
 }
 
-func mockGetBadClientFunc(_ context.Context, _ string, _ map[string]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
+func mockGetBadClientFunc(_ context.Context, _ *Agent, _ map[*Agent]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
 	return nil, fmt.Errorf("error")
 }
 
@@ -95,6 +100,9 @@ func TestEndToEnd(t *testing.T) {
 	template := flyteIdlCore.TaskTemplate{
 		Type:   "bigquery_query_job_task",
 		Custom: st,
+		Target: &flyteIdlCore.TaskTemplate_Container{
+			Container: &flyteIdlCore.Container{Args: []string{"pyflyte-fast-execute", "--output-prefix", "{{.outputPrefix}}"}},
+		},
 	}
 	basePrefix := storage.DataReference("fake://bucket/prefix/")
 
