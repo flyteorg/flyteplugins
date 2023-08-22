@@ -16,7 +16,7 @@ var (
 	configSection = pluginsConfig.MustRegisterSubSection("pytorch", &defaultConfig)
 )
 
-// Config is config for 'ray' plugin
+// Config is config for 'pytorch' plugin
 type Config struct {
 	// If kubeflow operator doesn't update the status of the task after this timeout, the task will be considered failed.
 	Timeout config.Duration `json:"timeout,omitempty"`
