@@ -1,9 +1,10 @@
 package pytorch
 
 import (
+	"time"
+
 	pluginsConfig "github.com/flyteorg/flyteplugins/go/tasks/config"
 	"github.com/flyteorg/flytestdlib/config"
-	"time"
 )
 
 //go:generate pflags Config --default-var=defaultConfig
