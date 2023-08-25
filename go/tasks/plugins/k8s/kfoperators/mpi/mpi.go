@@ -157,6 +157,12 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 		return nil, fmt.Errorf("number of launch worker should be more then 0")
 	}
 
+	errSecret := flytek8s.AppendSecretMountingMetadata(objectMeta, *taskTemplate)
+
+	if errSecret != nil {
+		return nil, errSecret
+	}
+
 	jobSpec := kubeflowv1.MPIJobSpec{
 		SlotsPerWorker: &slots,
 		RunPolicy:      runPolicy,

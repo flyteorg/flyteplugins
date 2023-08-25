@@ -14,6 +14,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/template"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils/secrets"
 
 	"github.com/flyteorg/flytestdlib/logger"
 
@@ -113,6 +114,27 @@ func mergeMapInto(src map[string]string, dst map[string]string) {
 	for key, value := range src {
 		dst[key] = value
 	}
+}
+
+func AppendSecretMountingMetadata(objectMeta *metav1.ObjectMeta, taskTemplate core.TaskTemplate) error {
+	secretsMap := make(map[string]string)
+	injectSecretsLabel := make(map[string]string)
+	var err error
+
+	if taskTemplate.SecurityContext != nil && len(taskTemplate.SecurityContext.Secrets) > 0 {
+		secretsMap, err = secrets.MarshalSecretsToMapStrings(taskTemplate.SecurityContext.Secrets)
+		if err != nil {
+			return err
+		}
+
+		injectSecretsLabel = map[string]string{
+			secrets.PodLabel: secrets.PodLabelValue,
+		}
+	}
+
+	objectMeta.Annotations = utils.UnionMaps(objectMeta.Annotations, secretsMap)
+	objectMeta.Labels = utils.UnionMaps(objectMeta.Labels, injectSecretsLabel)
+	return nil
 }
 
 // BuildRawPod constructs a PodSpec and ObjectMeta based on the definition passed by the TaskExecutionContext. This

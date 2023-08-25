@@ -148,6 +148,12 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		return nil, fmt.Errorf("number of worker should be more then 0")
 	}
 
+	errSecret := flytek8s.AppendSecretMountingMetadata(objectMeta, *taskTemplate)
+
+	if errSecret != nil {
+		return nil, errSecret
+	}
+
 	jobSpec := kubeflowv1.PyTorchJobSpec{
 		PyTorchReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{
 			kubeflowv1.PyTorchJobReplicaTypeMaster: {

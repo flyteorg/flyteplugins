@@ -163,6 +163,12 @@ func (tensorflowOperatorResourceHandler) BuildResource(ctx context.Context, task
 		return nil, fmt.Errorf("number of worker should be more then 0")
 	}
 
+	errSecret := flytek8s.AppendSecretMountingMetadata(objectMeta, *taskTemplate)
+
+	if errSecret != nil {
+		return nil, errSecret
+	}
+
 	jobSpec := kubeflowv1.TFJobSpec{
 		TFReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{},
 	}
