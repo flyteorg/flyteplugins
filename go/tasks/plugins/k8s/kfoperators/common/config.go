@@ -1,4 +1,4 @@
-package pytorch
+package common
 
 import (
 	"time"
