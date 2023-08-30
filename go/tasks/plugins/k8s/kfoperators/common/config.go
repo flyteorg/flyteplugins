@@ -14,7 +14,7 @@ var (
 		Timeout: config.Duration{Duration: 1 * time.Minute},
 	}
 
-	configSection = pluginsConfig.MustRegisterSubSection("pytorch", &defaultConfig)
+	configSection = pluginsConfig.MustRegisterSubSection("common", &defaultConfig)
 )
 
 // Config is config for 'pytorch' plugin
