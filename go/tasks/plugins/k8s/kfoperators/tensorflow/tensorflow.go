@@ -210,7 +210,7 @@ func (tensorflowOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginC
 	}
 
 	if app.Status.StartTime == nil && app.CreationTimestamp.Add(common.GetConfig().Timeout.Duration).Before(time.Now()) {
-		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("kubeflow operator hasn't updated the tensorflow coustum resource since creation time %v", app.CreationTimestamp)
+		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("kubeflow operator hasn't updated the tensorflow custom resource since creation time %v", app.CreationTimestamp)
 	}
 
 	currentCondition, err := common.ExtractCurrentCondition(app.Status.Conditions)

@@ -14,7 +14,7 @@ var (
 		Timeout: config.Duration{Duration: 1 * time.Minute},
 	}
 
-	configSection = pluginsConfig.MustRegisterSubSection("common", &defaultConfig)
+	configSection = pluginsConfig.MustRegisterSubSection("kf-operator", &defaultConfig)
 )
 
 // Config is config for 'pytorch' plugin
