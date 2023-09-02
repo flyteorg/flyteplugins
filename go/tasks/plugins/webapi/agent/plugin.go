@@ -27,6 +27,8 @@ import (
 
 type GetClientFunc func(ctx context.Context, agent *Agent, connectionCache map[*Agent]*grpc.ClientConn) (service.AsyncAgentServiceClient, error)
 
+type TaskType = string
+type SupportedTaskTypes []TaskType
 type Plugin struct {
 	metricScope     promutils.Scope
 	cfg             *Config
@@ -266,8 +268,10 @@ func getFinalContext(ctx context.Context, operation string, agent *Agent) (conte
 	return context.WithTimeout(ctx, timeout)
 }
 
-func newAgentPlugin() webapi.PluginEntry {
-	supportedTaskTypes := GetConfig().SupportedTaskTypes
+func newAgentPlugin(supportedTaskTypes SupportedTaskTypes) webapi.PluginEntry {
+	if len(supportedTaskTypes) == 0 {
+		supportedTaskTypes = SupportedTaskTypes{"default_supported_task_type"}
+	}
 
 	return webapi.PluginEntry{
 		ID:                 "agent-service",
@@ -283,9 +287,9 @@ func newAgentPlugin() webapi.PluginEntry {
 	}
 }
 
-func RegisterAgentPlugin() {
+func RegisterAgentPlugin(supportedTaskTypes SupportedTaskTypes) {
 	gob.Register(ResourceMetaWrapper{})
 	gob.Register(ResourceWrapper{})
 
-	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newAgentPlugin())
+	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newAgentPlugin(supportedTaskTypes))
 }
