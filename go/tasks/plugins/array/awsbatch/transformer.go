@@ -88,11 +88,9 @@ func FlyteTaskToBatchInput(ctx context.Context, tCtx pluginCore.TaskExecutionCon
 		return nil, err
 	}
 
-
 	if overrideResources := tCtx.TaskExecutionMetadata().GetOverrides().GetResources(); overrideResources != nil {
 		flytek8s.MergeResources(*overrideResources, res)
 	}
-
 
 	platformResources := tCtx.TaskExecutionMetadata().GetPlatformResources()
 	if platformResources == nil {
