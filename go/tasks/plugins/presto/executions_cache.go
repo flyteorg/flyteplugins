@@ -57,6 +57,10 @@ type ExecutionStateCacheItem struct {
 	Identifier string `json:"id"`
 }
 
+func (e ExecutionStateCacheItem) IsTerminal() bool {
+	return e.ExecutionState.CurrentPhase == PhaseQuerySucceeded || e.ExecutionState.CurrentPhase == PhaseQueryFailed
+}
+
 func (e ExecutionStateCacheItem) ID() string {
 	return e.Identifier
 }

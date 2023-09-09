@@ -163,6 +163,8 @@ func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase
 	taskInfo := &core.TaskInfo{}
 
 	switch resource.State {
+	case admin.State_PENDING:
+		fallthrough
 	case admin.State_RUNNING:
 		return core.PhaseInfoRunning(core.DefaultPhaseVersion, taskInfo), nil
 	case admin.State_PERMANENT_FAILURE:
