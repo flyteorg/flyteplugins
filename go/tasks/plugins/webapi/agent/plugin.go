@@ -5,9 +5,12 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"fmt"
+	"runtime"
+	"time"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/admin"
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/logger"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -27,6 +30,8 @@ import (
 
 type GetClientFunc func(ctx context.Context, agent *Agent, connectionCache map[*Agent]*grpc.ClientConn) (service.AsyncAgentServiceClient, error)
 
+type TaskType = string
+type SupportedTaskTypes []TaskType
 type Plugin struct {
 	metricScope     promutils.Scope
 	cfg             *Config
@@ -59,6 +64,11 @@ func (p Plugin) ResourceRequirements(_ context.Context, _ webapi.TaskExecutionCo
 
 func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextReader) (webapi.ResourceMeta,
 	webapi.Resource, error) {
+
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(ctx, "@@@ agent plugin.go Create was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	taskTemplate, err := taskCtx.TaskReader().Read(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -84,6 +94,12 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	outputPrefix := taskCtx.OutputWriter().GetOutputPrefixPath().String()
 
 	agent, err := getFinalAgent(taskTemplate.Type, p.cfg)
+
+	logger.Infof(ctx, "@@@ taskTemplate:[%v]", taskTemplate)
+	logger.Infof(ctx, "@@@ inputs:[%v]", inputs)
+	logger.Infof(ctx, "@@@ outputPrefix:[%v]", outputPrefix)
+	logger.Infof(ctx, "@@@ agent:[%v]", agent)
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to find agent agent with error: %v", err)
 	}
@@ -93,10 +109,16 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 	}
 
 	finalCtx, cancel := getFinalContext(ctx, "CreateTask", agent)
+
+	logger.Infof(ctx, "@@@ client:[%v]", client)
+	logger.Infof(ctx, "@@@ finalCtx:[%v]", finalCtx)
 	defer cancel()
 
 	taskExecutionMetadata := buildTaskExecutionMetadata(taskCtx.TaskExecutionMetadata())
 	res, err := client.CreateTask(finalCtx, &admin.CreateTaskRequest{Inputs: inputs, Template: taskTemplate, OutputPrefix: outputPrefix, TaskExecutionMetadata: &taskExecutionMetadata})
+
+	logger.Infof(ctx, "@@@ taskExecutionMetadata:[%v]", taskExecutionMetadata)
+	logger.Infof(ctx, "@@@ res:[%v]", res)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -110,6 +132,11 @@ func (p Plugin) Create(ctx context.Context, taskCtx webapi.TaskExecutionContextR
 }
 
 func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest webapi.Resource, err error) {
+
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ agent plugin.go Get was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	metadata := taskCtx.ResourceMeta().(*ResourceMetaWrapper)
 
 	agent, err := getFinalAgent(metadata.TaskType, p.cfg)
@@ -136,6 +163,11 @@ func (p Plugin) Get(ctx context.Context, taskCtx webapi.GetContext) (latest weba
 }
 
 func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error {
+
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ agent plugin.go Delete was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	if taskCtx.ResourceMeta() == nil {
 		return nil
 	}
@@ -158,17 +190,29 @@ func (p Plugin) Delete(ctx context.Context, taskCtx webapi.DeleteContext) error 
 }
 
 func (p Plugin) Status(ctx context.Context, taskCtx webapi.StatusContext) (phase core.PhaseInfo, err error) {
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ agent plugin.go Status was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	resource := taskCtx.Resource().(*ResourceWrapper)
 	taskInfo := &core.TaskInfo{}
-
+	logger.Infof(ctx, "@@@ resource.State :[%v]", resource.State)
 	switch resource.State {
+	case admin.State_PENDING:
+		logger.Infof(ctx, "@@@ resource.State is admin.State_PNEDING")
+		return core.PhaseInfoInitializing(time.Now(), core.DefaultPhaseVersion, "job submitted", taskInfo), nil
+		// return core.PhaseInfoQueued(time.Now(), core.DefaultPhaseVersion, "Job Created"), nil
 	case admin.State_RUNNING:
+		logger.Infof(ctx, "@@@ resource.State is admin.State_RUNNING")
 		return core.PhaseInfoRunning(core.DefaultPhaseVersion, taskInfo), nil
 	case admin.State_PERMANENT_FAILURE:
+		logger.Infof(ctx, "@@@ resource.State is admin.State_PERMANENT_FAILURE")
 		return core.PhaseInfoFailure(pluginErrors.TaskFailedWithError, "failed to run the job", taskInfo), nil
 	case admin.State_RETRYABLE_FAILURE:
+		logger.Infof(ctx, "@@@ resource.State is admin.State_RETRYABLE_FAILURE")
 		return core.PhaseInfoRetryableFailure(pluginErrors.TaskFailedWithError, "failed to run the job", taskInfo), nil
 	case admin.State_SUCCEEDED:
+		logger.Infof(ctx, "@@@ resource.State is admin.State_SUCCEEDED")
 		if resource.Outputs != nil {
 			err := taskCtx.OutputWriter().Put(ctx, ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil))
 			if err != nil {
@@ -192,6 +236,10 @@ func getFinalAgent(taskType string, cfg *Config) (*Agent, error) {
 }
 
 func getClientFunc(ctx context.Context, agent *Agent, connectionCache map[*Agent]*grpc.ClientConn) (service.AsyncAgentServiceClient, error) {
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(ctx, "@@@ getClientFunc was called by [%v] [%v]:[%v]", file, funcName, line)
+
 	conn, ok := connectionCache[agent]
 	if ok {
 		return service.NewAsyncAgentServiceClient(conn), nil
@@ -266,26 +314,43 @@ func getFinalContext(ctx context.Context, operation string, agent *Agent) (conte
 	return context.WithTimeout(ctx, timeout)
 }
 
-func newAgentPlugin() webapi.PluginEntry {
-	supportedTaskTypes := GetConfig().SupportedTaskTypes
+func newAgentPlugin(supportedTaskTypes SupportedTaskTypes) webapi.PluginEntry {
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ newAgentPlugin was called by file [%v] [%v]:[%v]", file, funcName, line)
+	/*
+		TODO: USE tasks: default-for-task-types: INSTEAD
+	*/
+	// defaultTaskTypes := GetConfig().DefaultTaskTypes
+	// supportedTaskTypes := GetConfig().SupportedTaskTypes
+	logger.Infof(context.TODO(), "@@@ newAgentPlugin():[%v]", GetConfig())
+	logger.Infof(context.TODO(), "@@@ supportedTaskTypes:[%v]", supportedTaskTypes)
+
+	if len(supportedTaskTypes) == 0 {
+		supportedTaskTypes = SupportedTaskTypes{"default_supported_task_type"}
+	}
 
 	return webapi.PluginEntry{
 		ID:                 "agent-service",
 		SupportedTaskTypes: supportedTaskTypes,
-		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
+		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, webapi.SyncPlugin, error) {
 			return &Plugin{
 				metricScope:     iCtx.MetricsScope(),
 				cfg:             GetConfig(),
 				getClient:       getClientFunc,
 				connectionCache: make(map[*Agent]*grpc.ClientConn),
-			}, nil
+			}, nil, nil
 		},
 	}
 }
 
-func RegisterAgentPlugin() {
+func RegisterAgentPlugin(supportedTaskTypes SupportedTaskTypes) {
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ RegisterAgentPlugin was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	gob.Register(ResourceMetaWrapper{})
 	gob.Register(ResourceWrapper{})
 
-	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newAgentPlugin())
+	pluginmachinery.PluginRegistry().RegisterRemotePlugin(newAgentPlugin(supportedTaskTypes))
 }

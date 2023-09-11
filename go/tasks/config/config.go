@@ -1,7 +1,10 @@
 package config
 
 import (
+	"context"
+
 	"github.com/flyteorg/flytestdlib/config"
+	"github.com/flyteorg/flytestdlib/logger"
 )
 
 const configSectionKey = "plugins"
@@ -21,6 +24,12 @@ func GetConfig() *Config {
 	return rootSection.GetConfig().(*Config)
 }
 
+/*
+resourcemanager&{noop 1000 {[]    0}}
+admin-launcher&{100 10 10000 10}
+workflowStore&{ResourceVersionCache}
+*/
 func MustRegisterSubSection(subSectionKey string, section config.Config) config.Section {
+	logger.Error(context.TODO(), "@@@ MustRegisterSubSection subSectionKey->[%v], section->[%v]", subSectionKey, section)
 	return rootSection.MustRegisterSection(subSectionKey, section)
 }

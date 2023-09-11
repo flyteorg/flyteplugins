@@ -102,18 +102,19 @@ func (p Plugin) Status(ctx context.Context, tCtx webapi.StatusContext) (phase co
 	}), nil
 }
 
-func NewPlugin(ctx context.Context, cfg *Config, metricScope promutils.Scope) (Plugin, error) {
+func NewPlugin(ctx context.Context, cfg *Config, metricScope promutils.Scope) (Plugin, webapi.SyncPlugin, error) {
 	return Plugin{
 		metricScope: metricScope,
 		cfg:         cfg,
-	}, nil
+	}, nil, nil
 }
 
+// PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.SyncPlugin, error)
 func init() {
 	pluginmachinery.PluginRegistry().RegisterRemotePlugin(webapi.PluginEntry{
 		ID:                 "service-a",
 		SupportedTaskTypes: []core.TaskType{"my-task"},
-		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
+		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, webapi.SyncPlugin, error) {
 			return NewPlugin(ctx, GetConfig(), iCtx.MetricsScope())
 		},
 		IsDefault:           false,

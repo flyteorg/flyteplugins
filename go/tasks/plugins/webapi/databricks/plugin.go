@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/ioutils"
@@ -336,20 +337,28 @@ func createTaskInfo(runID, jobID, databricksInstance string) *core.TaskInfo {
 }
 
 func newDatabricksJobTaskPlugin() webapi.PluginEntry {
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ newDatabricksJobTaskPlugin was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	return webapi.PluginEntry{
 		ID:                 "databricks",
 		SupportedTaskTypes: []core.TaskType{"spark"},
-		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, error) {
+		PluginLoader: func(ctx context.Context, iCtx webapi.PluginSetupContext) (webapi.AsyncPlugin, webapi.SyncPlugin, error) {
 			return &Plugin{
 				metricScope: iCtx.MetricsScope(),
 				cfg:         GetConfig(),
 				client:      &http.Client{},
-			}, nil
+			}, nil, nil
 		},
 	}
 }
 
 func init() {
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ databricks init was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	gob.Register(ResourceMetaWrapper{})
 	gob.Register(ResourceWrapper{})
 

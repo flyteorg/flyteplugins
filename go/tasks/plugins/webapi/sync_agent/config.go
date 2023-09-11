@@ -1,4 +1,4 @@
-package agent
+package sync_agent
 
 import (
 	"time"

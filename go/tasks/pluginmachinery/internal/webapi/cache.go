@@ -2,6 +2,7 @@ package webapi
 
 import (
 	"context"
+	"runtime"
 
 	"github.com/flyteorg/flytestdlib/promutils"
 	"k8s.io/client-go/util/workqueue"
@@ -55,6 +56,9 @@ type CacheItem struct {
 func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 	updatedBatch []cache.ItemSyncResponse, err error) {
 
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ webapi cache.go SyncResource was called by file [%v] [%v]:[%v]", file, funcName, line)
 	resp := make([]cache.ItemSyncResponse, 0, len(batch))
 	for _, resource := range batch {
 		// Cast the item back to the thing we want to work with.
@@ -98,7 +102,7 @@ func (q *ResourceCache) SyncResource(ctx context.Context, batch cache.Batch) (
 		}
 
 		// Get an updated status
-		logger.Debugf(ctx, "Querying AsyncPlugin for %s", resource.GetID())
+		logger.Infof(ctx, "@@@ Querying AsyncPlugin for %s", resource.GetID())
 		newResource, err := q.client.Get(ctx, newPluginContext(cacheItem.ResourceMeta, cacheItem.Resource, "", nil))
 		if err != nil {
 			logger.Infof(ctx, "Error retrieving resource [%s]. Error: %v", resource.GetID(), err)

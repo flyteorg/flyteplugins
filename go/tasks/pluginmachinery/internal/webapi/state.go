@@ -19,6 +19,9 @@ const (
 	// remotely.
 	PhaseAllocationTokenAcquired
 
+	// PhaseResourcesCreating indicates the task is being created remotely.
+	PhaseResourcesCreating
+
 	// PhaseResourcesCreated indicates the task has been created remotely.
 	PhaseResourcesCreated
 

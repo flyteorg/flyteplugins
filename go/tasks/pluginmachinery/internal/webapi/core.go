@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"runtime"
 	"time"
 
 	"k8s.io/utils/clock"
@@ -36,6 +37,7 @@ const (
 type CorePlugin struct {
 	id             string
 	p              webapi.AsyncPlugin
+	sp             webapi.SyncPlugin
 	cache          cache.AutoRefresh
 	tokenAllocator tokenAllocator
 	metrics        Metrics
@@ -68,7 +70,45 @@ func (c CorePlugin) GetProperties() core.PluginProperties {
 	return core.PluginProperties{}
 }
 
+func (c CorePlugin) syncHandle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
+	/*
+		_, err := c.unmarshalState(ctx, tCtx.PluginStateReader())
+		if err != nil {
+			return core.UnknownTransition, err
+		}
+
+	*/
+
+	incomingState, err := c.unmarshalState(ctx, tCtx.PluginStateReader())
+	if err != nil {
+		return core.UnknownTransition, err
+	}
+
+	if incomingState.Phase == PhaseNotStarted {
+		// nextState, phaseInfo, err = c.sp.Do(ctx, tCtx, &incomingState)
+	} else {
+		return core.UnknownTransition, err
+	}
+
+	// write a function, syncLaunch in launcher.go
+	logger.Infof(ctx, "@@@ SyncHandle was called")
+	return core.UnknownTransition, nil
+}
+
+/*
+	1. call sp.do
+	2. check error
+	3. write state
+*/
 func (c CorePlugin) Handle(ctx context.Context, tCtx core.TaskExecutionContext) (core.Transition, error) {
+	if c.sp != nil {
+		return c.syncHandle(ctx, tCtx)
+	}
+
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ core.go Handle by [%v] [%v]:[%v]", file, funcName, line)
+
 	incomingState, err := c.unmarshalState(ctx, tCtx.PluginStateReader())
 	if err != nil {
 		return core.UnknownTransition, err
@@ -165,47 +205,92 @@ func createRemotePlugin(pluginEntry webapi.PluginEntry, c clock.Clock) core.Plug
 		RegisteredTaskTypes: pluginEntry.SupportedTaskTypes,
 		LoadPlugin: func(ctx context.Context, iCtx core.SetupContext) (
 			core.Plugin, error) {
-			p, err := pluginEntry.PluginLoader(ctx, iCtx)
+			p, sp, err := pluginEntry.PluginLoader(ctx, iCtx)
 			if err != nil {
 				return nil, err
 			}
 
-			err = validateConfig(p.GetConfig())
-			if err != nil {
-				return nil, fmt.Errorf("config validation failed. Error: %w", err)
-			}
+			if p != nil {
+				err = validateConfig(p.GetConfig())
+				if err != nil {
+					return nil, fmt.Errorf("config validation failed. Error: %w", err)
+				}
 
-			// If the plugin will use a custom state, register it to be able to
-			// serialize/deserialize interfaces later.
-			if customState := p.GetConfig().ResourceMeta; customState != nil {
-				gob.Register(customState)
-			}
+				// If the plugin will use a custom state, register it to be able to
+				// serialize/deserialize interfaces later.
+				if customState := p.GetConfig().ResourceMeta; customState != nil {
+					gob.Register(customState)
+				}
 
-			if quotas := p.GetConfig().ResourceQuotas; len(quotas) > 0 {
-				for ns, quota := range quotas {
-					err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, ns, quota)
-					if err != nil {
-						return nil, err
+				if quotas := p.GetConfig().ResourceQuotas; len(quotas) > 0 {
+					for ns, quota := range quotas {
+						err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, ns, quota)
+						if err != nil {
+							return nil, err
+						}
 					}
 				}
-			}
 
-			resourceCache, err := NewResourceCache(ctx, pluginEntry.ID, p, p.GetConfig().Caching,
-				iCtx.MetricsScope().NewSubScope("cache"))
+				resourceCache, err := NewResourceCache(ctx, pluginEntry.ID, p, p.GetConfig().Caching,
+					iCtx.MetricsScope().NewSubScope("cache"))
 
-			if err != nil {
-				return nil, err
-			}
+				if err != nil {
+					return nil, err
+				}
 
-			err = resourceCache.Start(ctx)
-			if err != nil {
-				return nil, err
+				err = resourceCache.Start(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				return CorePlugin{
+					id:             pluginEntry.ID,
+					p:              p,
+					sp:             sp,
+					cache:          resourceCache,
+					metrics:        newMetrics(iCtx.MetricsScope()),
+					tokenAllocator: newTokenAllocator(c),
+				}, nil
+
+			} else if sp != nil {
+				err = validateConfig(p.GetConfig())
+				if err != nil {
+					return nil, fmt.Errorf("config validation failed. Error: %w", err)
+				}
+
+				// If the plugin will use a custom state, register it to be able to
+				// serialize/deserialize interfaces later.
+				if customState := sp.GetConfig().ResourceMeta; customState != nil {
+					gob.Register(customState)
+				}
+
+				if quotas := sp.GetConfig().ResourceQuotas; len(quotas) > 0 {
+					for ns, quota := range quotas {
+						err := iCtx.ResourceRegistrar().RegisterResourceQuota(ctx, ns, quota)
+						if err != nil {
+							return nil, err
+						}
+					}
+				}
+
+				// resourceCache, err := NewResourceCache(ctx, pluginEntry.ID, p, sp.GetConfig().Caching,
+				// 	iCtx.MetricsScope().NewSubScope("cache"))
+
+				// if err != nil {
+				// 	return nil, err
+				// }
+
+				// err = resourceCache.Start(ctx)
+				// if err != nil {
+				// 	return nil, err
+				// }
 			}
 
 			return CorePlugin{
 				id:             pluginEntry.ID,
 				p:              p,
-				cache:          resourceCache,
+				sp:             sp,
+				cache:          nil,
 				metrics:        newMetrics(iCtx.MetricsScope()),
 				tokenAllocator: newTokenAllocator(c),
 			}, nil
@@ -214,5 +299,9 @@ func createRemotePlugin(pluginEntry webapi.PluginEntry, c clock.Clock) core.Plug
 }
 
 func CreateRemotePlugin(pluginEntry webapi.PluginEntry) core.PluginEntry {
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ core.go func CreateRemotePlugin was called by file [%v] [%v]:[%v]", file, funcName, line)
+
 	return createRemotePlugin(pluginEntry, clock.RealClock{})
 }

@@ -2,6 +2,7 @@ package webapi
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/flyteorg/flytestdlib/cache"
@@ -13,6 +14,11 @@ import (
 
 func launch(ctx context.Context, p webapi.AsyncPlugin, tCtx core.TaskExecutionContext, cache cache.AutoRefresh,
 	state *State) (newState *State, phaseInfo core.PhaseInfo, err error) {
+
+	pc, file, line, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	logger.Infof(context.TODO(), "@@@ launcher.go launch by [%v] [%v]:[%v]", file, funcName, line)
+
 	rMeta, r, err := p.Create(ctx, tCtx)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to create resource. Error: %v", err)
