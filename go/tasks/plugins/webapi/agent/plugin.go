@@ -194,10 +194,10 @@ func writeOutput(ctx context.Context, taskCtx webapi.StatusContext, resource *Re
 
 	var opReader io.OutputReader
 	if resource.Outputs != nil {
-		logger.Infof(ctx, "Agent returned an output")
+		logger.Debugf(ctx, "Agent returned an output")
 		opReader = ioutils.NewInMemoryOutputReader(resource.Outputs, nil, nil)
 	} else {
-		logger.Infof(ctx, "Agent didn't return any output, assuming file based outputs.")
+		logger.Debugf(ctx, "Agent didn't return any output, assuming file based outputs.")
 		opReader = ioutils.NewRemoteFileOutputReader(ctx, taskCtx.DataStore(), taskCtx.OutputWriter(), taskCtx.MaxDatasetSizeBytes())
 	}
 	return taskCtx.OutputWriter().Put(ctx, opReader)
