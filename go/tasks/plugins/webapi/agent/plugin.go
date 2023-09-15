@@ -188,7 +188,7 @@ func writeOutput(ctx context.Context, taskCtx webapi.StatusContext, resource *Re
 	}
 
 	if taskTemplate.Interface == nil || taskTemplate.Interface.Outputs == nil || taskTemplate.Interface.Outputs.Variables == nil {
-		logger.Infof(ctx, "The task declares no outputs. Skipping writing the outputs.")
+		logger.Debugf(ctx, "The task declares no outputs. Skipping writing the outputs.")
 		return nil
 	}
 
