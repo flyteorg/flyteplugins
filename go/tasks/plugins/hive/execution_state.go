@@ -489,7 +489,7 @@ func Finalize(ctx context.Context, tCtx core.TaskExecutionContext, _ ExecutionSt
 }
 
 func InTerminalState(e ExecutionState) bool {
-	return e.Phase == PhaseQuerySucceeded || e.Phase == PhaseQueryFailed
+	return e.Phase.IsTerminal()
 }
 
 func IsNotYetSubmitted(e ExecutionState) bool {
