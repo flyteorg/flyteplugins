@@ -4,6 +4,7 @@ package k8s
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 
@@ -75,21 +76,12 @@ func (f *fallbackClientBuilder) WithUncached(objs ...client.Object) ClientBuilde
 	return f
 }
 
-func (f fallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
-	c, err := client.New(config, options)
-	if err != nil {
-		return nil, err
+func (f *fallbackClientBuilder) Build(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
+	if len(f.uncached) > 0 {
+		options.Cache.DisableFor = f.uncached
 	}
 
-	return client.NewDelegatingClient(client.NewDelegatingClientInput{
-		Client: c,
-		CacheReader: fallbackClientReader{
-			orderedClients: []client.Reader{cache, c},
-		},
-		UncachedObjects: f.uncached,
-		// TODO figure out if this should be true?
-		// CacheUnstructured: true,
-	})
+	return client.New(config, options)
 }
 
 // Creates a new k8s client that uses the cached client for reads and falls back to making API
@@ -109,7 +101,12 @@ type Options struct {
 func NewKubeClient(config *rest.Config, options Options) (core.KubeClient, error) {
 	if options.MapperProvider == nil {
 		options.MapperProvider = func(c *rest.Config) (meta.RESTMapper, error) {
-			return apiutil.NewDynamicRESTMapper(config)
+			httpClient := http.DefaultClient
+			if options.CacheOptions != nil && options.ClientOptions.HTTPClient != nil {
+				httpClient = options.ClientOptions.HTTPClient
+			}
+
+			return apiutil.NewDynamicRESTMapper(config, httpClient)
 		}
 	}
 	mapper, err := options.MapperProvider(config)
@@ -120,13 +117,19 @@ func NewKubeClient(config *rest.Config, options Options) (core.KubeClient, error
 	if options.CacheOptions == nil {
 		options.CacheOptions = &cache.Options{Mapper: mapper}
 	}
+
 	cache, err := cache.New(config, *options.CacheOptions)
 	if err != nil {
 		return nil, err
 	}
 
 	if options.ClientOptions == nil {
-		options.ClientOptions = &client.Options{Mapper: mapper}
+		options.ClientOptions = &client.Options{
+			Mapper: mapper,
+			Cache: &client.CacheOptions{
+				Reader: cache,
+			},
+		}
 	}
 
 	fallbackClient, err := NewFallbackClientBuilder().Build(cache, config, *options.ClientOptions)
