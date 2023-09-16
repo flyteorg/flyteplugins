@@ -215,6 +215,10 @@ func createWorkerSpec(cluster plugins.DaskWorkerGroup, podSpec *v1.PodSpec, prim
 	if err != nil {
 		return nil, err
 	}
+
+	// All workers are created as k8s deployment and must have a restart policy of Always
+	workerPodSpec.RestartPolicy = v1.RestartPolicyAlways
+
 	return &daskAPI.WorkerSpec{
 		Replicas: int(cluster.GetNumberOfWorkers()),
 		Spec:     *workerPodSpec,

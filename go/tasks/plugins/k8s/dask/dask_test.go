@@ -301,6 +301,7 @@ func TestBuildResourceDaskHappyPath(t *testing.T) {
 		"--memory-limit",
 		"1Gi",
 	}, workerSpec.Containers[0].Args)
+	assert.Equal(t, workerSpec.RestartPolicy, v1.RestartPolicyAlways)
 }
 
 func TestBuildResourceDaskCustomImages(t *testing.T) {
