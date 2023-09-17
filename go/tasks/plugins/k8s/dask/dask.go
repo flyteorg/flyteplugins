@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/exp/slices"
-
 	daskAPI "github.com/dask/dask-kubernetes/v2023/dask_kubernetes/operator/go_client/pkg/apis/kubernetes.dask.org/v1"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
@@ -14,7 +12,6 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -29,6 +26,27 @@ const (
 	daskTaskType = "dask"
 	KindDaskJob  = "DaskJob"
 )
+
+// Wraps a regular TaskExecutionMetadata and overrides the IsInterruptible method to always return false
+// This is useful as the runner and the scheduler pods should never be interruptable
+type nonInterruptibleTaskExecutionMetadata struct {
+	pluginsCore.TaskExecutionMetadata
+}
+
+func (n nonInterruptibleTaskExecutionMetadata) IsInterruptible() bool {
+	return false
+}
+
+// A wrapper around a regular TaskExecutionContext allowing to inject a custom TaskExecutionMetadata which is
+// non-interruptible
+type nonInterruptibleTaskExecutionContext struct {
+	pluginsCore.TaskExecutionContext
+	metadata nonInterruptibleTaskExecutionMetadata
+}
+
+func (n nonInterruptibleTaskExecutionContext) TaskExecutionMetadata() pluginsCore.TaskExecutionMetadata {
+	return n.metadata
+}
 
 func mergeMapInto(src map[string]string, dst map[string]string) {
 	for key, value := range src {
@@ -53,49 +71,6 @@ func replacePrimaryContainer(spec *v1.PodSpec, primaryContainerName string, cont
 		}
 	}
 	return errors.Errorf(errors.BadTaskSpecification, "primary container [%v] not found in pod spec", primaryContainerName)
-}
-
-func removeInterruptibleConfig(spec *v1.PodSpec, taskCtx pluginsCore.TaskExecutionContext) {
-	if !taskCtx.TaskExecutionMetadata().IsInterruptible() {
-		return
-	}
-
-	// Tolerations
-	interruptlibleTolerations := config.GetK8sPluginConfig().InterruptibleTolerations
-	newTolerations := []v1.Toleration{}
-	for _, toleration := range spec.Tolerations {
-		if !slices.Contains(interruptlibleTolerations, toleration) {
-			newTolerations = append(newTolerations, toleration)
-		}
-	}
-	spec.Tolerations = newTolerations
-
-	// Node selectors
-	interruptibleNodeSelector := config.GetK8sPluginConfig().InterruptibleNodeSelector
-	for key := range spec.NodeSelector {
-		if _, ok := interruptibleNodeSelector[key]; ok {
-			delete(spec.NodeSelector, key)
-		}
-	}
-
-	// Node selector requirements
-	interruptibleNodeSelectorRequirements := config.GetK8sPluginConfig().InterruptibleNodeSelectorRequirement
-	nodeSelectorTerms := spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
-	for i := range nodeSelectorTerms {
-		nst := &nodeSelectorTerms[i]
-		matchExpressions := nst.MatchExpressions
-		newMatchExpressions := []v1.NodeSelectorRequirement{}
-		for _, matchExpression := range matchExpressions {
-			if !nodeSelectorRequirementsAreEqual(matchExpression, *interruptibleNodeSelectorRequirements) {
-				newMatchExpressions = append(newMatchExpressions, matchExpression)
-			}
-		}
-		nst.MatchExpressions = newMatchExpressions
-	}
-}
-
-func nodeSelectorRequirementsAreEqual(a v1.NodeSelectorRequirement, b v1.NodeSelectorRequirement) bool {
-	return a.Key == b.Key && a.Operator == b.Operator && slices.Equal(a.Values, b.Values)
 }
 
 type daskResourceHandler struct {
@@ -129,8 +104,12 @@ func (p daskResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	if err != nil {
 		return nil, err
 	}
-	nonInterruptiblePodSpec := podSpec.DeepCopy()
-	removeInterruptibleConfig(nonInterruptiblePodSpec, taskCtx)
+	nonInterruptibleTaskMetadata := nonInterruptibleTaskExecutionMetadata{taskCtx.TaskExecutionMetadata()}
+	nonInterruptibleTaskCtx := nonInterruptibleTaskExecutionContext{taskCtx, nonInterruptibleTaskMetadata}
+	nonInterruptiblePodSpec, _, _, err := flytek8s.ToK8sPodSpec(ctx, nonInterruptibleTaskCtx)
+	if err != nil {
+		return nil, err
+	}
 
 	// Add labels and annotations to objectMeta as they're not added by ToK8sPodSpec
 	mergeMapInto(taskCtx.TaskExecutionMetadata().GetAnnotations(), objectMeta.Annotations)

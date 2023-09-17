@@ -428,18 +428,8 @@ func TestBuildResourcesDaskCustomResoureRequirements(t *testing.T) {
 
 func TestBuildResourceDaskInterruptible(t *testing.T) {
 	defaultNodeSelector := map[string]string{}
-	defaultAffinity := v1.Affinity{
-		NodeAffinity: &v1.NodeAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-				NodeSelectorTerms: []v1.NodeSelectorTerm{
-					{
-						MatchExpressions: []v1.NodeSelectorRequirement{},
-					},
-				},
-			},
-		},
-	}
-	defaultTolerations := []v1.Toleration{}
+	var defaultAffinity v1.Affinity
+	var defaultTolerations []v1.Toleration
 
 	interruptibleNodeSelector := map[string]string{
 		"x/interruptible": "true",
@@ -544,7 +534,7 @@ func TestGetTaskPhaseDask(t *testing.T) {
 	daskResourceHandler := daskResourceHandler{}
 	ctx := context.TODO()
 
-	taskTemplate := dummyDaskTaskTemplate("", nil)
+	taskTemplate := dummyDaskTaskTemplate("", nil, "")
 	taskCtx := dummyDaskTaskContext(taskTemplate, &v1.ResourceRequirements{}, false)
 
 	taskPhase, err := daskResourceHandler.GetTaskPhase(ctx, taskCtx, dummyDaskJob(""))
