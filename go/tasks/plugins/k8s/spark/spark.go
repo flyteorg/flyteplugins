@@ -305,7 +305,7 @@ func (sparkResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx p
 	}, nil
 }
 
-func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
+func getEventInfoForSpark(pluginContext k8s.PluginContext, sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, error) {
 	state := sj.Status.AppState.State
 	isQueued := state == sparkOp.NewState ||
 		state == sparkOp.PendingSubmissionState ||
@@ -313,6 +313,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 
 	sparkConfig := GetSparkConfig()
 	taskLogs := make([]*core.TaskLog, 0, 3)
+	taskExecID := pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 
 	if !isQueued {
 		if sj.Status.DriverInfo.PodName != "" {
@@ -323,9 +324,10 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 
 			if p != nil {
 				o, err := p.GetTaskLogs(tasklog.Input{
-					PodName:   sj.Status.DriverInfo.PodName,
-					Namespace: sj.Namespace,
-					LogName:   "(Driver Logs)",
+					PodName:                 sj.Status.DriverInfo.PodName,
+					Namespace:               sj.Namespace,
+					LogName:                 "(Driver Logs)",
+					TaskExecutionIdentifier: &taskExecID,
 				})
 
 				if err != nil {
@@ -343,9 +345,10 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 
 		if p != nil {
 			o, err := p.GetTaskLogs(tasklog.Input{
-				PodName:   sj.Status.DriverInfo.PodName,
-				Namespace: sj.Namespace,
-				LogName:   "(User Logs)",
+				PodName:                 sj.Status.DriverInfo.PodName,
+				Namespace:               sj.Namespace,
+				LogName:                 "(User Logs)",
+				TaskExecutionIdentifier: &taskExecID,
 			})
 
 			if err != nil {
@@ -362,9 +365,10 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 
 		if p != nil {
 			o, err := p.GetTaskLogs(tasklog.Input{
-				PodName:   sj.Name,
-				Namespace: sj.Namespace,
-				LogName:   "(System Logs)",
+				PodName:                 sj.Name,
+				Namespace:               sj.Namespace,
+				LogName:                 "(System Logs)",
+				TaskExecutionIdentifier: &taskExecID,
 			})
 
 			if err != nil {
@@ -382,9 +386,10 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 
 	if p != nil {
 		o, err := p.GetTaskLogs(tasklog.Input{
-			PodName:   sj.Name,
-			Namespace: sj.Namespace,
-			LogName:   "(Spark-Submit/All User Logs)",
+			PodName:                 sj.Name,
+			Namespace:               sj.Namespace,
+			LogName:                 "(Spark-Submit/All User Logs)",
+			TaskExecutionIdentifier: &taskExecID,
 		})
 
 		if err != nil {
@@ -408,8 +413,13 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 			})
 		}
 	} else if sj.Status.AppState.State == sparkOp.RunningState && sj.Status.DriverInfo.WebUIIngressAddress != "" {
-		// Append https as the operator doesn't currently.
-		customInfoMap[sparkDriverUI] = fmt.Sprintf("https://%s", sj.Status.DriverInfo.WebUIIngressAddress)
+		// Older versions of spark-operator does not append http:// but newer versions do.
+		uri := sj.Status.DriverInfo.WebUIIngressAddress
+		if !strings.HasPrefix(uri, "https://") && !strings.HasPrefix(uri, "http://") {
+			uri = fmt.Sprintf("https://%s", uri)
+		}
+		customInfoMap[sparkDriverUI] = uri
+
 		// Custom doesn't work unless the UI has a custom plugin to parse this, hence add to Logs as well.
 		taskLogs = append(taskLogs, &core.TaskLog{
 			Uri:           customInfoMap[sparkDriverUI],
@@ -432,7 +442,7 @@ func getEventInfoForSpark(sj *sparkOp.SparkApplication) (*pluginsCore.TaskInfo, 
 func (sparkResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 
 	app := resource.(*sparkOp.SparkApplication)
-	info, err := getEventInfoForSpark(app)
+	info, err := getEventInfoForSpark(pluginContext, app)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}

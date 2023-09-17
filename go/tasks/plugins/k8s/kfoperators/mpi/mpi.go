@@ -8,11 +8,11 @@ import (
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	kfplugins "github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins/kubeflow"
-
 	flyteerr "github.com/flyteorg/flyteplugins/go/tasks/errors"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
@@ -157,6 +157,10 @@ func (mpiOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx plu
 		return nil, fmt.Errorf("number of launch worker should be more then 0")
 	}
 
+	cfg := config.GetK8sPluginConfig()
+	objectMeta.Annotations = utils.UnionMaps(cfg.DefaultAnnotations, objectMeta.Annotations, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetAnnotations()))
+	objectMeta.Labels = utils.UnionMaps(cfg.DefaultLabels, objectMeta.Labels, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetLabels()))
+
 	jobSpec := kubeflowv1.MPIJobSpec{
 		SlotsPerWorker: &slots,
 		RunPolicy:      runPolicy,
@@ -204,12 +208,15 @@ func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext 
 	numWorkers = app.Spec.MPIReplicaSpecs[kubeflowv1.MPIJobReplicaTypeWorker].Replicas
 	numLauncherReplicas = app.Spec.MPIReplicaSpecs[kubeflowv1.MPIJobReplicaTypeLauncher].Replicas
 
-	taskLogs, err := common.GetLogs(common.MPITaskType, app.ObjectMeta, false,
+	taskLogs, err := common.GetLogs(pluginContext, common.MPITaskType, app.ObjectMeta, false,
 		*numWorkers, *numLauncherReplicas, 0)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
-	currentCondition, err := common.ExtractMPICurrentCondition(app.Status.Conditions)
+	if app.Status.StartTime == nil && app.CreationTimestamp.Add(common.GetConfig().Timeout.Duration).Before(time.Now()) {
+		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("kubeflow operator hasn't updated the mpi custom resource since creation time %v", app.CreationTimestamp)
+	}
+	currentCondition, err := common.ExtractCurrentCondition(app.Status.Conditions)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
@@ -223,7 +230,6 @@ func (mpiOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginContext 
 	}
 
 	return common.GetMPIPhaseInfo(currentCondition, occurredAt, taskPhaseInfo)
-
 }
 
 func init() {

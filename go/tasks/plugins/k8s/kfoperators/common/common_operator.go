@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
@@ -30,23 +31,6 @@ type ReplicaEntry struct {
 	RestartPolicy commonOp.RestartPolicy
 }
 
-// ExtractMPICurrentCondition will return the first job condition for MPI
-func ExtractMPICurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
-	if jobConditions != nil {
-		sort.Slice(jobConditions, func(i, j int) bool {
-			return jobConditions[i].LastTransitionTime.Time.After(jobConditions[j].LastTransitionTime.Time)
-		})
-
-		for _, jc := range jobConditions {
-			if jc.Status == v1.ConditionTrue {
-				return jc, nil
-			}
-		}
-	}
-
-	return commonOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
-}
-
 // ExtractCurrentCondition will return the first job condition for tensorflow/pytorch
 func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.JobCondition, error) {
 	if jobConditions != nil {
@@ -59,14 +43,17 @@ func ExtractCurrentCondition(jobConditions []commonOp.JobCondition) (commonOp.Jo
 				return jc, nil
 			}
 		}
+		return commonOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
 	}
-
-	return commonOp.JobCondition{}, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions)
+	return commonOp.JobCondition{}, nil
 }
 
 // GetPhaseInfo will return the phase of kubeflow job
 func GetPhaseInfo(currentCondition commonOp.JobCondition, occurredAt time.Time,
 	taskPhaseInfo pluginsCore.TaskInfo) (pluginsCore.PhaseInfo, error) {
+	if len(currentCondition.Type) == 0 {
+		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
+	}
 	switch currentCondition.Type {
 	case commonOp.JobCreated:
 		return pluginsCore.PhaseInfoQueued(occurredAt, pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
@@ -105,12 +92,13 @@ func GetMPIPhaseInfo(currentCondition commonOp.JobCondition, occurredAt time.Tim
 }
 
 // GetLogs will return the logs for kubeflow job
-func GetLogs(taskType string, objectMeta meta_v1.ObjectMeta, hasMaster bool,
+func GetLogs(pluginContext k8s.PluginContext, taskType string, objectMeta meta_v1.ObjectMeta, hasMaster bool,
 	workersCount int32, psReplicasCount int32, chiefReplicasCount int32) ([]*core.TaskLog, error) {
 	name := objectMeta.Name
 	namespace := objectMeta.Namespace
 
 	taskLogs := make([]*core.TaskLog, 0, 10)
+	taskExecID := pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 
 	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
 
@@ -132,13 +120,14 @@ func GetLogs(taskType string, objectMeta meta_v1.ObjectMeta, hasMaster bool,
 	if taskType == PytorchTaskType && hasMaster {
 		masterTaskLog, masterErr := logPlugin.GetTaskLogs(
 			tasklog.Input{
-				PodName:              name + "-master-0",
-				Namespace:            namespace,
-				LogName:              "master",
-				PodRFC3339StartTime:  RFC3999StartTime,
-				PodRFC3339FinishTime: RFC3999FinishTime,
-				PodUnixStartTime:     startTime,
-				PodUnixFinishTime:    finishTime,
+				PodName:                 name + "-master-0",
+				Namespace:               namespace,
+				LogName:                 "master",
+				PodRFC3339StartTime:     RFC3999StartTime,
+				PodRFC3339FinishTime:    RFC3999FinishTime,
+				PodUnixStartTime:        startTime,
+				PodUnixFinishTime:       finishTime,
+				TaskExecutionIdentifier: &taskExecID,
 			},
 		)
 		if masterErr != nil {
@@ -150,12 +139,13 @@ func GetLogs(taskType string, objectMeta meta_v1.ObjectMeta, hasMaster bool,
 	// get all workers log
 	for workerIndex := int32(0); workerIndex < workersCount; workerIndex++ {
 		workerLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-			PodName:              name + fmt.Sprintf("-worker-%d", workerIndex),
-			Namespace:            namespace,
-			PodRFC3339StartTime:  RFC3999StartTime,
-			PodRFC3339FinishTime: RFC3999FinishTime,
-			PodUnixStartTime:     startTime,
-			PodUnixFinishTime:    finishTime,
+			PodName:                 name + fmt.Sprintf("-worker-%d", workerIndex),
+			Namespace:               namespace,
+			PodRFC3339StartTime:     RFC3999StartTime,
+			PodRFC3339FinishTime:    RFC3999FinishTime,
+			PodUnixStartTime:        startTime,
+			PodUnixFinishTime:       finishTime,
+			TaskExecutionIdentifier: &taskExecID,
 		})
 		if err != nil {
 			return nil, err
@@ -170,8 +160,9 @@ func GetLogs(taskType string, objectMeta meta_v1.ObjectMeta, hasMaster bool,
 	// get all parameter servers logs
 	for psReplicaIndex := int32(0); psReplicaIndex < psReplicasCount; psReplicaIndex++ {
 		psReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-			PodName:   name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
-			Namespace: namespace,
+			PodName:                 name + fmt.Sprintf("-psReplica-%d", psReplicaIndex),
+			Namespace:               namespace,
+			TaskExecutionIdentifier: &taskExecID,
 		})
 		if err != nil {
 			return nil, err
@@ -181,8 +172,9 @@ func GetLogs(taskType string, objectMeta meta_v1.ObjectMeta, hasMaster bool,
 	// get chief worker log, and the max number of chief worker is 1
 	if chiefReplicasCount != 0 {
 		chiefReplicaLog, err := logPlugin.GetTaskLogs(tasklog.Input{
-			PodName:   name + fmt.Sprintf("-chiefReplica-%d", 0),
-			Namespace: namespace,
+			PodName:                 name + fmt.Sprintf("-chiefReplica-%d", 0),
+			Namespace:               namespace,
+			TaskExecutionIdentifier: &taskExecID,
 		})
 		if err != nil {
 			return nil, err
@@ -262,12 +254,10 @@ func OverrideContainerSpec(podSpec *v1.PodSpec, containerName string, image stri
 				if len(resources.Requests) >= 1 || len(resources.Limits) >= 1 {
 					resources, err := flytek8s.ToK8sResourceRequirements(resources)
 					if err != nil {
-						return flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecificat ion on Resources [%v], Err: [%v]", resources, err.Error())
+						return flyteerr.Errorf(flyteerr.BadTaskSpecification, "invalid TaskSpecification on Resources [%v], Err: [%v]", resources, err.Error())
 					}
 					podSpec.Containers[idx].Resources = *resources
 				}
-			} else {
-				podSpec.Containers[idx].Resources = v1.ResourceRequirements{}
 			}
 			if len(args) != 0 {
 				podSpec.Containers[idx].Args = args

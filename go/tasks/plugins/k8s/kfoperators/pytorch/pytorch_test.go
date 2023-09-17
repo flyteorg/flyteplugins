@@ -48,6 +48,13 @@ var (
 		"test-args",
 	}
 
+	dummyAnnotations = map[string]string{
+		"annotation-key": "annotation-value",
+	}
+	dummyLabels = map[string]string{
+		"label-key": "label-value",
+	}
+
 	resourceRequirements = &corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
 			corev1.ResourceCPU:         resource.MustParse("1000m"),
@@ -170,8 +177,8 @@ func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskEx
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
 	taskExecutionMetadata.OnGetNamespace().Return("test-namespace")
-	taskExecutionMetadata.OnGetAnnotations().Return(map[string]string{"annotation-1": "val1"})
-	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
+	taskExecutionMetadata.OnGetAnnotations().Return(dummyAnnotations)
+	taskExecutionMetadata.OnGetLabels().Return(dummyLabels)
 	taskExecutionMetadata.OnGetOwnerReference().Return(v1.OwnerReference{
 		Kind: "node",
 		Name: "blah",
@@ -293,8 +300,9 @@ func dummyPytorchJobResource(pytorchResourceHandler pytorchOperatorResourceHandl
 
 	return &kubeflowv1.PyTorchJob{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      jobName,
-			Namespace: jobNamespace,
+			CreationTimestamp: v1.Time{Time: time.Now()},
+			Name:              jobName,
+			Namespace:         jobNamespace,
 		},
 		Spec: resource.(*kubeflowv1.PyTorchJob).Spec,
 		Status: commonOp.JobStatus{
@@ -338,6 +346,18 @@ func TestBuildResourcePytorchElastic(t *testing.T) {
 	}
 
 	assert.True(t, hasContainerWithDefaultPytorchName)
+
+	// verify TaskExecutionMetadata labels and annotations are copied to the PyTorchJob
+	for k, v := range dummyAnnotations {
+		for _, replicaSpec := range pytorchJob.Spec.PyTorchReplicaSpecs {
+			assert.Equal(t, v, replicaSpec.Template.ObjectMeta.Annotations[k])
+		}
+	}
+	for k, v := range dummyLabels {
+		for _, replicaSpec := range pytorchJob.Spec.PyTorchReplicaSpecs {
+			assert.Equal(t, v, replicaSpec.Template.ObjectMeta.Labels[k])
+		}
+	}
 }
 
 func TestBuildResourcePytorch(t *testing.T) {
@@ -354,6 +374,18 @@ func TestBuildResourcePytorch(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, int32(100), *pytorchJob.Spec.PyTorchReplicaSpecs[kubeflowv1.PyTorchJobReplicaTypeWorker].Replicas)
 	assert.Nil(t, pytorchJob.Spec.ElasticPolicy)
+
+	// verify TaskExecutionMetadata labels and annotations are copied to the TensorFlowJob
+	for k, v := range dummyAnnotations {
+		for _, replicaSpec := range pytorchJob.Spec.PyTorchReplicaSpecs {
+			assert.Equal(t, v, replicaSpec.Template.ObjectMeta.Annotations[k])
+		}
+	}
+	for k, v := range dummyLabels {
+		for _, replicaSpec := range pytorchJob.Spec.PyTorchReplicaSpecs {
+			assert.Equal(t, v, replicaSpec.Template.ObjectMeta.Labels[k])
+		}
+	}
 
 	for _, replicaSpec := range pytorchJob.Spec.PyTorchReplicaSpecs {
 		var hasContainerWithDefaultPytorchName = false
@@ -379,31 +411,32 @@ func TestGetTaskPhase(t *testing.T) {
 		return dummyPytorchJobResource(pytorchResourceHandler, 2, conditionType)
 	}
 
-	taskPhase, err := pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobCreated))
+	taskCtx := dummyPytorchTaskContext(dummyPytorchTaskTemplate("", dummyPytorchCustomObj(2)))
+	taskPhase, err := pytorchResourceHandler.GetTaskPhase(ctx, taskCtx, dummyPytorchJobResourceCreator(commonOp.JobCreated))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobRunning))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, taskCtx, dummyPytorchJobResourceCreator(commonOp.JobRunning))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobSucceeded))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, taskCtx, dummyPytorchJobResourceCreator(commonOp.JobSucceeded))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseSuccess, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobFailed))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, taskCtx, dummyPytorchJobResourceCreator(commonOp.JobFailed))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, nil, dummyPytorchJobResourceCreator(commonOp.JobRestarting))
+	taskPhase, err = pytorchResourceHandler.GetTaskPhase(ctx, taskCtx, dummyPytorchJobResourceCreator(commonOp.JobRestarting))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
@@ -421,7 +454,8 @@ func TestGetLogs(t *testing.T) {
 
 	pytorchResourceHandler := pytorchOperatorResourceHandler{}
 	pytorchJob := dummyPytorchJobResource(pytorchResourceHandler, workers, commonOp.JobRunning)
-	jobLogs, err := common.GetLogs(common.PytorchTaskType, pytorchJob.ObjectMeta, hasMaster, workers, 0, 0)
+	taskCtx := dummyPytorchTaskContext(dummyPytorchTaskTemplate("", dummyPytorchCustomObj(workers)))
+	jobLogs, err := common.GetLogs(taskCtx, common.PytorchTaskType, pytorchJob.ObjectMeta, hasMaster, workers, 0, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-master-0/pod?namespace=pytorch-namespace", jobNamespace, jobName), jobLogs[0].Uri)
@@ -440,7 +474,8 @@ func TestGetLogsElastic(t *testing.T) {
 
 	pytorchResourceHandler := pytorchOperatorResourceHandler{}
 	pytorchJob := dummyPytorchJobResource(pytorchResourceHandler, workers, commonOp.JobRunning)
-	jobLogs, err := common.GetLogs(common.PytorchTaskType, pytorchJob.ObjectMeta, hasMaster, workers, 0, 0)
+	taskCtx := dummyPytorchTaskContext(dummyPytorchTaskTemplate("", dummyPytorchCustomObj(workers)))
+	jobLogs, err := common.GetLogs(taskCtx, common.PytorchTaskType, pytorchJob.ObjectMeta, hasMaster, workers, 0, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=pytorch-namespace", jobNamespace, jobName), jobLogs[0].Uri)
@@ -717,7 +752,7 @@ func TestBuildResourcePytorchV1WithZeroWorker(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestParasElasticConfig(t *testing.T) {
+func TestParseElasticConfig(t *testing.T) {
 	elasticConfig := plugins.ElasticConfig{MinReplicas: 1, MaxReplicas: 2, NprocPerNode: 4, RdzvBackend: "c10d"}
 	elasticPolicy := ParseElasticConfig(&elasticConfig)
 	assert.Equal(t, int32(1), *elasticPolicy.MinReplicas)

@@ -12,6 +12,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
 	"github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/kfoperators/common"
@@ -148,6 +149,10 @@ func (pytorchOperatorResourceHandler) BuildResource(ctx context.Context, taskCtx
 		return nil, fmt.Errorf("number of worker should be more then 0")
 	}
 
+	cfg := config.GetK8sPluginConfig()
+	objectMeta.Annotations = utils.UnionMaps(cfg.DefaultAnnotations, objectMeta.Annotations, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetAnnotations()))
+	objectMeta.Labels = utils.UnionMaps(cfg.DefaultLabels, objectMeta.Labels, utils.CopyMap(taskCtx.TaskExecutionMetadata().GetLabels()))
+
 	jobSpec := kubeflowv1.PyTorchJobSpec{
 		PyTorchReplicaSpecs: map[commonOp.ReplicaType]*commonOp.ReplicaSpec{
 			kubeflowv1.PyTorchJobReplicaTypeMaster: {
@@ -226,11 +231,14 @@ func (pytorchOperatorResourceHandler) GetTaskPhase(_ context.Context, pluginCont
 
 	workersCount := app.Spec.PyTorchReplicaSpecs[kubeflowv1.PyTorchJobReplicaTypeWorker].Replicas
 
-	taskLogs, err := common.GetLogs(common.PytorchTaskType, app.ObjectMeta, hasMaster, *workersCount, 0, 0)
+	taskLogs, err := common.GetLogs(pluginContext, common.PytorchTaskType, app.ObjectMeta, hasMaster, *workersCount, 0, 0)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
 
+	if app.Status.StartTime == nil && app.CreationTimestamp.Add(common.GetConfig().Timeout.Duration).Before(time.Now()) {
+		return pluginsCore.PhaseInfoUndefined, fmt.Errorf("kubeflow operator hasn't updated the pytorch custom resource since creation time %v", app.CreationTimestamp)
+	}
 	currentCondition, err := common.ExtractCurrentCondition(app.Status.Conditions)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err

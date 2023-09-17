@@ -46,6 +46,13 @@ var (
 		"test-args",
 	}
 
+	dummyAnnotations = map[string]string{
+		"annotation-key": "annotation-value",
+	}
+	dummyLabels = map[string]string{
+		"label-key": "label-value",
+	}
+
 	resourceRequirements = &corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
 			corev1.ResourceCPU:    resource.MustParse("1000m"),
@@ -150,8 +157,8 @@ func dummyMPITaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskExecut
 	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
 	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
 	taskExecutionMetadata.OnGetNamespace().Return("test-namespace")
-	taskExecutionMetadata.OnGetAnnotations().Return(map[string]string{"annotation-1": "val1"})
-	taskExecutionMetadata.OnGetLabels().Return(map[string]string{"label-1": "val1"})
+	taskExecutionMetadata.OnGetAnnotations().Return(dummyAnnotations)
+	taskExecutionMetadata.OnGetLabels().Return(dummyLabels)
 	taskExecutionMetadata.OnGetOwnerReference().Return(v1.OwnerReference{
 		Kind: "node",
 		Name: "blah",
@@ -281,7 +288,7 @@ func dummyMPIJobResource(mpiResourceHandler mpiOperatorResourceHandler,
 		Status: mpiOp.JobStatus{
 			Conditions:        jobConditions,
 			ReplicaStatuses:   nil,
-			StartTime:         nil,
+			StartTime:         &v1.Time{Time: time.Now()},
 			CompletionTime:    nil,
 			LastReconcileTime: nil,
 		},
@@ -303,6 +310,18 @@ func TestBuildResourceMPI(t *testing.T) {
 	assert.Equal(t, int32(50), *mpiJob.Spec.MPIReplicaSpecs[kubeflowv1.MPIJobReplicaTypeLauncher].Replicas)
 	assert.Equal(t, int32(100), *mpiJob.Spec.MPIReplicaSpecs[kubeflowv1.MPIJobReplicaTypeWorker].Replicas)
 	assert.Equal(t, int32(1), *mpiJob.Spec.SlotsPerWorker)
+
+	// verify TaskExecutionMetadata labels and annotations are copied to the MPIJob
+	for k, v := range dummyAnnotations {
+		for _, replicaSpec := range mpiJob.Spec.MPIReplicaSpecs {
+			assert.Equal(t, v, replicaSpec.Template.ObjectMeta.Annotations[k])
+		}
+	}
+	for k, v := range dummyLabels {
+		for _, replicaSpec := range mpiJob.Spec.MPIReplicaSpecs {
+			assert.Equal(t, v, replicaSpec.Template.ObjectMeta.Labels[k])
+		}
+	}
 
 	for _, replicaSpec := range mpiJob.Spec.MPIReplicaSpecs {
 		for _, container := range replicaSpec.Template.Spec.Containers {
@@ -346,31 +365,32 @@ func TestGetTaskPhase(t *testing.T) {
 		return dummyMPIJobResource(mpiResourceHandler, 2, 1, 1, conditionType)
 	}
 
-	taskPhase, err := mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobCreated))
+	taskCtx := dummyMPITaskContext(dummyMPITaskTemplate("", dummyMPICustomObj(2, 1, 1)))
+	taskPhase, err := mpiResourceHandler.GetTaskPhase(ctx, taskCtx, dummyMPIJobResourceCreator(mpiOp.JobCreated))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobRunning))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, taskCtx, dummyMPIJobResourceCreator(mpiOp.JobRunning))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobSucceeded))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, taskCtx, dummyMPIJobResourceCreator(mpiOp.JobSucceeded))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseSuccess, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobFailed))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, taskCtx, dummyMPIJobResourceCreator(mpiOp.JobFailed))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRetryableFailure, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
 	assert.Nil(t, err)
 
-	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, nil, dummyMPIJobResourceCreator(mpiOp.JobRestarting))
+	taskPhase, err = mpiResourceHandler.GetTaskPhase(ctx, taskCtx, dummyMPIJobResourceCreator(mpiOp.JobRestarting))
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseRunning, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
@@ -389,7 +409,8 @@ func TestGetLogs(t *testing.T) {
 
 	mpiResourceHandler := mpiOperatorResourceHandler{}
 	mpiJob := dummyMPIJobResource(mpiResourceHandler, workers, launcher, slots, mpiOp.JobRunning)
-	jobLogs, err := common.GetLogs(common.MPITaskType, mpiJob.ObjectMeta, false, workers, launcher, 0)
+	taskCtx := dummyMPITaskContext(dummyMPITaskTemplate("", dummyMPICustomObj(workers, launcher, slots)))
+	jobLogs, err := common.GetLogs(taskCtx, common.MPITaskType, mpiJob.ObjectMeta, false, workers, launcher, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=mpi-namespace", jobNamespace, jobName), jobLogs[0].Uri)

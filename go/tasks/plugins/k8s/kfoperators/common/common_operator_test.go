@@ -9,6 +9,7 @@ import (
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core/mocks"
 	commonOp "github.com/kubeflow/common/pkg/apis/common/v1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -16,30 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func TestExtractMPICurrentCondition(t *testing.T) {
-	jobCreated := commonOp.JobCondition{
-		Type:   commonOp.JobCreated,
-		Status: corev1.ConditionTrue,
-	}
-	jobRunningActive := commonOp.JobCondition{
-		Type:   commonOp.JobRunning,
-		Status: corev1.ConditionFalse,
-	}
-	jobConditions := []commonOp.JobCondition{
-		jobCreated,
-		jobRunningActive,
-	}
-	currentCondition, err := ExtractMPICurrentCondition(jobConditions)
-	assert.NoError(t, err)
-	assert.Equal(t, currentCondition, jobCreated)
-
-	jobConditions = nil
-	currentCondition, err = ExtractMPICurrentCondition(jobConditions)
-	assert.Error(t, err)
-	assert.Equal(t, currentCondition, commonOp.JobCondition{})
-	assert.Equal(t, err, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions))
-}
 
 func TestExtractCurrentCondition(t *testing.T) {
 	jobCreated := commonOp.JobCondition{
@@ -60,16 +37,33 @@ func TestExtractCurrentCondition(t *testing.T) {
 
 	jobConditions = nil
 	currentCondition, err = ExtractCurrentCondition(jobConditions)
+	assert.NoError(t, err)
+	assert.Equal(t, currentCondition, commonOp.JobCondition{})
+
+	currentCondition, err = ExtractCurrentCondition(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, currentCondition, commonOp.JobCondition{})
+
+	jobUnknown := commonOp.JobCondition{Type: "unknown"}
+	jobConditions = []commonOp.JobCondition{jobUnknown}
+	currentCondition, err = ExtractCurrentCondition(jobConditions)
 	assert.Error(t, err)
 	assert.Equal(t, currentCondition, commonOp.JobCondition{})
 	assert.Equal(t, err, fmt.Errorf("found no current condition. Conditions: %+v", jobConditions))
 }
 
 func TestGetPhaseInfo(t *testing.T) {
+	jobCreating := commonOp.JobCondition{}
+	taskPhase, err := GetPhaseInfo(jobCreating, time.Now(), pluginsCore.TaskInfo{})
+	assert.NoError(t, err)
+	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
+	assert.NotNil(t, taskPhase.Info())
+	assert.Nil(t, err)
+
 	jobCreated := commonOp.JobCondition{
 		Type: commonOp.JobCreated,
 	}
-	taskPhase, err := GetPhaseInfo(jobCreated, time.Now(), pluginsCore.TaskInfo{})
+	taskPhase, err = GetPhaseInfo(jobCreated, time.Now(), pluginsCore.TaskInfo{})
 	assert.NoError(t, err)
 	assert.Equal(t, pluginsCore.PhaseQueued, taskPhase.Phase())
 	assert.NotNil(t, taskPhase.Info())
@@ -168,11 +162,12 @@ func TestGetLogs(t *testing.T) {
 	workers := int32(1)
 	launcher := int32(1)
 
+	taskCtx := dummyTaskContext()
 	mpiJobObjectMeta := meta_v1.ObjectMeta{
 		Name:      "test",
 		Namespace: "mpi-namespace",
 	}
-	jobLogs, err := GetLogs(MPITaskType, mpiJobObjectMeta, false, workers, launcher, 0)
+	jobLogs, err := GetLogs(taskCtx, MPITaskType, mpiJobObjectMeta, false, workers, launcher, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=mpi-namespace", "mpi-namespace", "test"), jobLogs[0].Uri)
@@ -181,7 +176,7 @@ func TestGetLogs(t *testing.T) {
 		Name:      "test",
 		Namespace: "pytorch-namespace",
 	}
-	jobLogs, err = GetLogs(PytorchTaskType, pytorchJobObjectMeta, true, workers, launcher, 0)
+	jobLogs, err = GetLogs(taskCtx, PytorchTaskType, pytorchJobObjectMeta, true, workers, launcher, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-master-0/pod?namespace=pytorch-namespace", "pytorch-namespace", "test"), jobLogs[0].Uri)
@@ -191,8 +186,7 @@ func TestGetLogs(t *testing.T) {
 		Name:      "test",
 		Namespace: "tensorflow-namespace",
 	}
-
-	jobLogs, err = GetLogs(TensorflowTaskType, tensorflowJobObjectMeta, false, workers, launcher, 1)
+	jobLogs, err = GetLogs(taskCtx, TensorflowTaskType, tensorflowJobObjectMeta, false, workers, launcher, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("k8s.com/#!/log/%s/%s-worker-0/pod?namespace=tensorflow-namespace", "tensorflow-namespace", "test"), jobLogs[0].Uri)
@@ -207,6 +201,7 @@ func TestGetLogsTemplateUri(t *testing.T) {
 		StackDriverTemplateURI: "https://console.cloud.google.com/logs/query;query=resource.labels.pod_name={{.podName}}&timestamp>{{.podRFC3339StartTime}}",
 	}))
 
+	taskCtx := dummyTaskContext()
 	pytorchJobObjectMeta := meta_v1.ObjectMeta{
 		Name:      "test",
 		Namespace: "pytorch-namespace",
@@ -214,7 +209,7 @@ func TestGetLogsTemplateUri(t *testing.T) {
 			Time: time.Date(2022, time.January, 1, 12, 0, 0, 0, time.UTC),
 		},
 	}
-	jobLogs, err := GetLogs(PytorchTaskType, pytorchJobObjectMeta, true, 1, 0, 0)
+	jobLogs, err := GetLogs(taskCtx, PytorchTaskType, pytorchJobObjectMeta, true, 1, 0, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(jobLogs))
 	assert.Equal(t, fmt.Sprintf("https://console.cloud.google.com/logs/query;query=resource.labels.pod_name=%s-master-0&timestamp>%s", "test", "2022-01-01T12:00:00Z"), jobLogs[0].Uri)
@@ -312,9 +307,39 @@ func TestOverrideContainerSpecEmptyFields(t *testing.T) {
 
 func TestOverrideContainerNilResources(t *testing.T) {
 	podSpec := dummyPodSpec()
+	podSpecCopy := podSpec.DeepCopy()
+
 	err := OverrideContainerSpec(&podSpec, "primary container", "", nil, []string{})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(podSpec.Containers))
-	assert.Nil(t, podSpec.Containers[0].Resources.Limits)
-	assert.Nil(t, podSpec.Containers[0].Resources.Requests)
+	assert.Equal(t, podSpec.Containers[0].Resources.Limits, podSpecCopy.Containers[0].Resources.Limits)
+	assert.Equal(t, podSpec.Containers[0].Resources.Requests, podSpecCopy.Containers[0].Resources.Requests)
+}
+
+func dummyTaskContext() pluginsCore.TaskExecutionContext {
+	taskCtx := &mocks.TaskExecutionContext{}
+
+	tID := &mocks.TaskExecutionID{}
+	tID.OnGetID().Return(core.TaskExecutionIdentifier{
+		TaskId: &core.Identifier{
+			ResourceType: core.ResourceType_TASK,
+			Name:         "my-task-name",
+			Project:      "my-task-project",
+			Domain:       "my-task-domain",
+			Version:      "1",
+		},
+		NodeExecutionId: &core.NodeExecutionIdentifier{
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Name:    "my-execution-name",
+				Project: "my-execution-project",
+				Domain:  "my-execution-domain",
+			},
+		},
+		RetryAttempt: 0,
+	})
+
+	taskExecutionMetadata := &mocks.TaskExecutionMetadata{}
+	taskExecutionMetadata.OnGetTaskExecutionID().Return(tID)
+	taskCtx.OnTaskExecutionMetadata().Return(taskExecutionMetadata)
+	return taskCtx
 }
