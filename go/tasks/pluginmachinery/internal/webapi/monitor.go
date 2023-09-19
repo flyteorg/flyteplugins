@@ -15,7 +15,7 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, p Client, cach
 	newCacheItem := CacheItem{
 		State: *state,
 	}
-
+	logger.Infof(ctx, "monitoring")
 	cacheItemID := tCtx.TaskExecutionMetadata().GetTaskExecutionID().GetGeneratedName()
 	item, err := cache.GetOrCreate(cacheItemID, newCacheItem)
 	if err != nil {
@@ -28,7 +28,7 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, p Client, cach
 		return nil, core.PhaseInfo{}, errors.Errorf(
 			errors.CacheFailed, "Failed to cast [%v]", cacheItem)
 	}
-
+	logger.Infof(ctx, "cache Item: [%v]", cacheItem)
 	// If the cache has not synced yet, just return
 	if cacheItem.Resource == nil {
 		if cacheItem.Phase.IsTerminal() {
@@ -41,7 +41,7 @@ func monitor(ctx context.Context, tCtx core.TaskExecutionContext, p Client, cach
 		}
 		return state, core.PhaseInfoRunning(0, nil), nil
 	}
-
+	logger.Infof(ctx, "cache Item Resource: [%v]", cacheItem.Resource)
 	newPhase, err := p.Status(ctx, newPluginContext(cacheItem.ResourceMeta, cacheItem.Resource, "", tCtx))
 	if err != nil {
 		return nil, core.PhaseInfoUndefined, err
