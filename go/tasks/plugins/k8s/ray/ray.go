@@ -3,10 +3,11 @@ package ray
 import (
 	"context"
 	"fmt"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
