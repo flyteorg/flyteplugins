@@ -77,26 +77,32 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to get primary container from the pod: [%v]", err.Error())
 	}
 
+	cfg := GetConfig()
 	headReplicas := int32(1)
 	headNodeRayStartParams := make(map[string]string)
 	if rayJob.RayCluster.HeadGroupSpec != nil && rayJob.RayCluster.HeadGroupSpec.RayStartParams != nil {
 		headNodeRayStartParams = rayJob.RayCluster.HeadGroupSpec.RayStartParams
+	} else if headNode := cfg.Defaults.HeadNode; len(headNode.StartParameters) > 0 {
+		headNodeRayStartParams = headNode.StartParameters
 	}
+
 	if _, exist := headNodeRayStartParams[IncludeDashboard]; !exist {
 		headNodeRayStartParams[IncludeDashboard] = strconv.FormatBool(GetConfig().IncludeDashboard)
 	}
+
 	if _, exist := headNodeRayStartParams[NodeIPAddress]; !exist {
-		headNodeRayStartParams[NodeIPAddress] = GetConfig().NodeIPAddress
+		headNodeRayStartParams[NodeIPAddress] = cfg.Defaults.HeadNode.IPAddress
 	}
+
 	if _, exist := headNodeRayStartParams[DashboardHost]; !exist {
-		headNodeRayStartParams[DashboardHost] = GetConfig().DashboardHost
+		headNodeRayStartParams[DashboardHost] = cfg.DashboardHost
 	}
 
 	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
 		HeadGroupSpec: rayv1alpha1.HeadGroupSpec{
 			Template:       buildHeadPodTemplate(&container, podSpec, objectMeta, taskCtx),
-			ServiceType:    v1.ServiceType(GetConfig().ServiceType),
+			ServiceType:    v1.ServiceType(cfg.ServiceType),
 			Replicas:       &headReplicas,
 			EnableIngress:  &enableIngress,
 			RayStartParams: headNodeRayStartParams,
@@ -119,9 +125,12 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		workerNodeRayStartParams := make(map[string]string)
 		if spec.RayStartParams != nil {
 			workerNodeRayStartParams = spec.RayStartParams
+		} else if workerNode := cfg.Defaults.WorkerNode; len(workerNode.StartParameters) > 0 {
+			workerNodeRayStartParams = workerNode.StartParameters
 		}
+
 		if _, exist := workerNodeRayStartParams[NodeIPAddress]; !exist {
-			workerNodeRayStartParams[NodeIPAddress] = GetConfig().NodeIPAddress
+			workerNodeRayStartParams[NodeIPAddress] = cfg.Defaults.WorkerNode.IPAddress
 		}
 
 		workerNodeSpec := rayv1alpha1.WorkerGroupSpec{
@@ -146,8 +155,8 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	jobSpec := rayv1alpha1.RayJobSpec{
 		RayClusterSpec:           rayClusterSpec,
 		Entrypoint:               strings.Join(container.Args, " "),
-		ShutdownAfterJobFinishes: GetConfig().ShutdownAfterJobFinishes,
-		TTLSecondsAfterFinished:  &GetConfig().TTLSecondsAfterFinished,
+		ShutdownAfterJobFinishes: cfg.ShutdownAfterJobFinishes,
+		TTLSecondsAfterFinished:  &cfg.TTLSecondsAfterFinished,
 		RuntimeEnv:               rayJob.RuntimeEnv,
 	}
 
@@ -364,7 +373,6 @@ func getEventInfoForRayJob(logConfig logs.LogConfig, pluginContext k8s.PluginCon
 	taskID := pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
 	logOutput, err := logPlugin.GetTaskLogs(tasklog.Input{
 		Namespace:               rayJob.Namespace,
-		LogName:                 "Ray Dashboard",
 		TaskExecutionIdentifier: &taskID,
 	})
 

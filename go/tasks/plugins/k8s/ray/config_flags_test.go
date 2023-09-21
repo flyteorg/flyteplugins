@@ -176,7 +176,7 @@ func TestConfig_SetFlags(t *testing.T) {
 
 			cmdFlags.Set("nodeIPAddress", testValue)
 			if vString, err := cmdFlags.GetString("nodeIPAddress"); err == nil {
-				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.NodeIPAddress)
+				testDecodeJson_Config(t, fmt.Sprintf("%v", vString), &actual.DeprecatedNodeIPAddress)
 
 			} else {
 				assert.FailNow(t, err.Error())
