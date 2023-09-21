@@ -28,11 +28,12 @@ import (
 )
 
 const (
-	rayTaskType      = "ray"
-	KindRayJob       = "RayJob"
-	IncludeDashboard = "include-dashboard"
-	NodeIPAddress    = "node-ip-address"
-	DashboardHost    = "dashboard-host"
+	rayTaskType                     = "ray"
+	KindRayJob                      = "RayJob"
+	IncludeDashboard                = "include-dashboard"
+	NodeIPAddress                   = "node-ip-address"
+	DashboardHost                   = "dashboard-host"
+	DisableUsageStatsStartParameter = "disable-usage-stats"
 )
 
 type rayJobResourceHandler struct {
@@ -98,6 +99,10 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		headNodeRayStartParams[DashboardHost] = cfg.DashboardHost
 	}
 
+	if _, exists := headNodeRayStartParams[DisableUsageStatsStartParameter]; !exists && !cfg.EnableUsageStats {
+		headNodeRayStartParams[DisableUsageStatsStartParameter] = "true"
+	}
+
 	enableIngress := true
 	rayClusterSpec := rayv1alpha1.RayClusterSpec{
 		HeadGroupSpec: rayv1alpha1.HeadGroupSpec{
@@ -131,6 +136,10 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 
 		if _, exist := workerNodeRayStartParams[NodeIPAddress]; !exist {
 			workerNodeRayStartParams[NodeIPAddress] = cfg.Defaults.WorkerNode.IPAddress
+		}
+
+		if _, exists := workerNodeRayStartParams[DisableUsageStatsStartParameter]; !exists && !cfg.EnableUsageStats {
+			workerNodeRayStartParams[DisableUsageStatsStartParameter] = "true"
 		}
 
 		workerNodeSpec := rayv1alpha1.WorkerGroupSpec{

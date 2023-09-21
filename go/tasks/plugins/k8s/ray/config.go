@@ -18,18 +18,19 @@ var (
 		ServiceType:              "NodePort",
 		IncludeDashboard:         true,
 		DashboardHost:            "0.0.0.0",
+		EnableUsageStats:         false,
 		Defaults: DefaultConfig{
 			HeadNode: NodeConfig{
 				StartParameters: map[string]string{
 					// Disable usage reporting by default: https://docs.ray.io/en/latest/cluster/usage-stats.html
-					"disable-usage-stats": "true",
+					DisableUsageStatsStartParameter: "true",
 				},
 				IPAddress: "$MY_POD_IP",
 			},
 			WorkerNode: NodeConfig{
 				StartParameters: map[string]string{
 					// Disable usage reporting by default: https://docs.ray.io/en/latest/cluster/usage-stats.html
-					"disable-usage-stats": "true",
+					DisableUsageStatsStartParameter: "true",
 				},
 				IPAddress: "$MY_POD_IP",
 			},
@@ -80,6 +81,8 @@ type Config struct {
 	Logs logs.LogConfig `json:"logs" pflag:"-,Log configuration for ray jobs"`
 
 	Defaults DefaultConfig `json:"defaults" pflag:"-,Default configuration for ray jobs"`
+
+	EnableUsageStats bool `json:"enableUsageStats" pflag:",Enable usage stats for ray jobs. These stats are submitted to usage-stats.ray.io per https://docs.ray.io/en/latest/cluster/usage-stats.html"`
 }
 
 type DefaultConfig struct {
