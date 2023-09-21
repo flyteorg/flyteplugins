@@ -35,7 +35,6 @@ const (
 )
 
 type rayJobResourceHandler struct {
-	cfg *Config
 }
 
 func (rayJobResourceHandler) GetProperties() k8s.PluginProperties {
