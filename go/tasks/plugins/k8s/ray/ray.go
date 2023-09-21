@@ -3,11 +3,11 @@ package ray
 import (
 	"context"
 	"fmt"
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/core"
 	"github.com/flyteorg/flyteidl/gen/pb-go/flyteidl/plugins"
 	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery"
@@ -35,6 +35,7 @@ const (
 )
 
 type rayJobResourceHandler struct {
+	cfg *Config
 }
 
 func (rayJobResourceHandler) GetProperties() k8s.PluginProperties {
@@ -347,12 +348,10 @@ func (rayJobResourceHandler) BuildIdentityResource(ctx context.Context, taskCtx 
 	}, nil
 }
 
-func getEventInfoForRayJob() (*pluginsCore.TaskInfo, error) {
-	taskLogs := make([]*core.TaskLog, 0, 3)
-	logPlugin, err := logs.InitializeLogPlugins(logs.GetLogConfig())
-
+func getEventInfoForRayJob(logConfig logs.LogConfig, pluginContext k8s.PluginContext, rayJob *rayv1alpha1.RayJob) (*pluginsCore.TaskInfo, error) {
+	logPlugin, err := logs.InitializeLogPlugins(&logConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize log plugins. Error: %w", err)
 	}
 
 	if logPlugin == nil {
@@ -362,16 +361,25 @@ func getEventInfoForRayJob() (*pluginsCore.TaskInfo, error) {
 	// TODO: Retrieve the name of head pod from rayJob.status, and add it to task logs
 	// RayJob CRD does not include the name of the worker or head pod for now
 
-	// TODO: Add ray Dashboard URI to task logs
+	taskID := pluginContext.TaskExecutionMetadata().GetTaskExecutionID().GetID()
+	logOutput, err := logPlugin.GetTaskLogs(tasklog.Input{
+		Namespace:               rayJob.Namespace,
+		LogName:                 "Ray Dashboard",
+		TaskExecutionIdentifier: &taskID,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate task logs. Error: %w", err)
+	}
 
 	return &pluginsCore.TaskInfo{
-		Logs: taskLogs,
+		Logs: logOutput.TaskLogs,
 	}, nil
 }
 
-func (rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
+func (plugin rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginContext k8s.PluginContext, resource client.Object) (pluginsCore.PhaseInfo, error) {
 	rayJob := resource.(*rayv1alpha1.RayJob)
-	info, err := getEventInfoForRayJob()
+	info, err := getEventInfoForRayJob(GetConfig().Logs, pluginContext, rayJob)
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}

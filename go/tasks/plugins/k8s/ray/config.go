@@ -2,6 +2,7 @@ package ray
 
 import (
 	pluginsConfig "github.com/flyteorg/flyteplugins/go/tasks/config"
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
 	pluginmachinery "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 )
 
@@ -44,6 +45,8 @@ type Config struct {
 
 	// Remote Ray Cluster Config
 	RemoteClusterConfig pluginmachinery.ClusterConfig `json:"remoteClusterConfig" pflag:"Configuration of remote K8s cluster for ray jobs"`
+
+	Logs logs.LogConfig `json:"logs" pflag:"-,Log configuration for ray jobs"`
 }
 
 func GetConfig() *Config {
