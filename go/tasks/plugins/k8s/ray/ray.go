@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 
@@ -403,7 +402,7 @@ func (plugin rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginCont
 
 	switch rayJob.Status.JobStatus {
 	case rayv1alpha1.JobStatusPending:
-		return pluginsCore.PhaseInfoInitializing(time.Now(), pluginsCore.DefaultPhaseVersion, "job is pending", info), nil
+		return pluginsCore.PhaseInfoInitializing(rayJob.Status.StartTime.Time, pluginsCore.DefaultPhaseVersion, "job is pending", info), nil
 	case rayv1alpha1.JobStatusFailed:
 		reason := fmt.Sprintf("Failed to create Ray job: %s", rayJob.Name)
 		return pluginsCore.PhaseInfoFailure(flyteerr.TaskFailedWithError, reason, info), nil
