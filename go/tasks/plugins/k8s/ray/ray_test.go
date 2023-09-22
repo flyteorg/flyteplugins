@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/logs"
+	mocks2 "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s/mocks"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/utils"
@@ -186,6 +189,64 @@ func TestBuildResourceRay(t *testing.T) {
 	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].Template.Annotations, map[string]string{"annotation-1": "val1"})
 	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].Template.Labels, map[string]string{"label-1": "val1"})
 	assert.Equal(t, ray.Spec.RayClusterSpec.WorkerGroupSpecs[0].Template.Spec.Tolerations, toleration)
+}
+
+func newPluginContext() k8s.PluginContext {
+	plg := &mocks2.PluginContext{}
+
+	taskExecID := &mocks.TaskExecutionID{}
+	taskExecID.OnGetID().Return(core.TaskExecutionIdentifier{
+		NodeExecutionId: &core.NodeExecutionIdentifier{
+			ExecutionId: &core.WorkflowExecutionIdentifier{
+				Name:    "my_name",
+				Project: "my_project",
+				Domain:  "my_domain",
+			},
+		},
+	})
+
+	tskCtx := &mocks.TaskExecutionMetadata{}
+	tskCtx.OnGetTaskExecutionID().Return(taskExecID)
+	plg.OnTaskExecutionMetadata().Return(tskCtx)
+	return plg
+}
+
+func init() {
+	f := defaultConfig
+	f.Logs = logs.LogConfig{
+		IsKubernetesEnabled: true,
+	}
+
+	if err := SetConfig(&f); err != nil {
+		panic(err)
+	}
+}
+
+func TestGetTaskPhase(t *testing.T) {
+	ctx := context.Background()
+	rayJobResourceHandler := rayJobResourceHandler{}
+	pluginCtx := newPluginContext()
+
+	testCases := []struct {
+		rayJobPhase       rayv1alpha1.JobStatus
+		expectedCorePhase pluginsCore.Phase
+	}{
+		{"", pluginsCore.PhaseQueued},
+		{rayv1alpha1.JobStatusPending, pluginsCore.PhaseInitializing},
+		{rayv1alpha1.JobStatusRunning, pluginsCore.PhaseRunning},
+		{rayv1alpha1.JobStatusSucceeded, pluginsCore.PhaseSuccess},
+		{rayv1alpha1.JobStatusFailed, pluginsCore.PhasePermanentFailure},
+	}
+
+	for _, tc := range testCases {
+		t.Run("TestGetTaskPhase_"+string(tc.rayJobPhase), func(t *testing.T) {
+			rayObject := &rayv1alpha1.RayJob{}
+			rayObject.Status.JobStatus = tc.rayJobPhase
+			phaseInfo, err := rayJobResourceHandler.GetTaskPhase(ctx, pluginCtx, rayObject)
+			assert.Nil(t, err)
+			assert.Equal(t, tc.expectedCorePhase.String(), phaseInfo.Phase().String())
+		})
+	}
 }
 
 func TestGetPropertiesRay(t *testing.T) {

@@ -59,7 +59,6 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 	}
 
 	podSpec, objectMeta, primaryContainerName, err := flytek8s.ToK8sPodSpec(ctx, taskCtx)
-
 	if err != nil {
 		return nil, flyteerr.Errorf(flyteerr.BadTaskSpecification, "Unable to create pod spec: [%v]", err.Error())
 	}
@@ -123,6 +122,7 @@ func (rayJobResourceHandler) BuildResource(ctx context.Context, taskCtx pluginsC
 		if spec.MinReplicas != 0 {
 			minReplicas = spec.MinReplicas
 		}
+
 		if spec.MaxReplicas != 0 {
 			maxReplicas = spec.MaxReplicas
 		}
@@ -400,9 +400,10 @@ func (plugin rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginCont
 	if err != nil {
 		return pluginsCore.PhaseInfoUndefined, err
 	}
+
 	switch rayJob.Status.JobStatus {
 	case rayv1alpha1.JobStatusPending:
-		return pluginsCore.PhaseInfoNotReady(time.Now(), pluginsCore.DefaultPhaseVersion, "job is pending"), nil
+		return pluginsCore.PhaseInfoInitializing(time.Now(), pluginsCore.DefaultPhaseVersion, "job is pending", info), nil
 	case rayv1alpha1.JobStatusFailed:
 		reason := fmt.Sprintf("Failed to create Ray job: %s", rayJob.Name)
 		return pluginsCore.PhaseInfoFailure(flyteerr.TaskFailedWithError, reason, info), nil
@@ -411,7 +412,8 @@ func (plugin rayJobResourceHandler) GetTaskPhase(ctx context.Context, pluginCont
 	case rayv1alpha1.JobStatusRunning:
 		return pluginsCore.PhaseInfoRunning(pluginsCore.DefaultPhaseVersion, info), nil
 	}
-	return pluginsCore.PhaseInfoQueued(time.Now(), pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
+
+	return pluginsCore.PhaseInfoQueued(rayJob.CreationTimestamp.Time, pluginsCore.DefaultPhaseVersion, "JobCreated"), nil
 }
 
 func init() {
