@@ -65,7 +65,7 @@ func (q QuboleHiveExecutor) Handle(ctx context.Context, tCtx core.TaskExecutionC
 		return core.UnknownTransition, err
 	}
 
-	return core.DoTransition(phaseInfo), nil
+	return core.DoTransitionType(core.TransitionTypeBarrier, phaseInfo), nil
 }
 
 func (q QuboleHiveExecutor) Abort(ctx context.Context, tCtx core.TaskExecutionContext) error {
