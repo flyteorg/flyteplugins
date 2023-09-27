@@ -169,7 +169,8 @@ type K8sPluginConfig struct {
 	// pod template resources.
 	DefaultPodTemplateResync config2.Duration `json:"default-pod-template-resync" pflag:",Frequency of resyncing default pod templates"`
 
-	SendObjectEvents bool `json:"send-object-events" pflag:",If true, will send object events as TaskExecutionEvent updates."`
+	// SendObjectEvents indicates whether to send k8s object events in TaskExecutionEvent updates (similar to kubectl get events).
+	SendObjectEvents bool `json:"send-object-events" pflag:",If true, will send k8s object events in TaskExecutionEvent updates."`
 }
 
 // FlyteCoPilotConfig specifies configuration for the Flyte CoPilot system. FlyteCoPilot, allows running flytekit-less containers
