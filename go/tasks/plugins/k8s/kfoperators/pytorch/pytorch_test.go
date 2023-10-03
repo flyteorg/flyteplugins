@@ -167,7 +167,7 @@ func dummyPytorchTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.TaskEx
 			flytek8s.ResourceNvidiaGPU: resource.MustParse("1"),
 		},
 	})
-	overrides.OnGetResourceExtensions().Return(&core.ResourceExtensions{
+	overrides.OnGetExtendedResources().Return(&core.ExtendedResources{
 		GpuAccelerator: &core.GPUAccelerator{
 			Device: "nvidia-tesla-a100",
 			PartitionSizeValue: &core.GPUAccelerator_PartitionSize{

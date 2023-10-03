@@ -149,7 +149,7 @@ func dummyTensorFlowTaskContext(taskTemplate *core.TaskTemplate) pluginsCore.Tas
 
 	overrides := &mocks.TaskOverrides{}
 	overrides.OnGetResources().Return(resourceRequirements)
-	overrides.OnGetResourceExtensions().Return(&core.ResourceExtensions{
+	overrides.OnGetExtendedResources().Return(&core.ExtendedResources{
 		GpuAccelerator: &core.GPUAccelerator{
 			Device: "nvidia-tesla-a100",
 			PartitionSizeValue: &core.GPUAccelerator_PartitionSize{

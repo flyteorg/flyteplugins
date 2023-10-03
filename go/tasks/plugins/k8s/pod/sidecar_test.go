@@ -92,7 +92,7 @@ func dummySidecarTaskMetadata(resources *v1.ResourceRequirements) pluginsCore.Ta
 
 	to := &pluginsCoreMock.TaskOverrides{}
 	to.On("GetResources").Return(resources)
-	to.OnGetResourceExtensions().Return(&core.ResourceExtensions{
+	to.OnGetExtendedResources().Return(&core.ExtendedResources{
 		GpuAccelerator: &core.GPUAccelerator{
 			Device: "nvidia-tesla-a100",
 			PartitionSizeValue: &core.GPUAccelerator_PartitionSize{
