@@ -187,7 +187,7 @@ func LaunchAndCheckSubTasksState(ctx context.Context, tCtx core.TaskExecutionCon
 				phaseInfo = core.PhaseInfoWaitingForResourcesInfo(time.Now(), core.DefaultPhaseVersion, "Exceeded ResourceManager quota", nil)
 			} else {
 				phaseInfo, perr = launchSubtask(ctx, stCtx, config, kubeClient)
-
+				logger.Infof(ctx, "Failed to launch subtask with error [%s]", perr)
 				// if launchSubtask fails we attempt to deallocate the (previously allocated)
 				// resource to mitigate leaks
 				if perr != nil {

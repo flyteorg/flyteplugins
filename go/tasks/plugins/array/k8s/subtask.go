@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
+
 	"github.com/flyteorg/flyteplugins/go/tasks/errors"
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
-	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/flytek8s/config"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/k8s"
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
@@ -159,6 +160,20 @@ func clearFinalizers(ctx context.Context, o client.Object, kubeClient pluginsCor
 	return nil
 }
 
+// updateCopilotArgs append array index to the end of the output prefix
+func updateCopilotArgs(pod *v1.Pod, stCtx SubTaskExecutionContext) {
+	for sidecarIndex, container := range pod.Spec.Containers {
+		if container.Name == config.GetK8sPluginConfig().CoPilot.NamePrefix+flytek8s.Sidecar {
+			for i, arg := range pod.Spec.Containers[sidecarIndex].Args {
+				if arg == "--to-output-prefix" {
+					pod.Spec.Containers[sidecarIndex].Args[i+1] = fmt.Sprintf("%s/%s", pod.Spec.Containers[sidecarIndex].Args[i+1], strconv.Itoa(stCtx.originalIndex))
+				}
+			}
+			break
+		}
+	}
+}
+
 // launchSubtask creates a k8s pod defined by the SubTaskExecutionContext and Config.
 func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Config, kubeClient pluginsCore.KubeClient) (pluginsCore.PhaseInfo, error) {
 	o, err := podPlugin.DefaultPodPlugin.BuildResource(ctx, stCtx)
@@ -187,6 +202,7 @@ func launchSubtask(ctx context.Context, stCtx SubTaskExecutionContext, cfg *Conf
 	})
 
 	pod.Spec.Containers[containerIndex].Env = append(pod.Spec.Containers[containerIndex].Env, arrayJobEnvVars...)
+	updateCopilotArgs(pod, stCtx)
 
 	logger.Infof(ctx, "Creating Object: Type:[%v], Object:[%v/%v]", pod.GetObjectKind().GroupVersionKind(), pod.GetNamespace(), pod.GetName())
 	err = kubeClient.GetClient().Create(ctx, pod)
@@ -328,6 +344,10 @@ func getTaskContainerIndex(pod *v1.Pod) (int, error) {
 	// For tasks with a Container target, we only ever build one container as part of the pod
 	if !ok {
 		if len(pod.Spec.Containers) == 1 {
+			return 0, nil
+		}
+		// Copilot is always the second container if it is enabled.
+		if len(pod.Spec.Containers) == 2 && pod.Spec.Containers[1].Name == config.GetK8sPluginConfig().CoPilot.NamePrefix+flytek8s.Sidecar {
 			return 0, nil
 		}
 		// For tasks with a K8sPod task target, they may produce multiple containers but at least one must be the designated primary.

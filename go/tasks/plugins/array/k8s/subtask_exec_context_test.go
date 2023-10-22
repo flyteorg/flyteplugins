@@ -3,13 +3,14 @@ package k8s
 import (
 	"context"
 	"fmt"
+
 	"testing"
 
 	"github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/tasklog"
 	podPlugin "github.com/flyteorg/flyteplugins/go/tasks/plugins/k8s/pod"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/flyteorg/flytestdlib/storage"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,4 +48,27 @@ func TestSubTaskExecutionContext(t *testing.T) {
 		},
 		stCtx.TaskExecutionMetadata().GetTaskExecutionID().(SubTaskExecutionID).TemplateVarsByScheme(),
 	)
+}
+
+func TestUpdateCopilotArgs(t *testing.T) {
+	pod := &v1.Pod{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name: "flyte-copilot-sidecar",
+					Args: []string{"--to-output-prefix", "s3://bucket/key"},
+				},
+			},
+		},
+	}
+	ctx := context.Background()
+
+	tCtx := getMockTaskExecutionContext(ctx, 0)
+	taskTemplate, err := tCtx.TaskReader().Read(ctx)
+	assert.Nil(t, err)
+
+	stCtx, err := NewSubTaskExecutionContext(ctx, tCtx, taskTemplate, 0, 5, uint64(1), uint64(0))
+	assert.Nil(t, err)
+	updateCopilotArgs(pod, stCtx)
+	assert.Equal(t, pod.Spec.Containers[0].Args[1], "s3://bucket/key/5")
 }
