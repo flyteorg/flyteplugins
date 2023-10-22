@@ -123,6 +123,10 @@ func (r RemoteFileOutputReader) DeckExists(ctx context.Context) (bool, error) {
 	return md.Exists(), nil
 }
 
+func (r RemoteFileOutputReader) GetOutputMetadata(_ context.Context) map[string]string {
+	return map[string]string{deckURIKey: r.outPath.GetDeckPath().String()}
+}
+
 func NewRemoteFileOutputReader(_ context.Context, store storage.ComposedProtobufStore, outPaths io.OutputFilePaths, maxDatasetSize int64) RemoteFileOutputReader {
 	return RemoteFileOutputReader{
 		outPath:        outPaths,

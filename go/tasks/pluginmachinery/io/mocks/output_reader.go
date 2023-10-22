@@ -94,6 +94,40 @@ func (_m *OutputReader) Exists(ctx context.Context) (bool, error) {
 	return r0, r1
 }
 
+type OutputReader_GetOutputMetadata struct {
+	*mock.Call
+}
+
+func (_m OutputReader_GetOutputMetadata) Return(_a0 map[string]string) *OutputReader_GetOutputMetadata {
+	return &OutputReader_GetOutputMetadata{Call: _m.Call.Return(_a0)}
+}
+
+func (_m *OutputReader) OnGetOutputMetadata(ctx context.Context) *OutputReader_GetOutputMetadata {
+	c_call := _m.On("GetOutputMetadata", ctx)
+	return &OutputReader_GetOutputMetadata{Call: c_call}
+}
+
+func (_m *OutputReader) OnGetOutputMetadataMatch(matchers ...interface{}) *OutputReader_GetOutputMetadata {
+	c_call := _m.On("GetOutputMetadata", matchers...)
+	return &OutputReader_GetOutputMetadata{Call: c_call}
+}
+
+// GetOutputMetadata provides a mock function with given fields: ctx
+func (_m *OutputReader) GetOutputMetadata(ctx context.Context) map[string]string {
+	ret := _m.Called(ctx)
+
+	var r0 map[string]string
+	if rf, ok := ret.Get(0).(func(context.Context) map[string]string); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	return r0
+}
+
 type OutputReader_IsError struct {
 	*mock.Call
 }

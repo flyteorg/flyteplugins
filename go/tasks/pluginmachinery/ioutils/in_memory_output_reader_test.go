@@ -25,6 +25,7 @@ func TestInMemoryOutputReader(t *testing.T) {
 	or := NewInMemoryOutputReader(&flyteIdlCore.LiteralMap{Literals: lt}, &deckPath, nil)
 
 	assert.Equal(t, &deckPath, or.DeckPath)
+	assert.Equal(t, deckPath.String(), or.GetOutputMetadata(context.Background())[deckURIKey])
 	ctx := context.TODO()
 
 	ok, err := or.IsError(ctx)
