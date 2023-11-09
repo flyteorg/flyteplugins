@@ -16,7 +16,7 @@ type TaskOverrides interface {
 // TaskExecutionID is a simple Interface to expose the ExecutionID of the running Task
 type TaskExecutionID interface {
 	// GetGeneratedName returns the computed/generated name for the task id
-	// deprecated: use GetGeneratedNameWithLength
+	// deprecated: use GetGeneratedNameWith
 	GetGeneratedName() string
 
 	// GetGeneratedNameWith returns the generated name within a bounded length. If the name is smaller than minLength,

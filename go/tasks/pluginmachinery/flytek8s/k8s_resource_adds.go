@@ -15,6 +15,11 @@ import (
 	pluginsCore "github.com/flyteorg/flyteplugins/go/tasks/pluginmachinery/core"
 )
 
+const (
+	taskGeneratedNameMinLength = 10
+	taskGeneratedNameMaxLength = 100
+)
+
 func GetContextEnvVars(ownerCtx context.Context) []v1.EnvVar {
 	var envVars []v1.EnvVar
 
@@ -74,6 +79,8 @@ func GetExecutionEnvVars(id pluginsCore.TaskExecutionID) []v1.EnvVar {
 	// Task definition Level env variables.
 	if id.GetID().TaskId != nil {
 		taskID := id.GetID().TaskId
+		// TODO: what's an idiomatic way of handling this error given that we don't propagate errors up in GetExecutionEnvVars?
+		taskGeneratedName, _ := id.GetGeneratedNameWith(taskGeneratedNameMinLength, taskGeneratedNameMaxLength)
 
 		envVars = append(envVars,
 			v1.EnvVar{
@@ -91,6 +98,10 @@ func GetExecutionEnvVars(id pluginsCore.TaskExecutionID) []v1.EnvVar {
 			v1.EnvVar{
 				Name:  "FLYTE_INTERNAL_TASK_VERSION",
 				Value: taskID.Version,
+			},
+			v1.EnvVar{
+				Name:  "FLYTE_INTERNAL_TASK_GENERATED_NAME",
+				Value: taskGeneratedName,
 			},
 			// Historic Task Definition Level env variables.
 			// Remove these once SDK is migrated to use the new ones.
@@ -110,7 +121,6 @@ func GetExecutionEnvVars(id pluginsCore.TaskExecutionID) []v1.EnvVar {
 				Name:  "FLYTE_INTERNAL_VERSION",
 				Value: taskID.Version,
 			})
-
 	}
 	return envVars
 }
